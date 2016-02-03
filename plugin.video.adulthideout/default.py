@@ -52,6 +52,8 @@ crazyshit = 'http://www.crazyshit.com'
 efukt = 'http://efukt.com/'
 pornhub = 'http://pornhub.com'
 pornsocket = 'http://pornsocket.com'
+jamo = 'http://jamo.tv'
+
 
 def menulist():
 	try:
@@ -86,7 +88,8 @@ def home():
 def main():
 	
 	add_dir('Eporner [COLOR yellow] Videos[/COLOR]', eporner + '/0/', 2, logos + 'eporner.png', fanart)
-	add_dir('FlyFLV [COLOR yellow] Videos[/COLOR]', flyflv + '/1?sort=addDate', 2, logos + 'flyflv.png', fanart) 
+	add_dir('FlyFLV [COLOR yellow] Videos[/COLOR]', flyflv + '/1?sort=addDate', 2, logos + 'flyflv.png', fanart)
+	add_dir('Jamo.Tv [COLOR yellow] Videos[/COLOR]', jamo + '/most-recent-page-1.html', 2, logos + 'jamo.png', fanart)
 	add_dir('LubeTube [COLOR yellow] Videos[/COLOR]', lubetube + 'view', 2, logos + 'lubetube.png', fanart) 
 	add_dir('Motherless [COLOR yellow] Videos[/COLOR]', motherless + '/videos/recent?page=1', 2, logos + 'motherless.png', fanart)
 	add_dir('PornCom [COLOR yellow] Videos[/COLOR]', porncom + '/videos?p=1', 2, logos + 'porncom.png', fanart)	
@@ -185,6 +188,9 @@ def search():
 		elif 'pornsocket' in name:
 			url = pornsocket + '/media-gallery.html?filter_search=&amp;filter_tag=' + searchText 
 			start(url)
+		elif 'jamo' in name:
+			url = jamo + '/search-movie/keyword-' + searchText + '-1-page-1.html'
+			start(url)
 			
 			
 	except:
@@ -229,6 +235,19 @@ def start(url):
 			add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', tnaflix + url,  4, 'http:' + thumb, fanart)
 		match = re.compile('class="navLink" href="([^"]*)">next &raquo;</a>').findall(content) 
 		add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', tnaflix + match[0], 2, logos + 'tnaflix.png', fanart)	
+	
+	elif 'jamo' in url:
+		content = make_request(url)
+		add_dir('[COLOR green]Jamo.Tv     [COLOR red]Search[/COLOR]', jamo, 1, logos + 'jamo.png', fanart)	
+		add_dir('[COLOR magenta]Genre[/COLOR]', jamo, 27, logos + 'jamo.png', fanart) 
+		match = re.compile('<a href="([^"]+)" title="([^"]+)"><img src="([^"]+)"').findall(content)
+		for url, name, thumb  in match:
+			add_dir(name, url,  3, thumb, fanart)
+		try:
+			match = re.compile('<a class="command" href="([^"]+)" title="Next"><b>Next</b></a> &nbsp;').findall(content) 
+			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', jamo + match[0], 2, logos + 'jamo.png', fanart)	
+		except:
+			pass
 		
 	elif 'xhamster' in url:
 		content = make_request(url)
@@ -596,6 +615,14 @@ def pornsocket_categories(url) :
 	for url, thumb, name in match:
 		add_dir(name, pornsocket + url, 2, pornsocket + thumb, fanart)
 		
+	
+def jamo_categories(url) :
+	home()
+	content = make_request(url)
+	match = re.compile('<div style="margin-left:20px;"><li><b><a href="([^"]*)">(.+?)</a></b>(.+?)</li></div>').findall(content)
+	for url, name, duration in match:
+		add_dir(name + ' [COLOR lime]'+ duration + '[/COLOR]', jamo + url, 2, logos + 'jamo.png', fanart)
+		
 def media_list(url):
 	home()
 	content = make_request(url)
@@ -638,6 +665,12 @@ def media_list(url):
 		for url, name in match:
 			add_dir('[COLOR yellow]Page ' + name + '[/COLOR]', porncom + url.replace('&amp;', '&') , 3, logos + 'porncom.png', fanart)		
 	
+	elif 'jamo' in url:
+		match = re.compile('<a href="([^"]+)" class=".+?" title="([^"]+)">Watch Now</a>').findall(content)
+		for url, name in match:
+			add_link(name, url, 4, logos + 'jamo.png', fanart)
+
+		
 	elif 'yespleaseporn' in url:
 		match = re.compile(".+?video_url=(.+?)&quality_480p.+?").findall(content)
 		for url in match:
@@ -761,6 +794,12 @@ def resolve_url(url):
 		media_url = re.compile("var player_quality_.+? = '(.+?)'").findall(content)[0]
 	elif 'pornsocket' in url:	
 		media_url = pornsocket + re.compile('<source src="(.+?)" type="video/mp4"/>').findall(content)[0]
+	elif 'jamo' in url:	
+		try:
+			media_url = re.compile('{file: "(.+?)",label: "1080P",').findall(content)[0]
+			media_url = re.compile('{file: "(.+?)",label: "720P",').findall(content)[0]
+		except:	
+			media_url = re.compile('[{{file: "(.+?)",label: "360P",').findall(content)[0]
 	else:
 		media_url = url
 	item = xbmcgui.ListItem(name, path = media_url)
@@ -906,6 +945,9 @@ elif mode == 25:
 
 elif mode == 26:	
 	pornsocket_categories(url)
+
+elif mode == 27:	
+	jamo_categories(url)
 
 elif mode == 60:	
 	motherless_galeries_cat(url)
