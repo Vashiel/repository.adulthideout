@@ -1,5 +1,0 @@
-v 0.1
-First try
-
-v 0.2
-- added Jamo.tv
