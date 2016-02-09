@@ -15,3 +15,7 @@ v 0.3 08-02-2016
 - rewrote pornXS code
 - removed crazyshit.com
 - many other minor changes in code (Changed code so much, maybe it's more messed up then before)
+
+v 0.4 08-02-2016
+- added heavy-r.com
+- fixed ashemaletube categories

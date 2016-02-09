@@ -55,6 +55,7 @@ jamo = 'http://jamo.tv'
 hentaigasm = 'http://hentaigasm.com/'
 ashemaletube = 'http://www.ashemaletube.com'
 youporn = 'http://www.youporn.com'
+heavyr = 'http://www.heavy-r.com'
 
 
 def menulist():
@@ -95,6 +96,7 @@ def main():
 	add_dir('Eporner [COLOR yellow] Videos[/COLOR]', eporner + '/0/', 2, logos + 'eporner.png', fanart)
 	add_dir('FlyFLV [COLOR yellow] Videos[/COLOR]', flyflv, 2, logos + 'flyflv.png', fanart)
 	add_dir('Hentaigasm [COLOR yellow] Videos[/COLOR]', hentaigasm, 2, logos + 'hentaigasm.png', fanart)
+	add_dir('Heavy-R [COLOR yellow] Videos[/COLOR]', heavyr + '/videos/' , 2, logos + 'hentaigasm.png', fanart)
 	add_dir('Jamo.Tv [COLOR yellow] Videos[/COLOR]', jamo + '/most-recent-page-1.html', 2, logos + 'jamo.png', fanart)
 	add_dir('LubeTube [COLOR yellow] Videos[/COLOR]', lubetube + 'view', 2, logos + 'lubetube.png', fanart) 
 	add_dir('Motherless [COLOR yellow] Videos[/COLOR]', motherless + '/videos/recent?page=1', 2, logos + 'motherless.png', fanart)
@@ -201,7 +203,10 @@ def search():
 			url = ashemaletube + '/search/' + searchText + '/page1.html'
 			start(url)
 		elif 'youporn' in name:
-			url = youprn + '/search/?query=' + searchText
+			url = youporn + '/search/?query=' + searchText
+			start(url)	
+		elif 'heavy-r' in name:
+			url = heavyr + 'free_porn/' + searchText + '.html'
 			start(url)	
 	except:
 		pass
@@ -249,6 +254,19 @@ def start(url):
 		try:
 			match = re.compile('<link rel="next" href="([^"]*)" />').findall(content)
 			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', pornhd + match[0], 2, logos + 'pornhd.png', fanart)
+		except:
+			pass
+	
+	elif 'heavy-r' in url:
+		add_dir('[COLOR lightgreen]heavy-r       [COLOR red]Search[/COLOR]', heavyr, 1, logos + 'heavyr.png', fanart)	
+		add_dir('[COLOR magenta]Categories[/COLOR]', heavyr + '/categories/', 33, logos + 'heavyr.png', fanart)
+		content = make_request(url)
+		match = re.compile('<a href="([^"]+)" class="image">.+?<img src="([^"]+)".+?alt="([^"]+)".+?<span class="duration"><i class="fa fa-clock-o"></i> ([\d:]+)</span>', re.DOTALL).findall(content)
+		for url, thumb, name, duration in match:
+			add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', heavyr + url, 4, thumb, fanart)  
+		try:
+			match = re.compile('<a href="([^"]*)">Next</a>').findall(content)
+			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', heavyr + match[0], 2, logos + 'heavyr.png', fanart)
 		except:
 			pass
 	
@@ -702,7 +720,14 @@ def flyflv_content(url)	:
 	for url, name in match:
 		name = name.replace('FLYFLV', 'Straight')
 		add_dir(name, flyflv + url,  2, logos + 'flyflv.png', fanart)
-	
+		
+def	heavyr_categories(url) :
+	home()
+	content = make_request(url)	
+	match = re.compile('<a href="([^"]+)" class="image">.+?<img src="([^"]+)" alt="([^"]+)', re.DOTALL).findall(content)
+	for url, thumb, name in match:
+		add_dir(name, heavyr + url, 2, heavyr + thumb, fanart)
+		
 		
 def media_list(url):
 	home()
@@ -845,7 +870,6 @@ def resolve_url(url):
 		try:
 			media_url = re.compile('{file: "(.+?)", label: "High Quality"}').findall(content)[0]
 		except:		
-			#media_url = re.compile('file: "(.+?)", label: "Standard Quality"}').findall(content)[0]
 			media_url = 'https://' + re.compile('"https://(.+?).mp4"') .findall(content)[0] + '.mp4'
 
 	elif 'youporn' in url:	
@@ -853,6 +877,8 @@ def resolve_url(url):
 			media_url = re.compile("720: '([^']+)").findall(content)[0]
 		except:	
 			media_url = re.compile("480: '([^']+)").findall(content)[0]
+	elif 'heavy-r' in url:	
+			media_url = re.compile("file: '([^']+)',").findall(content)[0]
 	else:
 		media_url = url
 	item = xbmcgui.ListItem(name, path = media_url)
@@ -1004,7 +1030,10 @@ elif mode == 31:
 	youporn_categories(url)	
 
 elif mode == 32:	
-	flyflv_content(url)	
+	flyflv_content(url)
+	
+elif mode == 33:	
+	heavyr_categories(url)
 
 elif mode == 60:	
 	motherless_galeries_cat(url)
