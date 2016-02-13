@@ -1,8 +1,10 @@
-v 0.1
-First try
+v 0.4.1 13-02-2016
+- removed FlyFLV
+- Minor fixes
 
-v 0.2
-- added Jamo.tv
+v 0.4 08-02-2016
+- added heavy-r.com
+- fixed ashemaletube categories
 
 v 0.3 08-02-2016
 - added Youporn
@@ -16,6 +18,8 @@ v 0.3 08-02-2016
 - removed crazyshit.com
 - many other minor changes in code (Changed code so much, maybe it's more messed up then before)
 
-v 0.4 08-02-2016
-- added heavy-r.com
-- fixed ashemaletube categories
+v 0.2
+- added Jamo.tv
+
+v 0.1
+First try
