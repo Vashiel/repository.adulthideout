@@ -1,3 +1,10 @@
+v 0.4.2 05-03-2016
+- removed Jamo.tv
+- added Jav720p.net
+- fixed motherless.com group names 
+- fixed redtube.com search and channels
+- removed trash code 
+
 v 0.4.1 13-02-2016
 - removed FlyFLV
 - Minor fixes
