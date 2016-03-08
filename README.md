@@ -1,5 +1,5 @@
 # AdultHideout
-XXX Porn Addon for Kodi
+XXX Porn Adult Addon for Kodi
 
 # What it is
 
