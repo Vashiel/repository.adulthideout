@@ -1,3 +1,13 @@
+v 0.4.3 13-03-2016
+- added gotporn.com
+- added categories and pornstars subs for xvideos.com
+- fixed search for xvideos.com 
+- added categories for yes.xxx
+- added categories for tubepornclassic.com 
+- added categories for pornxs.com
+- added logo for pornsocket.com
+- code reorginized and minor fixes
+
 v 0.4.2 05-03-2016
 - removed Jamo.tv
 - added Jav720p.net
