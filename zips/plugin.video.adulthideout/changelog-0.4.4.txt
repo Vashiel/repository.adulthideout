@@ -1,3 +1,24 @@
+v 0.4.4 22-03-2016
+- added Empflix.com
+- added ranking sub for xhamster.com
+- fixed change content for xhamster.com
+- fixed search for youporn.com
+- added sorting sub for youporn.com
+- changed motherless.com regex
+- lots of minor changes
+- code cleaning
+
+
+v 0.4.3 13-03-2016
+- added gotporn.com
+- added categories and pornstars subs for xvideos.com
+- fixed search for xvideos.com 
+- added categories for yes.xxx
+- added categories for tubepornclassic.com 
+- added categories for pornxs.com
+- added logo for pornsocket.com
+- code reorginized and minor fixes
+
 v 0.4.2 05-03-2016
 - removed Jamo.tv
 - added Jav720p.net
