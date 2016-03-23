@@ -243,7 +243,7 @@ def start(url):
 		
 	elif 'empflix' in url:
 		content = make_request(url)
-		add_dir('[COLOR lightgreen]empflix.com     [COLOR red]Search[/COLOR]', empflix, 1, logos + 'eporner.png', fanart)
+		add_dir('[COLOR lightgreen]empflix.com     [COLOR red]Search[/COLOR]', empflix, 1, logos + 'empflix.png', fanart)
 		add_dir('[COLOR lime]Categories[/COLOR]', empflix + '/categories.php',  45, logos + 'empflix.png', fanart)
 		add_dir('[COLOR lime]Sorting[/COLOR]', empflix + '/browse.php?category=mr',  46, logos + 'empflix.png', fanart)
 		match = re.compile('<div id="remove(.+?)">.+?<a href="([^"]+)".+?><h2>(.+?)</h2>.+?<span class=\"duringTime\">([\d:]+)</span>.+?<img src="([^"]+)"', re.DOTALL).findall(content)
@@ -967,9 +967,9 @@ def resolve_url(url):
 			media_url = re.compile('<source src="([^"]+)"').findall(content)[0]
 	elif 'empflix' in url:
 		try:
-			video_url = 'http:' + re.compile('<videoLink>([^<]+.mp4[^<]+)').findall(content)[-1]
+			video_url = re.compile('<videoLink>([^<]+.mp4[^<]+)').findall(content)[-1]
 		except:
-			video_url = 'http:' + re.compile('<videoLink>([^<]+.mp4[^<]+)').findall(content)[-1]
+			video_url = re.compile('<videoLink>([^<]+.mp4[^<]+)').findall(content)[-1]
 		media_url = urllib.unquote_plus(video_url)
 
 	else:
