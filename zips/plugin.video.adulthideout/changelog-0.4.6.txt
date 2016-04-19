@@ -1,3 +1,13 @@
+v 0.4.6 19-04-2016
+- changed PornHD to play 720p videos by default
+- removed gotporn (adulthideout can't handle cookies)
+- removed tnaflix
+- added txxx.com
+- added upornia.com
+- added fantasti.cc (very experimental)
+- changed pornsocket.com to filter pictures
+
+
 v 0.4.5 23-03-2016
 - fixed Empflix.com (now it should work)
 
