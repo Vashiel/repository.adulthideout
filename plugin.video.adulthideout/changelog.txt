@@ -1,3 +1,14 @@
+v 0.4.7 30-04-2016
+- fixes lubetube.com categories
+- added lubetube.com pornstars
+- fixed zbporn.com
+- fixed pornhd.com categories
+- changed fantasti.cc regex to load faster
+- added yespornplease.com (jump forward does not work)
+- minor changes
+
+
+
 v 0.4.6 19-04-2016
 - changed PornHD to play 720p videos by default
 - removed gotporn (adulthideout can't handle cookies)
