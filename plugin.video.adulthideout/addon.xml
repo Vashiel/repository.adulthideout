@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.4.7" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.4.8" provider-name="Vashiel">
     <requires>
     </requires>
     <extension point="xbmc.python.pluginsource"
@@ -12,7 +12,14 @@
 Internet [COLOR red]XXX Porn Video[COLOR white] Streams.
     
 [COLOR red][B]WARNING:[/B] 
-[COLOR red]Only for adults[/COLOR]		
+[COLOR red]Only for adults[/COLOR]	
+
+[COLOR white]Github:
+https://github.com/Vashiel/repository.adulthideout
+
+Email:
+adulthideout@yandex.com[/COLOR]	
+
 		</description>
 		<disclaimer>
 		</disclaimer>	

@@ -1,3 +1,11 @@
+- added tubegalore.com
+- added Uflashtv.com
+- fixed Xhmaster regex
+- fixed sorting for Eporner and Fatasti.cc
+- fixed zbporn.com categories
+- minor changes
+
+
 v 0.4.7 30-04-2016
 - fixes lubetube.com categories
 - added lubetube.com pornstars
