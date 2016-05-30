@@ -520,10 +520,18 @@ def start(url):
 			dummy = dummy.replace('</a>', '')
 			if 'GotPorn' in dummy :
 				pass
+			elif 'porn.porn' in dummy:
+				pass
+			elif 'PornXOom' in dummy:
+				pass
+			elif 'BonerTube' in dummy:
+				pass
 			elif 'Gay' in name:
 				pass
 			elif 'Gay' in dummy:
 				pass
+			elif 'Beeg' in dummy:
+				pass				
 			elif 'Fantasti.cc' in dummy:
 				pass
 			elif 'MenHDV' in dummy:
@@ -1164,14 +1172,15 @@ def resolve_url(url):
 			video_url = re.compile('<videoLink>([^<]+.mp4[^<]+)').findall(content)[-1]
 		media_url = urllib.unquote_plus(video_url)
 	elif 'txxx' in url:
-		media_url = re.compile('video_url: \'(.+?)\',').findall(content)[0]
+		media_url = re.compile('file\': \'(.+?)\',').findall(content)[0]
+		media_url = re.compile('file\': \'(.+?)\',').findall(content)[0]
 	elif 'drtuber' in url:
 		media_url = re.compile('<source src="(.+?)"').findall(content)[0]
 	elif 'upornia' in url:
 		media_url = re.compile('video_url: \'(.+?)\',').findall(content)[0]
 	elif 'yespornplease' in url:
 		media_url = re.compile('.*?video_url=(.+?)&.*?').findall(content)[0]
-	elif 'fantasti' in url:	
+	elif 'fantasti.cc' in url:	
 		url = re.compile('<div class="video-wrap" data-origin-source="([^"]+)">').findall(content)[0]
 		return resolve_url(url)
 	elif 'tnaflix' in url:
@@ -1194,9 +1203,6 @@ def resolve_url(url):
 		media_url = re.compile('var videoFile="(.+?)";').findall(content)[0]
 	elif 'viptube' in url:			
 		media_url = re.compile('<source src="(.+?)" type="video/mp4"/>').findall(content)[0]
-	elif 'keezmovies' in url:			
-		media_url = re.compile('quality_480p":"(.+?)",').findall(content)[0]
-		media_url = media_url.replace('/','')
 	elif 'azzzian' in url:	
 		media_url = re.compile('video_url: \'(.+?)\',').findall(content)[0]
 	elif 'hotmovs' in url:	
@@ -1264,7 +1270,57 @@ def resolve_url(url):
 		media_url = re.compile('file\': \'(.+?)\',').findall(content)[0]
 	elif 'aporntv' in url:		
 		media_url = re.compile('file: "(.+?)"').findall(content)[0]
-		
+	elif '3movs' in url:		
+		media_url = re.compile('video_url: \'(.+?)\',').findall(content)[0]
+	elif 'pornoxo' in url:		
+		media_url = re.compile('file: "(.+?)"').findall(content)[0]
+	elif 'tubeq' in url:	
+		media_url = re.compile('url: \'(.+?)\',').findall(content)[0]
+	elif 'free-sex-video' in url:	
+		media_url = re.compile('var defFile = \'(.+?)\';').findall(content)[0]
+	elif 'keezmovies' in url:			
+		try:
+			media_url = re.compile('quality_480p":"(.+?)"').findall(content)[0]
+			media_url = media_url.replace('/','')
+		except:
+			media_url = re.compile('quality_240p":"(.+?)"').findall(content)[0]
+			media_url = media_url.replace('/','')		
+	elif 'xxxkingtube' in url:	
+		media_url = re.compile('var defFile = \'(.+?)\';').findall(content)[0]
+	elif 'sunporno' in url:	
+		media_url = re.compile('data-src="(.+?)"').findall(content)[0]		
+	elif 'tubous' in url:	
+		media_url = re.compile('<video src="(.+?)"').findall(content)[0]			
+	elif 'hotamateurs' in url:		
+		media_url = re.compile('video_url: \'(.+?)\',').findall(content)[0]
+	elif 'h2porn' in url:		
+		media_url = re.compile('video_url: \'(.+?)\',').findall(content)[0]
+	elif 'winporn' in url:	
+		media_url = re.compile('<source src="(.+?)" type="video/mp4"').findall(content)[0]	
+	elif 'vivatube' in url:	
+		media_url = re.compile('<source src="(.+?)" type="video/mp4"').findall(content)[0]
+	elif 'egbo' in url:		
+		media_url = re.compile('video_url: \'(.+?)\',').findall(content)[0]	
+	elif 'hd21' in url:	
+		media_url = re.compile('<source src="(.+?)" type="video/mp4"').findall(content)[0]		
+	elif 'pornalized' in url:		
+		media_url = re.compile('video_url: \'(.+?)\',').findall(content)[0]
+	elif 'proporn' in url:	
+		media_url = re.compile('<source src="(.+?)" type="video/mp4"').findall(content)[0]
+	elif 'pornwhite' in url:		
+		media_url = re.compile('video_url: \'(.+?)\',').findall(content)[0]
+	elif 'faphub' in url:		
+		media_url = re.compile('url: \'(.+?)\',').findall(content)[0]
+	elif 'porndoe.com' in url:		
+		try:
+			media_url = re.compile('file: "(.+?)","default": "true",label:"720p HD"').findall(content)[0]		
+		except:
+			media_url = re.compile('file: "(.+?)","default": "true",label:"480p"').findall(content)[0]	
+	elif 'finevids' in url:		
+		media_url = re.compile('video_url: \'(.+?)\',').findall(content)[0]		
+	elif 'japan-whores' in url:		
+		media_url = re.compile('<link itemprop="contentUrl" href="(.+?)">').findall(content)[0]			
+
 	
 	else:
 		media_url = url
