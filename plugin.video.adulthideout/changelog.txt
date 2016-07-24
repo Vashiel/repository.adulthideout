@@ -1,3 +1,8 @@
+- readded pornsocket.com
+- fixed empflix.com
+- added more resolver for tubegalore.com
+
+
 v 0.5.0 05-07-2016
 - fixed Efukt.com
 - fixed youporn.com

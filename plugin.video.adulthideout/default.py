@@ -101,14 +101,13 @@ def main():
 	#add_dir('Gotporn [COLOR yellow] Videos[/COLOR]', gotporn + '/?duration=20-&page=1', 2, logos + 'gotporn.png', fanart)
 	add_dir('Hentaigasm [COLOR yellow] Videos[/COLOR]', hentaigasm, 2, logos + 'hentaigasm.png', fanart)
 	add_dir('Heavy-R [COLOR yellow] Videos[/COLOR]', heavyr + '/videos/' , 2, logos + 'heavyr.png', fanart)
-	add_dir('Jav720p [COLOR yellow] Videos[/COLOR]', japanesehd + '/?orderby=date', 2, logos + 'j720p.png', fanart)
+	add_dir('Jav720p [COLOR yellow] Videos[/COLOR]', japanesehd + '/jav-recent', 2, logos + 'j720p.png', fanart)
 	add_dir('LubeTube [COLOR yellow] Videos[/COLOR]', lubetube + 'view', 2, logos + 'lubetube.png', fanart) 
 	add_dir('Motherless [COLOR yellow] Videos[/COLOR]', motherless + '/videos/recent?page=1', 2, logos + 'motherless.png', fanart)
 	add_dir('PornCom [COLOR yellow] Videos[/COLOR]', porncom + '/videos?p=1', 2, logos + 'porncom.png', fanart)
 	add_dir('PornHD [COLOR yellow] Videos[/COLOR]', pornhd, 2, logos + 'pornhd.png', fanart)
 	add_dir('PornHub [COLOR yellow] Videos[/COLOR]', pornhub +'/video?page=1', 2, logos + 'pornhub.png', fanart)
-	#(removing pornsocket for now, because adulthideout can't handle cloudflare's anti bot page)
-	#add_dir('Pornsocket [COLOR yellow] Videos[/COLOR]', pornsocket + '/media-gallery.html?display=list&filter_mediaType=4&limitstart=0', 2, logos + 'pornsocket.png', fanart)	
+	add_dir('Pornsocket [COLOR yellow] Videos[/COLOR]', pornsocket + '/media-gallery.html?display=list&filter_mediaType=4&limitstart=0', 2, logos + 'pornsocket.png', fanart)	
 	add_dir('PornXS [COLOR yellow] Videos[/COLOR]', pornxs + '/browse/sort-time/', 2, logos + 'pornxs.png', fanart)		
 	add_dir('RedTube [COLOR yellow] Videos[/COLOR]', redtube + '/?page=1', 2, logos + 'redtube.png', fanart)
 	add_dir('Tube8 [COLOR yellow] Videos[/COLOR]', tube8 + '/newest.html',  2, logos + 'tube8.png', fanart)
@@ -280,7 +279,7 @@ def start(url):
 			content2 = make_request(url)
 			match = re.compile('flashvars\.config\s*=\s*escape\("([^"]*)"\);').findall(content2)
 			for url in match:
-				add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', url , 4, 'http:' + thumb, fanart)
+				add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', 'http:' + url , 4, 'http:' + thumb, fanart)
 		try:
 			match = re.compile('href="([^"]+)">next &gt;&gt;</a>').findall(content)
 			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', empflix + '/' + match[0], 2, logos + 'empflix.png', fanart)	
@@ -529,6 +528,8 @@ def start(url):
 			elif 'porn.porn' in dummy:
 				pass
 			elif 'PornXOom' in dummy:
+				pass
+			elif 'PorndoePremium' in dummy:
 				pass
 			elif 'BonerTube' in dummy:
 				pass
@@ -1294,8 +1295,8 @@ def resolve_url(url):
 		media_url = re.compile('file: "(.+?)"').findall(content)[0]
 	elif '3movs' in url:		
 		media_url = re.compile('video_url: \'(.+?)\',').findall(content)[0]
-	elif 'pornoxo' in url:		
-		media_url = re.compile('file: "(.+?)"').findall(content)[0]
+	elif 'pornoxo.com' in url:		
+		media_url = re.compile('<source src="(.+?)" type="video/mp4"').findall(content)[0]
 	elif 'tubeq' in url:	
 		media_url = re.compile('url: \'(.+?)\',').findall(content)[0]
 	elif 'free-sex-video' in url:	
@@ -1346,6 +1347,19 @@ def resolve_url(url):
 		media_url = re.compile('video_url: \'(.+?)\',').findall(content)[0]
 	elif 'wankoz.com' in url:
 		media_url = re.compile('video_html5_url\']=\'(.+?)/\';').findall(content)[0]
+	elif 'worldsex.com' in url:	
+		media_url = re.compile('file: "(.+?)",').findall(content)[0]
+	elif 'xpage.com' in url:			
+		media_url = re.compile('data-video240p="(.+?)"').findall(content)[0]
+	elif 'fat-tube.com' in url:	
+		media_url = re.compile('<source src="(.+?)" type=\'video/mp4;').findall(content)[0]
+	elif 'hotshame.com' in url:		
+		media_url = re.compile('video_url: \'(.+?)/\',  ').findall(content)[0]	
+	elif 'fantasy8.com' in url:		
+		media_url = re.compile('var videoFile="(.+?)";').findall(content)[0]
+	elif 'palmtube.com' in url:		
+		media_url = re.compile('<source type="video/mp4" src="(.+?)" >').findall(content)[0]		
+
 	elif 'pornyeah' in url:				
 		video_url = re.compile('flashvars="settings=(.+?)').findall(content)[0]
 		media_url = urllib.unquote_plus(video_url)
