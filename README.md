@@ -7,6 +7,7 @@ Adulthideout is my first try to make a Kodi XXX Addon. This addon was actually m
 
 # Installation
 1. Go to the release Page https://github.com/Vashiel/repository.adulthideout/releases and download latest Adulthideout Repo.
+    - Or Download Repo directly https://github.com/Vashiel/repository.adulthideout/releases/download/Repo/repository.adulthideout-1.0.1.zip
 2. Start Kodi
 3. Goto "system> addons> install from zip" and choose the downloaded Repo zip file.
 4. Wait for message repo has been installed
