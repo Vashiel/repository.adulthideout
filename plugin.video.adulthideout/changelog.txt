@@ -1,3 +1,13 @@
+v 0.5.2 24-08-2016
+- removing Eporner.com for now, until i find a solution
+- fixed Upornia.com  duration
+- fixed Porhub.com categories
+- fixed Youporn.com categories
+- fixed tubepornclassic.com categories
+- fixed Pornsocket.com regex
+
+
+v 0.5.1 24-07-2016
 - readded pornsocket.com
 - fixed empflix.com
 - added more resolver for tubegalore.com
