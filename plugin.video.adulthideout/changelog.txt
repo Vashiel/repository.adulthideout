@@ -1,3 +1,14 @@
+v 0.5.3 28-08-2016
+- removed Jav720p.net (Site is dead)
+- added YouAV.com (JAV Site)
+- fixed Zbporn.com search
+- fixed Vikiporn.com search
+- fixed Pornxs.com seach and categories
+- fixed Porn.com search and playing first video in list problem
+- fixed Heavy-R.com search
+- fixed Fantastic.cc collections and sorting
+
+
 v 0.5.21 26-08-2016
 - fixed problem with update push
 
