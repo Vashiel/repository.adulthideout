@@ -1,11 +1,3 @@
-v 0.5.4 07-09-2016
-- mostly fixing fantasti.cc in this release
-  fixed search, added search for collections,
-  added duration and nummer for collections, etc...
-- added few resolver tubegalore.com
-- code cleaning.
-
-
 v 0.5.3 28-08-2016
 - removed Jav720p.net (Site is dead)
 - added YouAV.com (JAV Site)
