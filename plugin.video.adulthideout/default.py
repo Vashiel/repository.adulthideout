@@ -171,7 +171,7 @@ def search():
 				url = 'http://fantasti.cc/search/' + searchText + '/collections/'
 				fantasti_collections(url)	
 			else:
-				url = 'http://fantasti.cc/search/' + searchText + '/videos/'
+				url = 'http://fantasti.cc/search/' + searchText + '/tube/date/'
 				start(url)
 			
 		elif '.porn.com' in name:
@@ -308,8 +308,8 @@ def start(url):
 		content = make_request(url)
 		add_dir('[COLOR lightgreen]fantasti.cc     [COLOR red]Search[/COLOR]', fantasti, 1, logos + 'fantasti.png', fanart)
 		add_dir('[COLOR lime]Collection[/COLOR]', fantasti + '/videos/collections/popular/31days/', 48, logos + 'fantasti.png', fanart)
-		add_dir('[COLOR lime]Sorting [/COLOR]', fantasti + '/videos/popular/today/',  49, logos + 'fantasti.png', fanart)		
-		
+		add_dir('[COLOR lime]Category [/COLOR]', fantasti + '/category/',  18, logos + 'fantasti.png', fanart)
+		add_dir('[COLOR lime]Sorting [/COLOR]', fantasti + '/videos/popular/today/',  49, logos + 'fantasti.png', fanart)
 		try:
 			if '#collectionSubmittedVideos' in url:
 				match = re.compile('data-vertical-gallery-src="([^"]+)">.+?alt="([^"]+)" src="([^"]+)">', re.DOTALL).findall(content)
@@ -320,11 +320,17 @@ def start(url):
 					for url in match:
 						add_link(name, url, 4, thumb, fanart)
 			if '/search/' in url:
+				match = re.compile('<div class="searchVideo">.+?<a href="/watch/([^"]+)/([^"]+)/">.+?<img src="([^"]+)"', re.DOTALL).findall(content)
+				for url, name, thumb in match:
+					url = fantasti + '/watch/' + '/' + url + '/'+ '/' +  name + '/'
+					name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '\'').replace('-', ' ')
+					add_link(name, url, 4, thumb, fanart)
+			if '/category/' in url:
 				match = re.compile('<span class="v_lenght">(.+?)</span>.+?<a href="/watch/([^"]+)".+?<img alt="([^"]+)"   src="([^"]+)" ', re.DOTALL).findall(content)
 				for duration, url, name, thumb in match:
-					name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '\'')
+					name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '\'').replace('  ', '')
 					url = fantasti + '/watch/' + url
-					add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', url, 4, thumb, fanart)
+					add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', url, 4, thumb, fanart)	
 			else:
 				match = re.compile('<a href="([^"]+)"><img src="([^"]+)" alt="([^"]+)".+? <span style="font-size:11px;">\s*(.+?). Uploaded:', re.DOTALL).findall(content)
 				for url, thumb, name, duration in match:
@@ -592,9 +598,9 @@ def start(url):
 		add_dir('[COLOR magenta]Female Exhibitionist Videos[/COLOR]', uflash + '/videos?g=female&o=mr',  2, logos + 'uflash.png', fanart)
 		add_dir('[COLOR magenta]Male Exhibitionist Videos[/COLOR]', uflash + '/videos?g=male&o=mr',  2, logos + 'uflash.png', fanart)
 		add_dir('[COLOR magenta]Recently Viewed - Exhibitionist Videos[/COLOR]', uflash + '/videos?o=bw',  2, logos + 'uflash.png', fanart)
-		match = re.compile('<a href="(.+?)" class="vid" title="(.+?)">\s*<img src="(.+?)" alt=".+?" width=".+?" height=".+?" id=".+?" />\s*.+?\s*\s*.+?\s*<span class="info">\s*<span class="duration">([^<]+)</span>\s*<!--<span class="new">NEW</span>-->').findall(content)
+		match = re.compile('<a href="/video/(.+?)/.+?" class="vid" title="(.+?)">\s*<img src="(.+?)" alt=".+?" width=".+?" height=".+?" id=".+?" />\s*.+?\s*\s*.+?\s*<span class="info">\s*<span class="duration">([^<]+)</span>\s*<!--<span class="new">NEW</span>-->').findall(content)
 		for url, name, thumb, duration in match:
-			add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]',  uflash + url,  4, uflash + thumb, fanart)
+			add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', 'http://www.uflash.tv/media/player/config.b74x.php?vkey=' + url,  4, uflash + thumb, fanart)
 		try:
 			match = re.compile('<a href="([^"]+)" class="prevnext">Next&raquo;</a>', re.DOTALL).findall(content)
 			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', match[0], 2, logos + 'uflash.png', fanart)
@@ -1118,6 +1124,19 @@ def	uflash_categories(url):
 	match = re.compile('<li><a href="(.+?)">([^<]+)</a></li>', re.DOTALL).findall(content)
 	for url, name in match:
 		add_dir(name, uflash + url,  2, logos + 'uflash.png', fanart)
+		
+def	fantasti_categories(url):
+	home()
+	add_dir('[COLOR lightgreen]fantasti.cc     [COLOR red]Search[/COLOR]', fantasti, 1, logos + 'fantasti.png', fanart)
+	add_dir('[COLOR lime]Collection[/COLOR]', fantasti + '/videos/collections/popular/31days/', 48, logos + 'fantasti.png', fanart)
+	add_dir('[COLOR lime]Category [/COLOR]', fantasti + '/category/',  18, logos + 'fantasti.png', fanart)
+	add_dir('[COLOR lime]Sorting [/COLOR]', fantasti + '/videos/popular/today/',  49, logos + 'fantasti.png', fanart)
+	content = make_request(url)
+	match = re.compile('<div class="content-block content-block-category grid"><a href="/category/(.+?)/".+?http://([^"]*).jpg', re.DOTALL).findall(content)
+	for url, thumb in match:
+		name = url
+		add_dir(name, fantasti + '/category/' + url + '/videos/' ,  2, 'http://' + thumb + '.jpg', fanart)
+		
 	
 def resolve_url(url):
 	content = make_request(url)
@@ -1182,11 +1201,7 @@ def resolve_url(url):
 	elif 'gotporn' in url:
 			media_url = re.compile('<source src="([^"]+)"').findall(content)[0]
 	elif 'empflix' in url:
-		try:
-			video_url = re.compile('<videoLink>([^<]+.mp4[^<]+)').findall(content)[-1]
-		except:
-			video_url = re.compile('<videoLink>([^<]+.mp4[^<]+)').findall(content)[-1]
-		media_url = urllib.unquote_plus(video_url)
+		media_url = 'http://' + re.compile('//(.+?)]').findall(content)[-1]
 	elif 'txxx' in url:
 		media_url = re.compile('file\': \'(.+?)\',').findall(content)[0]
 		media_url = re.compile('file\': \'(.+?)\',').findall(content)[0]
@@ -1202,7 +1217,7 @@ def resolve_url(url):
 	elif 'tnaflix' in url:
 		media_url = re.compile('<meta itemprop="contentUrl" content="([^"]+)" />').findall(content)[0]
 	elif 'uflash' in url:
-		media_url = re.compile('<source src="([^"]+)" type="video/mp4">').findall(content)[0]
+		media_url = re.compile('<hd>(.+?)</hd>').findall(content)[0]
 	elif 'xtwisted' in url:
 		media_url = re.compile('"top-right" }, \'file\': "(.+?).mp4",').findall(content)[0] + '.mp4'
 	elif 'dansmovies' in url:
@@ -1474,6 +1489,9 @@ elif mode == 16:
 
 elif mode == 17:	
 	xhamster_categories(url)
+
+elif mode == 18:	
+	fantasti_categories(url)
 
 elif mode == 19:	
 	pornhd_categories(url)
