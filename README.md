@@ -4,7 +4,7 @@ The one and only official site for my Repo is this Github Page.<br />
 If you find my Repo somewhere else, he/she has nothing to do with me. 
 
 # What it is
-Adulthideout is my first try to make a Kodi XXX Addon. This addon was actually made for one Page to add the "play from here" function that is missing in nearly all similiar addons, but somehow turned into something bigger. 
+Adulthideout is my first try to make a Kodi XXX Addon asianXV.com / asianXV. This addon was actually made for one Page to add the "play from here" function that is missing in nearly all similiar addons, but somehow turned into something bigger. 
 
 #Video installation instructions on Youtube
 For those who still have problems with the installation, i just uploaded Intructions on Youtube. Link below.
@@ -21,5 +21,7 @@ https://youtu.be/R8kcLXioEP0
 8. You will find Adulthideout now under "Video - Addons"
 9. Have Fun :)
 
-# Contact me
-Easy way is to write me via Github or adulthideout@yandex.com (don't check that one very often)
+# Contacts
+contactasianxv@gmail.com / http://asianxv.com
+# Credits below
+adulthideout@yandex.com
