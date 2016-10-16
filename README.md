@@ -10,6 +10,10 @@ Adulthideout is my first try to make a Kodi XXX Addon. This addon was actually m
 For those who still have problems with the installation, i just uploaded Intructions on Youtube. Link below.
 https://youtu.be/R8kcLXioEP0
 
+#Video installation instructions on Youtube 2
+If you can't copy the repo zip file to your Kodi Device, here is a alternative way to install AdultHideout.
+https://youtu.be/OhCIT8R4efM
+
 # Installation
 1. Download Repo https://github.com/Vashiel/repository.adulthideout/releases/download/Repo/repository.adulthideout-1.0.1.zip
 2. Start Kodi
