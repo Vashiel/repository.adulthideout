@@ -1,3 +1,13 @@
+v 0.5.6 16-10-2016
+- fixed xvideos.com regex
+- fixed xhamster.com regex
+- fixed fantasti.cc collections
+- fixed redtube.com thumbnails
+- fixed redtube.com channels
+- added redtube.com categories
+- added redtube.com sorting
+- fixed tubegalore.com regex
+
 v 0.5.5 25-09-2016
 - fixed fantasti.cc search
 - fixed uflash.tv regex
