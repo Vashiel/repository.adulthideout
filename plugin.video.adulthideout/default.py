@@ -114,7 +114,7 @@ def main():
 	add_dir('Tubegalore [COLOR yellow] Videos[/COLOR]', tubegalore + '/new?orientation=straight-and-shemale',  2, logos + 'tubegalore.png', fanart)
 	add_dir('Tubepornclassic [COLOR yellow] Videos[/COLOR]', tubepornclassic + '/latest-updates/', 2, logos + 'tpc.png', fanart)
 	add_dir('Txxx [COLOR yellow] Videos[/COLOR]', txxx + '/latest-updates/', 2, logos + 'txxx.png', fanart)
-	add_dir('Uflash.TV [COLOR yellow] Videos[/COLOR]', uflash + '/videos?o=mr', 2, logos + 'uflash.png', fanart)
+	add_dir('Uflash.TV [COLOR yellow] Videos[/COLOR]', uflash + '/videos?o=mr&type=public', 2, logos + 'uflash.png', fanart)
 	add_dir('Upornia [COLOR yellow] Videos[/COLOR]', upornia + '/latest-updates/', 2, logos + 'upornia.png', fanart)
 	add_dir('ViKiPorn [COLOR yellow] Videos[/COLOR]', vikiporn + '/latest-updates/', 2, logos + 'vikiporn.png', fanart) 
 	add_dir('xHamster [COLOR yellow] Videos[/COLOR]', xhamster, 2, logos + 'xhamster.png', fanart)
@@ -600,7 +600,7 @@ def start(url):
 		add_dir('[COLOR magenta]Female Exhibitionist Videos[/COLOR]', uflash + '/videos?g=female&o=mr',  2, logos + 'uflash.png', fanart)
 		add_dir('[COLOR magenta]Male Exhibitionist Videos[/COLOR]', uflash + '/videos?g=male&o=mr',  2, logos + 'uflash.png', fanart)
 		add_dir('[COLOR magenta]Recently Viewed - Exhibitionist Videos[/COLOR]', uflash + '/videos?o=bw',  2, logos + 'uflash.png', fanart)
-		match = re.compile('<a href="/video/(.+?)/.+?" class="vid" title="(.+?)">\s*<img src="(.+?)" alt=".+?" width=".+?" height=".+?" id=".+?" />\s*.+?\s*\s*.+?\s*<span class="info">\s*<span class="duration">([^<]+)</span>\s*<!--<span class="new">NEW</span>-->').findall(content)
+		match = re.compile('<a href="/video/(.+?)/.+?title="(.+?)">.+?<img src="(.+?)".+?<span class="duration">([^<]+)</span>', re.DOTALL).findall(content)
 		for url, name, thumb, duration in match:
 			add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', 'http://www.uflash.tv/media/player/config.b74x.php?vkey=' + url,  4, uflash + thumb, fanart)
 		try:
@@ -1240,7 +1240,10 @@ def resolve_url(url):
 	elif 'tnaflix' in url:
 		media_url = re.compile('<meta itemprop="contentUrl" content="([^"]+)" />').findall(content)[0]
 	elif 'uflash' in url:
-		media_url = re.compile('<hd>(.+?)</hd>').findall(content)[0]
+		try:
+			media_url = re.compile('<hd>(.+?)</hd>').findall(content)[0]
+		except:
+			media_url = re.compile('<src>(.+?)</src>').findall(content)[0]
 	elif 'xtwisted' in url:
 		media_url = re.compile('"top-right" }, \'file\': "(.+?).mp4",').findall(content)[0] + '.mp4'
 	elif 'dansmovies' in url:
