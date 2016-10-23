@@ -1,3 +1,6 @@
+v 0.5.9 22-10-2016
+- Fixed xhamster.com starting problems on android devices
+
 v 0.5.8 22-10-2016
 - added new site Pornktube.com
 - fixed uflash.tv regex (again)
