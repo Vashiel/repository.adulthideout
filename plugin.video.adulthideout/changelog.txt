@@ -1,3 +1,6 @@
+v 0.6.1 17-11-2016
+- bug fix
+
 v 0.6.0 17-11-2016
 - fixed xhamster.com next button shown twice problem
 - fixed vikiporn.com regex
