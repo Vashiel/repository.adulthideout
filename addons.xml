@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addons>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.5.9" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.6.0" provider-name="Vashiel">
     <requires>
-    </requires>
+		<import addon="xbmc.python" version="2.0"/>
+		<import addon="script.module.parsedom" version="0.9.1"/> # Add this
+	</requires>
     <extension point="xbmc.python.pluginsource"
                library="default.py">
         <provides>video</provides>

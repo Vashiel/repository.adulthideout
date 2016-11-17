@@ -1,3 +1,12 @@
+v 0.6.0 17-11-2016
+- fixed xhamster.com next button shown twice problem
+- fixed vikiporn.com regex
+- fixed redtube.com regex
+- removed pornsocket.com for now
+- fixed pornktube.com regex
+- fixed pornhd.com "pornstars" categorie
+- fixed empflix.com
+
 v 0.5.9 22-10-2016
 - Fixed xhamster.com starting problems on android devices
 
