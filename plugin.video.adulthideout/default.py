@@ -821,7 +821,7 @@ def pornhd_categories(url):
 def pornhd_pornstars(url):
 	home()
 	content = make_request(url)
-		match = re.compile('<li class="pornstar">.+?<a href="(.+?)">.+?data-original="(.+?)".+?alt="(.+?)"', re.DOTALL).findall(content)
+	match = re.compile('<li class="pornstar">.+?<a href="(.+?)">.+?data-original="(.+?)".+?alt="(.+?)"', re.DOTALL).findall(content)
 	for url, thumb, name in match:
 		add_dir(name, pornhd + url, 2, thumb, fanart)
 	try:
@@ -1235,7 +1235,6 @@ def resolve_url(url):
 		try:
 			video_url = 'http:' + re.compile('<source src="(.+?)" type="video/mp4">').findall(content)[0] # 720p+480p
 		except:
-(.+?)=').findall(content)[0]   #240p
 			video_url = 'http:' + re.compile('value="quality_.+?=(.+?)=').findall(content)[0]   #240p
 		media_url = urllib.unquote_plus(video_url)
 	elif '.porn.com' in url:
