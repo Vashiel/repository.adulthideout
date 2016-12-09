@@ -1,3 +1,12 @@
+v 0.6.2 09-12-2016 
+- fixed xhamster.com
+- Pornhub.com categories
+- Pornktube.com Regex
+- fixed Txxx-.com Regex 
+- Removed YouAv.com
+- Added JavTasty.com 
+
+
 v 0.6.1 17-11-2016
 - bug fix
 
