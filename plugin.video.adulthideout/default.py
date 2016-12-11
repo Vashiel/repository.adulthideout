@@ -112,7 +112,7 @@ def main():
 	add_dir('PornHub [COLOR yellow] Videos[/COLOR]', pornhub +'/video?o=cm', 2, logos + 'pornhub.png', fanart)
 	add_dir('PornkTube [COLOR yellow] Videos[/COLOR]', pornktube , 2, logos + 'pornktube.png', fanart)
 	# (removing pornsocket, till i find out how to handle this Error code 22)
-	add_dir('Pornsocket [COLOR yellow] Videos[/COLOR]', pornsocket + '/media-gallery.html?display=list&filter_mediaType=4&limitstart=0', 2, logos + 'pornsocket.png', fanart)	
+	#add_dir('Pornsocket [COLOR yellow] Videos[/COLOR]', pornsocket + '/media-gallery.html?display=list&filter_mediaType=4&limitstart=0', 2, logos + 'pornsocket.png', fanart)	
 	add_dir('PornXS [COLOR yellow] Videos[/COLOR]', pornxs + '/browse/sort-time/', 2, logos + 'pornxs.png', fanart)		
 	add_dir('RedTube [COLOR yellow] Videos[/COLOR]', redtube + '/?page=1', 2, logos + 'redtube.png', fanart)
 	add_dir('Tube8 [COLOR yellow] Videos[/COLOR]', tube8 + '/newest.html',  2, logos + 'tube8.png', fanart)
@@ -547,8 +547,8 @@ def start(url):
 		add_dir('[COLOR lime]Sorting[/COLOR]', redtube , 8, logos + 'redtube.png', fanart) 
 		add_dir('[COLOR lime]Categories[/COLOR]', redtube + '/categories', 9, logos + 'redtube.png', fanart) 
 		add_dir('[COLOR lime]Channels[/COLOR]', redtube + '/channel/recently-updated', 10, logos + 'redtube.png', fanart) 
-		match = re.compile('window.location.href =\'([^"]+)\'">([:\d]+)</span>.+?<img title="([^"]+)".+?data-src="([^"]+)".+?alt=".+?"(.+?)</a>', re.DOTALL).findall(content)
-		for url, duration, name, thumb, dummy in match:
+		match = re.compile('<a href="([^"]+)" title="([^"]+)" class="video-thumb".+?>([:\d]+)</span>.+?data-src="([^"]+)".+?alt=".+?"(.+?)</a>', re.DOTALL).findall(content)
+		for url, name, duration, thumb, dummy in match:
 			name = name.replace('&#39;', ' ').replace('&amp;', '&').replace('&quot;', '"').replace('	', '')
 			if 'hd' in dummy:
 				add_link(name + '[COLOR yellow]' +' [HD]' +'[/COLOR]' +' [COLOR lime]('+ duration + ')[/COLOR]', redtube + url, 4, 'http:' + thumb,  fanart)
@@ -735,7 +735,7 @@ def start(url):
 				name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '`')
 				add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', xvideos + url, 4, thumb, fanart)
 		else:
-			match = re.compile('<a href="([^"]*)"><img src="([^"]*)".+?</script></div>(.+?)</div>.+?title="([^"]*)".+?<strong>(.+?)</strong>', re.DOTALL).findall(content)
+			match = re.compile('<a href="([^"]*)"><img src="([^"]+)".+?/></a>(.+?)</div>.+?title="([^"]*)".+?<strong>(.+?)</strong>', re.DOTALL).findall(content)
 			for url, thumb, dummy, name, duration in match:
 				name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '`')
 				if 'HD' in dummy:
@@ -928,11 +928,11 @@ def motherless_being_watched_now(url):
 def redtube_sorting(url):
 	home()
 	content = make_request(url)
-	match = re.compile('<a href="([^"]*)" onclick=\"return setCookie\(\'linkId\', \'(new|hot|top|recommended|mostviewed|mostfavored|longest)\', 2000\);\">(.+?)</a>', re.DOTALL).findall(content)
+	match = re.compile('<a href="([^"]*)" class="js_setCookieHandle" data-op="linkId" data-what="(new|hot|top|recommended|mostviewed|mostfavored|longest)" data-ttl="2000">(.+?)</a>', re.DOTALL).findall(content)
 	for url, name, dummy in match:
 		dummy = dummy.replace('	','').replace('  ','')
 		name = dummy
-		add_dir(name , redtube + url, 2, logos + 'redtube.png', fanart) 		
+		add_dir(name , redtube + url, 2, logos + 'redtube.png', fanart) 			
 		
 def redtube_categories(url):
 	home()
@@ -1517,7 +1517,9 @@ def resolve_url(url):
 		except:
 			media_url = re.compile('file: "(.+?)","default":true, label: "HD 720p"},').findall(content)[0]
 	elif 'javtasty' in url:
-		media_url = re.compile('var video_hd=\'(.+?)\';').findall(content)[0]		
+		media_url = re.compile('var video_hd=\'(.+?)\';').findall(content)[0]
+	elif 'rude.com' in url:
+		media_url = re.compile('file: "(.+?)", type:').findall(content)[0] 		
 	else:
 		media_url = url
 	item = xbmcgui.ListItem(name, path = media_url)
