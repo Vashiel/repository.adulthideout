@@ -48,7 +48,7 @@ efukt = 'http://efukt.com/'
 pornhub = 'http://pornhub.com'
 pornsocket = 'http://pornsocket.com'
 hentaigasm = 'http://hentaigasm.com/'
-ashemaletube = 'http://www.ashemaletube.com'
+ashemaletube = 'https://www.ashemaletube.com'
 youporn = 'http://www.youporn.com'
 heavyr = 'http://www.heavy-r.com'
 gotporn ='http://www.gotporn.com'
@@ -258,19 +258,30 @@ def start(url):
 	if 'ashemaletube' in url:
 		add_dir('[COLOR lightgreen]ashemaletube.com     [COLOR red]Search[/COLOR]', ashemaletube, 1, logos + 'ashemaletube.png', fanart)	
 		add_dir('[COLOR lime]Categories[/COLOR]', ashemaletube + '/tags/', 30, logos + 'ashemaletube.png', fanart)
+		add_dir('[COLOR lime]Models[/COLOR]', ashemaletube + '/models/', 55, logos + 'ashemaletube.png', fanart)
 		content = make_request(url)
-		match = re.compile('<div class="thumb vidItem" id=".+?">.+?<a href="([^"]*)">.+?src="([^"]*)" alt="([^"]*)".+?<span class="fs11 viddata flr"(.+?)>([:\d]+)</span>', re.DOTALL).findall(content)
-		for url, thumb, name, dummy, duration in match:
-			name = name.replace('&amp;', '&')
-			if 'HD' in dummy:
-				add_link(name + '[COLOR yellow]' +' [HD]' +'[/COLOR]' +' [COLOR lime]('+ duration + ')[/COLOR]', url, 4, thumb, fanart)
-			else:
-				add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', url, 4, thumb, fanart)
+		if 'model' in url:
+			match = re.compile('<div class="thumb vidItem" data-video-id=".+?">.+?<a href="([^"]*)">.+?src="([^"]*)" alt="([^"]*)".+?<span class="fs11 viddata flr"(.+?)>', re.DOTALL).findall(content)
+			for url, thumb, name, dummy in match:
+				name = name.replace('&amp;', '&')
+				if 'HD' in dummy:
+					add_link(name + '[COLOR yellow]' +' [HD]' +'[/COLOR]', url, 4, thumb, fanart)
+				else:
+					add_link(name, url, 4, thumb, fanart)
+		else:
+			match = re.compile('<div class="thumb vidItem" data-video-id=".+?">.+?<a href="([^"]*)">.+?src="([^"]*)" alt="([^"]*)".+?<span class="fs11 viddata flr"(.+?)>([:\d]+)</span>', re.DOTALL).findall(content)
+			for url, thumb, name, dummy, duration in match:
+				name = name.replace('&amp;', '&')
+				if 'HD' in dummy:
+					add_link(name + '[COLOR yellow]' +' [HD]' +'[/COLOR]' +' [COLOR lime]('+ duration + ')[/COLOR]', url, 4, thumb, fanart)
+				else:
+					add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', url, 4, thumb, fanart)
 		try:
 			match = re.compile('<link rel="next" href="(.+?)" />').findall(content)
 			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', ashemaletube + match[0], 2, logos + 'ashemaletube.png', fanart)
 		except:
-			pass
+			match = re.compile('<a class="pageitem rightKey" href="(.+?)" title="Next">Next</a>').findall(content)
+			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', ashemaletube + match[0], 2, logos + 'ashemaletube.png', fanart)
 
 	elif 'efukt' in url:
 		content = make_request(url)
@@ -285,7 +296,7 @@ def start(url):
 		except:
 			pass	
 			
-		
+				
 	elif 'empflix' in url:
 		content = make_request(url)
 		add_dir('[COLOR lightgreen]empflix.com     [COLOR red]Search[/COLOR]', empflix, 1, logos + 'empflix.png', fanart)
@@ -1044,6 +1055,18 @@ def ashemaletube_categories(url) :
 	for thumb, url, name in match:
 		add_dir(name, ashemaletube + '/videos/' + url + '/newest/', 2, thumb, fanart)
 			
+def ashemaletube_pornstars(url) :
+	home()
+	content = make_request(url)	
+	match = re.compile('<div class="modelspot modelItem" data-model-id=".+?">.+?<a href="(.+?)".+?alt="(.+?)" src="(.+?)"', re.DOTALL).findall(content)
+	for url, name, thumb in match:
+		add_dir(name, ashemaletube +  url, 2, thumb, fanart)
+	try:
+		match = re.compile('<link rel="next" href="(.+?)" />').findall(content)
+		add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', ashemaletube + match[0], 55, logos + 'ashemaletube.png', fanart)
+	except:
+		pass
+			
 def	heavyr_categories(url) :
 	home()
 	content = make_request(url)	
@@ -1733,6 +1756,9 @@ elif mode == 53:
 	
 elif mode == 54:	
 	uflash_categories(url)
+
+elif mode == 55:	
+	ashemaletube_pornstars(url)
 
 elif mode == 60:	
 	motherless_galeries_cat(url)
