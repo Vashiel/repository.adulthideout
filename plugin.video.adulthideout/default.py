@@ -236,7 +236,7 @@ def search():
 			url = upornia + '/search/?q=' + searchText
 			start(url)
 		elif 'yespornplease' in name:
-			url = yespornplease + '/search?q=' + searchText	  
+			url = 'http://yespornplease.com/search?q=' + searchText				
 			start(url)		
 		elif '.uflash.tv' in name:
 			url = uflash + '/search?search_type=videos&search_query=' + searchText
@@ -802,15 +802,17 @@ def start(url):
 		add_dir('[COLOR lightgreen]yespornplease    [COLOR red]Search[/COLOR]', yespornplease, 1, logos + 'yespp.png', fanart)	
 		add_dir('[COLOR lime]Categories[/COLOR]', yespornplease + '/categories', 52, logos + 'yespp.png', fanart)
 		if 'search' in url:
-			match = re.compile('<a style="text-decoration:none;" href="([^"]*)">.+?<img src="([^"]*)".+?alt="([^"]*)".+?<div class="duration">([:\d]+)</div>', re.DOTALL).findall(content)
-			for url, thumb, name, duration in match:
+			match = re.compile('<img src="([^"]*)".+?alt="([^"]*)" id=".+?" name="(.+?)-.+?".+?<div class="duration">([:\d]+)</div>', re.DOTALL).findall(content)
+			for thumb, name, dummy, duration in match:
+				url = 'http://vshare.io/v/' + dummy + '/width-750/height-400/1/'
 				name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '\'').replace('	', '')
-				add_link(name + '[COLOR lime] (' + duration + ')[/COLOR]', yespornplease + url,  4, thumb, fanart)		
+				add_link(name + '[COLOR lime] (' + duration + ')[/COLOR]', url,  4, thumb, fanart)		
 		else:
-			match = re.compile('class="video-link" href="([^"]*)">.+?<img src="([^"]*)".+?alt="([^"]*)".+?<div class="duration">([:\d]+)</div>', re.DOTALL).findall(content)
-			for url, thumb, name, duration in match:
+			match = re.compile('<img src="([^"]*)".+?alt="([^"]*)" id=".+?" name="(.+?)-.+?".+?<div class="duration">([:\d]+)</div>', re.DOTALL).findall(content)
+			for thumb, name, dummy, duration in match:
+				url = 'http://vshare.io/v/' + dummy + '/width-750/height-400/1/'
 				name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '\'').replace('	', '')
-				add_link(name + '[COLOR lime] (' + duration + ')[/COLOR]', yespornplease + url,  4, thumb, fanart)		
+				add_link(name + '[COLOR lime] (' + duration + ')[/COLOR]', url, 4, thumb, fanart)		
 		try:
 			match = re.compile('<a href="(.+?)" class="prevnext">Next &raquo;</a></li>').findall(content)
 			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', yespornplease + match[0], 2, logos + 'yespp.png', fanart)
@@ -1344,8 +1346,20 @@ def resolve_url(url):
 		media_url = re.compile('<source src="(.+?)"').findall(content)[0]
 	elif 'upornia' in url:
 		media_url = re.compile('video_url: \'(.+?)\',').findall(content)[0]
+	elif 'vshare.io' in url:
+		try:
+			media_url = re.compile('<source src="(.+?)"').findall(content)[0]
+		except:	
+			try:
+				media_url = re.compile('"url":"(.+?)"').findall(content)[0]
+				media_url = media_url.replace('\\', '')
+			except:
+				media_url = re.compile('url: \'(.+?)\',').findall(content)[0]
 	elif 'yespornplease' in url:
-		media_url = re.compile('.*?video_url=(.+?)&.*?').findall(content)[0]
+		try:
+			media_url = re.compile('<source src="(.+?)"').findall(content)[0]
+		except:
+			media_url = re.compile('url: \'(.+?)\',').findall(content)[0]
 	elif 'fantasti.cc' in url:	
 		url = re.compile('<div class="video-wrap" data-origin-source="([^"]+)">').findall(content)[0]
 		return resolve_url(url)
