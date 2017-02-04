@@ -492,7 +492,8 @@ def start(url):
 		add_dir('[COLOR lime]Categories[/COLOR]', pornhd + '/category', 19, logos + 'pornhd.png', fanart)
 		add_dir('[COLOR lime]Pornstars[/COLOR]', pornhd + '/pornstars?order=video_count&gender=female', 20, logos + 'pornhd.png', fanart) 
 		content = make_request(url)
-		match = re.compile('<a class="thumb" href="(.+?)" >\s*<img class="lazy"\s*alt="(.+?)"\s*src=".+?"\s*data-original="(.+?)" width=".+?" height=".+?" />\s*<div class="meta transition">\s*<time>(.+?)</time>').findall(content)
+		#match = re.compile('<a class="thumb" href="(.+?)" >\s*<img class="lazy"\s*alt="(.+?)"\s*src=".+?"\s*data-original="(.+?)" width=".+?" height=".+?" />\s*<div class="meta transition">\s*<time>(.+?)</time>').findall(content)
+		match = re.compile('<a class="thumb" href="(.+?)".+?<img alt="(.+?)".+?src="(.+?)".+?<time>(.+?)</time>', re.DOTALL).findall(content)
 		for url, name, thumb, duration in match:
 			add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', pornhd + url, 4, thumb, fanart)  
 		try:
@@ -542,7 +543,7 @@ def start(url):
 	elif 'pornxs' in url:
 		content = make_request(url)
 		add_dir('[COLOR lightgreen]pornxs.com     [COLOR red]Search[/COLOR]', pornxs, 1, logos + 'pornxs.png', fanart)
-		add_dir('[COLOR lime]Categories[/COLOR]', pornxs + '/new_categories.php', 39, logos + 'pornxs.png', fanart) 
+		add_dir('[COLOR lime]Categories[/COLOR]', pornxs + '/new-categories/?mode=static&width=wide', 39, logos + 'pornxs.png', fanart) 
 		match = re.compile('<a href="([^"]+).html".+?<img src="([^"]+)".+?alt="([^"]+)".+?<div class="time">([:\d]+)<', re.DOTALL).findall(content)
 		for url, thumb, name, duration in match:
 			add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', pornxs + url + '.html', 4, thumb, fanart)
@@ -1086,10 +1087,10 @@ def xvideos_categories(url) :
 def xvideos_pornstars(url) :
 	home()
 	content = make_request(url)	
-	match = re.compile('"img":"([^"]+)"}].+?class="profile-name"><a href="([^"]+)">([^"]+)</a></p><p class="profile-counts', re.DOTALL).findall(content)
+	match = re.compile('"img":"([^"]+)"}].+?class="profile-name"><a href="([^"]+)">([^"]+)</a><span class=".+?">', re.DOTALL).findall(content)
 	for thumb, url, name in match:
 		thumb = thumb.replace('\\', '')
-		add_dir(name, xvideos + url + '#_tabVideos,videos-best', 2, thumb, fanart)	
+		add_dir(name, xvideos + url + '#_tabVideos,videos-new', 2, thumb, fanart)	
 	try:
 		match = re.compile('<a class="active" href=".+?">.+?</a></li><li><a href="([^"]+)">.+?</a></li><li>', re.DOTALL).findall(content)
 		add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', xvideos + match[0], 32, logos + 'xvideos.png', fanart)
@@ -1321,7 +1322,7 @@ def resolve_url(url):
 	elif 'pornsocket' in url:	
 		media_url = pornsocket + re.compile('<source src="(.+?)" type="video/mp4"/>').findall(content)[0]
 	elif 'youjizz' in url:
-		media_url = re.compile('<source src="(.+?)" type="video/mp4">').findall(content)[0]
+		media_url = 'http:' + re.compile('<source src="(.+?)" type="video/mp4">').findall(content)[0]
 	elif 'hentaigasm' in url:
 		media_url = re.compile('file: "(.+?)",').findall(content)[0]
 	elif 'ashemaletube' in url:	
