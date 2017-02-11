@@ -559,7 +559,7 @@ def start(url):
 		add_dir('[COLOR lime]Sorting[/COLOR]', redtube , 8, logos + 'redtube.png', fanart) 
 		add_dir('[COLOR lime]Categories[/COLOR]', redtube + '/categories', 9, logos + 'redtube.png', fanart) 
 		add_dir('[COLOR lime]Channels[/COLOR]', redtube + '/channel/recently-updated', 10, logos + 'redtube.png', fanart) 
-		match = re.compile('<a href="([^"]+)" title="([^"]+)" class="video-thumb".+?>([:\d]+)</span>.+?data-src="([^"]+)".+?alt=".+?"(.+?)</a>', re.DOTALL).findall(content)
+		match = re.compile('<a href="([^"]+)" title="([^"]+)" class="video-thumb".+?<span class="video-duration">.+?([:\d]+).+?</span>.+?data-src="([^"]+)".+?alt=".+?"(.+?)</a>', re.DOTALL).findall(content)
 		for url, name, duration, thumb, dummy in match:
 			name = name.replace('&#39;', ' ').replace('&amp;', '&').replace('&quot;', '"').replace('	', '')
 			if 'hd' in dummy:
@@ -1285,10 +1285,11 @@ def resolve_url(url):
 		media_url = re.compile('videoUrlJS = "(.+?)"').findall(content)[0]
 	elif 'redtube' in url: 
 		try:
-			video_url = 'http:' + re.compile('<source src="(.+?)" type="video/mp4">').findall(content)[0] # 720p+480p
+			media_url = 'http:' + re.compile('"720":"(.+?)"').findall(content)[0]
+			media_url = media_url.replace('/','')
 		except:
-			video_url = 'http:' + re.compile('value="quality_.+?=(.+?)=').findall(content)[0]   #240p
-		media_url = urllib.unquote_plus(video_url)
+			media_url = 'http:' + re.compile('"480":"(.+?)"').findall(content)[0]
+			media_url = media_url.replace('/','')
 	elif '.porn.com' in url:
 		try:
 			media_url = re.compile('id:"720p",url:"(.+?)",definition:"HD"').findall(content)[0]
@@ -1551,9 +1552,9 @@ def resolve_url(url):
 			media_url = re.compile('file: "(.+?)",\s*\s*.+?label: "360p SD"').findall(content)[0]
 	elif 'pornktube.com' in url:
 		try:
-			media_url = re.compile('file: "(.+?)", label: "FULL HD').findall(content)[0]	
+			media_url = re.compile('video_alt_url3: \'(.+?)\',').findall(content)[0]	
 		except:
-			media_url = re.compile('file: "(.+?)","default":true, label: "HD 720p"},').findall(content)[0]
+			media_url = re.compile('video_alt_url2: \'(.+?)\',').findall(content)[0]			
 	elif 'javtasty' in url:
 		media_url = re.compile('var video_hd=\'(.+?)\';').findall(content)[0]
 	elif 'rude.com' in url:
