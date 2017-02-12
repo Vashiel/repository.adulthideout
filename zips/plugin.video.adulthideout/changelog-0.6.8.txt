@@ -1,3 +1,8 @@
+v 0.6.8 12-02-2016
+- added Nudeflix.com  (First time that i add a Full-length Movie Site)
+- fixed Pornhub.com
+- little bit of "code-cleaning"
+
 v 0.6.7 11-02-2016
 - fixed Redtube.com
 - fixed Pornktube.com
