@@ -1,3 +1,11 @@
+v 0.6.9 26-02-2016
+- fixed Porn.com to play 144p Videos too
+- fixed Pornhub.com (plays Videos in HD again)
+- fixed Pornhub.com categories
+- fixed Upornia.com
+- fixed Vikiporn.com
+- added Luxuretv.com (a users wish)
+
 v 0.6.8 12-02-2016
 - added Nudeflix.com  (First time that i add a Full-length Movie Site)
 - fixed Pornhub.com
@@ -31,7 +39,6 @@ v 0.6.2 09-12-2016
 - fixed Txxx-.com Regex 
 - Removed YouAv.com
 - Added JavTasty.com 
-
 
 v 0.6.1 17-11-2016
 - bug fix
