@@ -7,12 +7,14 @@
         <provides>video</provides>
     </extension>
     <extension point="xbmc.addon.metadata">
+        <news>
+New Changelog System. Biggest Bullshit ever!!!  v 0.7.1 01-03-2016 - fixed Xhamster.com categories - fixed Yes.xxx - fixed Upornia.com - fixed Pornhub.com again (HD Videos again) - fixed PornHD.com - fixed Heavy-R.com
+        </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>
 Internet [COLOR red]XXX Porn Video[COLOR white] Streams.
     
-[COLOR red][B]WARNING:[/B] 
-[COLOR red]Only for adults[/COLOR]	
+[COLOR red][B]WARNING:[/B][COLOR red]Only for adults[/COLOR]	
 
 [COLOR white]Github:
 https://github.com/Vashiel/repository.adulthideout
