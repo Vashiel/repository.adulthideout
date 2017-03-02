@@ -1,3 +1,11 @@
+v 0.7.2 01-03-2016
+- fixed Xhamster.com categories
+- fixed Yes.xxx
+- fixed Upornia.com
+- fixed Pornhub.com again (HD Videos again)
+- fixed PornHD.com
+- fixed Heavy-R.com
+
 v 0.7.0 27-02-2016
 - fixed Xvideos.com (plays Videos in HD again)
 
