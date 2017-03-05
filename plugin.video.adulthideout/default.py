@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 '''
-Copyright (C) 2015                                                     
+Copyright (C) 2017                                                     
 
 This program is free software: you can redistribute it and/or modify   
 it under the terms of the GNU General Public License as published by   
@@ -63,6 +63,7 @@ pornktube = 'http://www.pornktube.com'
 javtasty = 'http://www.javtasty.com'
 nudeflix = 'http://www.nudeflix.com'
 luxuretv = 'http://en.luxuretv.com'
+datoporn = 'http://datoporn.com'
 
 def menulist():
 	try:
@@ -77,7 +78,8 @@ def menulist():
 def make_request(url):
 	try:
 		req = urllib2.Request(url)
-		req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36')
+		req.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11')
+		#req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36')
 		response = urllib2.urlopen(req, timeout = 60)
 		link = response.read()
 		response.close()  
@@ -101,6 +103,7 @@ def main():
 	#(removing Eporner for now, until i find a solution for it)
 	#add_dir('Eporner [COLOR yellow] Videos[/COLOR]', eporner + '/0/', 2, logos + 'eporner.png', fanart)
 	add_dir('Fantasti.cc [COLOR yellow] Videos[/COLOR]', fantasti + '/videos/upcoming/', 2, logos + 'fantasti.png', fanart)
+	add_dir('Datoporn.com [COLOR yellow] Videos[/COLOR]', datoporn + '/category/films+XXX', 2, logos + 'datoporn.png', fanart)
 	add_dir('Hentaigasm [COLOR yellow] Videos[/COLOR]', hentaigasm, 2, logos + 'hentaigasm.png', fanart)
 	add_dir('Heavy-R [COLOR yellow] Videos[/COLOR]', heavyr + '/videos/' , 2, logos + 'heavyr.png', fanart)
 	add_dir('JavTasty [COLOR yellow] Videos[/COLOR]', javtasty + '/videos?page=1', 2, logos + 'javtasty.png', fanart) 
@@ -247,6 +250,9 @@ def search():
 		elif 'luxuretv' in name:
 			url = luxuretv + '/search/videos/' + searchText + '/'
 			start(url)
+		elif 'datoporn' in name:
+			url = datoporn + '/?k=' + searchText + '&op=search'
+			start(url)			
 	except:
 		pass
 
@@ -321,7 +327,22 @@ def start(url):
 		except:
 			match = re.compile('<a href="([^"]*)" title="Next page">').findall(content)
 			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', eporner +  match[0], 2, logos + 'eporner.png', fanart)
-	
+			
+	elif 'datoporn.com' in url:
+		content = make_request(url)
+		add_dir('[COLOR lightgreen]datoporn.com     [COLOR red]Search[/COLOR]', datoporn, 1, logos + 'datoporn.png', fanart)
+		add_dir('[COLOR lime]Categories[/COLOR]', datoporn + '/categories_all',  69, logos + 'datoporn.png', fanart)
+		match = re.compile('url\(\'(.+?)\'\) no-repeat;"><span>([:\d]+)</span></a>.+?<div colspan=2 class="vb_title"><a href="http://datoporn.com/(.+?)" class="link"><b>(.+?)</b></a></div>', re.DOTALL).findall(content)
+		for thumb, duration, url, name in match:
+			thumb = thumb.replace('(\'','').replace(')','')
+			add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', 'http://datoporn.com/embed-' + url + '.html', 4, thumb, fanart)	
+		try:
+			match = re.compile("<a href='([^']+)'>Next").findall(content)
+			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', match[0], 2, logos + 'datoporn.png', fanart)	
+		except:
+			pass	
+			
+			
 	elif 'fantasti' in url:
 		content = make_request(url)
 		add_dir('[COLOR lightgreen]fantasti.cc     [COLOR red]Search[/COLOR]', fantasti, 1, logos + 'fantasti.png', fanart)
@@ -1286,7 +1307,16 @@ def luxuretv_categories(url):
 	content = make_request(url)
 	match = re.compile('<a href="(.+?)">.+?<img class="img" src="(.+?)" alt="(.+?)"', re.DOTALL).findall(content)
 	for url, thumb, name in match:
-		add_dir(name, url,  2, thumb, fanart)	
+		add_dir(name, url,  2, thumb, fanart)
+		
+def datoporn_categories(url):
+	home()
+	content = make_request(url)		
+	match = re.compile('<a href="http://datoporn.com/category/([^"]+)" class="morevids" style="background-image:url\((.+?)\);"><span>(.+?)</span></a>', re.DOTALL).findall(content)
+	for url, thumb, duration in match:
+		name = url
+		name = name.replace('+',' ')
+		add_dir(name + ' [COLOR lime]('+ duration + ')[/COLOR]', 'http://datoporn.com/category/' + url,  2, thumb, fanart)
 		
 		
 def resolve_url(url):
@@ -1614,6 +1644,8 @@ def resolve_url(url):
 			pass		
 	elif 'luxuretv.com' in url:
 		media_url = re.compile('source src="(.+?)" type=').findall(content)[0]
+	elif 'datoporn' in url:
+		media_url = re.compile('file:"([^"]+mp4)"').findall(content)[0]
 	else:
 		media_url = url
 	item = xbmcgui.ListItem(name, path = media_url)
@@ -1857,6 +1889,9 @@ elif mode == 67:
 
 elif mode == 68:	
 	luxuretv_categories(url)
+	
+elif mode == 69:	
+	datoporn_categories(url)
 
 	
 xbmcplugin.endOfDirectory(int(sys.argv[1]))

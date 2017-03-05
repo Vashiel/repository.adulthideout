@@ -1,15 +1,19 @@
-v 0.7.2 01-03-2016
+v 0.7.3 05-03-2017
+- added datoporn.com
+- cleaning and fixing 
+
+v 0.7.2 01-03-2017
 - fixed Xhamster.com categories
 - fixed Yes.xxx
 - fixed Upornia.com
-- fixed Pornhub.com again (HD Videos again)
+- fixed Pornhub.com again (HD Videos gone again)
 - fixed PornHD.com
 - fixed Heavy-R.com
 
-v 0.7.0 27-02-2016
+v 0.7.0 27-02-2017
 - fixed Xvideos.com (plays Videos in HD again)
 
-v 0.6.9 26-02-2016
+v 0.6.9 26-02-2017
 - fixed Porn.com to play 144p Videos too
 - fixed Pornhub.com (plays Videos in HD again)
 - fixed Pornhub.com categories
@@ -17,21 +21,21 @@ v 0.6.9 26-02-2016
 - fixed Vikiporn.com
 - added Luxuretv.com (a users wish)
 
-v 0.6.8 12-02-2016
+v 0.6.8 12-02-2017
 - added Nudeflix.com  (First time that i add a Full-length Movie Site)
 - fixed Pornhub.com
 - little bit of "code-cleaning"
 
-v 0.6.7 11-02-2016
+v 0.6.7 11-02-2017
 - fixed Redtube.com
 - fixed Pornktube.com
 
-v 0.6.6 04-02-2016
+v 0.6.6 04-02-2017
 - fixed Youjizz.com
 - fixed PornHD.com
 - fixed Pornxs.com categories
 
-v 0.6.5 01-01-2016
+v 0.6.5 01-01-2017
 Happy New Year :)
 - fixed Yespornplease.com
 
