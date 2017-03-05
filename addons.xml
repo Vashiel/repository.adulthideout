@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addons>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.7.3" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.7.2" provider-name="Vashiel">
     <requires>
     </requires>
     <extension point="xbmc.python.pluginsource"
@@ -9,7 +9,7 @@
     </extension>
     <extension point="xbmc.addon.metadata">
         <news>
-v 0.7.3 05-03-2017 - added datoporn.com - cleaning and fixing
+New Changelog System. Biggest Bullshit ever!!!  v 0.7.2 01-03-2016 - fixed Xhamster.com categories - fixed Yes.xxx - fixed Upornia.com - fixed Pornhub.com again (HD Videos again) - fixed PornHD.com - fixed Heavy-R.com
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>
@@ -36,3 +36,16 @@ adulthideout@yandex.com[/COLOR]
     </extension>
 </addon>
 
+<addon id="repository.adulthideout" name="AdultHideout REPO" version="1.0.1" provider-name="Vashiel">
+	<extension point="xbmc.addon.repository" name="AdultHideout Addon Repository">
+		<info compressed="false">https://github.com/Vashiel/repository.adulthideout/raw/master/addons.xml</info>
+		<checksum>https://github.com/Vashiel/repository.adulthideout/raw/master/addons.xml.md5</checksum>
+		<datadir zip="true">https://github.com/Vashiel/repository.adulthideout/raw/master/zips</datadir>
+	</extension>
+	<extension point="xbmc.addon.metadata">
+		<summary>AdultHideout Addon Repository</summary>
+		<description>First Try for a Adult Kodi Addon</description>
+		<platform>all</platform>
+	</extension>
+</addon>
+</addons>
