@@ -533,9 +533,6 @@ def start(url):
 		add_dir('[COLOR lightgreen]pornhub.com     [COLOR red]Search[/COLOR]', pornhub, 1, logos + 'pornhub.png', fanart)	
 		add_dir('[COLOR lime]Categories[/COLOR]', pornhub + '/categories', 25, logos + 'pornhub.png', fanart) 
 		match = re.compile('<li class="videoblock videoBox" id=".+?" _vkey="(.+?)" >.+?<a href="([^"]+)" title="([^"]+)".+?<var class="duration">([^<]+)</var>(.+?)</div>.*?data-mediumthumb="([^"]+)"', re.DOTALL).findall(content)
-		
-		
-		
 		for dummy2, url, name, duration, dummy, thumb in match:
 			if 'HD' in dummy:
 				#Pornhub changed their page again. Keeping this alternative way.
@@ -543,11 +540,11 @@ def start(url):
 				#add_link(name + '[COLOR yellow]' +' [HD]' +'[/COLOR]' +' [COLOR lime]('+ duration + ')[/COLOR]', pornhub + url, 4, thumb, fanart)
 			else:
 				add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', 'https://www.pornhub.com/embed/' + dummy2, 4, thumb, fanart)
-		#try:
-		#	match = re.compile('<li class="page_next"><a href="([^"]+)" class="orangeButton">Next</a></li>').findall(content) 
-		#	add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', pornhub + match[0].replace('&amp;','&'), 2, logos + 'pornhub.png', fanart)
-		#except:
-		#	pass
+		try:
+			match = re.compile('<li class="page_next"><a href="([^"]+)" class="orangeButton">Next</a></li>').findall(content) 
+			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', pornhub + match[0].replace('&amp;','&'), 2, logos + 'pornhub.png', fanart)
+		except:
+			pass
 		
 		
 	elif 'pornktube' in url:
@@ -825,8 +822,9 @@ def start(url):
 		add_dir('[COLOR lime]Categories[/COLOR]', youporn + '/categories/', 31, logos + 'youporn.png', fanart)
 		add_dir('[COLOR lime]Sorting[/COLOR]', youporn, 43, logos + 'youporn.png', fanart)
 		content = make_request(url)
-		match = re.compile('<a href="([^"]*)" class=\'video-box-image\' >.+?alt=\'([^"]+)\'.+?data-thumbnail="([^"]+)".+?<span class="video-box-duration">.+?([:\d]+)	</span>', re.DOTALL).findall(content)
-		for url, name, thumb, duration in match:
+#		match = re.compile('<a href="([^"]*)" class=\'video-box-image\'>.+?alt=\'([^"]+)\'.+?data-thumbnail="([^"]+)".+?<span class="video-box-duration">.+?([:\d]+)	</span>', re.DOTALL).findall(content)
+		match = re.compile('<a href="([^"]*)" class=\'video-box-image\'>.+?<img src="([^"]*)" class="js_mg_flipbook" alt=\'(.+?)\'.+?<span class="video-box-duration">.+?([:\d]+).+?</span>', re.DOTALL).findall(content)
+		for url, thumb, name, duration in match:
 			add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', youporn + url, 4, thumb, fanart)  
 		try:
 			match = re.compile('<link rel="next" href="([^"]*)" />').findall(content)
@@ -1371,6 +1369,7 @@ def resolve_url(url):
 		media_url = re.compile("video_url: '(.+?)',").findall(content)[0]
 	elif 'efukt' in url:	
 		media_url = re.compile('<source src="(.+?)" type="video/mp4">').findall(content)[0]
+		media_url = media_url.replace('&amp;','&')
 	elif 'pornhub' in url:	
 		try:
 			media_url = re.compile('var player_quality_720p="(.+?)"').findall(content)[0]
