@@ -1635,7 +1635,7 @@ def resolve_url(url):
 			pass		
 	elif 'luxuretv.com' in url:
 		media_url = re.compile('source src="(.+?)" type=').findall(content)[0]
-	elif 'datoporn' in url:
+	elif 'dato' in url:
 		media_url = re.compile('file:"([^"]+mp4)"').findall(content)[0]
 	elif 'plyplv' in url:
 		media_url = re.compile('var fileUrl="(.+?)"').findall(content)[0]	
