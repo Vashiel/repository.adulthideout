@@ -64,6 +64,43 @@ javtasty = 'http://www.javtasty.com'
 nudeflix = 'http://www.nudeflix.com'
 luxuretv = 'http://en.luxuretv.com'
 datoporn = 'http://dato.porn'
+beeg_version = 2096
+beeg_jsalt = "PwK3K7xvlyx"
+
+def beeg_url(beeg_index = 0):
+	return 'http://api2.beeg.com/api/v6/' + str(beeg_version) + '/index/main/' + str(beeg_index) + '/pc'
+
+def beeg_search_url(query, beeg_index = 0):
+	return 'http://api2.beeg.com/api/v6/' + str(beeg_version) + '/index/search/' + str(beeg_index) + '/pc?query=' + query
+
+def decode_key(key):
+	e = urllib.unquote(key).decode('utf-8')
+	s = len(beeg_jsalt)
+	t = ""
+	for o in range(0, len(e)):
+		l = ord(e[o])
+		n = o % s
+		i = ord(beeg_jsalt[n]) % 21
+		t += chr(l-i)
+	res = ""
+	for r in reversed(str_split(t)):
+		res += str(r)
+	return res
+
+def str_split(n):
+	e = 3
+	t = True
+	r = []
+	if t:
+		a = len(n) % e
+		if a > 0:
+			r.append(n[0:a])
+			n = n[a:]
+	while len(n) > e:
+		r.append(n[0:e])
+		n = n[e:]
+	r.append(n)
+	return r
 
 def menulist():
 	try:
@@ -97,6 +134,7 @@ def home():
 #define main directory and starting page
 def main():
 	add_dir('A Shemale Tube [COLOR yellow] Videos[/COLOR]', ashemaletube + '/videos/newest/' , 2, logos + 'ashemaletube.png', fanart)
+	add_dir('Beeg [COLOR yellow] Videos[/COLOR]', beeg_url(), 2, logos + 'beeg.png', fanart)
 	add_dir('Efukt [COLOR yellow] Videos[/COLOR]', efukt, 2, logos + 'efukt.png', fanart)
 	add_dir('Empflix [COLOR yellow] Videos[/COLOR]', empflix + '/new/' , 2, logos + 'empflix.png', fanart)
 	#(removing Eporner for now, until i find a solution for it)
@@ -143,6 +181,9 @@ def search():
 			searchText = urllib.quote_plus(keyb.getText())
 		if 'ashemaletube' in name:
 			url = ashemaletube + '/search/' + searchText + '/page1.html'
+			start(url)
+		elif 'beeg' in name:
+			url = beeg_search_url(searchText)
 			start(url)
 		elif 'efukt' in name:
 			url = efukt + '/search/' + searchText + '/'
@@ -284,6 +325,36 @@ def start(url):
 			match = re.compile('<a class="pageitem rightKey" href="(.+?)" title="Next">Next</a>').findall(content)
 			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', ashemaletube + match[0], 2, logos + 'ashemaletube.png', fanart)
 
+	elif 'beeg' in url:
+		add_dir('[COLOR lightgreen]beeg.com     [COLOR red]Search[/COLOR]', beeg_url(), 1, logos + 'beeg.png', fanart)
+		try:
+			selected_page = re.compile('index/(main|search)/(.+?)/pc').findall(url)[0]
+			selected_page_index = int(selected_page[1])
+			if selected_page[0] == 'main':
+				next_url = beeg_url(selected_page_index + 1)
+			else:
+				query = re.compile('/pc\?query=(.*?)$').findall(url)[0]
+				next_url = beeg_search_url(query, selected_page_index + 1)
+		except:
+			pass
+		try:
+			content = make_request(url)
+			match = re.compile('\{"title":"([^"]*)","id":"([^"]*)","ps_name":"([^"]*)","nt_name":"([^"]*)","240p":"([^"]*)","480p":"([^"]*)","720p":"([^"]*)"\}').findall(content)
+			for title, id, ps, nt, low, mid, high in match:
+				thumb = 'http://img.beeg.com/236x177/' + id + '.jpg'
+				url = 'http:' + re.sub('\{DATA_MARKERS\}', 'data=vad_ES_103.124.13.54_' + str(beeg_version), high)
+				match2 = re.compile('\/key=(.*?)%2Cend=').findall(url)
+				if len(match2) > 0:
+					key = match2[0]
+					decoded_key = decode_key(key)
+					url = re.sub('\/key=(.*?)%2Cend=', '/key=' + decoded_key + '%2Cend=', url)
+					add_link(title, url, 70, thumb, fanart)
+		except:
+			pass
+		try:
+			add_dir('[COLOR blue]Next Page >>>>[/COLOR]', next_url, 2, logos + 'beeg.png', fanart)
+		except:
+			pass
 	elif 'efukt' in url:
 		content = make_request(url)
 		add_dir('[COLOR lightgreen]efukt.com     [COLOR red]Search[/COLOR]', efukt, 1, logos + 'efukt.png', fanart)
@@ -1885,5 +1956,9 @@ elif mode == 68:
 	
 elif mode == 69:	
 	datoporn_categories(url)
+
+elif mode == 70:
+	item = xbmcgui.ListItem(name, path = url)
+	xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, item)
 
 xbmcplugin.endOfDirectory(int(sys.argv[1]))
