@@ -1,5 +1,12 @@
-v 0.7.7 29-04-2017
-- added beeg.com
+v 0.7.7 01-05-2017
+- added beeg.com (Thanks Digonly)
+- removed Pornktube.com
+- fixed Ashemaltube.com
+- fixed Pornhub.com next button
+- fixed Youjizz.com
+- fixed Txxx.com
+- fixed Tubepornclassic.com
+- fixed Redtube.com main
 
 v 0.7.6 21-03-2017
 - bugfix
