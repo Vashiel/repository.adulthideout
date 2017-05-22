@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addons>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.7.7" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.7.8" provider-name="Vashiel">
     <requires>
     </requires>
     <extension point="xbmc.python.pluginsource"
@@ -9,7 +9,7 @@
     </extension>
     <extension point="xbmc.addon.metadata">
         <news>
-v 0.7.5 21-03-2017 - fixed dato.porn (new name) - fixed tubegalore Next button - fixed youporn.com
+v 0.7.8 21-05-2017 - fixed Ashemaletube.com - fixed Dato.porn - fixed Javtasty.com - removed nudeflix.com for now (this site seems to be dead) - fixed Pornhub.com - fixed Youporn.com
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>
