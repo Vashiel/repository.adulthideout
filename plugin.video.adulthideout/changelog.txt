@@ -1,3 +1,12 @@
+v 0.7.9 09-07-2017
+- fixed Youporn.com
+- fixed Yes.xxx
+- fixed Datoporn.com
+- fixed Xvideos.com Categories, Pornstars, added ranking
+- fixed Redtube.com, added sorting, channels, etc.
+- minor fixes, Fanart, Kodi 18 ready, etc..
+
+
 v 0.7.8 21-05-2017
 - fixed Ashemaletube.com
 - fixed Dato.porn
