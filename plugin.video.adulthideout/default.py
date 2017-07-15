@@ -64,8 +64,8 @@ javtasty = 'http://www.javtasty.com'
 nudeflix = 'http://www.nudeflix.com'
 luxuretv = 'http://en.luxuretv.com'
 datoporn = 'http://dato.porn'
-beeg_version = 2096
-beeg_jsalt = "PwK3K7xvlyx"
+beeg_version = 2099
+beeg_jsalt = "fTwxctLl1jqhbNByaBFNomK7eimPr9dv0nRLsC"
 
 def beeg_url(beeg_index = 0):
 	return 'http://api2.beeg.com/api/v6/' + str(beeg_version) + '/index/main/' + str(beeg_index) + '/pc'
