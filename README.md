@@ -6,15 +6,7 @@ If you find my Repo somewhere else, he/she has nothing to do with me.
 # What it is
 Adulthideout is my first try to make a Kodi XXX Addon. This addon was actually made for one Page to add the "play from here" function that is missing in nearly all similiar addons, but somehow turned into something bigger. 
 
-#Video installation instructions on Youtube
-For those who still have problems with the installation, i just uploaded Intructions on Youtube. Link below.
-https://youtu.be/R8kcLXioEP0
-
-#Video installation instructions on Youtube 2
-If you can't copy the repo zip file to your Kodi Device, here is a alternative way to install AdultHideout.
-https://youtu.be/OhCIT8R4efM
-
-# Installation
+# Installation for Kodi 16
 1. Download Repo https://github.com/Vashiel/repository.adulthideout/releases/download/Repo/repository.adulthideout-1.0.1.zip
 2. Start Kodi
 3. Goto "system> addons> install from zip" and choose the downloaded Repo zip file.
@@ -24,6 +16,16 @@ https://youtu.be/OhCIT8R4efM
 7. Wait till adulthideout has been installed . 
 8. You will find Adulthideout now under "Video - Addons"
 9. Have Fun :)
+
+#Video installation instructions on Youtube
+For those who still have problems with the installation, i just uploaded Intructions on Youtube. Link below.
+https://youtu.be/R8kcLXioEP0
+
+# NEW!!! Installation for Kodi 17 or higher with Estuary skin
+#New instalattion tutorial on youtube.
+
+If you can't copy the repo zip file to your Kodi Device, here is a alternative way to install AdultHideout.
+https://youtu.be/bFuwYpAcOXE
 
 # Contact me
 Easy way is to write me via Github or adulthideout@yandex.com (don't check that one very often)
