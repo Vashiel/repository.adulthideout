@@ -22,8 +22,8 @@ For those who still have problems with the installation, i just uploaded Intruct
 https://youtu.be/R8kcLXioEP0
 
 # NEW!!! Installation for Kodi 17 or higher with Estuary skin
-#New instalattion tutorial on youtube.
 
+#New installation tutorial on youtube.
 If you can't copy the repo zip file to your Kodi Device, here is a alternative way to install AdultHideout.
 https://youtu.be/bFuwYpAcOXE
 
