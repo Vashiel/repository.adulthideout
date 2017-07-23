@@ -28,6 +28,7 @@ icon = xbmc.translatePath(os.path.join(home, 'icon.png'))
 logos = xbmc.translatePath(os.path.join(home, 'logos\\')) # subfolder for logos
 homemenu = xbmc.translatePath(os.path.join(home, 'resources', 'playlists'))
 
+
 #define webpages in order they were added.
 redtube = 'https://www.redtube.com'
 xvideos = 'http://www.xvideos.com'
@@ -127,7 +128,7 @@ def main():
 	add_dir('Uflash.TV [COLOR yellow] Videos[/COLOR]', uflash + '/videos?o=mr&type=public', 2, logos + 'uflash.png', fanart)
 	add_dir('Upornia [COLOR yellow] Videos[/COLOR]', upornia + '/latest-updates/', 2, logos + 'upornia.png', fanart)
 	add_dir('ViKiPorn [COLOR yellow] Videos[/COLOR]', vikiporn + '/latest-updates/', 2, logos + 'vikiporn.png', fanart) 
-	add_dir('xHamster [COLOR yellow] Videos[/COLOR]', xhamster, 2, logos + 'xhamster.png', fanart)
+	add_dir('xHamster [COLOR yellow] Videos[/COLOR]', xhamster + '/new/1.html', 2, logos + 'xhamster.png', fanart)
 	add_dir('Xvideos [COLOR yellow] Videos[/COLOR]', xvideos + '/new/1/' , 2, logos + 'xvideos.png', fanart)
 	add_dir('YesPornPlease [COLOR yellow] Videos[/COLOR]', yespornplease + '/?s=date', 2, logos + 'yespornplease.png', fanart)
 	add_dir('Yes XXX [COLOR yellow] Videos[/COLOR]', yesxxx + '?s=recent', 2, logos + 'yes.png', fanart)
@@ -206,10 +207,10 @@ def search():
 			url = 'http://www.tubepornclassic.com/search/' + searchText + '/'
 			start(url)
 		elif 'vikiporn.com' in name:
-			url = vikiporn + '/search/?q=' + searchText      	  
+			url = vikiporn + '/search/?q=' + searchText
 			start(url)	
 		elif 'xhamster.com' in name:
-			url = xhamster + '/search.php?qcat=video&q=' + searchText
+			url = 'https://xhamster.com/search.php?q=' + searchText
 			start(url)
 		elif 'xvideos.com' in name:
 			url = xvideos + '/?k=' + searchText  	  
@@ -634,13 +635,13 @@ def start(url):
 					add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', redtube + url, 4, thumb,  fanart)
 
 			elif 'newest' in url:
-				match = re.compile('<div class="widget-video-holder ">.+?<a href="([^"]+)".+?data-src="([^"]+)".+?alt="([^"]+)".+?<span class="widget-video-duration">.+?([:\d]+).+?</span>(.+?)</a><!--widget-video-link-->', re.DOTALL).findall(content)
+				match = re.compile('<div class="widget-video-holder videoPreviewBg">.+?<a href="([^"]+)".+?data-src="([^"]+)".+?alt="([^"]+)".+?<span class="widget-video-duration">.+?([:\d]+).+?</span>(.+?)</a><!--widget-video-link-->', re.DOTALL).findall(content)
 				for url, thumb, name, duration, dummy in match:
 					name = name.replace('&#39;', ' ').replace('&amp;', '&').replace('&quot;', '"').replace('	', '')
 					if 'hd' in dummy:
-						add_link(name + '[COLOR yellow]' +' [HD]' +'[/COLOR]' +' [COLOR lime]('+ duration + ')[/COLOR]', redtube + url, 4, 'http:' + thumb,  fanart)
+						add_link(name + '[COLOR yellow]' +' [HD]' +'[/COLOR]' +' [COLOR lime]('+ duration + ')[/COLOR]', redtube + url, 4, thumb,  fanart)
 					else:
-						add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', redtube + url, 4, 'http:' + thumb,  fanart)
+						add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', redtube + url, 4, thumb,  fanart)
 						
 			elif 'mostviewed' or 'hot' or 'top' or 'recommended' or 'mostviewed' or 'mostfavored' or 'longest' in url:
 				match = re.compile('<div class="widget-video-holder">.+?<a href="([^"]+)" title="([^"]+)" class="video-thumb" >.+?<span class="video-duration">.+?([:\d]+).+?</span>.+?src="([^"]+)"', re.DOTALL).findall(content)
@@ -795,15 +796,15 @@ def start(url):
 		add_dir('[COLOR lime]Categories[/COLOR]', xhamster, 17, logos + 'xhamster.png', fanart) 
 		add_dir('[COLOR lime]Rankings[/COLOR]', xhamster + '/rankings/weekly-top-viewed.html' , 42, logos + 'xhamster.png', fanart) 
 		add_dir('[COLOR lime]Change Content[/COLOR]', xhamster , 24, logos + 'xhamster.png', fanart)
-		match = re.compile('><a href="https://xhamster.com/movies/(.+?)".+?<img src=\'(.+?)\'.+?alt="([^"]*)".+?<b>(.+?)</b>.+?<div class="(.+?)"', re.DOTALL).findall(content)
+		match = re.compile('><a href="https://xhamster.com/videos/(.+?)".+?<img src=\'(.+?)\'.+?alt="([^"]*)".+?<b>(.+?)</b>.+?<div class="(.+?)"', re.DOTALL).findall(content)
 		for url, thumb, name, duration, dummy in match:
 			name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '\'')
 			if '?from=video_promo' in url:
 				pass
 			if 'hSpriteHD' in dummy:
-				add_link(name + '[COLOR yellow]' +' [HD]' +'[/COLOR]' +' [COLOR lime]('+ duration + ')[/COLOR]', 'http://xhamster.com/movies/' + url, 4, thumb, fanart)
+				add_link(name + '[COLOR yellow]' +' [HD]' +'[/COLOR]' +' [COLOR lime]('+ duration + ')[/COLOR]', 'http://xhamster.com/videos/' + url, 4, thumb, fanart)
 			else:
-				add_link(name + ' [COLOR lime]('+ duration +')[/COLOR]', 'http://xhamster.com/movies/' + url, 4, thumb, fanart)
+				add_link(name + ' [COLOR lime]('+ duration +')[/COLOR]', 'http://xhamster.com/videos/' + url, 4, thumb, fanart)
 		match = re.compile('<div id="cType"><div class="([^"]*)"></div>').findall(content)
 		if "iconL iconTrans" in match :
 			match = re.compile('<link rel="next" href="([^"]*)"><link rel="dns-prefetch"').findall(content) 
@@ -907,17 +908,24 @@ def start(url):
 		if 'search' in url:
 			match = re.compile('<img src="([^"]*)".+?alt="([^"]*)" id=".+?" name="(.+?)-.+?".+?<div class="duration">([:\d]+)</div>', re.DOTALL).findall(content)
 			for thumb, name, dummy, duration in match:
-				url = 'http://vshare.io/v/' + dummy + '/width-750/height-400/1/'
+				try:
+					url = 'http://yespornplease.com/vshare/' + dummy + '_720'
+				except:
+					url = 'http://yespornplease.com/vshare/' + dummy + '_480'
 				name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '\'').replace('	', '')
-				add_link(name + '[COLOR lime] (' + duration + ')[/COLOR]', url,  4, thumb, fanart)		
+				add_link(name + '[COLOR lime] (' + duration + ')[/COLOR]', url,  70, thumb, fanart)		
 		else:
 			match = re.compile('<img src="([^"]*)".+?alt="([^"]*)" id=".+?" name="(.+?)-.+?".+?<div class="duration">([:\d]+)</div>', re.DOTALL).findall(content)
 			for thumb, name, dummy, duration in match:
-				url = 'http://vshare.io/v/' + dummy + '/width-750/height-400/1/'
+				try:
+					url = 'http://yespornplease.com/vshare/' + dummy + '_720'
+				except:
+					url = 'http://yespornplease.com/vshare/' + dummy + '_480'
 				name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '\'').replace('	', '')
-				add_link(name + '[COLOR lime] (' + duration + ')[/COLOR]', url, 4, thumb, fanart)		
+				add_link(name + '[COLOR lime] (' + duration + ')[/COLOR]', url, 70, thumb, fanart)
+
 		try:
-			match = re.compile('<a href="(.+?)" class="prevnext">Next &raquo;</a></li>').findall(content)
+			match = re.compile('</li><li><a href="(.+?)" class="prevnext">Next &raquo;</a></li> </ul></div>').findall(content)
 			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', yespornplease + match[0], 2, logos + 'yespp.png', fanart)
 		except:
 			pass
@@ -1393,8 +1401,8 @@ def xvideos_sorting(url) :
 		add_dir(name, xvideos + '/best/' + url,  2, logos + 'xvideos.png', fanart)	
 		
 ####beeg added by Digonly begin####		
-beeg_version = 2096
-beeg_jsalt = "PwK3K7xvlyx"
+beeg_version = 2099
+beeg_jsalt = "fTwxctLl1jqhbNByaBFNomK7eimPr9dv0nRLsC"
 
 def beeg_url(beeg_index = 0):
 	return 'http://api2.beeg.com/api/v6/' + str(beeg_version) + '/index/main/' + str(beeg_index) + '/pc'
@@ -1466,7 +1474,6 @@ def resolve_url(url):
 		media_url = re.compile('id="video-.+?" href="(.+?)"').findall(content)[0] 	
 	elif 'yes.xxx' in url: 
 		media_url = re.compile('"file":"(.+?)","label"').findall(content)[0]		
-			
 	elif 'pornxs' in url: 
 		media_url = re.compile('config-final-url="(.+?)"').findall(content)[0]	
 	elif 'zbporn' in url: 
@@ -1494,15 +1501,11 @@ def resolve_url(url):
 		media_url = pornsocket + re.compile('<source src="(.+?)" type="video/mp4"/>').findall(content)[0]
 	elif 'youjizz' in url:
 		try:
-			media_url = 'https:' + re.compile('<source src="(.+?)" type="video/mp4" label="720p">').findall(content)[0]
-			media_url = media_url.replace('&amp;','&')
+			media_url = 'https:' + re.compile('"filename":"([^"]+.mp4[^"]*)",').findall(content)[-1]
+			media_url = media_url.replace('/','')
 		except:
-			try:
-				media_url = 'https:' + re.compile('<source src="(.+?)" type="video/mp4" label="480p">').findall(content)[0]
-				media_url = media_url.replace('&amp;','&')
-			except:
-				media_url = 'https:' + re.compile('<source src="(.+?)" type="video/mp4"').findall(content)[0]
-				media_url = media_url.replace('&amp;','&')
+			media_url = 'https:' + re.compile('"filename":"([^"]+.mp4[^"]*)",').findall(content)[0]
+			media_url = media_url.replace('/','')
 	elif 'hentaigasm' in url:
 		media_url = re.compile('file: "(.+?)",').findall(content)[0]
 	elif 'ashemaletube' in url:	
@@ -1534,19 +1537,9 @@ def resolve_url(url):
 	elif 'upornia' in url:
 		media_url = re.compile('file: \'(.+?)\',').findall(content)[0]
 	elif 'vshare.io' in url:
-		try:
-			media_url = re.compile('<source src="(.+?)"').findall(content)[0]
-		except:	
-			try:
-				media_url = re.compile('"url":"(.+?)"').findall(content)[0]
-				media_url = media_url.replace('\\', '')
-			except:
-				media_url = re.compile('url: \'(.+?)\',').findall(content)[0]
+		 url = media_url
 	elif 'yespornplease' in url:
-		try:
-			media_url = re.compile('<source src="(.+?)"').findall(content)[0]
-		except:
-			media_url = re.compile('url: \'(.+?)\',').findall(content)[0]
+		 url = media_url
 	elif 'fantasti.cc' in url:	
 		url = re.compile('<div class="video-wrap" data-origin-source="([^"]+)">').findall(content)[0]
 		return resolve_url(url)
@@ -1781,6 +1774,7 @@ def resolve_url(url):
 	else:
 		media_url = url
 	item = xbmcgui.ListItem(name, path = media_url)
+	item.setMimeType('video/mp4')
 	xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, item)	  
 	return
 
@@ -1812,11 +1806,14 @@ def add_dir(name, url, mode, iconimage, fanart):
 	
 def add_link(name, url, mode, iconimage, fanart):
 	u = sys.argv[0] + "?url=" + urllib.quote_plus(url) + "&mode=" + str(mode) + "&name=" + urllib.quote_plus(name) + "&iconimage=" + urllib.quote_plus(iconimage)	
+	ok = True
 	liz = xbmcgui.ListItem(name, iconImage = "DefaultVideo.png", thumbnailImage = iconimage)
 	liz.setProperty('fanart_image', fanart)
-	liz.setInfo( type="Video", infoLabels={ "Title": name, "overlay":"6"})
-	liz.setProperty('IsPlayable', 'true')  
-	ok = xbmcplugin.addDirectoryItem(handle = int(sys.argv[1]), url = u, listitem = liz)  
+	liz.setInfo(type="Video", infoLabels={"Title": name})
+	liz.setContentLookup(False)
+	liz.setProperty('IsPlayable', 'true')
+	ok = xbmcplugin.addDirectoryItem(handle = int(sys.argv[1]), url = u, listitem = liz) 
+	return ok	
 
 params = get_params()
 url = None
@@ -2034,6 +2031,6 @@ elif mode == 71:
 
 elif mode == 70:
 	item = xbmcgui.ListItem(name, path = url)
+	item.setMimeType('video/mp4')
 	xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, item)
-
 xbmcplugin.endOfDirectory(int(sys.argv[1]))
