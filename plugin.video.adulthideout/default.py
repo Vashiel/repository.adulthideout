@@ -1401,8 +1401,8 @@ def xvideos_sorting(url) :
 		add_dir(name, xvideos + '/best/' + url,  2, logos + 'xvideos.png', fanart)	
 		
 ####beeg added by Digonly begin####		
-beeg_version = 2099
-beeg_jsalt = "fTwxctLl1jqhbNByaBFNomK7eimPr9dv0nRLsC"
+beeg_version = 2105
+beeg_jsalt = "BwZcwtmIHCAS"
 
 def beeg_url(beeg_index = 0):
 	return 'http://api2.beeg.com/api/v6/' + str(beeg_version) + '/index/main/' + str(beeg_index) + '/pc'
