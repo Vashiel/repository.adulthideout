@@ -11,7 +11,14 @@ A: There is no Pin or Password protection in Adulthideout and there never will b
 You are not using original Kodi and/or original AdultHideout.<br />
 Most of the time Kodi bundles or addon bundles are the Problem.
 
-Just deinstall Kodi and reinstall it from it's original source https://kodi.tv/download and follow the intructions on this Page to install AdultHideot. Password gone! 
+Just deinstall Kodi and reinstall it from it's original source https://kodi.tv/download and follow the intructions on this Page to install AdultHideot. Password gone!
+
+Q: Can you add site [addSitenamehere] to AdultHideout?<br />
+A: No! There are 30 Sites in Adulthideout and little bit of everything for anyone. AND it's very hard to keep those sites runnig. If we have to remove a Site...maybe.
+
+Q: Is there a develop version of Adulthideout on github?<br />
+A: No, not really. But i upload my beta test Version always to http://ah.net76.net/addons/ with fixes before releasing Adulthideout.
+
     
 # Installation for Kodi 16
 1. Download Repo https://github.com/Vashiel/repository.adulthideout/releases/download/Repo/repository.adulthideout-1.0.1.zip
