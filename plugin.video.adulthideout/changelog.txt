@@ -3,6 +3,7 @@ v 0.8.1 04-09-2017
 - fixed javtasty.com
 - fixes xhamster.com
 - fixed yespornplease.com
+- minor changes
 
 v 0.8.0 23-07-2017
 - fixed xhamster.com
