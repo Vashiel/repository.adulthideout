@@ -8,6 +8,7 @@
     </extension>
     <extension point="xbmc.addon.metadata">
         <news>
+v 0.8.1 04-09-2017 - fixed beeg.com - fixed javtasty.com - fixes xhamster.com - fixed yespornplease.com
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>
