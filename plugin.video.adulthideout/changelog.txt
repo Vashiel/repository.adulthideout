@@ -1,4 +1,8 @@
-v 0.8.1 04-09-2017
+v 0.8.2 10-09-2017
+- fixed javtasty.com search
+- fixed pornhd.com
+- fix setContentLookup() fail on Kodi version < 17 (Thanks BorgScout)
+
 - fixed beeg.com
 - fixed javtasty.com
 - fixes xhamster.com

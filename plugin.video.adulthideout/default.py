@@ -249,7 +249,7 @@ def search():
 			url = pornktube + '/search/?q='  + searchText
 			start(url)	
 		elif '.javtasty.com' in name:
-			url = 'http://www.javtasty.com/search/' + searchText
+			url = 'http://www.javtasty.com/search/' + searchText  + '/'
 			start(url)
 		elif 'nudeflix' in name:
 			url = nudeflix +'/search/'+ searchText
@@ -461,7 +461,7 @@ def start(url):
 		content = make_request(url)
 		add_dir('[COLOR lightgreen].javtasty.com     [COLOR red]Search[/COLOR]', javtasty, 1, logos + 'javtasty.png', fanart)	
 		add_dir('[COLOR lime]Categories[/COLOR]', javtasty + '/categories/', 64, logos + 'javtasty.png', fanart)
-		match = re.compile('href="(.+?)" title="(.+?)".+?data-original="(.+?)".+?<i class="fa fa-clock-o"></i> ([\d:]+)</div>', re.DOTALL).findall(content)
+		match = re.compile('<div class="video-item   ">.+?<a href="(.+?)" title="(.+?)".+?data-original="(.+?)".+?<i class="fa fa-clock-o"></i> ([\d:]+)</div>', re.DOTALL).findall(content)
 		for url, name, thumb, duration in match:
 			add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', url, 4, thumb, fanart)
 		try:
@@ -1471,9 +1471,11 @@ def resolve_url(url):
 		media_url = re.compile('file: "(.+?)",').findall(content)[0]	
 	elif 'pornhd' in url: 
 		try:
-			media_url = re.compile("'720p' : '(.+?)'").findall(content)[0]	
+			media_url = re.compile('"720p":"(.+?)"').findall(content)[0]
+			media_url = media_url.replace('\\','')
 		except:
-			media_url = re.compile("'480p' : '(.+?)'").findall(content)[0]			
+			media_url = re.compile('"480p":"(.+?)"').findall(content)[0]
+			media_url = media_url.replace('\\','')
 	elif 'motherless' in url:		
 		media_url = re.compile('__fileurl = \'(.+?)\';').findall(content)[0]
 	elif 'tubepornclassic' in url:		
@@ -1800,7 +1802,10 @@ def add_link(name, url, mode, iconimage, fanart):
 	liz = xbmcgui.ListItem(name, iconImage = "DefaultVideo.png", thumbnailImage = iconimage)
 	liz.setProperty('fanart_image', fanart)
 	liz.setInfo(type="Video", infoLabels={"Title": name})
-	liz.setContentLookup(False)
+	try:
+		liz.setContentLookup(False)
+	except:
+		pass
 	liz.setProperty('IsPlayable', 'true')
 	ok = xbmcplugin.addDirectoryItem(handle = int(sys.argv[1]), url = u, listitem = liz) 
 	return ok	
