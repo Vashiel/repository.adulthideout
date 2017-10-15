@@ -1,3 +1,12 @@
+v 0.8.3 15-10-2017
+- removed yes.xxx (site is dead)
+- removed Tubegalore, Upornia and Beeg (for now, until i find a fix)
+- fixed ashemale.com
+- fixed yespornplease.com
+- fixed pornxs.com
+- fixed youporn.com
+- datoporn.com
+
 v 0.8.2 10-09-2017
 - fixed javtasty.com search
 - fixed pornhd.com
