@@ -1,3 +1,10 @@
+v 0.8.4 08-11-2017
+- fixed javtasty.com 
+- fixed datoporn.com
+- fixed pornhd.com
+- fixed tube8.com
+- fixed redtube.com
+
 v 0.8.3 15-10-2017
 - removed yes.xxx (site is dead)
 - removed Tubegalore, Upornia and Beeg (for now, until i find a fix)
