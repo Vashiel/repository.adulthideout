@@ -19,6 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>
 
 import urllib, urllib2, re, os, sys, urlparse
 import xbmc, xbmcplugin, xbmcgui, xbmcaddon
+import httplib
 
 mysettings = xbmcaddon.Addon(id='plugin.video.adulthideout')
 profile = mysettings.getAddonInfo('profile')
@@ -28,6 +29,8 @@ icon = xbmc.translatePath(os.path.join(home, 'icon.png'))
 logos = xbmc.translatePath(os.path.join(home, 'logos\\'))  # subfolder for logos
 homemenu = xbmc.translatePath(os.path.join(home, 'resources', 'playlists'))
 
+#Ideally, one day this should be moved to a settings page to make it configurable
+maxRetryAttempts = 3
 
 #define webpages in order they were added.
 redtube = 'https://www.redtube.com'
@@ -75,7 +78,10 @@ def menulist():
     except:
         pass
 
-def make_request(url):
+def make_request(url):	
+	return make_request_ext(url, 0)
+	
+def make_request(url, attempt):
     try:
         req = urllib2.Request(url)
         if yespornplease in url:
@@ -86,6 +92,10 @@ def make_request(url):
         link = response.read()
         response.close()
         return link
+	except httplib.IncompleteRead, e:
+		if attempt < maxRetryAttempts:
+			xbmc.log("Attempt {0}/{1} to load url {2}".format(attempt + 1, maxAttempts, url))
+			return make_request_ext(url, attempt + 1)
     except urllib2.URLError, e:
         print 'We failed to open "%s".' % url
         if hasattr(e, 'code'):
