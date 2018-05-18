@@ -366,7 +366,7 @@ def start(url):
     elif 'datoporn' in url:
         content = make_request(url)
         add_dir('[COLOR lightgreen]datoporn.com     [COLOR red]Search[/COLOR]', datoporn, 1, logos + 'datoporn.png', fanart)
-        add_dir('[COLOR lime]Categories[/COLOR]', datoporn + '/categories_all',  69, logos + 'datoporn.png', fanart)
+        add_dir('[COLOR lime]Categories[/COLOR]', 'https://datoporn.co/categories_all',  69, logos + 'datoporn.png', fanart)
         match = re.compile('style="background: url\(\'https://(.+?)/(.+?)\'\) no-repeat;"><span>([:\d]+)</span></a>.+?<div colspan=2 class="vb_title"><a href="https://datoporn.co/(.+?)" class="link"><b>(.+?)</b></a></div>', re.DOTALL).findall(content)
         for dummy, thumb, duration, url, name in match:
             dummy = 'https://' + dummy
@@ -377,7 +377,7 @@ def start(url):
             for url in match:
                 url = re.sub('640480.*?1280720','', url)
                 url = re.sub('360.*?640480','', url)
-                url = url.replace('640480|label|mp4|','').replace('|file','').replace('|','')
+                url = url.replace('640480|label|mp4|','').replace('|file','').replace('|','').replace('480labelmp4','')
                 url = dummy + '/' + url + '/v.mp4'
                 add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', datoporn + url, 4, thumb , fanart)
         try:
@@ -1365,7 +1365,7 @@ def luxuretv_categories(url):
 def datoporn_categories(url):
     home()
     content = make_request(url)
-    match = re.compile('<a href="http://dato.porn/category/([^"]+)" class="morevids" style="background-image:url\((.+?)\);"><span>(.+?)</span></a>', re.DOTALL).findall(content)
+    match = re.compile('<a href="https://datoporn.co/category/([^"]+)" class="morevids" style="background-image:url\((.+?)\);"><span>(.+?)</span></a>', re.DOTALL).findall(content)
     for url, thumb, duration in match:
         name = url
         name = name.replace('+',' ')

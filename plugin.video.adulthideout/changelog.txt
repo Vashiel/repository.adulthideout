@@ -1,3 +1,6 @@
+v 0.8.6 2018-05-18
+- fixed dato.porn
+
 v 0.8.5 2018-04-19
 - fixed nearly everything - A second fix release will come soon.
 
