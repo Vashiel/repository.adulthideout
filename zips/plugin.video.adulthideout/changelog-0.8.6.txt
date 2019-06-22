@@ -1,3 +1,7 @@
+v  0.8.7 2018-05-18
+- Really quick and rough update
+- removed some of not working sites, will work on it later
+
 v 0.8.6 2018-05-18
 - fixed dato.porn
 
