@@ -17,7 +17,7 @@ Q: Can you add site [addSitenamehere] to AdultHideout?<br />
 A: No! There are 30 Sites in Adulthideout and little bit of everything for anyone. AND it's very hard to keep those sites runnig. If we have to remove a Site...maybe.
 
 Q: Is there a develop version of Adulthideout on github?<br />
-A: No, not really. But i upload my beta test Version always to http://ah.net76.net/addons/ with fixes before releasing Adulthideout.
+A: No, not really. But i upload my beta test Version always to https://a-hideout.000webhostapp.com/addons/ with fixes before releasing Adulthideout.
 
     
 # Installation for Kodi 16
