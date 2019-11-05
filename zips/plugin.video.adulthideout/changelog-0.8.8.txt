@@ -1,3 +1,6 @@
+v  0.8.8 2018-11-05
+- Dirty Fix most of it (not much time)
+
 v  0.8.7 2018-05-18
 - Really quick and rough update
 - removed some of not working sites, will work on it later

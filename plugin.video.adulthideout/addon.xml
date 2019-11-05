@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.8.7" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.8.8" provider-name="Vashiel">
     <requires>
     </requires>
     <extension point="xbmc.python.pluginsource"
@@ -8,9 +8,8 @@
     </extension>
     <extension point="xbmc.addon.metadata">
         <news>
-v  0.8.7 2018-05-18
-- Really quick and rough update
-- removed some of not working sites, will work on it later
+v  0.8.8 2018-11-05
+- Dirty Fix most of it (not much time)
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>
