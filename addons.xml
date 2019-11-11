@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.8.8" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.8.9" provider-name="Vashiel">
     <requires>
     </requires>
     <extension point="xbmc.python.pluginsource"
@@ -9,8 +9,16 @@
     </extension>
     <extension point="xbmc.addon.metadata">
         <news>
-v  0.8.8 2018-11-05
-- Dirty Fix most of it (not much time)
+v  0.8.9 2019-11-11
+- fixed ashemaletube / Tags, Models
+- fixed efukt / Next button
+- fixed empflix
+- fixed hentaigasm / Genres
+- fixed heavy-r / Genres, Next button
+- fixed Javwhores / Search
+- fixed porn.com / Next button
+- fixed redtube / Next button
+- fixed xhamster /Next button
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>
