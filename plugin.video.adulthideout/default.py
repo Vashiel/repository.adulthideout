@@ -145,7 +145,7 @@ def main():
 	add_dir('Uflash.TV [COLOR yellow] Videos[/COLOR]', uflash + '/videos?o=mr&type=public', 2, logos + 'uflash.png', fanart)
 	#(removing Upornia for now, until i find a solution for it)
 	#add_dir('Upornia [COLOR yellow] Videos[/COLOR]', upornia + '/latest-updates/', 2, logos + 'upornia.png', fanart)
-	#add_dir('ViKiPorn [COLOR yellow] Videos[/COLOR]', vikiporn + '/latest-updates/', 2, logos + 'vikiporn.png', fanart)
+	add_dir('ViKiPorn [COLOR yellow] Videos[/COLOR]', vikiporn + '/latest-updates/', 2, logos + 'vikiporn.png', fanart)
 	add_dir('xHamster [COLOR yellow] Videos[/COLOR]', xhamster + '/new/1.html', 2, logos + 'xhamster.png', fanart)
 	add_dir('Xvideos [COLOR yellow] Videos[/COLOR]', xvideos + '/new/1/' , 2, logos + 'xvideos.png', fanart)
 	add_dir('YesPornPlease [COLOR yellow] Videos[/COLOR]', yespornplease + '/?s=date', 2, logos + 'yespornplease.png', fanart)
@@ -770,8 +770,8 @@ def start(url):
 		add_dir('[COLOR magenta]Female Exhibitionist Videos[/COLOR]', uflash + '/videos?g=female&o=mr',  2, logos + 'uflash.png', fanart)
 		add_dir('[COLOR magenta]Male Exhibitionist Videos[/COLOR]', uflash + '/videos?g=male&o=mr',  2, logos + 'uflash.png', fanart)
 		add_dir('[COLOR magenta]Recently Viewed - Exhibitionist Videos[/COLOR]', uflash + '/videos?o=bw',  2, logos + 'uflash.png', fanart)
-		match = re.compile('<a href="/video/(.+?)/.+?title="(.+?)">.+?<img src="(.+?)".+?<span class="duration">([^<]+)</span>', re.DOTALL).findall(content)
-		for url, name, thumb, duration in match:
+		match = re.compile('<a href="/video/(.+?)/.+?<img src="(.+?)" alt="(.+?)".+?<span class="duration">.+?([:\d]+).+?</span>', re.DOTALL).findall(content)
+		for url, thumb, name, duration in match:
 			add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', 'http://www.uflash.tv/media/player/config.v89x.php?vkey=' + url,  4, 'http://www.uflash.tv/' + thumb, fanart)
 		try:
 			next_page = uflash_nextpage(current_url, content)
@@ -799,7 +799,7 @@ def start(url):
 		content = make_request(url)
 		add_dir('[COLOR lightgreen]vikiporn.com	 [COLOR red]Search[/COLOR]', vikiporn, 1, logos + 'vikiporn.png', fanart)
 		add_dir('[COLOR lime]Categories[/COLOR]', vikiporn + '/categories/', 16, logos + 'vikiporn.png', fanart)
-		match = re.compile('<a href="([^"]*)".+?data-original="([^"]*)" alt="(.+?)">', re.DOTALL).findall(content)
+		match = re.compile('itemscope itemtype=".+?">.+?<a href="([^"]*)".+?data-original="([^"]*)" alt="(.+?)">', re.DOTALL).findall(content)
 		#.+?<span itemprop="duration" class="length">([:\d]+)</span>
 		for url, thumb, name in match:
 			add_link(name, url,  4, thumb, fanart)
@@ -1070,10 +1070,9 @@ def redtube_channels_list(url):
 def vikiporn_categories(url):
 	home()
 	content = make_request(url)
-	match = re.compile('href="(.+?)">(.+?)<span>(\(\d+\))<').findall(content)[42:]
-	for url, name, inum in match:
-		inum = inum.replace(')', ' videos)')
-		add_dir(name + '[COLOR lime] ' + inum + '[/COLOR]', url,  2, logos + 'vikiporn.png', fanart)
+	match = re.compile('<a href="([^"]+)" title="([^"]+)">.+?<img src="([^"]+)"', re.DOTALL).findall(content)
+	for url, name, thumb in match:
+		add_dir(name, url,  2, thumb, fanart)
 
 def xhamster_categories(url):
 	home()
