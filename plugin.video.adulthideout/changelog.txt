@@ -1,12 +1,3 @@
-v  0.9.1 2019-12-28
-- Code cleanup
-- Fix View setting on Estuary/Estouchy
-- Removed Porn.com (Dead)
-
-v  0.9.0 2019-11-20
-- fixed uflash
-- readded Vikiporn
-
 v  0.8.9 2019-11-11
 - fixed ashemaletube / Tags, Models
 - fixed efukt / Next button
