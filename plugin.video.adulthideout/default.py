@@ -49,10 +49,10 @@ ashemaletube = 'https://www.ashemaletube.com'
 youporn = 'http://www.youporn.com'
 heavyr = 'http://www.heavy-r.com'
 empflix = 'http://www.empflix.com'
-fantasti = 'https://fantasti.cc'
+fantasti = 'http://fantasti.cc'
 yespornplease = 'http://yespornplease.com'
 uflash = 'http://www.uflash.tv'
-javwhores = 'https://www.javwhores.com'
+javbangers = 'https://www.javbangers.com'
 luxuretv = 'http://en.luxuretv.com'
 
 def menulist():
@@ -100,10 +100,10 @@ def main():
 	add_dir('A Shemale Tube [COLOR yellow] Videos[/COLOR]', ashemaletube + '/videos/newest/' , 2, logos + 'ashemaletube.png', fanart)
 	add_dir('Efukt [COLOR yellow] Videos[/COLOR]', efukt, 2, logos + 'efukt.png', fanart)
 	add_dir('Empflix [COLOR yellow] Videos[/COLOR]', empflix + '/new/' , 2, logos + 'empflix.png', fanart)
-	add_dir('Fantasti.cc [COLOR yellow] Videos[/COLOR]', fantasti + '/videos/upcoming/', 2, logos + 'fantasti.png', fanart)
+	#add_dir('Fantasti.cc [COLOR yellow] Videos[/COLOR]', fantasti + '/videos/upcoming/', 2, logos + 'fantasti.png', fanart)
 	add_dir('Hentaigasm [COLOR yellow] Videos[/COLOR]', hentaigasm, 2, logos + 'hentaigasm.png', fanart)
 	add_dir('Heavy-R [COLOR yellow] Videos[/COLOR]', heavyr + '/videos/recent/' , 2, logos + 'heavyr.png', fanart)
-	add_dir('Javwhores [COLOR yellow] Videos[/COLOR]', javwhores + '/latest-updates/', 2, logos + 'javwhores.png', fanart)
+	add_dir('javbangers [COLOR yellow] Videos[/COLOR]', javbangers + '/latest-updates/', 2, logos + 'javbangers.png', fanart)
 	#add_dir('LubeTube [COLOR yellow] Videos[/COLOR]', lubetube + '/view/basic/mostrecent/', 2, logos + 'lubetube.png', fanart)
 	add_dir('LuxureTV [COLOR yellow] Videos[/COLOR]', luxuretv + '/page1.html', 2, logos + 'luxuretv.png', fanart)
 	add_dir('Motherless [COLOR yellow] Videos[/COLOR]', motherless + '/videos/recent?page=1', 2, logos + 'motherless.png', fanart)
@@ -154,10 +154,10 @@ def search():
 				start(url)
 		elif 'fantasti' in name:
 			if 'collections' in name:
-				url = 'https://fantasti.cc/search/' + searchText + '/collections/trending/'
+				url = 'http://fantasti.cc/search/' + searchText + '/collections/trending/'
 				fantasti_collections(url)
 			else:
-				url = 'https://fantasti.cc/search/' + searchText + '/tube/popular/'
+				url = 'http://fantasti.cc/search/' + searchText + '/tube/popular/'
 				start(url)
 		elif 'pornhub' in name:
 			url = pornhub + '/video/search?search=' + searchText
@@ -196,8 +196,8 @@ def search():
 			url = uflash + '/search?search_type=videos&search_query=' + searchText
 			xbmc.log("Search url uflash: %s" % url, xbmc.LOGERROR)
 			start(url)
-		elif 'javwhores.com' in name:
-			url = 'https://www.javwhores.com/search/' + searchText + '/'
+		elif 'javbangers.com' in name:
+			url = 'https://www.javbangers.com/search/' + searchText + '/'
 			start(url)
 		elif 'luxuretv' in name:
 			url = luxuretv + '/search/videos/' + searchText + '/'
@@ -275,16 +275,24 @@ def start(url):
 					for url in match:
 						add_link(name, url, 4, thumb, fanart)
 			if '/search/' in url:
-				match = re.compile('<div class="searchVideo">.+?<a class="yesPopunder" href="/watch/(.+?)/(.+?)/" >.+?<img src="(.+?)"', re.DOTALL).findall(content)
+				match = re.compile('<div class="searchVideo">.+?<a href="/watch/(.+?)/(.+?)/" >.+?<img src="(.+?)"', re.DOTALL).findall(content)
 				for url, name, thumb in match:
 					url = fantasti + '/watch/' + '/' + url + '/'+ '/' +  name + '/'
 					name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '\'').replace('-', ' ')
 					add_link(name, url, 4, thumb, fanart)
-			else:
-				match = re.compile('href="([^"]+)"><img src="([^"]+)" alt="([^"]+)"', re.DOTALL).findall(content)
-				for url, thumb, name in match:
+			if '/category/' in url:
+				match = re.compile('<span class="v_lenght">(.+?)</span>.+?<a href="/watch/([^"]+)".+?<img alt="([^"]+)"   src="([^"]+)" ', re.DOTALL).findall(content)
+				for duration, url, name, thumb in match:
 					name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '\'').replace('  ', '')
-					add_link(name, fantasti + url, 4, thumb, fanart)
+					url = fantasti + '/watch/' + url
+					add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', url, 4, thumb, fanart)
+			else:
+				match = re.compile('<a href="([^"]+)"><img src="([^"]+)" alt="([^"]+)".+? <span style="font-size:11px;">\s*(.+?). Uploaded:', re.DOTALL).findall(content)
+				for url, thumb, name, duration in match:
+					name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '\'').replace('  ', '')
+					url = fantasti + url
+					add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', url, 4, thumb, fanart)
+
 		except:
 			pass
 		try:
@@ -323,10 +331,10 @@ def start(url):
 		except:
 			pass
 
-	elif 'javwhores' in url:
+	elif 'javbangers' in url:
 		content = make_request(url)
-		add_dir('[COLOR lightgreen] javwhores.com	 [COLOR red]Search[/COLOR]', javwhores, 1, logos + 'javwhores.png', fanart)
-		add_dir('[COLOR lime]Categories[/COLOR]', javwhores + '/categories/', 64, logos + 'javwhores.png', fanart)
+		add_dir('[COLOR lightgreen] javbangers.com	 [COLOR red]Search[/COLOR]', javbangers, 1, logos + 'javbangers.png', fanart)
+		add_dir('[COLOR lime]Categories[/COLOR]', javbangers + '/categories/', 64, logos + 'javbangers.png', fanart)
 		match = re.compile('<div class="video-item   ">.+?<a href="(.+?)" title="(.+?)".+?data-original="(.+?)".+?<i class="fa fa-clock-o"></i> ([\d:]+)</div>', re.DOTALL).findall(content)
 		for url, name, thumb, duration in match:
 			add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', url, 4, thumb, fanart)
@@ -334,12 +342,12 @@ def start(url):
 			match = re.compile('<h1>			Videos for: (.+?)		</h1>.+?data-action="ajax" data-container-id="list_videos_videos_list_search_result_pagination" data-block-id="list_videos_videos_list_search_result" data-parameters=".+?">([^"]+)</a></li>', re.DOTALL).findall(content)
 			for url, name in match:
 				url = url.replace(', Page .+?','')	
-				add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', 'https://www.javwhores.com/search/' + url + '/?mode=async&function=get_block&block_id=list_videos_videos_list_search_result&category_ids=&sort_by=&from_videos=' + name, 2, logos + 'javwhores.png', fanart)
+				add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', 'https://www.javbangers.com/search/' + url + '/?mode=async&function=get_block&block_id=list_videos_videos_list_search_result&category_ids=&sort_by=&from_videos=' + name, 2, logos + 'javbangers.png', fanart)
 			match = re.compile('<li class="next"><a href="([^"]*)" data-action="ajax"').findall(content)
-			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', javwhores + match[0].replace('&amp;','&'), 2, logos + 'javwhores.png', fanart)
+			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', javbangers + match[0].replace('&amp;','&'), 2, logos + 'javbangers.png', fanart)
 		except:
 			match = re.compile('<li class="next"><a href="([^"]*)" data-action="ajax"').findall(content)
-			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', javwhores + match[0].replace('&amp;','&'), 2, logos + 'javwhores.png', fanart)
+			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', javbangers + match[0].replace('&amp;','&'), 2, logos + 'javbangers.png', fanart)
 
 	elif 'lubetube' in url:
 		content = make_request(url)
@@ -488,6 +496,7 @@ def start(url):
 		add_dir('[COLOR lightgreen]vikiporn.com	 [COLOR red]Search[/COLOR]', vikiporn, 1, logos + 'vikiporn.png', fanart)
 		add_dir('[COLOR lime]Categories[/COLOR]', vikiporn + '/categories/', 16, logos + 'vikiporn.png', fanart)
 		match = re.compile('itemscope itemtype=".+?">.+?<a href="([^"]*)".+?data-original="([^"]*)" alt="(.+?)">', re.DOTALL).findall(content)
+		#.+?<span itemprop="duration" class="length">([:\d]+)</span>
 		for url, thumb, name in match:
 			add_link(name, url,  4, thumb, fanart)
 		match = re.compile('<a href="([^"]*)">NEXT</a>').findall(content)
@@ -861,10 +870,10 @@ def fantasti_collections(url):
 	content = make_request(url)
 	add_dir('[COLOR lightgreen]fantasti.cc  collections   [COLOR red]Search[/COLOR]', fantasti, 1, logos + 'fantasti.png', fanart)
 	add_dir('[COLOR lime]Sorting [/COLOR]', fantasti + '/videos/collections/popular/today/',  49, logos + 'fantasti.png', fanart)
-	match = re.compile('<a class="clnk" href="([^"]+)">([^"]+)</a>.+?https:(.+?).jpg', re.DOTALL).findall(content)
-	for url, name, thumb in match:
+	match = re.compile('<a class="clnk" href="([^"]+)">([^"]+)</a>.+?http://(.+?).jpg.+?<span class="videosListNumber"><b>(.+?)</b> <br>videos', re.DOTALL).findall(content)
+	for url, name, thumb, duration in match:
 		name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '\'')
-		add_dir(name, fantasti + url + '#collectionSubmittedVideos',  2, 'https:' + thumb + '.jpg', fanart)
+		add_dir(name + ' [COLOR lime]('+ duration + ')[/COLOR]', fantasti + url + '#collectionSubmittedVideos',  2, 'http://' + thumb + '.jpg', fanart)
 	try:
 		match = re.compile('<a href="(.+?)">next &gt;&gt;</a>').findall(content)
 		add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', fantasti + match[0], 48, logos + 'fantasti.png', fanart)
@@ -884,19 +893,6 @@ def fatasti_sorting(url) :
 		for url, name in match:
 			add_dir('Popular Videos ' + name, fantasti + '/videos/popular/' + url,  2, logos + 'fantasti.png', fanart)
 
-def fantasti_categories(url):
-	home()
-	setView('Movies', 'DEFAULT')
-	add_dir('[COLOR lightgreen]fantasti.cc	 [COLOR red]Search[/COLOR]', fantasti, 1, logos + 'fantasti.png', fanart)
-	add_dir('[COLOR lime]Collection[/COLOR]', fantasti + '/videos/collections/popular/31days/', 48, logos + 'fantasti.png', fanart)
-	add_dir('[COLOR lime]Category [/COLOR]', fantasti + '/category/',  18, logos + 'fantasti.png', fanart)
-	add_dir('[COLOR lime]Sorting [/COLOR]', fantasti + '/videos/popular/today/',  49, logos + 'fantasti.png', fanart)
-	content = make_request(url)
-	match = re.compile('<a class="yesPopunder" href="/category/(.+?)/">.+?<div.+?class="thumb catThumb".+?data-src="(.+?)"', re.DOTALL).findall(content)
-	for url, thumb in match:
-		name = url
-		add_dir(name, fantasti + '/search/' + url + '/tube/date/' , 2, thumb, fanart)
-
 def yespornplease_categories(url):
 	home()
 	setView('Movies', 'DEFAULT')
@@ -913,13 +909,26 @@ def uflash_categories(url):
 	for url, name in match:
 		add_dir(name, uflash + url,  2, logos + 'uflash.png', fanart)
 
-def javwhores_categories(url):
+def fantasti_categories(url):
+	home()
+	setView('Movies', 'DEFAULT')
+	add_dir('[COLOR lightgreen]fantasti.cc	 [COLOR red]Search[/COLOR]', fantasti, 1, logos + 'fantasti.png', fanart)
+	add_dir('[COLOR lime]Collection[/COLOR]', fantasti + '/videos/collections/popular/31days/', 48, logos + 'fantasti.png', fanart)
+	add_dir('[COLOR lime]Category [/COLOR]', fantasti + '/category/',  18, logos + 'fantasti.png', fanart)
+	add_dir('[COLOR lime]Sorting [/COLOR]', fantasti + '/videos/popular/today/',  49, logos + 'fantasti.png', fanart)
+	content = make_request(url)
+	match = re.compile('<div class="content-block content-block-category grid">.+?<a href="/category/(.+?)/".+?http://([^"]*).jpg', re.DOTALL).findall(content)
+	for url, thumb in match:
+		name = url
+		add_dir(name, fantasti + '/category/' + url + '/videos/' ,  2, 'http://' + thumb + '.jpg', fanart)
+
+def javbangers_categories(url):
 	home()
 	setView('Movies', 'DEFAULT')
 	content = make_request(url)
 	match = re.compile('<a class="item" href="(.+?)" title="(.+?)">.+?<img class="thumb" src="(.+?)"', re.DOTALL).findall(content)
 	for url, name, thumb in match:
-		add_dir(name, url,  2, javwhores + thumb, fanart)
+		add_dir(name, url,  2, javbangers + thumb, fanart)
 
 def luxuretv_categories(url):
 	home()
@@ -949,7 +958,9 @@ def resolve_url(url):
 		else:
 			media_url = urllib.unquote(re.compile("flv_url=(.+?)&amp").findall(content)[-1])
 	elif 'motherless' in url:		
-		media_url = re.compile('__fileurl = \'(.+?)\';').findall(content)[0]	
+		media_url = re.compile('__fileurl = \'(.+?)\';').findall(content)[0]
+	elif 'efukt' in url:	
+		media_url = re.compile('<source src="(.+?)" type="video/mp4">').findall(content)[0]		
 	elif 'tube8' in url:
 		media_url = re.compile('videoUrlJS = "(.+?)"').findall(content)[0]
 	elif 'redtube' in url:
@@ -957,8 +968,8 @@ def resolve_url(url):
 		media_url = media_url.replace('\\','')
 	elif 'vikiporn.com' in url:
 		media_url = re.compile("video_url: '(.+?)',").findall(content)[0]
-	elif 'xh' in url:
-		media_url = re.compile('"sources":{"mp4":{".+?":"(.+?)",').findall(content)[0]
+	elif 'xhamster' in url:
+		media_url = re.compile('p":"(.+?)",').findall(content)[0]
 		media_url = media_url.replace('\\','')
 	elif 'lubetube' in url:
 		media_url = re.compile('id="video-.+?" href="(.+?)"').findall(content)[0]
@@ -996,8 +1007,8 @@ def resolve_url(url):
 		media_url = re.compile('<meta itemprop="contentUrl" content="(.+?)" />').findall(content)[0]
 	elif 'yespornplease' in url:
 		media_url = re.compile('<source src="(.+?)"').findall(content)[0]
-	elif 'fantasti' in url:
-		url = re.compile('<div class="video-wrap" data-origin-source="(.+?)">').findall(content)[0]
+	elif 'fantasti.cc' in url:
+		url = re.compile('<div class="video-wrap" data-origin-source="([^"]+)">').findall(content)[0]
 		return resolve_url(url)
 	elif 'uflash' in url:
 		try:
@@ -1238,7 +1249,7 @@ elif mode == 62:
 	motherless_groups_cat(url)
 
 elif mode == 64:
-	javwhores_categories(url)
+	javbangers_categories(url)
 
 elif mode == 68:
 	luxuretv_categories(url)
