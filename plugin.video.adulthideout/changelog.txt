@@ -1,3 +1,10 @@
+v 0.9.4 2020-02-11
+- fix Vikiporn.com
+- fix PornXS
+- fix Fanatasti.cc
+- fix Redtube.com
+- Various cleanups and minor fixes
+
 v 0.9.3 2020-02-04
 - fix Javtasty (Now Javbagers)
 - fix Efukt (my fault. sorry)
