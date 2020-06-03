@@ -1,3 +1,13 @@
+v 0.9.5 2020-06-03
+- added porn300.com
+- added tubedupe.com
+- added porngo.com
+- removed yespornplease.com
+- fixed ashemaletube.com categories
+- fixed motherless.com
+- fixed heavy-r.com
+- fixed javbangers.com 
+
 v 0.9.4 2020-02-11
 - fix Vikiporn.com
 - fix PornXS
