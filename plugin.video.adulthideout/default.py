@@ -197,6 +197,7 @@ def start(url):
 		add_dir('[COLOR lightgreen]ashemaletube.com	 [COLOR red]Search[/COLOR]', ashemaletube, 1, logos + 'ashemaletube.png', fanart)
 		add_dir('[COLOR lime]Categories[/COLOR]', 'https://m.ashemaletube.com/tags/', 30, logos + 'ashemaletube.png', fanart)
 		add_dir('[COLOR lime]Models[/COLOR]', ashemaletube + '/models/', 55, logos + 'ashemaletube.png', fanart)
+		add_dir('[COLOR lime]Sorting[/COLOR]', ashemaletube, 31, logos + 'ashemaletube.png', fanart)
 		content = make_request(url)
 		if 'model' in url:
 			match = re.compile('<span class="thumb-inner-wrapper">.+?<a href="([^"]*)" >.+?<img src="([^"]*)" alt="([^"]*)"', re.DOTALL).findall(content)
@@ -211,7 +212,7 @@ def start(url):
 				else:
 					add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', ashemaletube + url, 4, thumb, fanart)
 		try:
-			match = re.compile('<link rel="next" href="([^"]*)"').findall(content)
+			match = re.compile('<a class="rightKey" href="(.+?)">Next</a>').findall(content)
 			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', ashemaletube + match[0], 2, logos + 'ashemaletube.png', fanart)
 		except:
 			match = re.compile('<a class="pageitem rightKey" href="(.+?)" title="Next">Next</a>').findall(content)
@@ -677,6 +678,15 @@ def ashemaletube_pornstars(url) :
 	except:
 		pass
 
+def ashemaletube_sorting(url) :
+	home()
+	setView('Movies', 'DEFAULT')
+	content = make_request(url)
+	add_dir('[COLOR lime]Date Added[/COLOR]', ashemaletube + '/videos/newest/?s=', 2, logos + 'ashemaletube.png', fanart)
+	add_dir('[COLOR lime]Most Popular[/COLOR]', ashemaletube + '/videos/most-popular/today/?s=', 2, logos + 'ashemaletube.png', fanart)
+	add_dir('[COLOR lime]Top Rated[/COLOR]', ashemaletube + '/videos/top-rated/?s=', 2, logos + 'ashemaletube.png', fanart)
+	add_dir('[COLOR lime]Longest[/COLOR]', ashemaletube + '/videos/longest/?s=', 2, logos + 'ashemaletube.png', fanart)
+
 def heavyr_categories(url) :
 	home()
 	setView('Movies', 'DEFAULT')
@@ -1065,6 +1075,8 @@ elif mode == 29:
 	hentaigasm_categories(url)
 elif mode == 30:
 	ashemaletube_categories(url)
+elif mode == 31:
+	ashemaletube_sorting(url)    
 elif mode == 32:
 	xvideos_pornstars(url)
 elif mode == 33:

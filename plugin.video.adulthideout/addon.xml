@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.9.5" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.9.6" provider-name="Vashiel">
     <requires>
     </requires>
     <extension point="xbmc.python.pluginsource"
@@ -8,15 +8,9 @@
     </extension>
     <extension point="xbmc.addon.metadata">
         <news>
-v 0.9.5 2020-06-03
-- added porn300.com
-- added tubedupe.com
-- added porngo.com
-- removed yespornplease.com
-- fixed ashemaletube.com categories
-- fixed motherless.com
-- fixed heavy-r.com
-- fixed javbangers.com 
+v 0.9.6 2020-07-01
+- Fix ashemaletube.com
+- added sorting ashemaletube.com
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>

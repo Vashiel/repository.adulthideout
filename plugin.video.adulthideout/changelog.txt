@@ -1,3 +1,7 @@
+v 0.9.6 2020-07-01
+- Fix ashemaletube.com
+- added sorting ashemaletube.com
+
 v 0.9.5 2020-06-03
 - added porn300.com
 - added tubedupe.com
