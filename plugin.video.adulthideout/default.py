@@ -52,6 +52,7 @@ javbangers = 'https://www.javbangers.com'
 luxuretv = 'http://en.luxuretv.com'
 porn300 = 'https://www.porn300.com'
 tubedupe = 'https://www.tubedupe.com'
+searchText = ''
 
 def menulist():
 	try:
@@ -117,6 +118,7 @@ def main():
 def search():
 	try:
 		keyb = xbmc.Keyboard('', '[COLOR yellow]Enter search text[/COLOR]')
+		keyb.setDefault(searchText)
 		keyb.doModal()
 		if (keyb.isConfirmed()):
 			searchText = urllib.quote_plus(keyb.getText())
