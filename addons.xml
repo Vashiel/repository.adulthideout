@@ -1,20 +1,23 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.9.6" provider-name="Vashiel">
-    <requires>
-    </requires>
-    <extension point="xbmc.python.pluginsource"
-               library="default.py">
-        <provides>video</provides>
-    </extension>
-    <extension point="xbmc.addon.metadata">
-        <news>
-v 0.9.6 2020-07-01
-- Fix ashemaletube.com
-- added sorting ashemaletube.com
-        </news>
-        <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
-        <description>
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.9.7" provider-name="Vashiel">
+	<requires>
+	<!-- Commenting xbmc.python allows install on all versions of Kodi -->
+	<!-- <import addon="xbmc.python" version="2.14.0"/> -->
+	<import addon="script.module.six"/>
+	<import addon="script.module.kodi-six"/>
+	</requires>
+	<extension	point="xbmc.python.pluginsource"
+				library="default.py">
+				<provides>video</provides>
+	</extension>
+	<extension point="xbmc.addon.metadata">
+		<news>
+v 0.9.7 2021-03-05
+- Kodi Matrix Ready
+		</news>
+		<summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
+		<description>
 Internet [COLOR red]XXX Porn Video[COLOR white] Streams.
 
 [COLOR red][B]WARNING:[/B][COLOR red]Only for adults[/COLOR]
@@ -35,10 +38,14 @@ adulthideout@yandex.com[/COLOR]
 		<email></email>
 		<mainsource>https://github.com/Vashiel/repository.adulthideout</mainsource>
 		<source></source>
-    </extension>
+		<assets>
+			<icon>resources/icon.png</icon>
+			<fanart>resources/fanart.jpg</fanart>
+		</assets>
+	</extension>
 </addon>
 
-<addon id="repository.adulthideout" name="AdultHideout REPO" version="1.0.1" provider-name="Vashiel">
+<addon id="repository.adulthideout" name="AdultHideout REPO" version="1.0.2" provider-name="Vashiel">
 	<extension point="xbmc.addon.repository" name="AdultHideout Addon Repository">
 		<info compressed="false">https://github.com/Vashiel/repository.adulthideout/raw/master/addons.xml</info>
 		<checksum>https://github.com/Vashiel/repository.adulthideout/raw/master/addons.xml.md5</checksum>
@@ -48,6 +55,10 @@ adulthideout@yandex.com[/COLOR]
 		<summary>AdultHideout Addon Repository</summary>
 		<description>First Try for a Adult Kodi Addon</description>
 		<platform>all</platform>
+		<assets>
+			<icon>resources/icon.png</icon>
+			<fanart>resources/fanart.jpg</fanart>
+		</assets>
 	</extension>
 </addon>
 </addons>

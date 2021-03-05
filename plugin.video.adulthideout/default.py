@@ -15,19 +15,38 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>
 '''
-import urllib, urllib2, re, os, sys, urlparse
-import xbmc, xbmcplugin, xbmcgui, xbmcaddon
-import httplib
+import six
+import urllib, re, os, sys
 import settings
+import urllib.request
+from six.moves import urllib_request, urllib_parse, http_cookiejar
+from kodi_six import xbmcvfs, xbmcaddon, xbmcplugin, xbmcgui
 
-mysettings = xbmcaddon.Addon(id='plugin.video.adulthideout')
-profile = mysettings.getAddonInfo('profile')
-home = mysettings.getAddonInfo('path')
-fanart = xbmc.translatePath(os.path.join(home, 'fanart.jpg'))
-icon = xbmc.translatePath(os.path.join(home, 'icon.png'))
-logos = xbmc.translatePath(os.path.join(home, 'logos\\'))  # subfolder for logos
-homemenu = xbmc.translatePath(os.path.join(home, 'resources', 'playlists'))
-addon = settings.addon()
+# python 2 and 3 compatibility defs
+INFO = xbmc.LOGINFO if six.PY3 else xbmc.LOGNOTICE
+TRANSLATEPATH = xbmcvfs.translatePath if six.PY3 else xbmc.translatePath
+
+
+addon = xbmcaddon.Addon(id='plugin.video.adulthideout')
+home = addon.getAddonInfo('path')
+if home[-1] == ';':
+    home = home[0:-1]
+home = TRANSLATEPATH(home)
+profile = addon.getAddonInfo('profile')
+profile = TRANSLATEPATH(profile)
+cacheDir = os.path.join(home, 'cache')
+cookiePath = os.path.join(home, 'cookies.lwp')
+
+fanart = os.path.join(home, 'resources/fanart.jpg')
+icon = os.path.join(home, 'resources/icon.png')
+logos = os.path.join(home, 'resources/logos\\')  # subfolder for logos
+homemenu = os.path.join(home, 'resources', 'playlists')
+
+#addon = settings.addon()
+cookiejar = http_cookiejar.LWPCookieJar()
+cookie_handler = urllib_request.HTTPCookieProcessor(cookiejar)
+urllib_request.build_opener(cookie_handler)
+
 
 #Ideally, one day this should be moved to a settings page to make it configurable
 maxRetryAttempts = 3
@@ -69,23 +88,23 @@ def menulist():
 #def make_request(url, attempt):
 def make_request(url):
 	try:
-		req = urllib2.Request(url)
+		req = urllib.request.Request(url)
 		req.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11')
-		response = urllib2.urlopen(req, timeout = 60)
-		link = response.read()
+		response = urllib.request.urlopen(req, timeout = 60)
+		link = response.read().decode('utf-8')
 		response.close()
 		return link
 	#except httplib.IncompleteRead, e:
 	#	if attempt < maxRetryAttempts:
 	#		xbmc.log("Attempt {0}/{1} to load url {2}".format(attempt + 1, maxAttempts, url))
 	#		return make_request_ext(url, attempt + 1)
-	except urllib2.URLError, e:
-		print 'We failed to open "%s".' % url
+	except urllib.error.URLError as e:
+		print('We failed to open "%s".' % url)
 		if hasattr(e, 'code'):
-			print 'We failed with error code - %s.' % e.code
+			print('We failed with error code - %s.' % e.code)
 		elif hasattr(e, 'reason'):
-			print 'We failed to reach a server.'
-			print 'Reason: ', e.reason
+			print('We failed to reach a server.')
+			print('Reason: ', e.reason)
 
 def home():
 	add_dir('...[COLOR yellow]  Home  [/COLOR]...', '', None, icon, fanart)
@@ -95,13 +114,13 @@ def main():
 	add_dir('A Shemale Tube [COLOR yellow] Videos[/COLOR]', ashemaletube + '/videos/newest/' , 2, logos + 'ashemaletube.png', fanart)
 	add_dir('Efukt [COLOR yellow] Videos[/COLOR]', efukt, 2, logos + 'efukt.png', fanart)
 	add_dir('Empflix [COLOR yellow] Videos[/COLOR]', empflix + '/new/' , 2, logos + 'empflix.png', fanart)
-	add_dir('Fantasti.cc [COLOR yellow] Videos[/COLOR]', fantasti + '/videos/upcoming/', 2, logos + 'fantasti.png', fanart)
+	add_dir('Fantasti.cc [COLOR yellow] Videos[/COLOR]', fantasti + '/ajax/widgets/widget.php?media=videos&filters=upload_improved&sort=latest&pro=null&filter=0&q=&limit=500&page=1&tpl=user/videos_search_users.tpl&cache=5&pager=true&div=featured_videos&clear=true', 2, logos + 'fantasti.png', fanart)
 	add_dir('Hentaigasm [COLOR yellow] Videos[/COLOR]', hentaigasm, 2, logos + 'hentaigasm.png', fanart)
 	add_dir('Heavy-R [COLOR yellow] Videos[/COLOR]', heavyr + '/videos/recent/' , 2, logos + 'heavyr.png', fanart)
 	add_dir('Javbangers [COLOR yellow] Videos[/COLOR]', javbangers + '/latest-updates/', 2, logos + 'javbangers.png', fanart)
 	add_dir('LuxureTV [COLOR yellow] Videos[/COLOR]', luxuretv + '/page1.html', 2, logos + 'luxuretv.png', fanart)
 	add_dir('Motherless [COLOR yellow] Videos[/COLOR]', motherless + '/videos/recent?page=1', 2, logos + 'motherless.png', fanart)
-	add_dir('Porn300 [COLOR yellow] Videos[/COLOR]', porn300 + '/videos' , 2, logos + 'porn300.png', fanart)	
+	add_dir('Porn300 [COLOR yellow] Videos[/COLOR]', porn300 , 2, logos + 'porn300.png', fanart)	
 	add_dir('PornXS [COLOR yellow] Videos[/COLOR]', pornxs + '/?o=t', 39, logos + 'pornxs.png', fanart)
 	add_dir('RedTube [COLOR yellow] Videos[/COLOR]', redtube + '/newest', 2, logos + 'redtube.png', fanart)
 	add_dir('Tubedupe [COLOR yellow] Videos[/COLOR]', tubedupe + '/latest-updates/', 2, logos + 'tubedupe.png', fanart)
@@ -119,7 +138,7 @@ def search():
 		keyb = xbmc.Keyboard('', '[COLOR yellow]Enter search text[/COLOR]')
 		keyb.doModal()
 		if (keyb.isConfirmed()):
-			searchText = urllib.quote_plus(keyb.getText())
+			searchText = urllib.parse.quote_plus(keyb.getText())
 		if 'ashemaletube' in name:
 			url = ashemaletube + '/search/' + searchText + '/page1.html'
 			start(url)
@@ -143,12 +162,7 @@ def search():
 				url = motherless + '/term/videos/' + searchText
 				start(url)
 		elif 'fantasti' in name:
-			if 'collections' in name:
-				url = 'https://fantasti.cc/search/' + searchText + '/collections/trending/'
-				fantasti_collections(url)
-			else:
-				url = 'https://fantasti.cc/search/' + searchText + '/tube/popular/'
-				start(url)
+			url = 'https://fantasti.cc/ajax/widgets/widget.php?media=videos&filters=upload_improved&sort=latest&pro=null&filter=3&q=' + searchText + '&limit=24&page=1&tpl=user/videos_search_users.tpl&cache=5&pager=true&div=featured_videos&clear=true&'
 			start(url)
 		elif 'pornxs' in name:
 			url = 'http://pornxs.com/search.php?s=' + searchText
@@ -251,33 +265,19 @@ def start(url):
 		add_dir('[COLOR lime]Collection[/COLOR]', fantasti + '/videos/collections/popular/31days/', 48, logos + 'fantasti.png', fanart)
 		add_dir('[COLOR lime]Category [/COLOR]', fantasti + '/category/',  18, logos + 'fantasti.png', fanart)
 		add_dir('[COLOR lime]Sorting [/COLOR]', fantasti + '/videos/popular/today/',  49, logos + 'fantasti.png', fanart)
+		add_dir('[COLOR lime]Change Content[/COLOR]', fantasti, 50, logos + 'fantasti.png', fanart)
 		try:
-			if '#collectionSubmittedVideos' in url:
-				match = re.compile('data-vertical-gallery-src="([^"]+)">.+?alt="([^"]+)" src="([^"]+)">', re.DOTALL).findall(content)
-				for url, name, thumb in match:
-					url = fantasti + url
-					content2 = make_request(url)
-					match = re.compile('<link rel="canonical" href="([^"]*)" />', re.DOTALL).findall(content2)
-					for url in match:
-						add_link(name, url, 4, thumb, fanart)
-			if '/search/' in url:
-				match = re.compile('<div class="searchVideo">.+?<a class="yesPopunder" href="/watch/(.+?)/(.+?)/" >.+?<img src="(.+?)"', re.DOTALL).findall(content)
-				for url, name, thumb in match:
-					url = fantasti + '/watch/' + '/' + url + '/'+ '/' +  name + '/'
-					name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '\'').replace('-', ' ')
-					add_link(name, url, 4, thumb, fanart)
-			else:
-				match = re.compile('href="([^"]+)"><img src="([^"]+)" alt="([^"]+)"', re.DOTALL).findall(content)
-				for url, thumb, name in match:
-					name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '\'').replace('  ', '')
-					add_link(name, fantasti + url, 4, thumb, fanart)
+			match = re.compile('<a class=".+?" href="([^"]*)".+?src="([^"]*)".+?alt="A video by .+?: (.+?)uploaded.+?"', re.DOTALL).findall(content)
+			for url, thumb, name in match:
+				name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '\'').replace('  ', '')
+				add_link(name, fantasti + url, 4, thumb, fanart)
 		except:
 			pass
-		try:
-			match = re.compile('<a href="([^"]+)">next &gt;&gt').findall(content)
-			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', fantasti + match[0], 2, logos + 'fantasti.png', fanart)
-		except:
-			pass
+		#try:
+			#match = re.compile('widget\(\'(.+?)\'.+?)').findall(content))
+			#add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', fantasti + match[0], 2, logos + 'fantasti.png', fanart)
+		#except:
+			#pass
 
 	elif 'hentaigasm' in url:
 		add_dir('[COLOR lime]hentaigasm	 [COLOR red]Search[/COLOR]', hentaigasm, 1, logos + 'hentaigasm.png', fanart)
@@ -372,9 +372,9 @@ def start(url):
 	elif 'porn300' in url:
 		content = make_request(url)
 		add_dir('[COLOR lightgreen]porn300.com	 [COLOR red]Search[/COLOR]', pornxs, 1, logos + 'porn300.png', fanart)
-		match = re.compile('<a itemprop="url" href="([^"]*)".+?<meta itemprop="description" content="([^"]*)">.+?<link itemprop="thumbnailUrl" href="([^"]*)"', re.DOTALL).findall(content)
-		for url, name, thumb in match:
-			add_link(name, porn300 + url, 4, thumb, fanart)
+		match = re.compile('a href="([^"]*)" data-video-id="?".+?data-src="([^"]*)" alt="([^"]*)".+?<span class="duration-video">.+?([:\d]+).+?</span>', re.DOTALL).findall(content)
+		for url, thumb, name, duration in match:
+			add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', porn300 + url, 4, thumb, fanart)
 		try:
 			match = re.compile('<link rel="next" href="([^"]*)" />').findall(content)
 			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', match[0], 2, logos + 'porn300.png', fanart)
@@ -383,7 +383,7 @@ def start(url):
 	elif 'pornxs' in url:
 		content = make_request(url)
 		add_dir('[COLOR lightgreen]pornxs.com	 [COLOR red]Search[/COLOR]', pornxs, 1, logos + 'pornxs.png', fanart)
-		match = re.compile('<a href="([^"]+)".+?title="([^"]+)".+?data-loader-src="([^"]+)">.+?<div class="squares__item_numbers js-video-time">([:\d]+)</div>', re.DOTALL).findall(content)
+		match = re.compile('<a href="([^"]+)".+?title="([^"]+)".+?data-loader-src="([^"]+)">.+?<div class="squares__item_numbers js-video-time">.+?([:\d]+).+?</div>', re.DOTALL).findall(content)
 		for url, name, thumb, duration in match:
 			add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', pornxs + url, 4, thumb, fanart)
 		try:
@@ -435,11 +435,12 @@ def start(url):
 		current_url = url
 		add_dir('[COLOR lightgreen].uflash.tv   [COLOR red]Search[/COLOR]', uflash, 1, logos + 'uflash.png', fanart)
 		add_dir('[COLOR lime]Categories[/COLOR]', uflash + '/videos?o=mr', 54, logos + 'uflash.png', fanart)
-		add_dir('[COLOR magenta]Female Exhibitionist Videos[/COLOR]', uflash + '/videos?g=female&o=mr',  2, logos + 'uflash.png', fanart)
-		add_dir('[COLOR magenta]Male Exhibitionist Videos[/COLOR]', uflash + '/videos?g=male&o=mr',  2, logos + 'uflash.png', fanart)
-		add_dir('[COLOR magenta]Recently Viewed - Exhibitionist Videos[/COLOR]', uflash + '/videos?o=bw',  2, logos + 'uflash.png', fanart)
+		add_dir('[COLOR magenta]Female Exhibitionist Videos[/COLOR]', uflash + '/videos?g=female&type=public&o=mr',  2, logos + 'uflash.png', fanart)
+		add_dir('[COLOR magenta]Male Exhibitionist Videos[/COLOR]', uflash + '/videos?type=public&o=mr&g=male',  2, logos + 'uflash.png', fanart)
+		add_dir('[COLOR magenta]Recently Viewed - Exhibitionist Videos[/COLOR]', uflash + '/videos?o=mr&type=public',  2, logos + 'uflash.png', fanart)
 		match = re.compile('<a href="/video/(.+?)/.+?<img src="(.+?)" alt="(.+?)".+?<span class="duration">.+?([:\d]+).+?</span>', re.DOTALL).findall(content)
 		for url, thumb, name, duration in match:
+			name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#039;', '\'')
 			add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', 'http://www.uflash.tv/media/player/config.v89x.php?vkey=' + url,  4, 'http://www.uflash.tv/' + thumb, fanart)
 		try:
 			next_page = uflash_nextpage(current_url, content)
@@ -447,7 +448,6 @@ def start(url):
 		except Exception as e:
 			xbmc.log(str(e), xbmc.LOGERROR)
 			pass
-
 	elif 'vikiporn' in url:
 		content = make_request(url)
 		add_dir('[COLOR lightgreen]vikiporn.com	 [COLOR red]Search[/COLOR]', vikiporn, 1, logos + 'vikiporn.png', fanart)
@@ -540,14 +540,14 @@ def start(url):
 		content = make_request(url)
 		add_dir('[COLOR lightgreen]porngo	[COLOR red]Search[/COLOR]', porngo, 1, logos + 'porngo.png', fanart)
 		add_dir('[COLOR lime]Categories[/COLOR]', porngo + '/categories/', 52, logos + 'porngo.png', fanart)
-        match = re.compile('<a href="([^"]*)" class="thumb__top">.+?<div class="thumb__img" data-preview=".+?">.+?<img src="([^"]*)" alt="([^"]*)">.+?<span class="thumb__duration">([:\d]+)</span>', re.DOTALL).findall(content)
-        for url, thumb, name, duration in match:
-            add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', url,  4, thumb, fanart)
-        try:
-            match = re.compile('href="([^"]+)">Next</a></div>').findall(content)
-            add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', porngo + match[0], 2, logos + 'porngo.png', fanart)
-        except:
-            pass
+		match = re.compile('<a href="([^"]*)" class="thumb__top">.+?<div class="thumb__img" data-preview=".+?">.+?<img src="([^"]*)" alt="([^"]*)">.+?<span class="thumb__duration">([:\d]+)</span>', re.DOTALL).findall(content)
+		for url, thumb, name, duration in match:
+			add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', url,  4, thumb, fanart)
+		try:
+			match = re.compile('href="([^"]+)">Next</a></div>').findall(content)
+			add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', porngo + match[0], 2, logos + 'porngo.png', fanart)
+		except:
+			pass
 
 def motherless_galeries_cat(url):
 	home()
@@ -817,7 +817,13 @@ def fantasti_categories(url):
 	match = re.compile('<a class="yesPopunder" href="/category/(.+?)/">.+?<div.+?class="thumb catThumb".+?data-src="(.+?)"', re.DOTALL).findall(content)
 	for url, thumb in match:
 		name = url
-		add_dir(name, fantasti + '/search/' + url + '/tube/date/' , 2, thumb, fanart)		
+		add_dir(name, fantasti + '/search/' + url + '/tube/date/' , 2, thumb, fanart)
+
+def fantasti_content(url):
+	home()
+	setView('Movies', 'DEFAULT')
+	add_dir('[COLOR lightgreen]fantasti.cc	 [COLOR red]Search[/COLOR]', fantasti, 1, logos + 'fantasti.png', fanart)
+	add_dir('Fantasti.cc [COLOR yellow] Transgendered[/COLOR]', fantasti + '/ajax/widgets/widget.php?media=videos&filters=upload_improved&sort=latest&pro=null&filter=7&q=&limit=500&page=1&tpl=user/videos_search_users.tpl&cache=5&pager=true&div=featured_videos&clear=true', 2, logos + 'fantasti.png', fanart)
 
 def porngo_categories(url):
 	home()
@@ -905,8 +911,8 @@ def resolve_url(url):
 	elif 'porngo' in url:
 		media_url = re.compile("<source src='(.+?)' type='video/mp4'").findall(content)[0]
 	elif 'fantasti' in url:
-		url = re.compile('<div class="video-wrap" data-origin-source="(.+?)">').findall(content)[0]
-		return resolve_url(url)
+		media_url = re.compile('<source src="(.+?)">').findall(content)[0]
+		#return resolve_url(url)
 	elif 'uflash' in url:
 		try:
 			media_url = re.compile('<hd>(.+?)</hd>').findall(content)[0]
@@ -921,6 +927,7 @@ def resolve_url(url):
 		media_url = re.compile('source src="(.+?)" type=').findall(content)[0]
 	elif 'porn300' in url:
 		media_url = re.compile('<source src="(.+?)" type="video/mp4">').findall(content)[0]	
+		media_url = media_url.replace('amp;','')
 	elif 'tubedupe' in url:
 		media_url = re.compile("video_alt_url: '(.+?)',                 video_alt_url_text: '720p',").findall(content)[0]	
 	else:
@@ -948,26 +955,29 @@ def get_params():
 	return param
 
 def add_dir(name, url, mode, iconimage, fanart):
-	u = sys.argv[0] + "?url=" + urllib.quote_plus(url) + "&mode=" + str(mode) + "&name=" + urllib.quote_plus(name) + "&iconimage=" + urllib.quote_plus(iconimage)
+	u = sys.argv[0] + '?url=' + urllib_parse.quote_plus(url) + '&mode=' + str(mode) +\
+		'&name=' + urllib_parse.quote_plus(name) + '&iconimage=' + str(iconimage)
 	ok = True
-	liz = xbmcgui.ListItem(name, iconImage = "DefaultFolder.png", thumbnailImage = iconimage)
-	liz.setInfo( type="Video", infoLabels={ "Title": name, "overlay":"12"})
-	liz.setProperty('fanart_image', fanart)
-	ok = xbmcplugin.addDirectoryItem(handle = int(sys.argv[1]), url = u, listitem = liz, isFolder = True)
+	liz = xbmcgui.ListItem(name)
+	liz.setArt({ 'thumb': iconimage, 'icon': icon, 'fanart': fanart})
+	ok = xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=u,
+									listitem=liz, isFolder=True)
 	return ok
 
 def add_link(name, url, mode, iconimage, fanart):
-	u = sys.argv[0] + "?url=" + urllib.quote_plus(url) + "&mode=" + str(mode) + "&name=" + urllib.quote_plus(name) + "&iconimage=" + urllib.quote_plus(iconimage)
+	u = sys.argv[0] + '?url=' + urllib_parse.quote_plus(url) + '&mode=' + str(mode)\
+		+ '&name=' + urllib_parse.quote_plus(name) + "&iconimage=" + urllib.parse.quote_plus(iconimage)
 	ok = True
-	liz = xbmcgui.ListItem(name, iconImage = "DefaultVideo.png", thumbnailImage = iconimage)
-	liz.setProperty('fanart_image', fanart)
+	liz = xbmcgui.ListItem(name)
+	liz.setArt({'thumb': iconimage, 'icon': icon, 'fanart': iconimage})
 	liz.setInfo(type="Video", infoLabels={"Title": name})
 	try:
 		liz.setContentLookup(False)
 	except:
 		pass
 	liz.setProperty('IsPlayable', 'true')
-	ok = xbmcplugin.addDirectoryItem(handle = int(sys.argv[1]), url = u, listitem = liz)
+	ok = xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=u,
+									listitem=liz, isFolder=False)
 	return ok
 
 def uflash_nextpage(current_url, content):
@@ -1001,11 +1011,11 @@ mode = None
 iconimage = None
 
 try:
-	url = urllib.unquote_plus(params["url"])
+	url = urllib_parse.unquote_plus(params["url"])
 except:
 	pass
 try:
-	name = urllib.unquote_plus(params["name"])
+	name = urllib_parse.unquote_plus(params["name"])
 except:
 	pass
 try:
@@ -1013,21 +1023,21 @@ try:
 except:
 	pass
 try:
-	iconimage = urllib.unquote_plus(params["iconimage"])
+	iconimage = urllib_parse.unquote_plus(params["iconimage"])
 except:
 	pass
 
-print "Mode: " + str(mode)
-print "URL: " + str(url)
-print "Name: " + str(name)
-print "iconimage: " + str(iconimage)
+print ("Mode: " + str(mode))
+print ("URL: " + str(url))
+print ("Name: " + str(name))
+print ("iconimage: " + str(iconimage))
 
 def setView(content, viewType):
-    # set content type so library shows more views and info
-    if content:
-        xbmcplugin.setContent(int(sys.argv[1]), content)
-    if addon.getSetting('auto-view') == 'true':
-        xbmc.executebuiltin("Container.SetViewMode(%s)" % addon.getSetting(viewType) )
+	# set content type so library shows more views and info
+	if content:
+		xbmcplugin.setContent(int(sys.argv[1]), content)
+	if addon.getSetting('auto-view') == 'true':
+		xbmc.executebuiltin("Container.SetViewMode(%s)" % addon.getSetting(viewType) )
 
 if mode == None or url == None or len(url) < 1:
 	main()
@@ -1095,6 +1105,8 @@ elif mode == 48:
 	fantasti_collections(url)
 elif mode == 49:
 	fatasti_sorting(url)
+elif mode == 50:
+	fatasti_content(url)
 elif mode == 52:
 	porngo_categories(url)
 elif mode == 54:
