@@ -18,9 +18,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>
 import six
 import urllib, re, os, sys
 import settings
-import urllib.request
 from six.moves import urllib_request, urllib_parse, http_cookiejar
-from kodi_six import xbmcvfs, xbmcaddon, xbmcplugin, xbmcgui
+from kodi_six import xbmc, xbmcvfs, xbmcaddon, xbmcplugin, xbmcgui
 
 # python 2 and 3 compatibility defs
 INFO = xbmc.LOGINFO if six.PY3 else xbmc.LOGNOTICE
@@ -31,9 +30,9 @@ addon = xbmcaddon.Addon(id='plugin.video.adulthideout')
 home = addon.getAddonInfo('path')
 if home[-1] == ';':
     home = home[0:-1]
-home = TRANSLATEPATH(home)
-profile = addon.getAddonInfo('profile')
-profile = TRANSLATEPATH(profile)
+#home = TRANSLATEPATH(home)
+#profile = addon.getAddonInfo('profile')
+#profile = TRANSLATEPATH(profile)
 cacheDir = os.path.join(home, 'cache')
 cookiePath = os.path.join(home, 'cookies.lwp')
 
@@ -42,7 +41,7 @@ icon = os.path.join(home, 'resources/icon.png')
 logos = os.path.join(home, 'resources/logos\\')  # subfolder for logos
 homemenu = os.path.join(home, 'resources', 'playlists')
 
-#addon = settings.addon()
+urlopen = urllib_request.urlopen
 cookiejar = http_cookiejar.LWPCookieJar()
 cookie_handler = urllib_request.HTTPCookieProcessor(cookiejar)
 urllib_request.build_opener(cookie_handler)
@@ -82,15 +81,11 @@ def menulist():
 	except:
 		pass
 
-#def make_request(url):	
-#	return make_request_ext(url, 0)
-	
-#def make_request(url, attempt):
 def make_request(url):
 	try:
-		req = urllib.request.Request(url)
+		req = urllib_request.Request(url)
 		req.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11')
-		response = urllib.request.urlopen(req, timeout = 60)
+		response = urllib_request.urlopen(req, timeout = 60)
 		link = response.read().decode('utf-8')
 		response.close()
 		return link
@@ -138,7 +133,7 @@ def search():
 		keyb = xbmc.Keyboard('', '[COLOR yellow]Enter search text[/COLOR]')
 		keyb.doModal()
 		if (keyb.isConfirmed()):
-			searchText = urllib.parse.quote_plus(keyb.getText())
+			searchText = urllib_parse.quote_plus(keyb.getText())
 		if 'ashemaletube' in name:
 			url = ashemaletube + '/search/' + searchText + '/page1.html'
 			start(url)
@@ -965,8 +960,9 @@ def add_dir(name, url, mode, iconimage, fanart):
 	return ok
 
 def add_link(name, url, mode, iconimage, fanart):
-	u = sys.argv[0] + '?url=' + urllib_parse.quote_plus(url) + '&mode=' + str(mode)\
-		+ '&name=' + urllib_parse.quote_plus(name) + "&iconimage=" + urllib.parse.quote_plus(iconimage)
+	quoted_url = urllib_parse.quote(url)
+	u = sys.argv[0] + '?url=' + quoted_url + '&mode=' + str(mode)\
+		+ '&name=' + str(name) + "&iconimage=" + str(iconimage)
 	ok = True
 	liz = xbmcgui.ListItem(name)
 	liz.setArt({'thumb': iconimage, 'icon': icon, 'fanart': iconimage})

@@ -1,3 +1,6 @@
+v 0.9.7.1 2021-06-02
+- Public test version
+
 v 0.9.7 2021-03-05
 - Kodi Matrix Ready
 
