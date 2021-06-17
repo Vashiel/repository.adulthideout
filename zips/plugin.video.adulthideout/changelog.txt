@@ -1,3 +1,8 @@
+v 0.9.8 2021-06-17
+- fix xhamster
+- fix youjizz
+- hopefully fix python 2/3 compatibiliy issues
+
 v 0.9.7.1 2021-06-02
 - Public test version
 

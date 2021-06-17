@@ -30,17 +30,12 @@ addon = xbmcaddon.Addon(id='plugin.video.adulthideout')
 home = addon.getAddonInfo('path')
 if home[-1] == ';':
     home = home[0:-1]
-#home = TRANSLATEPATH(home)
-#profile = addon.getAddonInfo('profile')
-#profile = TRANSLATEPATH(profile)
 cacheDir = os.path.join(home, 'cache')
 cookiePath = os.path.join(home, 'cookies.lwp')
-
 fanart = os.path.join(home, 'resources/fanart.jpg')
 icon = os.path.join(home, 'resources/icon.png')
 logos = os.path.join(home, 'resources/logos\\')  # subfolder for logos
 homemenu = os.path.join(home, 'resources', 'playlists')
-
 urlopen = urllib_request.urlopen
 cookiejar = http_cookiejar.LWPCookieJar()
 cookie_handler = urllib_request.HTTPCookieProcessor(cookiejar)
@@ -86,7 +81,7 @@ def make_request(url):
 		req = urllib_request.Request(url)
 		req.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11')
 		response = urllib_request.urlopen(req, timeout = 60)
-		link = response.read().decode('utf-8')
+		link = response.read().decode('utf-8') if six.PY3 else response.read()
 		response.close()
 		return link
 	#except httplib.IncompleteRead, e:
@@ -123,7 +118,7 @@ def main():
 	add_dir('ViKiPorn [COLOR yellow] Videos[/COLOR]', vikiporn + '/latest-updates/', 2, logos + 'vikiporn.png', fanart)
 	add_dir('xHamster [COLOR yellow] Videos[/COLOR]', xhamster + '/new/1.html', 2, logos + 'xhamster.png', fanart)
 	add_dir('Xvideos [COLOR yellow] Videos[/COLOR]', xvideos + '/new/1/' , 2, logos + 'xvideos.png', fanart)
-	add_dir('Porngo [COLOR yellow] Videos[/COLOR]', porngo + '/latest-updates/', 2, logos + 'porngo.png', fanart)
+	#add_dir('Porngo [COLOR yellow] Videos[/COLOR]', porngo + '/latest-updates/', 2, logos + 'porngo.png', fanart)
 	add_dir('YouJizz [COLOR yellow] Videos[/COLOR]', youjizz + '/newest-clips/1.html', 2, logos + 'youjizz.png', fanart)
 	setView('videos', 'DEFAULT')
 
@@ -268,11 +263,6 @@ def start(url):
 				add_link(name, fantasti + url, 4, thumb, fanart)
 		except:
 			pass
-		#try:
-			#match = re.compile('widget\(\'(.+?)\'.+?)').findall(content))
-			#add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', fantasti + match[0], 2, logos + 'fantasti.png', fanart)
-		#except:
-			#pass
 
 	elif 'hentaigasm' in url:
 		add_dir('[COLOR lime]hentaigasm	 [COLOR red]Search[/COLOR]', hentaigasm, 1, logos + 'hentaigasm.png', fanart)
@@ -462,7 +452,7 @@ def start(url):
 		add_dir('[COLOR lime]Categories[/COLOR]', xhamster + '/categories', 17, logos + 'xhamster.png', fanart)
 		add_dir('[COLOR lime]Rankings[/COLOR]', xhamster + '/rankings/weekly-top-viewed.html' , 42, logos + 'xhamster.png', fanart)
 		add_dir('[COLOR lime]Change Content[/COLOR]', xhamster , 24, logos + 'xhamster.png', fanart)
-		match = re.compile('href="https://xhamster.com/videos/([^"]*)" data-sprite=".+?"(.+?)src="(.+?)".+?alt="(.+?)">.+?<div class="thumb-image-container__duration">(.+?)</div>', re.DOTALL).findall(content)
+		match = re.compile('href="https://xhamster.com/videos/([^"]*)" data-sprite=".+?"(.+?)src="(.+?)".+?alt="(.+?)">.+?<span data-role-video-duration>(.+?)</span>', re.DOTALL).findall(content)
 		for url, dummy, thumb, name, duration in match:
 			name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '\'')
 			if '?from=video_promo' in url:
@@ -519,7 +509,7 @@ def start(url):
 		content = make_request(url)
 		add_dir('[COLOR lightgreen]youjizz.com  [COLOR red]Search[/COLOR]', youjizz, 1, logos + 'youjizz.png', fanart)
 		add_dir('[COLOR lime]Categories[/COLOR]', youjizz + '/newest-clips/1.html' , 28, logos + 'youjizz.png', fanart)
-		match = re.compile('alt="" src="([^"]+)"(.+?).+?<div class="video-title">.+?<a href=\'([^\']+)\'>(.+?)</a>.+?<span class="time">([:\d]+)</span>', re.DOTALL).findall(content)
+		match = re.compile('data-original="([^"]+)" alt=""(.+?).+?<div class="video-title">.+?<a href=\'([^\']+)\'>(.+?)</a>.+?<span class="time">([:\d]+)</span>', re.DOTALL).findall(content)
 		for thumb, dummy, url, name, duration in match:
 			if 'hd' in dummy:
 				add_link(name + '[COLOR yellow]' +' [HD]' +'[/COLOR]'+ ' [COLOR lime]('+ duration + ')[/COLOR]', 'https://www.youjizz.com' + url, 4, 'https:' + thumb, fanart)
@@ -535,7 +525,7 @@ def start(url):
 		content = make_request(url)
 		add_dir('[COLOR lightgreen]porngo	[COLOR red]Search[/COLOR]', porngo, 1, logos + 'porngo.png', fanart)
 		add_dir('[COLOR lime]Categories[/COLOR]', porngo + '/categories/', 52, logos + 'porngo.png', fanart)
-		match = re.compile('<a href="([^"]*)" class="thumb__top">.+?<div class="thumb__img" data-preview=".+?">.+?<img src="([^"]*)" alt="([^"]*)">.+?<span class="thumb__duration">([:\d]+)</span>', re.DOTALL).findall(content)
+		match = re.compile('<a href="([^"]*)" class="thumb__top ">.+?<div class="thumb__img" data-preview=".+?">.+?<img src="([^"]*)" alt="([^"]*)".+?<span class="thumb__duration">([:\d]+)</span>', re.DOTALL).findall(content)
 		for url, thumb, name, duration in match:
 			add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', url,  4, thumb, fanart)
 		try:
@@ -882,7 +872,7 @@ def resolve_url(url):
 	elif 'vikiporn.com' in url:
 		media_url = re.compile("video_url: '(.+?)',").findall(content)[0]
 	elif 'xh' in url:
-		media_url = re.compile('p":"(.+?)",').findall(content)[0]
+		media_url = re.compile('"mp4File":"(.+?)",').findall(content)[0]
 		media_url = media_url.replace('\\','')
 	elif 'pornxs.com' in url:
 		media_url = 'https:' + re.compile('<source src="(.+?)" type="video/mp4">').findall(content)[0]
