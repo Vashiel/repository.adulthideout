@@ -1,0 +1,384 @@
+v 0.9.8 2021-06-17
+- fix xhamster
+- fix youjizz
+- hopefully fix python 2/3 compatibiliy issues
+
+v 0.9.7.1 2021-06-02
+- Public test version
+
+v 0.9.7 2021-03-05
+- Kodi Matrix Ready
+
+v 0.9.6 2020-07-01
+- Fix ashemaletube.com
+- added sorting ashemaletube.com
+
+v 0.9.5 2020-06-03
+- added porn300.com
+- added tubedupe.com
+- added porngo.com
+- removed yespornplease.com
+- fixed ashemaletube.com categories
+- fixed motherless.com
+- fixed heavy-r.com
+- fixed javbangers.com 
+
+v 0.9.4 2020-02-11
+- fix Vikiporn.com
+- fix PornXS
+- fix Fanatasti.cc
+- fix Redtube.com
+- Various cleanups and minor fixes
+
+v 0.9.3 2020-02-04
+- fix Javtasty (Now Javbagers)
+- fix Efukt (my fault. sorry)
+
+v 0.9.2 2020-01-04
+- fix Motherless
+- fix Xhamster
+- fix Redtube
+- readded fantasti.cc (hooray)
+
+v  0.9.1 2019-12-28
+- Code cleanup
+- Fix View setting on Estuary/Estouchy
+- Removed Porn.com (Dead)
+
+v  0.9.0 2019-11-20
+- fixed uflash
+- readded Vikiporn
+
+v  0.8.9 2019-11-11
+- fixed ashemaletube / Tags, Models
+- fixed efukt / Next button
+- fixed empflix
+- fixed hentaigasm / Genres
+- fixed heavy-r / Genres, Next button
+- fixed Javwhores / Search
+- fixed porn.com / Next button
+- fixed redtube / Next button
+- fixed xhamster /Next button
+
+v  0.8.8 2018-11-05
+- Dirty Fix most of it (not much time)
+
+v  0.8.7 2018-05-18
+- Really quick and rough update
+- removed some of not working sites, will work on it later
+
+v 0.8.6 2018-05-18
+- fixed dato.porn
+
+v 0.8.5 2018-04-19
+- fixed nearly everything - A second fix release will come soon.
+
+v 0.8.4 08-11-2017
+- fixed javtasty.com 
+- fixed datoporn.com
+- fixed pornhd.com
+- fixed tube8.com
+- fixed redtube.com
+
+v 0.8.3 15-10-2017
+- removed yes.xxx (site is dead)
+- removed Tubegalore, Upornia and Beeg (for now, until i find a fix)
+- fixed ashemale.com
+- fixed yespornplease.com
+- fixed pornxs.com
+- fixed youporn.com
+- datoporn.com
+
+v 0.8.2 10-09-2017
+- fixed javtasty.com search
+- fixed pornhd.com
+- fix setContentLookup() fail on Kodi version < 17 (Thanks BorgScout)
+
+- fixed beeg.com
+- fixed javtasty.com
+- fixes xhamster.com
+- fixed yespornplease.com
+- minor changes
+
+v 0.8.0 23-07-2017
+- fixed xhamster.com
+- fixed yespornplease.com
+- fixed beeg (Thanks Digonly)
+- fixed youjizz.com
+- minor changes
+
+v 0.7.9 09-07-2017
+- fixed Youporn.com
+- fixed Yes.xxx
+- fixed Datoporn.com
+- fixed Xvideos.com Categories, Pornstars, added ranking
+- fixed Redtube.com, added sorting, channels, etc.
+- minor fixes, Fanart, Kodi 18 ready, etc..
+
+
+v 0.7.8 21-05-2017
+- fixed Ashemaletube.com
+- fixed Dato.porn
+- fixed Javtasty.com
+- removed nudeflix.com for now (this site seems to be dead)
+- fixed Pornhub.com
+- fixed Youporn.com
+
+v 0.7.7 01-05-2017
+- added beeg.com (Thanks Digonly)
+- removed Pornktube.com
+- fixed Ashemaltube.com
+- fixed Pornhub.com next button
+- fixed Youjizz.com
+- fixed Txxx.com
+- fixed Tubepornclassic.com
+- fixed Redtube.com main
+
+v 0.7.6 21-03-2017
+- bugfix
+
+v 0.7.5 21-03-2017
+- fixed dato.porn (new name)
+- fixed tubegalore Next button
+- fixed youporn.com
+
+v 0.7.4 17-03-2017
+- fixed efukt.com
+- fixed pornhub.com next button
+- fixed youporn.com
+
+v 0.7.3 05-03-2017
+- added datoporn.com
+- cleaning and fixing 
+
+v 0.7.2 01-03-2017
+- fixed Xhamster.com categories
+- fixed Yes.xxx
+- fixed Upornia.com
+- fixed Pornhub.com again (HD Videos gone again)
+- fixed PornHD.com
+- fixed Heavy-R.com
+
+v 0.7.0 27-02-2017
+- fixed Xvideos.com (plays Videos in HD again)
+
+v 0.6.9 26-02-2017
+- fixed Porn.com to play 144p Videos too
+- fixed Pornhub.com (plays Videos in HD again)
+- fixed Pornhub.com categories
+- fixed Upornia.com
+- fixed Vikiporn.com
+- added Luxuretv.com (a users wish)
+
+v 0.6.8 12-02-2017
+- added Nudeflix.com  (First time that i add a Full-length Movie Site)
+- fixed Pornhub.com
+- little bit of "code-cleaning"
+
+v 0.6.7 11-02-2017
+- fixed Redtube.com
+- fixed Pornktube.com
+
+v 0.6.6 04-02-2017
+- fixed Youjizz.com
+- fixed PornHD.com
+- fixed Pornxs.com categories
+
+v 0.6.5 01-01-2017
+Happy New Year :)
+- fixed Yespornplease.com
+
+v 0.6.4 18-12-2016
+- fixed Ashemaletube.com
+- added Models to Ashemaletube.com
+
+v 0.6.3 11-12-2016 
+- fixed Redtube.com
+- fixed Xvideos.com
+
+v 0.6.2 09-12-2016 
+- fixed xhamster.com
+- Pornhub.com categories
+- Pornktube.com Regex
+- fixed Txxx-.com Regex 
+- Removed YouAv.com
+- Added JavTasty.com 
+
+v 0.6.1 17-11-2016
+- bug fix
+
+v 0.6.0 17-11-2016
+- fixed xhamster.com next button shown twice problem
+- fixed vikiporn.com regex
+- fixed redtube.com regex
+- removed pornsocket.com for now
+- fixed pornktube.com regex
+- fixed pornhd.com "pornstars" categorie
+- fixed empflix.com
+
+v 0.5.9 22-10-2016
+- Fixed xhamster.com starting problems on android devices
+
+v 0.5.8 22-10-2016
+- added new site Pornktube.com
+- fixed uflash.tv regex (again)
+- fixed xhamster.com categories
+- fixed xhamster.com next page
+- added xvideos.com pornstars category
+- fixed xvideos.com next page
+- fixed txxx.com categories
+
+v 0.5.7 19-10-2016
+- fixed uflash.tv regex (thanks Magicmaker)
+
+v 0.5.6 16-10-2016
+- fixed xvideos.com regex
+- fixed xhamster.com regex
+- fixed fantasti.cc collections
+- fixed redtube.com thumbnails
+- fixed redtube.com channels
+- added redtube.com categories
+- added redtube.com sorting
+- fixed tubegalore.com regex
+
+v 0.5.5 25-09-2016
+- fixed fantasti.cc search
+- fixed uflash.tv regex
+- fixed empflix.com regex
+
+
+v 0.5.4 07-09-2016
+- mostly fixing fantasti.cc in this release
+  fixed search, added search for collections,
+  added duration and nummer for collections, etc...
+- added few resolver tubegalore.com
+- code cleaning.
+
+
+v 0.5.3 28-08-2016
+- removed Jav720p.net (Site is dead)
+- added YouAV.com (JAV Site)
+- fixed Zbporn.com search
+- fixed Vikiporn.com search
+- fixed Pornxs.com seach and categories
+- fixed Porn.com search and playing first video in list problem
+- fixed Heavy-R.com search
+- fixed Fantastic.cc collections and sorting
+
+
+v 0.5.21 26-08-2016
+- fixed problem with update push
+
+v 0.5.2 24-08-2016
+- removing Eporner.com for now, until i find a solution
+- fixed Upornia.com  duration
+- fixed Porhub.com categories
+- fixed Youporn.com categories
+- fixed tubepornclassic.com categories
+- fixed Pornsocket.com regex
+
+
+v 0.5.1 24-07-2016
+- readded pornsocket.com
+- fixed empflix.com
+- added more resolver for tubegalore.com
+
+
+v 0.5.0 05-07-2016
+- fixed Efukt.com
+- fixed youporn.com
+- fixed porn.com
+- removed pornsocket.com (for now, because of "cloudflare's anti bot")
+- added more resolver for tubegalore.com
+- minor fixes
+
+
+v 0.4.9 30-05-2016
+- added more resolver for tubegalore.com
+
+v 0.4.8 27-05-2016
+- added tubegalore.com
+- added Uflashtv.com
+- fixed Xhmaster regex
+- fixed sorting for Eporner and Fatasti.cc
+- fixed zbporn.com categories
+- minor changes
+
+
+v 0.4.7 30-04-2016
+- fixes lubetube.com categories
+- added lubetube.com pornstars
+- fixed zbporn.com
+- fixed pornhd.com categories
+- changed fantasti.cc regex to load faster
+- added yespornplease.com (jump forward does not work)
+- minor changes
+
+
+
+v 0.4.6 19-04-2016
+- changed PornHD to play 720p videos by default
+- removed gotporn (adulthideout can't handle cookies)
+- removed tnaflix
+- added txxx.com
+- added upornia.com
+- added fantasti.cc (very experimental)
+- changed pornsocket.com to filter pictures
+
+
+v 0.4.5 23-03-2016
+- fixed Empflix.com (now it should work)
+
+v 0.4.4 22-03-2016
+- added Empflix.com
+- added ranking sub for xhamster.com
+- fixed change content for xhamster.com
+- fixed search for youporn.com
+- added sorting sub for youporn.com
+- changed motherless.com regex
+- lots of minor changes
+- code cleaning
+
+
+v 0.4.3 13-03-2016
+- added gotporn.com
+- added categories and pornstars subs for xvideos.com
+- fixed search for xvideos.com 
+- added categories for yes.xxx
+- added categories for tubepornclassic.com 
+- added categories for pornxs.com
+- added logo for pornsocket.com
+- code reorginized and minor fixes
+
+v 0.4.2 05-03-2016
+- removed Jamo.tv
+- added Jav720p.net
+- fixed motherless.com group names 
+- fixed redtube.com search and channels
+- removed trash code 
+
+v 0.4.1 13-02-2016
+- removed FlyFLV
+- Minor fixes
+
+v 0.4 08-02-2016
+- added heavy-r.com
+- fixed ashemaletube categories
+
+v 0.3 08-02-2016
+- added Youporn
+- added Hentaigasm
+- added AShemaletube
+- changed fanart.jpg
+- rewrote youjizz code
+- rewrote flyFLV code
+- rewrote efukt code
+- rewrote pornXS code
+- removed crazyshit.com
+- many other minor changes in code (Changed code so much, maybe it's more messed up then before)
+
+v 0.2
+- added Jamo.tv
+
+v 0.1
+First try

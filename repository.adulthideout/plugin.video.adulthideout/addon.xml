@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.9.8" provider-name="Vashiel">
+	<requires>
+	<!-- Commenting xbmc.python allows install on all versions of Kodi -->
+	<!-- <import addon="xbmc.python" version="2.14.0"/> -->
+	<import addon="script.module.six"/>
+	<import addon="script.module.kodi-six"/>
+	</requires>
+	<extension	point="xbmc.python.pluginsource"
+				library="default.py">
+				<provides>video</provides>
+	</extension>
+	<extension point="xbmc.addon.metadata">
+		<news>
+v 0.9.8 2021-06-17
+- fix xhamster
+- fix youjizz
+- hopefully fix python 2/3 compatibiliy issues
+		</news>
+		<summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
+		<description>
+Internet [COLOR red]XXX Porn Video[COLOR white] Streams.
+
+[COLOR red][B]WARNING:[/B][COLOR red]Only for adults[/COLOR]	
+
+[COLOR white]Github:
+https://github.com/Vashiel/repository.adulthideout
+
+Email:
+adulthideout@yandex.com[/COLOR]	
+
+		</description>
+		<disclaimer>
+		</disclaimer>	
+		<platform>all</platform>
+		<license>http://www.gnu.org/licenses/</license>
+		<forum></forum>
+		<website></website>    
+		<email></email>
+		<mainsource>https://github.com/Vashiel/repository.adulthideout</mainsource>    
+		<source></source> 		
+		<assets>
+			<icon>resources/icon.png</icon>
+			<fanart>resources/fanart.jpg</fanart>
+		</assets>
+	</extension>
+</addon>
