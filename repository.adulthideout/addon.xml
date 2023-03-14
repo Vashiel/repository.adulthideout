@@ -3,7 +3,7 @@
 	<extension point="xbmc.addon.repository" name="AdultHideout Addon Repository">
 		<info compressed="false">https://raw.githubusercontent.com/Vashiel/repository.adulthideout/master/repository.adulthideout/addons.xml</info>
 		<checksum>https://raw.githubusercontent.com/Vashiel/repository.adulthideout/master/repository.adulthideout/addons.xml.md5</checksum>
-		<datadir zip="true">https://raw.githubusercontent.com/Vashiel/repository.adulthideout/master/repository.adulthideout/</datadir>
+		<datadir zip="true">https://raw.githubusercontent.com/Vashiel/repository.adulthideout/master/repository.adulthideout/zips/</datadir>
 	</extension>
 	<extension point="xbmc.addon.metadata">
 		<summary>AdultHideout Addon Repository</summary>
