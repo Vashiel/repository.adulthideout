@@ -1,3 +1,12 @@
+v 0.9.81 2022-03-15
+- AH is now WIP again
+- removing all Sites andbeginning AH from scratch, because
+too many changes in the last version of kodi
+- Repo should now work with Kodi 19/20 and hopefully 21
+- new search function added (last search terms will be saved
+- Settingspage added (at last)
+- moved most functions to search.py and funtions.py
+
 v 0.9.8 2021-06-17
 - fix xhamster
 - fix youjizz
