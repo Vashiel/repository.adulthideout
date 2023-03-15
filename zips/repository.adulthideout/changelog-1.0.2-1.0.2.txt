@@ -1,8 +1,0 @@
-v 1.0
-First try
-
-v 1.0.1 09-02-2016
-- changed fanart.jpg
-
-v 1.0.2 2021-03-05
-- Kodi Matrix ready
