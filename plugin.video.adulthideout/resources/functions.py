@@ -8,6 +8,7 @@ from kodi_six import xbmc, xbmcvfs, xbmcaddon, xbmcplugin, xbmcgui
 from six.moves import urllib_request, urllib_parse, http_cookiejar
 from resources.functions import *
 
+
 addon = xbmcaddon.Addon(id='plugin.video.adulthideout')
 home = addon.getAddonInfo('path')
 if home[-1] == ';':
@@ -36,42 +37,47 @@ urllib_request.install_opener(urllib_request.build_opener(COOKIE_HANDLER))
 # Maximale Anzahl von Versuchen, um eine fehlgeschlagene Anfrage zu wiederholen
 MAX_RETRY_ATTEMPTS = int(addon.getSetting('max_retry_attempts'))
 
-def parse_content(content):
-    match = re.compile('<a  href="([^"]*)" title="([^"]*)".+?https://(.*?).jpg').findall(content)
-    for url, name, thumb in match:
-        name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#039;', '\'')
-        add_link(name, url , 4, 'https://' + thumb + '.jpg', fanart)
-    try:
-        match = re.compile('class="anchored_item active ">.+?</a><a href="(.+?)"').findall(content)
-        add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', efukt + match[0], 2, logos + 'efukt.png', fanart)
-    except:
-        pass
 
 def add_dir(name, url, mode, iconimage, fanart):
-	u = sys.argv[0] + '?url=' + urllib_parse.quote_plus(url) + '&mode=' + str(mode) +\
-		'&name=' + urllib_parse.quote_plus(name) + '&iconimage=' + str(iconimage)
-	ok = True
-	liz = xbmcgui.ListItem(name)
-	liz.setArt({ 'thumb': iconimage, 'icon': icon, 'fanart': fanart})
-	ok = xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=u,
-									listitem=liz, isFolder=True)
-	return ok
+    u = sys.argv[0] + '?url=' + urllib_parse.quote_plus(url) + '&mode=' + str(mode) +\
+        '&name=' + urllib_parse.quote_plus(name) + '&iconimage=' + str(iconimage)
+    xbmc.log("Adding directory: Name: {}, URL: {}, Mode: {}, Icon: {}, Fanart: {}".format(name, url, mode, iconimage, fanart), level=xbmc.LOGINFO)
+    ok = True
+    liz = xbmcgui.ListItem(name)
+    liz.setArt({ 'thumb': iconimage, 'icon': icon, 'fanart': fanart})
+    ok = xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=u,
+                                    listitem=liz, isFolder=True)
+    return ok
 
 def add_link(name, url, mode, iconimage, fanart):
-	quoted_url = urllib_parse.quote(url)
-	u = sys.argv[0] + '?url=' + quoted_url + '&mode=' + str(mode)\
-		+ '&name=' + str(name) + "&iconimage=" + str(iconimage)
-	ok = True
-	liz = xbmcgui.ListItem(name)
-	liz.setArt({'thumb': iconimage, 'icon': icon, 'fanart': iconimage})
-	liz.setInfo(type="Video", infoLabels={"Title": name})
-	try:
-		liz.setContentLookup(False)
-	except:
-		pass
-	liz.setProperty('IsPlayable', 'true')
-	ok = xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=u,
-									listitem=liz, isFolder=False)
+    quoted_url = urllib_parse.quote(url)
+    u = sys.argv[0] + '?url=' + quoted_url + '&mode=' + str(mode) \
+        + '&name=' + str(name) + "&iconimage=" + str(iconimage)
+    xbmc.log("Adding link to directory: Name: {}, URL: {}, Mode: {}, Icon: {}, Fanart: {}".format(name, url, mode, iconimage, fanart), level=xbmc.LOGINFO)
+    ok = True
+    liz = xbmcgui.ListItem(name)
+    liz.setArt({'thumb': iconimage, 'icon': icon, 'fanart': iconimage})
+    liz.setInfo(type="Video", infoLabels={"Title": name})
+    try:
+        liz.setContentLookup(False)
+    except:
+        pass
+    liz.setProperty('IsPlayable', 'true')
+    ok = xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=u,
+                                    listitem=liz, isFolder=False)
+def resolve_url(url, websites):
+    xbmc.log("Input URL for resolve_url: {}".format(url), level=xbmc.LOGDEBUG)
+    for website in websites:
+        xbmc.log("Checking website URL: {}".format(website["url"]), level=xbmc.LOGDEBUG)
+        if website["url"] in url:
+            xbmc.log("Matching website found: {}".format(website["name"]), level=xbmc.LOGDEBUG)
+            media_url = website['play_function'](url)
+            break
+        else:
+            xbmc.log("No match found: website URL not in input URL", level=xbmc.LOGDEBUG)
+    else:
+        media_url = url
+    return media_url
 
 def setView(content, viewType):
     # Setzt den Kodi View Type für das aktuelle Verzeichnis
@@ -107,6 +113,13 @@ def make_request(url, max_retry_attempts=3, retry_wait_time=5000):
             retries += 1
             xbmc.sleep(retry_wait_time)
             
-    # Wenn alle Wiederholungsversuche fehlschlagen, Rückgabe von None
+    # Wenn alle Wiederholungsversuche fehlschlagen, Rückgabe eines leeren Strings
     xbmc.log('Alle Wiederholungsversuche fehlgeschlagen.', level=xbmc.LOGERROR)
+    return ""
+
+def get_search_query():
+    keyb = xbmc.Keyboard('', '[COLOR yellow]Enter search text[/COLOR]')
+    keyb.doModal()
+    if keyb.isConfirmed():
+        return urllib_parse.quote_plus(keyb.getText())
     return None

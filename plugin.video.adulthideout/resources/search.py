@@ -1,35 +1,21 @@
 import os
 import json
+import sys
 import xbmcaddon
 from six.moves import urllib_parse
 from kodi_six import xbmc, xbmcgui
 from .queries import get_all_queries
+import importlib
+import sys
 
-def search_handler(websites, name, url, start):
-    last_query = get_last_query()
-    keyb = xbmc.Keyboard(str(last_query), '[COLOR yellow]Enter search text[/COLOR]')
-    all_queries = get_all_queries()
-    options = ["New Search"] + all_queries
-    valid_options = [option for option in options if isinstance(option, str)]
-    selected_index = xbmcgui.Dialog().select("Select a Query", valid_options)
-    if selected_index >= 0 and selected_index == 0:
-        keyb.doModal()
-        if (keyb.isConfirmed()):
-            searchText = urllib_parse.quote_plus(keyb.getText())
-            if searchText not in all_queries:
-                save_query(searchText)
-            for site in websites:
-                if site["name"] in name:
-                    url = site["url"] + '/search/' + searchText + '/'
-                    start(url)
-                    break
-    elif selected_index >= 0 and selected_index > 0:
-        searchText = urllib_parse.quote_plus(valid_options[selected_index])
-        for site in websites:
-            if site["name"] in name:
-                url = site["url"] + '/search/' + searchText + '/'
-                start(url)
-                break
+def clear_search_history():
+    # Get the path to the add-on directory
+    home = xbmcaddon.Addon().getAddonInfo('path')
+    # Use the os.path.join function to construct the file path
+    file_path = os.path.join(home, 'resources/last_query.json')
+    # Clear the contents of the file
+    with open(file_path, 'w') as f:
+        json.dump([], f)
 
 def save_query(query):
     # Get the path to the add-on directory
