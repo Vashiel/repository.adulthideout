@@ -16,4 +16,4 @@ If you find my Repo somewhere else, he/she has nothing to do with me.
 Download repository.adulthideout-1.0.3.zip here https://vashiel.github.io/repository.adulthideout/
 
 # Contact me
-To busy right now.
+Too busy right now.
