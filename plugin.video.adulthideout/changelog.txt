@@ -1,3 +1,8 @@
+v 0.9.81-beta2 28-03-2023
+- Fixing more websites
+- testing new code
+- complete changelog with release of 0.9.82
+
 v 0.9.81-beta1 21-03-2023
 - complete changelog with release of 0.9.82
 

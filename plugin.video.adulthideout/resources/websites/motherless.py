@@ -7,14 +7,13 @@ import xbmcaddon
 import urllib.parse as urllib_parse
 
 
-def process_motherless_content(url):
+def process_motherless_content(url, page=1):
     # changing the base-URl to base-URL + start-URL
     url = url + "/videos/recent?page=1"
     
-    xbmc.log("Processing Motherless content for URL: {}".format(url), level=xbmc.LOGDEBUG)
     content = make_request(url)
+    add_dir('[COLOR blue]Search[/COLOR]', 'motherless', 5, logos + 'motherless.png', fanart) 
     match = re.compile('<a href="([^"]+)" class="img-container" target="_self">.+?<span class="size">([:\d]+)</span>.+?<img class="static" src="https://(.+?)" .+?alt="([^"]+)"/>', re.DOTALL).findall(content)
-
     
     # Get the base URL part from the input URL
     base_url = url.rsplit("/", 3)[0]
@@ -24,7 +23,7 @@ def process_motherless_content(url):
         if 'motherless' in url:
             add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', url, 4, 'http://' + thumb, fanart)
         else:
-            add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', motherless + url, 4, 'http://' + thumb, fanart)
+            add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', base_url + url, 4, 'http://' + thumb, fanart)
     try:
         match = re.compile('class="anchored_item active ">.+?</a><a href="(.+?)"').findall(content)
         add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', site_variables['motherless'] + match[0], 2, logos + 'motherless.png', fanart)

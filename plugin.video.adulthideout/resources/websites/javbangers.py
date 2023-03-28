@@ -6,24 +6,21 @@ import xbmcplugin
 import xbmcaddon
 import urllib.parse as urllib_parse
 
-def process_javbangers_content(url, page=1):
-    if page == 1:
-        add_dir(f'Search Javbangers', 'javbangers', 5, logos + 'javbangers.png', fanart)
-    content = make_request(url)
-    match = re.compile('<a  href="([^\"]*)" title="([^\"]*)".+?https://(.*?).jpg').findall(content)
-    for url, name, thumb in match:
-        name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#039;', "'")
-        add_link(name, url, 4, f'https://{thumb}.jpg', fanart)
 
-    try:
-        match = re.compile('class="anchored_item active ">.+?</a><a href="(.+?)"').findall(content)
-        if match:
-            add_dir('[COLOR blue]Next Page >>>>[/COLOR]', javbangers + match[0], 2, logos + 'javbangers.png', fanart)
-    except:
-        pass
+def process_javbangers_content(url, mode=None):
+    # changing the base-URl to base-URL + /new/1/
+    url = url + "/latest-updates/"
+    
+    content = make_request(url)
+    match = re.compile('<div class="video-item   ">.+?<a href="(.+?)" title="(.+?)".+?data-original="(.+?)".+?<i class="fa fa-clock-o"></i> ([\d:]+)</div>', re.DOTALL).findall(content)
+    # Get the base URL part from the input URL
+    base_url = url.rsplit("/", 3)[0]
+    
+    for url, name, thumb, duration in match:
+        add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', url, 4, thumb, fanart)
+  
 
 def play_javbangers_video(url):
     content = make_request(url)
-    media_url = re.compile('<source src="(.+?)" type="video/mp4">').findall(content)[0]
-    media_url = media_url.replace('amp;', '')
+    media_url = re.compile("video_alt_url: '(.+?)'").findall(content)[0]
     return media_url

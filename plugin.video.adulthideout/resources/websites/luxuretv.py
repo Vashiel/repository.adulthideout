@@ -7,18 +7,22 @@ import xbmcaddon
 import urllib.parse as urllib_parse
 import urllib.request
 
-def process_youjizz_content(url, mode=None):
+def process_luxuretv_content(url, mode=None):
     if "search" not in url:
-        url = 'https://www.youjizz.com' + "/newest-clips/1.html"
+        url = 'https://luxuretv.com' + "/page1.html"
 
-    add_dir(f'Search YouJizz', 'youjizz', 5, logos + 'youjizz.png', fanart)
+    add_dir(f'Search luxuretv', 'luxuretv', 5, logos + 'luxuretv.png', fanart)
     content = make_request(url)
-    match = re.compile('data-original="([^"]*)".+?<a href=\'(.+?)\' class="">(.+?)</a>', re.DOTALL).findall(content)
-    base_url = url.rsplit("/", 3)[0]
-    for thumb, url, name in match:
-        add_link(name, 'https://www.youjizz.com' + url, 4, 'https:' + thumb, fanart)
+    match = re.compile('a href="([^"]*)" title="([^"]*)"><img class="img lazyload" data-src="([^"]*)"', re.DOTALL).findall(content)
+    for url, name, thumb in match:
+        add_link(name, url, 4, thumb, fanart)
+    try:
+        match = re.compile('a href=\'([^"]*)\'>Next').findall(content)
+        add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', 'https://luxuretv.com/' +  match[0], 2, logos + 'luxuretv.png', fanart)
+    except:
+        pass
 
-def play_youjizz_video(url):
+def play_luxuretv_video(url):
     content = make_request(url)
     data = re.compile('"filename":"([^"]+.mp4[^"]*)",').findall(content)
 

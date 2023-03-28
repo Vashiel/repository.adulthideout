@@ -10,6 +10,8 @@ from six.moves import urllib_request, urllib_parse, http_cookiejar
 from resources.search import *
 from resources.websites.websites import websites
 from resources.functions import *
+import logging
+
 
 def menulist():
     try:
@@ -30,9 +32,23 @@ def main():
     setView('videos', 'DEFAULT')
 
 def process_website(url):
+    parsed_input_url = urlparse(url)
+    input_domain = parsed_input_url.netloc.replace("www.", "")
+    print(f"Input domain: {input_domain}")  # Log statement
+    
     for site in websites:
-        if site["url"] == url:
-            return site["function"]
+        parsed_site_url = urlparse(site["url"])
+        site_domain = parsed_site_url.netloc.replace("www.", "")
+        print(f"Comparing input domain '{input_domain}' with site domain '{site_domain}'")  # Log statement
+        
+        if site_domain == input_domain:
+            function_name = site["function"].replace("-", "_")
+            print(f"Matching website found: {site['name']}. Calling function {function_name}.")
+            try:
+                exec(f"{function_name}(url)")
+            except Exception as e:
+                print(f"An error occurred while executing the function {function_name}: ", e)
+            return
     return None
 
 def search_website(website_name):
@@ -72,12 +88,14 @@ def search_website(website_name):
         clear_search_history()
 
 def start(url):
+    logging.info('start function called with URL: %s', url)
     for site in websites:
         if site["url"] == url:
             site["function"](url)
             break
 
 def play_video(url):
+    logging.info('play_video function called with URL: %s', url)
     media_url = resolve_url(url, websites)
     item = xbmcgui.ListItem(name, path=media_url)
     item.setMimeType('video/mp4')

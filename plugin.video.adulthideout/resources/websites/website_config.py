@@ -8,7 +8,7 @@ website_list = [
     {
         "name": "motherless",
         "url": "https://motherless.com",
-        "search_url": "https://motherless.com/search?q={}",
+        "search_url": "https://motherless.com/term/videos/{}",
         "module_name": "motherless",
     },
     {
@@ -20,7 +20,7 @@ website_list = [
     {
         "name": "xhamster",
         "url": "https://xhamster.com",
-        "search_url": "https://xhamster.com/?k={}",
+        "search_url": "https://xhamster.com/search.php?q={}",
         "module_name": "xhamster",
     },
     {
@@ -31,15 +31,15 @@ website_list = [
     },
     {
         "name": "hentaigasm",
-        "url": "https://hentaigasm.com",
-        "search_url": "https://hentaigasm.com/?s={}",
+        "url": "http://hentaigasm.com",
+        "search_url": "http://hentaigasm.com/?s={}",
         "module_name": "hentaigasm",
     },
     {
         "name": "heavy-r",
         "url": "https://heavy-r.com",
-        "search_url": "https://heavy-r/?s={}",
-        "module_name": "heavy-r",
+        "search_url": "https://www.heavy-r.com/search/recent/{}.html",
+        "module_name": "heavy_r",
     },
     {
         "name": "fantasti",
@@ -61,14 +61,14 @@ website_list = [
     },
     {
         "name": "vikiporn",
-        "url": "https://vikiporn.com",
-        "search_url": "https://vikiporn/?s={}",
+        "url": "https://www.vikiporn.com",
+        "search_url": "https://www.vikiporn.com/?s={}",
         "module_name": "vikiporn",
     },
     {
         "name": "youjizz",
-        "url": "https://youjizz.com",
-        "search_url": "https://youjizz/?s={}",
+        "url": "https://www.youjizz.com",
+        "search_url": "https://www.youjizz/search/{}-1.html",
         "module_name": "youjizz",
     },
     {
@@ -85,26 +85,26 @@ website_list = [
     },
     {
         "name": "uflash",
-        "url": "https://uflash.com",
-        "search_url": "https://uflash/?s={}",
+        "url": "http://www.uflash.tv",
+        "search_url": "http://www.uflash.tv/search?search_type=videos&search_query={}",
         "module_name": "uflash",
     },
     {
         "name": "javbangers",
-        "url": "https:/javbangers/.com",
-        "search_url": "https://javbangers/?s={}",
+        "url": "https://www.javbangers.com",
+        "search_url": "https://www.javbangers.com/?s={}",
         "module_name": "javbangers",
     },
     {
         "name": "luxuretv",
         "url": "https://luxuretv.com",
         "search_url": "https://luxuretv/search/videos/{}",
-        "module_name": "",
+        "module_name": "luxuretv",
     },
     {
         "name": "tubedupe",
         "url": "https://tubedupe.com",
-        "search_url": "https://tubedupe/search/?q={}",
+        "search_url": "https://tubedupe.com/search/?q={}",
         "module_name": "tubedupe",
     },
 ]

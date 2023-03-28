@@ -9,7 +9,8 @@ import urllib.parse as urllib_parse
 
 def process_xvideos_content(url, mode=None):
     # changing the base-URl to base-URL + /new/1/
-    url = url + "/new/1/"
+    if "search" not in url:
+        url = url + "/new/1/"
     
     content = make_request(url)
     add_dir('[COLOR blue]Search[/COLOR]', 'xvideos', 5, logos + 'xvideos.png', fanart)
@@ -32,5 +33,6 @@ def process_xvideos_content(url, mode=None):
 
 def play_xvideos_video(url):
     content = make_request(url)
-    media_url = re.compile(r"html5player\.setVideoUrlHigh\('(.+?)'\);").findall(content)[0]
+    media_url = re.search(r"html5player\.setVideoUrlHigh\('(.+?)'\)", content).group(1)
     return media_url
+
