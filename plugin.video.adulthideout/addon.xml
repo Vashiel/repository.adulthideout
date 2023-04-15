@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.9.81-beta2" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.9.81-beta3" provider-name="Vashiel">
 	<requires>
 	<!-- Commenting xbmc.python allows install on all versions of Kodi -->
 	<!-- <import addon="xbmc.python" version="2.14.0"/> -->
@@ -12,10 +12,10 @@
 	</extension>
 	<extension point="xbmc.addon.metadata">
 		<news>
-v 0.9.81-beta2 28-03-2023
-- Fixing more websites
-- testing new code
-- complete changelog with release of 0.9.82
+v 0.9.81-beta3 16.04.2023
+- removed few dead sites
+- fixed all sites
+- still experimenting with new code
 		</news>
 		<summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
 		<description>

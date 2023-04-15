@@ -7,33 +7,34 @@ import xbmcaddon
 import urllib.parse as urllib_parse
 
 def process_ashemaletube_content(url, page=1):
-    # changing the base-URl to base-URL + /new/1/
-    url = url + "/videos/newest/"
-    
+    xbmc.log("Entering process_ashemaletube_content with URL: " + url, xbmc.LOGINFO)  # Log-Anweisung hier
     if page == 1:
         add_dir(f'Search ashemaletube', 'ashemaletube', 5, logos + 'ashemaletube.png', fanart)
+    xbmc.log("Processed URL: " + url, xbmc.LOGINFO)  # Log-Anweisung hier
     content = make_request(url)
-    match = re.compile('<div class="thumb vidItem" data-video-id=".+?">.+?<a href="([^"]*)" >.+?src="([^"]*)" alt="([^"]*)"(.+?)<span>.+?([:\d]+).+?</span>', re.DOTALL).findall(content)
-   
+    # Extrahiere den Inhalt bis zur angegebenen Zeile
+    index = content.find('<div class="pagination" >')
+    if index != -1:
+        limited_content = content[:index]
+    else:
+        limited_content = content
+    match = re.compile('<span class="thumb-inner-wrapper">.+?<a href="([^"]*)" >.+?<img src="([^"]*)" alt="([^"]*)"', re.DOTALL).findall(limited_content)
     # Get the base URL part from the input URL
-    base_url = url.rsplit("/", 3)[0]
-
-    for url, thumb, name, dummy, duration in match:
+    base_url = "/".join(url.split("/")[:3])
+    for video_url, thumb, name, in match:
         name = name.replace('&amp;', '&')
-        if 'HD' in dummy:
-            add_link(name + '[COLOR yellow]' +' [HD]' +'[/COLOR]' +' [COLOR lime]('+ duration + ')[/COLOR]', base_url + url, 4, thumb, fanart)
-        else:
-            add_link(name + ' [COLOR lime]('+ duration + ')[/COLOR]', base_url + url, 4, thumb, fanart)
+        add_link(name, base_url + video_url, 4, thumb, fanart)
     try:
-        match = re.compile('<a class="rightKey" href="(.+?)">Next</a>').findall(content)
-        add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', base_url + match[0], 2, logos + 'ashemaletube.png', fanart)
+        match = re.compile('<link rel="next" href="(.+?)" />').findall(content)
+        next_url = base_url + match[0]
+        add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', next_url, 2, logos + 'ashemaletube.png', fanart)
     except:
-        match = re.compile('<a class="pageitem rightKey" href="(.+?)" title="Next">Next</a>').findall(content)
-        add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', base_url + match[0], 2, logos + 'ashemaletube.png', fanart)
+        pass
 
 def play_ashemaletube_video(url):
     content = make_request(url)
     media_url = re.compile('<source src="(.+?)" type="video/mp4">').findall(content)[0]
     media_url = media_url.replace('amp;', '')
+    xbmc.log("Media URL: " + media_url, xbmc.LOGINFO)  # Log-Anweisung hie
     return media_url
     

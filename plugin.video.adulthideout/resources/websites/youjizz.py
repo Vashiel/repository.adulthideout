@@ -6,17 +6,28 @@ import xbmcplugin
 import xbmcaddon
 import urllib.parse as urllib_parse
 import urllib.request
+import logging
+from urllib.parse import urlparse
 
-def process_youjizz_content(url, mode=None):
-    if "search" not in url:
-        url = 'https://www.youjizz.com' + "/newest-clips/1.html"
+def process_youjizz_content(url, page=1):
+    if "search" not in url and not re.search(r"/newest-clips/\d+\.html", url):
+        url = url + "/newest-clips/1.html"
 
-    add_dir(f'Search YouJizz', 'youjizz', 5, logos + 'youjizz.png', fanart)
+    if page == 1:
+        if  "{}" in url:
+            search_word = re.search(r'\{\}(.*?)$', url).group(1)
+            url = url.replace("{}" + search_word, search_word + "/")
     content = make_request(url)
     match = re.compile('data-original="([^"]*)".+?<a href=\'(.+?)\' class="">(.+?)</a>', re.DOTALL).findall(content)
-    base_url = url.rsplit("/", 3)[0]
+    add_dir('[COLOR blue]Search[/COLOR]', 'youjizz', 5, logos + 'youjizz.png', fanart)
+    # Get the base URL part from the input URL
+    parsed_url = urlparse(url)
+    base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+    
     for thumb, url, name in match:
-        add_link(name, 'https://www.youjizz.com' + url, 4, 'https:' + thumb, fanart)
+        add_link(name, base_url + url, 4, 'https:' + thumb, fanart)
+    match = re.compile('<a class="pagination-next" href="(.+?)">Next &raquo;</a></li></ul>').findall(content)
+    add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', base_url + match[0], 2, logos + 'youjizz.png', fanart)
 
 def play_youjizz_video(url):
     content = make_request(url)

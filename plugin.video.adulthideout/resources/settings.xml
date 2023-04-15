@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <settings>
-	<category label="General">
-		<setting id="max_retry_attempts" type="slider" label="Max Retry Attempts" default="3" min="1" max="10" step="1" option="int" />
-	</category>
+    <category label="General">
+        <setting id="max_retry_attempts" type="slider" label="Max Retry Attempts" default="3" min="1" max="10" step="1" option="int" />
+        <setting id="auto-view" type="bool" label="Enable automatic view mode" default="true" />
+        <setting id="viewType" type="enum" label="Select View Type" values="List (50)|Big List (51)|Thumbnail (500)|Big Thumbnail (501)" default="0" />
+    </category>
 </settings>

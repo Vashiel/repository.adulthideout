@@ -10,6 +10,7 @@ from six.moves import urllib_request, urllib_parse, http_cookiejar
 from resources.search import *
 from resources.websites.websites import websites
 from resources.functions import *
+import urllib.parse
 import logging
 
 
@@ -29,16 +30,24 @@ def main():
         name = site['name']
         url = site['url']
         add_dir(f'{name.capitalize()} [COLOR yellow] Videos[/COLOR]', url, 2, logos + f'{name}.png', fanart)
-    setView('videos', 'DEFAULT')
+
 
 def process_website(url):
     parsed_input_url = urlparse(url)
     input_domain = parsed_input_url.netloc.replace("www.", "")
+    
+    # Entfernen des Länderkürzels, wenn vorhanden
+    input_domain = re.sub(r'^[a-z]{2}\.', "", input_domain)
+    
     print(f"Input domain: {input_domain}")  # Log statement
     
     for site in websites:
         parsed_site_url = urlparse(site["url"])
         site_domain = parsed_site_url.netloc.replace("www.", "")
+        
+        # Entfernen des Länderkürzels, wenn vorhanden
+        site_domain = re.sub(r'^[a-z]{2}\.', "", site_domain)
+        
         print(f"Comparing input domain '{input_domain}' with site domain '{site_domain}'")  # Log statement
         
         if site_domain == input_domain:
@@ -48,8 +57,7 @@ def process_website(url):
                 exec(f"{function_name}(url)")
             except Exception as e:
                 print(f"An error occurred while executing the function {function_name}: ", e)
-            return
-    return None
+        return
 
 def search_website(website_name):
     site = next((site for site in websites if site["name"] == website_name or site["url"].find(website_name) != -1), None)
@@ -66,33 +74,37 @@ def search_website(website_name):
     if selected_index >= 0 and selected_index == 0:
         keyb.doModal()
         if keyb.isConfirmed():
-            search_word = urllib.parse.quote_plus(keyb.getText())
+            search_word = keyb.getText()
+            search_word_encoded = urllib.parse.quote_plus(search_word)
             if search_word not in all_queries:
                 save_query(search_word)
 
-            if website_name in site["url"]:
-                search_url = site["search_url"] + search_word
-            else:
-                search_url = site["search_url"].format(search_word)
-
+            search_url = site["search_url"].replace("{}", search_word_encoded)
+            xbmc.log("Search URL: " + search_url, xbmc.LOGINFO)
             site["function"](search_url, 1)
     elif selected_index >= 0 and selected_index > 0 and selected_index < len(valid_options) - 1:
-        search_word = urllib.parse.quote_plus(valid_options[selected_index])
-        if website_name in site["url"]:
-            search_url = site["search_url"] + search_word
-        else:
-            search_url = site["search_url"].format(search_word)
+        search_word = valid_options[selected_index]
+        search_word_encoded = urllib.parse.quote_plus(search_word)
 
+        search_url = site["search_url"].replace("{}", search_word_encoded)
         site["function"](search_url, 1)
     elif selected_index >= 0 and selected_index == len(valid_options) - 1:
         clear_search_history()
+    xbmcplugin.setPluginCategory(int(sys.argv[1]), 'Search Results')
+    xbmcplugin.endOfDirectory(int(sys.argv[1]))
+
 
 def start(url):
-    logging.info('start function called with URL: %s', url)
+    add_home_button()
+    xbmc.log('start function called with URL: ' + url, xbmc.LOGINFO)
     for site in websites:
-        if site["url"] == url:
+        if url.startswith(site["url"]):
             site["function"](url)
             break
+
+
+def add_home_button():
+    add_dir("Home", "", 100, os.path.join(logos, 'adulthideout.png'), fanart)
 
 def play_video(url):
     logging.info('play_video function called with URL: %s', url)
@@ -100,6 +112,23 @@ def play_video(url):
     item = xbmcgui.ListItem(name, path=media_url)
     item.setMimeType('video/mp4')
     xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, item)
+
+def setView(content, viewType):
+    # Setzt den Kodi View Type für das aktuelle Verzeichnis
+    if content:
+        xbmcplugin.setContent(int(sys.argv[1]), content)
+    if addon.getSetting('auto-view') == 'true':
+        view_type_map = {
+            "0": "50",  # List
+            "1": "51",  # Big List
+            "2": "500", # Thumbnail
+            "3": "501"  # Big Thumbnail
+        }
+        selected_view_index = addon.getSetting('viewType')
+        selected_view_id = view_type_map[selected_view_index]
+        xbmc.executebuiltin('Container.SetViewMode(%s)' % selected_view_id)
+        xbmcplugin.addSortMethod(int(sys.argv[1]), xbmcplugin.SORT_METHOD_UNSORTED)
+
 
 def get_params():
     param = []
@@ -159,6 +188,9 @@ if __name__ == '__main__':
         
     elif mode == 5:
         search_website(url)
+        
+    elif mode == 100:
+        main()
 
     elif mode == 70:
         item = xbmcgui.ListItem(name, path=url)

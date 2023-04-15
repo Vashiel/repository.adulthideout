@@ -5,12 +5,18 @@ import xbmcgui
 import xbmcplugin
 import xbmcaddon
 import urllib.parse as urllib_parse
+import logging
+from urllib.parse import urlparse
 
 def process_hentaigasm_content(url, page=1):
+    xbmc.log("Entering process_hentaigasm_content with URL: " + url, xbmc.LOGINFO)  # Log-Anweisung hier
     if page == 1:
         add_dir(f'Search Hentaigasm', 'hentaigasm', 5, logos + 'hentaigasm.png', fanart)
         content = make_request(url)
         match = re.compile('title="([^"]*)" href="([^"]*)".+?<img src="([^"]*)"', re.DOTALL).findall(content)
+        # Get the base URL part from the input URL
+        parsed_url = urlparse(url)
+        base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
         for name, url, thumb in match:
             thumb = thumb.replace(' ', '%20')
             if "Raw" in name :

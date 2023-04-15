@@ -17,6 +17,13 @@ def clear_search_history():
     with open(file_path, 'w') as f:
         json.dump([], f)
 
+    # Display a notification that the search history was cleared
+    xbmc.executebuiltin('Notification(Search History Cleared, The search history has been cleared, 5000)')
+
+    # Refresh the current directory
+    xbmc.executebuiltin('Container.Refresh')
+
+
 def save_query(query):
     # Get the path to the add-on directory
     home = xbmcaddon.Addon().getAddonInfo('path')
