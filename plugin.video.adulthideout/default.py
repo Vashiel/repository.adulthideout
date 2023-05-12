@@ -13,6 +13,16 @@ from resources.functions import *
 import urllib.parse
 import logging
 
+search_results = None
+addon_handle = int(sys.argv[1])
+addon = xbmcaddon.Addon()
+
+xbmcplugin.setContent(addon_handle, 'movies')
+addon = xbmcaddon.Addon()
+viewtype = int(addon.getSetting('viewtype'))
+view_modes = [50, 51, 500, 501, 502]
+view_mode = view_modes[viewtype]
+xbmc.executebuiltin('Container.SetViewMode({})'.format(view_mode))
 
 def menulist():
     try:
@@ -31,21 +41,38 @@ def main():
         url = site['url']
         add_dir(f'{name.capitalize()} [COLOR yellow] Videos[/COLOR]', url, 2, logos + f'{name}.png', fanart)
 
+def start(url):
+    addon_handle = int(sys.argv[1])
+    add_home_button()
+    xbmc.log('start function called with URL: ' + url, xbmc.LOGINFO)
+    for site in websites:
+        if url.startswith(site["url"]):
+            site["function"](url)
+            break
+    xbmcplugin.setContent(addon_handle, 'movies')
+    addon = xbmcaddon.Addon()
+    viewtype = int(addon.getSetting('viewtype'))
+    view_modes = [50, 51, 500, 501, 502]
+    view_mode = view_modes[viewtype]
+    xbmc.executebuiltin('Container.SetViewMode({})'.format(view_mode))
+
+def add_home_button():
+    add_dir("Home", "", 100, os.path.join(logos, 'adulthideout.png'), fanart)
 
 def process_website(url):
     parsed_input_url = urlparse(url)
     input_domain = parsed_input_url.netloc.replace("www.", "")
     
-    # Entfernen des Länderkürzels, wenn vorhanden
     input_domain = re.sub(r'^[a-z]{2}\.', "", input_domain)
     
     print(f"Input domain: {input_domain}")  # Log statement
+    
+    search_results = []
     
     for site in websites:
         parsed_site_url = urlparse(site["url"])
         site_domain = parsed_site_url.netloc.replace("www.", "")
         
-        # Entfernen des Länderkürzels, wenn vorhanden
         site_domain = re.sub(r'^[a-z]{2}\.', "", site_domain)
         
         print(f"Comparing input domain '{input_domain}' with site domain '{site_domain}'")  # Log statement
@@ -54,10 +81,18 @@ def process_website(url):
             function_name = site["function"].replace("-", "_")
             print(f"Matching website found: {site['name']}. Calling function {function_name}.")
             try:
-                exec(f"{function_name}(url)")
+                search_results = eval(f"{function_name}(url)")
             except Exception as e:
                 print(f"An error occurred while executing the function {function_name}: ", e)
-        return
+            break
+                
+    return search_results
+    xbmcplugin.setContent(addon_handle, 'movies')
+    addon = xbmcaddon.Addon()
+    viewtype = int(addon.getSetting('viewtype'))
+    view_modes = [50, 51, 500, 501, 502]
+    view_mode = view_modes[viewtype]
+    xbmc.executebuiltin('Container.SetViewMode({})'.format(view_mode))
 
 def search_website(website_name):
     site = next((site for site in websites if site["name"] == website_name or site["url"].find(website_name) != -1), None)
@@ -87,114 +122,59 @@ def search_website(website_name):
         search_word_encoded = urllib.parse.quote_plus(search_word)
 
         search_url = site["search_url"].replace("{}", search_word_encoded)
-        site["function"](search_url, 1)
+        site["function"](search_url)
     elif selected_index >= 0 and selected_index == len(valid_options) - 1:
         clear_search_history()
     xbmcplugin.setPluginCategory(int(sys.argv[1]), 'Search Results')
     xbmcplugin.endOfDirectory(int(sys.argv[1]))
 
-
-def start(url):
-    add_home_button()
-    xbmc.log('start function called with URL: ' + url, xbmc.LOGINFO)
-    for site in websites:
-        if url.startswith(site["url"]):
-            site["function"](url)
-            break
-
-
-def add_home_button():
-    add_dir("Home", "", 100, os.path.join(logos, 'adulthideout.png'), fanart)
-
 def play_video(url):
-    logging.info('play_video function called with URL: %s', url)
     media_url = resolve_url(url, websites)
-    item = xbmcgui.ListItem(name, path=media_url)
-    item.setMimeType('video/mp4')
-    xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, item)
-
-def setView(content, viewType):
-    # Setzt den Kodi View Type für das aktuelle Verzeichnis
-    if content:
-        xbmcplugin.setContent(int(sys.argv[1]), content)
-    if addon.getSetting('auto-view') == 'true':
-        view_type_map = {
-            "0": "50",  # List
-            "1": "51",  # Big List
-            "2": "500", # Thumbnail
-            "3": "501"  # Big Thumbnail
-        }
-        selected_view_index = addon.getSetting('viewType')
-        selected_view_id = view_type_map[selected_view_index]
-        xbmc.executebuiltin('Container.SetViewMode(%s)' % selected_view_id)
-        xbmcplugin.addSortMethod(int(sys.argv[1]), xbmcplugin.SORT_METHOD_UNSORTED)
+    listitem = xbmcgui.ListItem(path=media_url)
+    xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, listitem)
 
 
 def get_params():
-    param = []
-    paramstring = sys.argv[2]
-    if len(paramstring)>= 2:
-        params = sys.argv[2]
-        cleanedparams = params.replace('?', '')
-        if (params[len(params)-1] == '/'):
-            params = params[0:len(params)-2]
-        pairsofparams = cleanedparams.split('&')
-        param = {}
-        for i in range(len(pairsofparams)):
-            splitparams = {}
-            splitparams = pairsofparams[i].split('=')
-            if (len(splitparams)) == 2:
-                param[splitparams[0]] = splitparams[1]
+    param = {}
+    try:
+        paramstring = sys.argv[2]
+        if len(paramstring) >= 2:
+            params = sys.argv[2]
+            cleanedparams = params.replace('?', '')
+            if (params[len(params) - 1] == '/'):
+                params = params[0:len(params) - 2]
+            pairsofparams = cleanedparams.split('&')
+            param = {}
+            for pair in pairsofparams:
+                if '=' in pair:
+                    key, value = pair.split('=')
+                    param[key] = value
+    except:
+        pass
     return param
+
 
 if __name__ == '__main__':
     params = get_params()
-    url = None
-    name = None
-    mode = None
-    iconimage = None
+    url = params.get("url") and urllib_parse.unquote_plus(params["url"])
+    name = params.get("name") and urllib_parse.unquote_plus(params["name"])
+    mode = params.get("mode") and int(params["mode"])
+    iconimage = params.get("iconimage") and urllib_parse.unquote_plus(params["iconimage"])
 
-    try:
-        url = urllib_parse.unquote_plus(params["url"])
-    except:
-        pass
-    try:
-        name = urllib_parse.unquote_plus(params["name"])
-    except:
-        pass
-    try:
-        mode = int(params["mode"])
-    except:
-        pass
-    try:
-        iconimage = urllib_parse.unquote_plus(params["iconimage"])
-    except:
-        pass
-
-    if mode == None or url == None or len(url) < 1:
-        main()
-
+    if mode is None or url is None or len(url) < 1:
+        if search_results is not None:
+            show_search_results()
+        else:
+            main()
     elif mode == 1:
         search_website(name)
-
     elif mode == 2:
         start(url)
-
     elif mode == 3:
         media_list(url)
-
     elif mode == 4:
         play_video(url)
-        
     elif mode == 5:
         search_website(url)
         
-    elif mode == 100:
-        main()
-
-    elif mode == 70:
-        item = xbmcgui.ListItem(name, path=url)
-        item.setMimeType('video/mp4')
-        xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, item)
-
     xbmcplugin.endOfDirectory(int(sys.argv[1]))

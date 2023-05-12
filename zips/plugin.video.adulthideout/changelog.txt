@@ -1,3 +1,8 @@
+v 0.9.81-beta4 12.05.2023
+- added categories for few sites
+- added settings option "view mode"
+- still experimenting with new code
+
 v 0.9.81-beta3 16.04.2023
 - removed few dead sites
 - fixed all sites

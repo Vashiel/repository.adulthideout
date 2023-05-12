@@ -80,8 +80,8 @@ website_list = [
     },
     {
         "name": "luxuretv",
-        "url": "https://luxuretv.com",
-        "search_url": "https://luxuretv.com/searchgate/videos/{}/" ,
+        "url": "https://en.luxuretv.com",
+        "search_url": "https://en.luxuretv.com/search/videos/{}/" ,
         "module_name": "luxuretv",
     },
     {

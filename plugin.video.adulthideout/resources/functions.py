@@ -7,6 +7,9 @@ import sys
 from kodi_six import xbmc, xbmcvfs, xbmcaddon, xbmcplugin, xbmcgui
 from six.moves import urllib_request, urllib_parse, http_cookiejar
 from resources.functions import *
+import xbmcaddon
+
+addon = xbmcaddon.Addon()
 
 
 addon = xbmcaddon.Addon(id='plugin.video.adulthideout')
@@ -37,7 +40,6 @@ urllib_request.install_opener(urllib_request.build_opener(COOKIE_HANDLER))
 # Maximale Anzahl von Versuchen, um eine fehlgeschlagene Anfrage zu wiederholen
 MAX_RETRY_ATTEMPTS = int(addon.getSetting('max_retry_attempts'))
 
-
 def add_dir(name, url, mode, iconimage, fanart):
     u = sys.argv[0] + '?url=' + urllib_parse.quote_plus(url) + '&mode=' + str(mode) +\
         '&name=' + urllib_parse.quote_plus(name) + '&iconimage=' + str(iconimage)
@@ -57,7 +59,7 @@ def add_link(name, url, mode, iconimage, fanart):
     ok = True
     liz = xbmcgui.ListItem(name)
     liz.setArt({'thumb': iconimage, 'icon': icon, 'fanart': iconimage})
-    liz.setInfo(type="Video", infoLabels={"Title": name})
+    liz.getVideoInfoTag().setTitle(name)
     try:
         liz.setContentLookup(False)
     except:
@@ -65,6 +67,7 @@ def add_link(name, url, mode, iconimage, fanart):
     liz.setProperty('IsPlayable', 'true')
     ok = xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=u,
                                     listitem=liz, isFolder=False)
+
 def resolve_url(url, websites):
     xbmc.log("Input URL for resolve_url: {}".format(url), level=xbmc.LOGDEBUG)
     for website in websites:
@@ -79,43 +82,41 @@ def resolve_url(url, websites):
         media_url = url
     return media_url
 
-def setView(content, viewType):
-    # Setzt den Kodi View Type für das aktuelle Verzeichnis
-    if content:
-        xbmcplugin.setContent(int(sys.argv[1]), content)
-    if addon.getSetting('auto-view') == 'true':
-        xbmc.executebuiltin('Container.SetViewMode(%s)' % addon.getSetting(viewType))
+
+
                                     
-def make_request(url, max_retry_attempts=3, retry_wait_time=5000):
-    # Setzen von Standard-Headern und Erstellen des Request-Objekts
-    req = urllib.request.Request(url)
-    req.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11')
-    
+def make_request(url, max_retry_attempts=3, retry_wait_time=5000, mobile=False):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11'
+    }
+
+    if mobile:
+        headers['User-Agent'] = 'Mozilla/5.0 (Linux; Android 7.0; Nexus 5X Build/NRD90M) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Mobile Safari/537.36'
+
+    req = urllib.request.Request(url, headers=headers)
+
     retries = 0
-    
+
     while retries < max_retry_attempts:
         try:
-            # Öffnen der URL und Lesen der Antwort
             response = urllib.request.urlopen(req, timeout=60)
             link = response.read().decode('utf-8') if six.PY3 else response.read()
             response.close()
             return link
         except urllib.error.URLError as e:
-            # Loggen der Fehlermeldung
             xbmc.log('Fehler beim Öffnen der URL "%s".' % url, level=xbmc.LOGERROR)
             if hasattr(e, 'code'):
                 xbmc.log('Fehlercode: %s.' % e.code, level=xbmc.LOGERROR)
             elif hasattr(e, 'reason'):
                 xbmc.log('Fehler beim Verbindungsaufbau zum Server.', level=xbmc.LOGERROR)
                 xbmc.log('Grund: %s' % e.reason, level=xbmc.LOGERROR)
-            
-            # Erhöhen des Zählers und Warten vor dem nächsten Versuch
+
             retries += 1
             xbmc.sleep(retry_wait_time)
-            
-    # Wenn alle Wiederholungsversuche fehlschlagen, Rückgabe eines leeren Strings
+
     xbmc.log('Alle Wiederholungsversuche fehlgeschlagen.', level=xbmc.LOGERROR)
     return ""
+
 
 def get_search_query():
     keyb = xbmc.Keyboard('', '[COLOR yellow]Enter search text[/COLOR]')
@@ -123,3 +124,6 @@ def get_search_query():
     if keyb.isConfirmed():
         return urllib_parse.quote_plus(keyb.getText())
     return None
+
+
+    xbmcplugin.endOfDirectory(int(sys.argv[1]))

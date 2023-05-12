@@ -20,9 +20,6 @@ def get_all_queries():
 
     return all_queries
 
-
-
-
 def add_query(query):
     # Get the path to the add-on directory
     home = xbmcaddon.Addon().getAddonInfo('path')

@@ -31,4 +31,5 @@ def play_efukt_video(url):
     content = make_request(url)
     media_url = re.compile('<source src="(.+?)" type="video/mp4">').findall(content)[0]
     media_url = media_url.replace('amp;', '')
+    xbmc.log('Resolved media URL: ' + media_url, xbmc.LOGINFO)  # Hinzufügen dieser Log-Anweisung
     return media_url

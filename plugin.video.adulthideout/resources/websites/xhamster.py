@@ -13,9 +13,7 @@ def process_xhamster_content(url, page=1):
         # changing the base-URl RL
     if "search" not in url and "/newest/" not in url:
         url = url + "/newest/1"
-    
-    if page == 1:
-        add_dir(f'Search xhamster', 'xhamster', 5, logos + 'xhamster.png', fanart)
+    add_dir(f'Search xhamster', 'xhamster', 5, logos + 'xhamster.png', fanart)
     content = make_request(url)
     match = re.compile('data-role="thumb-link" href="([^"]*)".+?src="([^"]*)" alt="([^"]*)">?', re.DOTALL).findall(content)
     
@@ -25,7 +23,6 @@ def process_xhamster_content(url, page=1):
     
     for url, thumb, name in match:
         name = html.unescape(name)
-        #name = name.replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', '\'')
         add_link(name, url, 4, thumb, fanart)
     try:
         match = re.compile('href="([^"]*)" rel="next"').findall(content)
