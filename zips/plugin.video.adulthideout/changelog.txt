@@ -1,3 +1,9 @@
+v 0.9.81-beta5 02.09.2023
+- Changing Search
+- Adding clear cache
+- fixed Vikiporn
+- Motherless add Groups, Galleries, Categories. 
+
 v 0.9.81-beta4 12.05.2023
 - added categories for few sites
 - added settings option "view mode"

@@ -3,7 +3,10 @@
     <category label="General">
         <setting id="max_retry_attempts" type="slider" label="Max Retry Attempts" default="3" min="1" max="10" step="1" option="int" />
     </category>
-    <category label="View Mode"> <!-- Hinzugefügte Kategorie: View Mode -->
+    <category label="View Mode">
         <setting id="viewtype" type="enum" label="Viewtype" values="List|Poster|Wall|List|Fanart" default="2" />
+    </category>
+    <category label="Cache">
+        <setting id="clear_cache" type="action" label="Clear Cache" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/clear_cache.py)" />
     </category>
 </settings>

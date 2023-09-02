@@ -8,7 +8,7 @@ from kodi_six import xbmc, xbmcvfs, xbmcaddon, xbmcplugin, xbmcgui
 from six.moves import urllib_request, urllib_parse, http_cookiejar
 from resources.functions import *
 import xbmcaddon
-
+from default import addon_handle
 addon = xbmcaddon.Addon()
 
 
@@ -51,6 +51,18 @@ def add_dir(name, url, mode, iconimage, fanart):
                                     listitem=liz, isFolder=True)
     return ok
 
+def add_sub_dir(parent_name, name, url, mode, iconimage, fanart, description=''):
+    u = (url + "?url=" + urllib_parse.quote_plus(url) +
+         "&mode=" + str(mode) + "&name=" + urllib_parse.quote_plus(parent_name + '/' + name) +
+         "&iconimage=" + urllib_parse.quote_plus(iconimage) +
+         "&description=" + urllib_parse.quote_plus(description))
+    liz = xbmcgui.ListItem(name)
+    liz.setInfo(type="Video", infoLabels={"Title": name, "Plot": description})
+    liz.setArt({'thumb': iconimage, 'icon': iconimage, 'fanart': fanart})
+    xbmcplugin.addDirectoryItem(handle=addon_handle, url=u, listitem=liz, isFolder=True)
+
+
+
 def add_link(name, url, mode, iconimage, fanart):
     quoted_url = urllib_parse.quote(url)
     u = sys.argv[0] + '?url=' + quoted_url + '&mode=' + str(mode) \
@@ -87,7 +99,7 @@ def resolve_url(url, websites):
                                     
 def make_request(url, max_retry_attempts=3, retry_wait_time=5000, mobile=False):
     headers = {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
     }
 
     if mobile:

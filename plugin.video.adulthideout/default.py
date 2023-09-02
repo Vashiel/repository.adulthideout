@@ -14,6 +14,7 @@ import urllib.parse
 import logging
 
 search_results = None
+global addon_handle
 addon_handle = int(sys.argv[1])
 addon = xbmcaddon.Addon()
 
@@ -94,39 +95,52 @@ def process_website(url):
     view_mode = view_modes[viewtype]
     xbmc.executebuiltin('Container.SetViewMode({})'.format(view_mode))
 
-def search_website(website_name):
+def search_website(website_name, search_query=None):
     site = next((site for site in websites if site["name"] == website_name or site["url"].find(website_name) != -1), None)
     if site is None:
         return
 
-    last_query = get_last_query()
-    keyb = xbmc.Keyboard(str(last_query), "[COLOR yellow]Enter search text[/COLOR]")
-    all_queries = get_all_queries()
-    options = ["[COLOR yellow]New Search[/COLOR]"] + all_queries + ["[COLOR yellow]Clear Search History[/COLOR]"]
-    valid_options = [option for option in options if isinstance(option, str)]
-    selected_index = xbmcgui.Dialog().select("Select a Query", valid_options)
-
-    if selected_index >= 0 and selected_index == 0:
-        keyb.doModal()
-        if keyb.isConfirmed():
-            search_word = keyb.getText()
-            search_word_encoded = urllib.parse.quote_plus(search_word)
-            if search_word not in all_queries:
-                save_query(search_word)
-
-            search_url = site["search_url"].replace("{}", search_word_encoded)
-            xbmc.log("Search URL: " + search_url, xbmc.LOGINFO)
-            site["function"](search_url, 1)
-    elif selected_index >= 0 and selected_index > 0 and selected_index < len(valid_options) - 1:
-        search_word = valid_options[selected_index]
-        search_word_encoded = urllib.parse.quote_plus(search_word)
-
-        search_url = site["search_url"].replace("{}", search_word_encoded)
+    if search_query is None:
+        all_queries = get_all_queries()
+        for query in all_queries:
+            url_value = "{}?{}".format(site["name"], urllib.parse.quote_plus(query))
+            add_dir(query, url_value, 6, "", "")
+        
+        add_dir("New Search", "{}?new_search".format(site["name"]), 6, "", "")
+        add_dir("Clear Search History", "clear_search_history", 6, "", "")
+        
+        xbmcplugin.setPluginCategory(int(sys.argv[1]), 'Search Results')
+        xbmcplugin.setContent(int(sys.argv[1]), 'movies')
+        xbmc.executebuiltin('Container.SetViewMode({})'.format(view_mode))
+        xbmcplugin.endOfDirectory(int(sys.argv[1]))
+    else:
+        # Call the website's search function with the full search URL.
+        search_url = urllib.parse.urljoin(site["url"], site["search_url"].format(search_query))
         site["function"](search_url)
-    elif selected_index >= 0 and selected_index == len(valid_options) - 1:
-        clear_search_history()
-    xbmcplugin.setPluginCategory(int(sys.argv[1]), 'Search Results')
-    xbmcplugin.endOfDirectory(int(sys.argv[1]))
+        xbmcplugin.setContent(int(sys.argv[1]), 'movies')
+        xbmc.executebuiltin('Container.SetViewMode({})'.format(view_mode))
+
+def handle_search_entry(url, mode):
+    if "?" in url:
+        website_name, action = url.split("?", 1)
+        
+        if action == "new_search":
+            keyb = xbmc.Keyboard("", "[COLOR yellow]Enter search text[/COLOR]")
+            keyb.doModal()
+            if keyb.isConfirmed():
+                search_word = keyb.getText()
+                search_word_encoded = urllib.parse.quote_plus(search_word)
+                save_query(search_word)
+                search_website(website_name, search_word_encoded)
+        else:
+            search_query = action
+            search_website(website_name, search_query)
+    else:
+        action = url
+        if action == "clear_search_history":
+            clear_search_history()
+
+
 
 def play_video(url):
     media_url = resolve_url(url, websites)
@@ -176,5 +190,7 @@ if __name__ == '__main__':
         play_video(url)
     elif mode == 5:
         search_website(url)
+    elif mode == 6:
+        handle_search_entry(url, mode)
         
     xbmcplugin.endOfDirectory(int(sys.argv[1]))

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.9.81-beta4" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.9.81-beta5" provider-name="Vashiel">
 	<requires>
 	<!-- Commenting xbmc.python allows install on all versions of Kodi -->
 	<!-- <import addon="xbmc.python" version="2.14.0"/> -->
@@ -12,10 +12,11 @@
 	</extension>
 	<extension point="xbmc.addon.metadata">
 		<news>
-v 0.9.81-beta4 12.05.2023
-- added categories for few sites
-- added settings option "view mode"
-- still experimenting with new code
+v 0.9.81-beta5 02.09.2023
+- Changing Search
+- Adding clear cache
+- fixed Vikiporn
+- Motherless add Groups, Galleries, Categories. 
 		</news>
 		<summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
 		<description>
@@ -25,9 +26,7 @@ Internet [COLOR red]XXX Porn Video[COLOR white] Streams.
 
 [COLOR white]Github:
 https://github.com/Vashiel/repository.adulthideout
-
-Email:
-adulthideout@yandex.com[/COLOR]	
+[/COLOR]	
 
 		</description>
 		<disclaimer>

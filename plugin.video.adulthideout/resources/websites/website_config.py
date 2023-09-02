@@ -56,7 +56,7 @@ website_list = [
     {
         "name": "vikiporn",
         "url": "https://www.vikiporn.com",
-        "search_url": "https://www.vikiporn.com/?s={}",
+        "search_url": "https://www.vikiporn.com/search/?q={}",
         "module_name": "vikiporn",
     },
     {
