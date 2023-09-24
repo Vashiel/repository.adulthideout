@@ -12,7 +12,6 @@ from resources.websites.websites import websites
 from resources.functions import *
 import urllib.parse
 import logging
-
 search_results = None
 global addon_handle
 addon_handle = int(sys.argv[1])

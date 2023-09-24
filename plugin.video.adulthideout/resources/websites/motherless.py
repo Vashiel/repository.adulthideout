@@ -9,8 +9,6 @@ import logging
 from urllib.parse import urlparse, urljoin
 import html
 
-BASE_URL = "https://motherless.com"
-
 def process_motherless_content(url):
     content = None
     if "motherless://" in url or "shouts" in url:

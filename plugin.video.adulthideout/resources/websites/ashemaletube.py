@@ -16,10 +16,10 @@ def process_ashemaletube_content(url):
     if 'tags' in url:
         process_ashemaletube_categories(url)
     else:
-        content = make_request(url, mobile=False)
+        content = make_request(url, mobile=True)
         add_dir("Categories", "https://ashemaletube.com/tags/", 2, logos + 'ashemaletube.png', fanart)
         add_dir(f'Search ashemaletube', 'ashemaletube', 5, logos + 'ashemaletube.png', fanart)
-        match = re.compile('<span class="thumb-inner-wrapper">.+?<a href="([^"]*)" >.+?<img src="([^"]*)" alt="([^"]*)"', re.DOTALL).findall(content)
+        match = re.compile('a href="([^"]*)">.+?src="([^"]*)" alt="([^"]*)"', re.DOTALL).findall(content)
         parsed_url = urlparse(url)
         base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
         for video_url, thumb, name, in match:
@@ -42,8 +42,10 @@ def process_ashemaletube_categories(url):
         add_dir(name, base_url + video_url, 2, logos + 'ashemaletube.png', fanart)
 
 def play_ashemaletube_video(url):
-    content = make_request(url)
-    media_url = re.compile('<source src="(.+?)" type="video/mp4">').findall(content)[0]
+    content = make_request(url, mobile=True)
+    #media_url = re.compile('<source src="(.+?)" type="video/mp4">').findall(content)[0]
+    media_url = re.compile('"src":"(.+?)"').findall(content)[0]
+    media_url = media_url.replace('/', '')
     media_url = media_url.replace('amp;', '')
     xbmc.log("Media URL: " + media_url, xbmc.LOGINFO)
     return media_url

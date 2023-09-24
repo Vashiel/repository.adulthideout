@@ -1,3 +1,11 @@
+v 0.9.81-beta6 24.09.2023
+- fixed Xhamster
+- fixed Uflash
+- fixed Ashemaletube
+- Added Content change (Xhamster, Xvideos)
+- fixed Video Quality in Xvideos (play best possible quality)
+- still experimenting
+
 v 0.9.81-beta5 02.09.2023
 - Changing Search
 - Adding clear cache

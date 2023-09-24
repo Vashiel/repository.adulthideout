@@ -20,7 +20,7 @@ website_list = [
     {
         "name": "xhamster",
         "url": "https://xhamster.com",
-        "search_url": "https://xhamster.com/search.php?q={}",
+        "search_url": "https://xhamster.com/search/{}",
         "module_name": "xhamster",
     },
     {
@@ -75,7 +75,7 @@ website_list = [
     {
         "name": "uflash",
         "url": "http://www.uflash.tv",
-        "search_url": "http://www.uflash.tv/search?search_type=videos&search_query=",
+        "search_url": "/search?search_query={}&search_type=videos",
         "module_name": "uflash",
     },
     {
