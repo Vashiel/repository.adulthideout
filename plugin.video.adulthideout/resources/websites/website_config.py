@@ -90,6 +90,24 @@ website_list = [
         "search_url": "https://tubedupe.com/search/?q={}",
         "module_name": "tubedupe",
     },
+    {
+        "name": "hypnotube",
+        "url": "https://hypnotube.com",
+        "search_url": "https://hypnotube.com/search/{}/",
+        "module_name": "hypnotube",
+    },
+    {
+        "name": "punishbang",
+        "url": "https://www.punishbang.com",
+        "search_url": "https://punishbang.com/search/{}/",
+        "module_name": "punishbang",
+    },
+    {
+        "name": "realcuckoldsex",
+        "url": "http://www.realcuckoldsex.com",
+        "search_url": "http://www.realcuckoldsex.com/search/{}/",
+        "module_name": "realcuckoldsex",
+    },
 ]
 
 website_list.sort(key=lambda x: x["name"])
