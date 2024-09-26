@@ -94,6 +94,7 @@ def process_website(url):
     view_mode = view_modes[viewtype]
     xbmc.executebuiltin('Container.SetViewMode({})'.format(view_mode))
 
+
 def search_website(website_name, search_query=None):
     site = next((site for site in websites if site["name"] == website_name or site["url"].find(website_name) != -1), None)
     if site is None:
@@ -104,16 +105,16 @@ def search_website(website_name, search_query=None):
         for query in all_queries:
             url_value = "{}?{}".format(site["name"], urllib.parse.quote_plus(query))
             add_dir(query, url_value, 6, "", "")
-        
+
         add_dir("New Search", "{}?new_search".format(site["name"]), 6, "", "")
+        add_dir("Edit Query", "{}?edit_query".format(site["name"]), 6, "", "")  # Hier wird die Bearbeitungsfunktion hinzugefügt
         add_dir("Clear Search History", "clear_search_history", 6, "", "")
-        
+
         xbmcplugin.setPluginCategory(int(sys.argv[1]), 'Search Results')
         xbmcplugin.setContent(int(sys.argv[1]), 'movies')
         xbmc.executebuiltin('Container.SetViewMode({})'.format(view_mode))
         xbmcplugin.endOfDirectory(int(sys.argv[1]))
     else:
-        # Call the website's search function with the full search URL.
         search_url = urllib.parse.urljoin(site["url"], site["search_url"].format(search_query))
         site["function"](search_url)
         xbmcplugin.setContent(int(sys.argv[1]), 'movies')
@@ -122,15 +123,18 @@ def search_website(website_name, search_query=None):
 def handle_search_entry(url, mode):
     if "?" in url:
         website_name, action = url.split("?", 1)
-        
+
         if action == "new_search":
             keyb = xbmc.Keyboard("", "[COLOR yellow]Enter search text[/COLOR]")
             keyb.doModal()
             if keyb.isConfirmed():
                 search_word = keyb.getText()
                 search_word_encoded = urllib.parse.quote_plus(search_word)
-                save_query(search_word)
+                save_query(search_word)  # Suchbegriff speichern
                 search_website(website_name, search_word_encoded)
+        elif action == "edit_query":
+            edit_query()
+            search_website(website_name)  # Zurück zur Seite mit den Suchoptionen
         else:
             search_query = action
             search_website(website_name, search_query)
@@ -138,7 +142,6 @@ def handle_search_entry(url, mode):
         action = url
         if action == "clear_search_history":
             clear_search_history()
-
 
 
 def play_video(url):

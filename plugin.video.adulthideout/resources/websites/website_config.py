@@ -31,8 +31,8 @@ website_list = [
     },
     {
         "name": "hentaigasm",
-        "url": "http://hentaigasm.com",
-        "search_url": "http://hentaigasm.com/?s={}",
+        "url": "https://hentaigasm.com",
+        "search_url": "https://hentaigasm.com/?s={}",
         "module_name": "hentaigasm",
     },
     {
@@ -40,12 +40,6 @@ website_list = [
         "url": "https://www.heavy-r.com",
         "search_url": "https://www.heavy-r.com/search/{}",
         "module_name": "heavy_r",
-    },
-    {
-        "name": "pornxs",
-        "url": "https://pornxs.com",
-        "search_url": "https://pornxs.com/?s={}",
-        "module_name": "pornxs",
     },
     {
         "name": "redtube",
@@ -104,8 +98,8 @@ website_list = [
     },
     {
         "name": "realcuckoldsex",
-        "url": "http://www.realcuckoldsex.com",
-        "search_url": "http://www.realcuckoldsex.com/search/{}/",
+        "url": "https://www.cuckold69.com/",
+        "search_url": "https://www.cuckold69.com/search/{}/",
         "module_name": "realcuckoldsex",
     },
 ]

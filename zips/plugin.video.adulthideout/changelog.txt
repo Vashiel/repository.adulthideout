@@ -1,3 +1,11 @@
+v 0.9.81-beta7 26.09.2024
+- fixed Xhamster
+- fixed Uflash
+- fixed Luxeretv
+- fixed Heavy_R
+- fixed Redtube
+- added (hypnotube, punishbang, realcuckoldsex) Thx rocket-dave
+
 v 0.9.81-beta6 24.09.2023
 - fixed Xhamster
 - fixed Uflash

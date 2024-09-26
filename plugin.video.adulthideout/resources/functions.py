@@ -9,8 +9,8 @@ from six.moves import urllib_request, urllib_parse, http_cookiejar
 from resources.functions import *
 import xbmcaddon
 from default import addon_handle
-addon = xbmcaddon.Addon()
 
+addon = xbmcaddon.Addon()
 
 addon = xbmcaddon.Addon(id='plugin.video.adulthideout')
 home = addon.getAddonInfo('path')
@@ -26,7 +26,6 @@ urlopen = urllib_request.urlopen
 cookiejar = http_cookiejar.LWPCookieJar()
 cookie_handler = urllib_request.HTTPCookieProcessor(cookiejar)
 urllib_request.build_opener(cookie_handler)
-
 
 # Setzen der Log-Level Konstanten
 # INFO wird für Python 3 verwendet und NOTICE für Python 2
@@ -61,8 +60,6 @@ def add_sub_dir(parent_name, name, url, mode, iconimage, fanart, description='')
     liz.setArt({'thumb': iconimage, 'icon': iconimage, 'fanart': fanart})
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=u, listitem=liz, isFolder=True)
 
-
-
 def add_link(name, url, mode, iconimage, fanart):
     quoted_url = urllib_parse.quote(url)
     u = sys.argv[0] + '?url=' + quoted_url + '&mode=' + str(mode) \
@@ -94,9 +91,6 @@ def resolve_url(url, websites):
         media_url = url
     return media_url
 
-
-
-                                    
 def make_request(url, max_retry_attempts=3, retry_wait_time=5000, mobile=False):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
@@ -129,13 +123,11 @@ def make_request(url, max_retry_attempts=3, retry_wait_time=5000, mobile=False):
     xbmc.log('Alle Wiederholungsversuche fehlgeschlagen.', level=xbmc.LOGERROR)
     return ""
 
-
 def get_search_query():
     keyb = xbmc.Keyboard('', '[COLOR yellow]Enter search text[/COLOR]')
     keyb.doModal()
     if keyb.isConfirmed():
         return urllib_parse.quote_plus(keyb.getText())
     return None
-
 
     xbmcplugin.endOfDirectory(int(sys.argv[1]))
