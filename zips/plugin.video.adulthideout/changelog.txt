@@ -1,3 +1,7 @@
+v 0.9.81-beta8 30.09.2024
+- fixed Heavy_r (didn't work with Android)
+- experimenting a lot
+
 v 0.9.81-beta7 26.09.2024
 - fixed Xhamster
 - fixed Uflash

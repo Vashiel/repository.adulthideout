@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.9.81-beta7" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.9.81-beta8" provider-name="Vashiel">
 	<requires>
 	<!-- Commenting xbmc.python allows install on all versions of Kodi -->
 	<!-- <import addon="xbmc.python" version="2.14.0"/> -->
@@ -13,13 +13,9 @@
 	</extension>
 	<extension point="xbmc.addon.metadata">
 		<news>
-v 0.9.81-beta7 26.09.2024
-- fixed Xhamster
-- fixed Uflash
-- fixed Luxeretv
-- fixed Heavy_R
-- fixed Redtube
-- added (hypnotube, punishbang, realcuckoldsex) Thx rocket-dave
+v 0.9.81-beta8 30.09.2024
+- fixed Heavy_r (didn't work with Android)
+- experimenting a lot
 		</news>
 		<summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
 		<description>

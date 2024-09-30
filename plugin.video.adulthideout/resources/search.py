@@ -3,8 +3,6 @@ import json
 import sys  # Hinzufügen des Imports für sys
 import xbmcaddon
 from kodi_six import xbmc, xbmcgui, xbmcvfs
-from .queries import get_all_queries
-import importlib
 
 addon = xbmcaddon.Addon()
 
@@ -63,7 +61,7 @@ def edit_query():
             queries[selected_query] = new_query
             save_queries(queries)
             xbmcgui.Dialog().notification("Query Edited", "Search query edited successfully.", xbmcgui.NOTIFICATION_INFO, 3000)
-            xbmc.executebuiltin('Container.Refresh')  # Aktuelle Ansicht aktualisieren
+            xbmc.executebuiltin('Container.Update({})'.format(sys.argv[0]))  # Zurück zur Seite mit den Suchoptionen
 
 def save_queries(queries):
     file_path = get_queries_path()
