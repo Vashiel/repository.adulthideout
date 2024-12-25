@@ -102,6 +102,30 @@ website_list = [
         "search_url": "https://www.cuckold69.com/search/{}/",
         "module_name": "realcuckoldsex",
     },
+       {
+        "name": "xfemaledom",
+        "url": "https://xfemaledom.com/",
+        "search_url": "https://xfemaledom.com/?s={}",
+        "module_name": "xfemaledom",
+    },
+    {
+        "name": "spankingtube",
+        "url": "https://www.spankingtube.com/",
+        "search_url": "https://www.spankingtube.com/search/videos/{}",
+        "module_name": "spankingtube",
+    },
+    {
+        "name": "bdsmxtube",
+        "url": "https://bdsmx.tube/",
+        "search_url": "https://bdsmx.tube/api/videos2.php?params=86400/str/relevance/60/search..1.all..&s={}",
+        "module_name": "bdsmxtube",
+    },
+    {
+        "name": "punishworld",
+        "url": "https://punishworld.com/",
+        "search_url": "https://punishworld.com/?s={}",
+        "module_name": "punishworld",
+    },
 ]
 
 website_list.sort(key=lambda x: x["name"])
