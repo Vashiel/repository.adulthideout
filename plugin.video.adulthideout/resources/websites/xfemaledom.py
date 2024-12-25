@@ -39,8 +39,8 @@ def play_xfemaledom_video(url):
     xbmc.log("Play xfemaledom content: " + content, xbmc.LOGINFO)
     #"preview":"https://14.cdnxsalty9.com:8081/9/c/1/9c195637-7522-4ff2-924f-ff2921d96e28_preview.mp4"
     #this is a total hack and it works about 50% of the time
+    media_url = re.compile('"preview":"([^"]+)_preview.mp4"').findall(content)[0]+'_240p.mp4'
     #media_url = re.compile('"preview":"([^"]+)_preview.mp4"').findall(content)[0]+'_720p.mp4'
-    media_url = re.compile('"preview":"([^"]+)_preview.mp4"').findall(content)[0]+'/hls_high/video.m3u8'
     xbmc.log("Media URL: " + media_url, xbmc.LOGINFO)
     return media_url
 
