@@ -1,12 +1,107 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
-    <category label="General">
-        <setting id="max_retry_attempts" type="slider" label="Max Retry Attempts" default="3" min="1" max="10" step="1" option="int" />
-    </category>
-    <category label="View Mode">
-        <setting id="viewtype" type="enum" label="Viewtype" values="List|Poster|Wall|List|Fanart" default="2" />
-    </category>
-    <category label="Cache">
-        <setting id="clear_cache" type="action" label="Clear Cache" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/clear_cache.py)" />
-    </category>
+  <category label="Allgemein">
+    <setting id="max_retry_attempts" type="slider" label="Max. Wiederholungen" default="3" min="1" max="10" step="1" option="int" />
+    <setting id="viewtype" type="enum" label="Ansichtstyp" values="Liste|Poster|Wall|Fanart" default="2" />
+    <setting id="clear_cache" type="action" label="Cache leeren" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/clear_cache.py)" />
+  </category>
+
+  <category label="xVideos">
+  </category>
+
+  <category label="xHamster">
+    <setting id="xhamster_category" type="select" label="Content Type" default="Straight" values="Straight|Gay|Shemale" />
+    <setting id="xhamster_sort_by" type="select" label="Sort by" default="Trending" values="Trending|Newest|Top Rated|Most Popular (Weekly)|Most Popular (Monthly)" />
+    <setting id="xhamster_min_duration" type="select" label="Duration" default="All" values="All|0-2 min|2-5 min|5-10 min|10-30 min|30+ min|Full Video" />
+    <setting id="xhamster_resolution" type="select" label="Quality" default="All" values="All|720p+|1080p+|4K" />
+  </category>
+
+  <category label="eporner">
+    <setting type="lsep" label="Inhaltsfilter"/>
+    <setting id="eporner_gay_filter" type="enum" label="Inhaltstyp" values="Exclude Gay (Straight)|Only Gay|Include Gay (Both)" default="0"/>
+    <setting type="lsep" label="Video Sortierung"/>
+    <setting id="eporner_sort_by" type="enum" label="Sortieren nach" values="Newest|Most Viewed|Top Rated|Longest" default="0" />
+  </category>
+
+  <category label="Efukt">
+  </category>
+  
+  <category label="Daftporn">
+  </category>
+
+  <category label="Heavy-R">
+    <setting id="heavy-r_sort_by" type="enum" label="Videos sortieren nach" values="Recent Uploads|Most Viewed|Top Rated|Recent Favorites" default="0" />
+  </category>
+
+  <category label="Motherless">
+    <setting id="motherless_sort_order" type="select" label="Standard-Sortierung" values="Newest|Being Watched Now|Favorites|Most Viewed|Most Commented|Popular|Archived|Random Video" default="Newest" />
+  </category>
+
+  <category label="PornHub">
+    <setting id="pornhub_sort_by" type="select" label="Videos sortieren nach" default="Newest" values="Newest|Most Viewed|Top Rated" />
+    <setting id="pornhub_pornstar_sort_by" type="select" label="Pornstars sortieren nach" default="Most Popular" values="Most Popular|Most Viewed|Top Trending|Most Subscribed|Alphabetical|No. Of Videos|Random" />
+  </category>
+
+  <category label="PornTN">
+    <setting id="porntn_sort_by" type="select" label="Sortieren nach" default="Latest" values="Latest|Most Viewed|Top Rated|Longest|Most Commented|Most Favorited" />
+  </category>
+
+  <category label="MissAV">
+    <setting type="lsep" label="Video Sortierung"/>
+    <setting id="missav_video_sort_by" type="enum" label="Sort by" default="0" values="New Releases|Recent Update|Most Viewed Today|Most Viewed by Week|Most Viewed by Month"/>
+    <setting type="lsep" label="Darstellerinnen Filter"/>
+    <setting id="missav_actress_filter_height" type="select" label="Height" default="" values="All|131-135cm|136-140cm|141-145cm|146-150cm|151-155cm|156-160cm|161-165cm|166-170cm|171-175cm|176-180cm|181-185cm|186-190cm" />
+    <setting id="missav_actress_filter_cup" type="select" label="Cup Size" default="" values="All|A cup|B cup|C cup|D cup|E cup|F cup|G cup|H cup|I cup|J cup|K cup|L cup|M cup|N cup|O cup|P cup|Q cup" />
+    <setting id="missav_actress_filter_age" type="select" label="Age" default="" values="All|&lt; 20|20 - 30|30 - 40|40 - 50|50 - 60|&gt; 60" />
+    <setting id="missav_actress_filter_debut" type="select" label="Debut Year" default="" values="All|Before 2025|Before 2024|Before 2023|Before 2022|Before 2021|Before 2020|Before 2019|Before 2018|Before 2017|Before 2016|Before 2015|Before 2014|Before 2013|Before 2012|Before 2011|Before 2010" />
+  </category>
+
+    <category label="TubePornClassic">
+    <setting id="tubepornclassic_sort_by" type="enum" label="Sortieren nach" default="0">
+      <option label="Latest Updates" value="0" />
+      <option label="Top Rated"      value="1" />
+      <option label="Longest"        value="2" />
+    </setting>
+    <setting id="tubepornclassic_search_sort_by" type="enum" label="Such-Sortierung" default="0">
+      <option label="Relevance"     value="0" />
+      <option label="Latest"        value="1" />
+      <option label="Top Rated"     value="2" />
+      <option label="Most Viewed"   value="3" />
+      <option label="Longest"       value="4" />
+    </setting>
+    <setting id="tubepornclassic_min_duration" type="enum" label="Minimale Dauer (Minuten)" default="0">
+      <option label="0"  value="0" />
+      <option label="5"  value="1" />
+      <option label="10" value="2" />
+      <option label="15" value="3" />
+      <option label="20" value="4" />
+      <option label="30" value="5" />
+    </setting>
+  </category>
+
+  <category label="Ashemaletube">
+    <setting type="lsep" label="Video Filter"/>
+    <setting id="ashemaletube_sort_by" type="enum" label="Videos sortieren nach" values="Trending|Date Added|Most Popular|Top Rated|Longest" default="0" />
+    <setting type="lsep" label="Pornstar Filter"/>
+    <setting id="ashemaletube_pornstar_sort_by" type="enum" label="Sortieren nach" values="User Favorites|Alphabet|Top Rated|Date Added|Most Videos|Most Galleries|Most Comments" default="0" />
+    <setting id="ashemaletube_pf_country" type="enum" label="Land" values="Any|Argentina|Australia|Austria|Brazil|Canada|Chile|China|Colombia|Czechia|France|Germany|Hong Kong|Hungary|Indonesia|Italy|Japan|Malaysia|Mexico|Netherlands|Peru|Philippines|Poland|Romania|Russia|Spain|Switzerland|Thailand|United Kingdom|United States|Venezuela" default="0"/>
+    <setting id="ashemaletube_pf_penis" type="enum" label="Penisgröße" values="Any|Small|Medium|Big" default="0"/>
+    <setting id="ashemaletube_pf_breast" type="enum" label="Brustgröße" values="Any|Small|Medium|Big|Natural" default="0"/>
+    <setting id="ashemaletube_pf_hair" type="enum" label="Haarfarbe" values="Any|Black|Brown|Auburn|Red|Blonde|Varies / Changing|Shaved/Bald|Mixture / Multi Colored|Silver / Grey" default="0"/>
+    <setting id="ashemaletube_pf_birthday" type="enum" label="Geburtsjahr" values="Any|1960-1969|1970-1979|1980-1989|1990-1999|2000-2007" default="0"/>
+    <setting id="ashemaletube_pf_eyes" type="enum" label="Augenfarbe" values="Any|Blue|Brown|Green|Grey|Hazel" default="0"/>
+    <setting id="ashemaletube_pf_gender" type="enum" label="Gender" values="Any|TS/TG|CD/TV|Male|Female" default="0"/>
+  </category>
+
+  <category label="Hentaigasm">
+    <setting id="hentaigasm_sort_by" type="enum" label="Sortieren nach" values="Date|Views|Likes|Title|Random" default="0" />
+  </category>
+
+  <category label="Hypnotube">
+    <setting id="hypnotube_sort_by" type="select" label="Sort by" default="0" values="Most Recent|Most Viewed|Top Rated|Most Discussed|Longest"/>
+  </category>
+
+  <category label="LuxureTV">
+      <setting id="luxuretv_sort_by" type="enum" label="Sort by" default="0" values="Newest|Top rated|Most viewed|Longest|Most discussed"/>
+  </category>
 </settings>

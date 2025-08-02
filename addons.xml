@@ -1,24 +1,20 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="0.9.81-beta8" provider-name="Vashiel">
-	<requires>
-	<!-- Commenting xbmc.python allows install on all versions of Kodi -->
-	<!-- <import addon="xbmc.python" version="2.14.0"/> -->
-	<import addon="script.module.six"/>
-	<import addon="script.module.kodi-six"/>
-	</requires>
-	<extension	point="xbmc.python.pluginsource"
-				library="default.py">
-				<provides>video</provides>
-	</extension>
-	<extension point="xbmc.addon.metadata">
-		<news>
-v 0.9.81-beta8 30.09.2024
-- fixed Heavy_r (didn't work with Android)
-- experimenting a lot
-		</news>
-		<summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
-		<description>
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.0" provider-name="Vashiel">
+    <extension point="xbmc.python.pluginsource" library="default.py">
+        <provides>video</provides>
+    </extension>
+    <extension point="xbmc.addon.metadata">
+        <settingfile>resources/settings.xml</settingfile>
+        <news>
+v 1.0.0 â€” 2025-08-02
+- Core refactor: unified HTTP/parsing/playback in BaseWebsite
+- 6 new adapters: DaftPorn, ePorner, MissAV, Pornhub, PornTN (+ decoder), TubePornClassic (+ decoder)
+- Removed legacy scripts (functions.py, search.py, content.py, queries.py, old website modules) and JSON caches
+- Long changelog on Github
+        </news>
+        <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
+        <description>
 Internet [COLOR red]XXX Porn Video[COLOR white] Streams.
 
 [COLOR red][B]WARNING:[/B][COLOR red]Only for adults[/COLOR]
@@ -26,47 +22,19 @@ Internet [COLOR red]XXX Porn Video[COLOR white] Streams.
 [COLOR white]Github:
 https://github.com/Vashiel/repository.adulthideout
 [/COLOR]
-
-		</description>
-		<disclaimer>
-		</disclaimer>
-		<platform>all</platform>
-		<license>http://www.gnu.org/licenses/</license>
-		<forum></forum>
-		<website></website>
-		<email></email>
-		<mainsource>https://github.com/Vashiel/repository.adulthideout</mainsource>
-		<source></source>
-		<assets>
-			<icon>resources/logos/icon.png</icon>
-			<fanart>resources/logos/fanart.jpg</fanart>
-		</assets>
-	</extension>
-</addon>
-
-<addon id="repository.adulthideout" name="AdultHideout REPO" version="1.0.3" provider-name="Vashiel">
-  <extension point="xbmc.addon.repository" name="AdultHideout Addon Repository">
-    <dir maxversion="20.9.0">
-      <info compressed="false">https://github.com/Vashiel/repository.adulthideout/raw/master/addons.xml</info>
-      <checksum>https://github.com/Vashiel/repository.adulthideout/raw/master/addons.xml.md5</checksum>
-      <datadir zip="true">https://github.com/Vashiel/repository.adulthideout/raw/master/zips</datadir>
-      <hashes>false</hashes>
-    </dir>
-    <dir minversion="21.0.0">
-      <info compressed="false">https://github.com/Vashiel/repository.adulthideout/raw/master/addons.xml</info>
-      <checksum>https://github.com/Vashiel/repository.adulthideout/raw/master/addons.xml.md5</checksum>
-      <datadir zip="true">https://github.com/Vashiel/repository.adulthideout/raw/master/zips</datadir>
-      <hashes>false</hashes>
-    </dir>
-  </extension>
-  <extension point="xbmc.addon.metadata">
-    <summary>AdultHideout Addon Repository</summary>
-    <description>First Try for a Adult Kodi Addon</description>
-    <platform>all</platform>
-    <assets>
-      <icon>resources/icon.png</icon>
-      <fanart>resources/fanart.jpg</fanart>
-    </assets>
-  </extension>
+        </description>
+        <disclaimer></disclaimer>
+        <platform>all</platform>
+        <license>http://www.gnu.org/licenses/</license>
+        <forum></forum>
+        <website></website>
+        <email></email>
+        <mainsource>https://github.com/Vashiel/repository.adulthideout</mainsource>
+        <source></source>
+        <assets>
+            <icon>resources/logos/icon.png</icon>
+            <fanart>resources/logos/fanart.jpg</fanart>
+        </assets>
+    </extension>
 </addon>
 </addons>

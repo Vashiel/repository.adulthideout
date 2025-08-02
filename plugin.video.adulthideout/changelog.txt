@@ -1,3 +1,15 @@
+v 1.0.0 — 2025-08-02
+- Core refactor: unified HTTP/parsing/playback in BaseWebsite
+- 6 new adapters: DaftPorn, ePorner, MissAV, Pornhub, PornTN (+ decoder), TubePornClassic (+ decoder)
+- Removed legacy scripts (functions.py, search.py, content.py, queries.py, old website modules) and JSON caches
+- Long changelog on Github
+
+v 0.9.81-beta9 17.06.2024
+Added: - BaseWebsite class for unified HTTP, parsing, filtering & sorting
+Removed: - functions.py, search.py, filter_utils.py, sorting_utils.py, website_config.py
+Changed: - All site plugins now extend BaseWebsite
+Fixed: - Restored functionality for all existing adapters
+
 v 0.9.81-beta8 30.09.2024
 - fixed Heavy_r (didn't work with Android)
 - experimenting a lot

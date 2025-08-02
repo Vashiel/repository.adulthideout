@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="repository.adulthideout" name="AdultHideout REPO" version="1.0.3" provider-name="Vashiel">
+<addon id="repository.adulthideout" name="AdultHideout REPO" version="1.0.4" provider-name="Vashiel">
   <extension point="xbmc.addon.repository" name="AdultHideout Addon Repository">
     <dir maxversion="20.9.0">
       <info compressed="false">https://github.com/Vashiel/repository.adulthideout/raw/master/addons.xml</info>
@@ -16,7 +16,7 @@
   </extension>
   <extension point="xbmc.addon.metadata">
     <summary>AdultHideout Addon Repository</summary>
-    <description>First Try for a Adult Kodi Addon</description>
+    <description>Hosts AdultHideout v1.0.0 “Jubilee” – complete refactor, six new adapters, cleaned-up codebase and legacy removal.</description>
     <platform>all</platform>
     <assets>
       <icon>resources/icon.png</icon>

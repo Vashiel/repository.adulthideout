@@ -1,262 +1,129 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import re
+import urllib.parse
+import urllib.request
+import html
 import sys
-import threading
-import os
-import hashlib
-import urllib.parse as urllib_parse
-from urllib.parse import urlparse, urljoin
-import urllib.request as urllib_request
 import xbmc
-import xbmcvfs
 import xbmcgui
 import xbmcplugin
-import xbmcaddon
-from http.server import SimpleHTTPRequestHandler
-import socketserver
-from kodi_six import xbmc, xbmcaddon
+from resources.lib.base_website import BaseWebsite
 
-from ..functions import add_dir, add_link, make_request, fanart, logos
+class HeavyRWebsite(BaseWebsite):
+    def __init__(self, addon_handle):
+        super().__init__(
+            name="heavy-r",
+            base_url="https://www.heavy-r.com",
+            search_url="https://www.heavy-r.com/index.php",
+            addon_handle=addon_handle
+        )
+        self.sort_options = ["Recent Uploads", "Most Viewed", "Top Rated", "Recent Favorites"]
+        self.sort_paths = {
+            "Recent Uploads": "/videos/recent/",
+            "Most Viewed": "/videos/most_viewed/",
+            "Top Rated": "/videos/top_rated/",
+            "Recent Favorites": "/videos/recent_favorites/"
+        }
+        self.categories_url = f"{self.base_url}/categories/"
 
-addon = xbmcaddon.Addon()
-handle = int(sys.argv[1])
+    def get_headers(self, url):
+        return {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Referer": f"{self.base_url}/",
+            "Accept-Language": "de-DE,de;q=0.9"
+        }
 
-httpd = None
+    def make_request(self, url, headers=None, post_data=None, max_retries=3, retry_wait=5000):
+        headers = headers or self.get_headers(url)
+        encoded_post_data = urllib.parse.urlencode(post_data).encode('utf-8') if post_data else None
+            
+        for attempt in range(max_retries):
+            try:
+                request = urllib.request.Request(url, data=encoded_post_data, headers=headers)
+                with urllib.request.urlopen(request, timeout=60) as response:
+                    return response.read().decode('utf-8', errors='ignore')
+            except Exception:
+                if attempt < max_retries - 1:
+                    xbmc.sleep(retry_wait)
+        self.notify_error(f"Failed to fetch URL: {url}")
+        return ""
 
-def delete_downloaded_videos():
-    folder_path = xbmcvfs.translatePath('special://home/addons/plugin.video.adulthideout/temp/')
-    
-    if xbmcvfs.exists(folder_path):
-        for filename in os.listdir(folder_path):
-            if filename.endswith(".mp4"):
-                file_path = os.path.join(folder_path, filename)
-                xbmcvfs.delete(file_path)
-                xbmc.log(f"Deleted file: {file_path}", xbmc.LOGINFO)
+    def add_basic_dirs(self, current_url):
+        context_menu = [('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&website={self.name}&action=select_sort&original_url={urllib.parse.quote_plus(current_url)})')]
+        self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], context_menu=context_menu)
+        self.add_dir('Categories', self.categories_url, 8, self.icons['categories'], context_menu=context_menu)
 
-delete_downloaded_videos()
+    def process_content(self, url):
+        self.add_basic_dirs(url)
+        content = self.make_request(url)
+        if content:
+            self.parse_video_list(content, url)
+            self.add_next_button(content, url)
+        self.end_directory()
 
+    def parse_video_list(self, content, current_url):
+        pattern = r'<div class="video-item.*?">.*?<a href="([^"]+)" class="image">.*?<img src="([^"]+)"[^>]*?alt="([^"]+)"'
+        matches = re.findall(pattern, content, re.DOTALL)
+        context_menu = [('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&website={self.name}&action=select_sort&original_url={urllib.parse.quote_plus(current_url)})')]
 
-def process_heavy_r_content(url, mode=None):
-    if "search" not in url and "newest" not in url:
-        url = url
-    if url == 'https://www.heavy-r.com/categories/':
-        process_heavy_r_categories(url)
-    else:
-        content = make_request(url)
-        add_dir('[COLOR blue]Search[/COLOR]', 'heavy-r', 5, logos + 'heavy-r.png', fanart)
-        add_dir("Categories", "https://www.heavy-r.com/categories/", 2, logos + 'heavy-r.png', fanart)
-        match = re.compile('<a href="([^"]+)" class="image">.+?<img src="([^"]+)".+?alt="([^"]+)"', re.DOTALL).findall(content)
-        parsed_url = urlparse(url)
-        base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-        for video_url, thumb, name in match:
-            full_url = urljoin(base_url, video_url)
-            add_link(name, full_url, 4, thumb, fanart)
+        for video_url, thumbnail, title in matches:
+            full_url = urllib.parse.urljoin(self.base_url, video_url)
+            thumbnail_http = thumbnail.replace("https://", "http://")
+            self.add_link(html.unescape(title.strip()), full_url, 4, thumbnail_http, self.fanart, context_menu=context_menu)
 
-        try:
-            match = re.compile('<li><a class="nopopoff" href="([^"]+)">Next</a></li>').findall(content)
-            add_dir('[COLOR blue]Next  Page  >>>>[/COLOR]', urljoin(base_url, match[0]), 2, logos + 'heavy-r.png', fanart)
-        except:
-            pass
+    def process_categories(self, url):
+        self.add_basic_dirs(url)
+        content = self.make_request(url)
+        if not content:
+            self.end_directory()
+            return
+            
+        pattern = r'<div class="video-item category">.*?<a href="([^"]+)" class="image.*?">.*?<img src="([^"]+)" alt="([^"]+)"'
+        matches = re.findall(pattern, content, re.DOTALL)
+        
+        for link, thumb, name in matches:
+            full_url = urllib.parse.urljoin(self.base_url, link)
+            full_thumb_url = urllib.parse.urljoin(self.base_url, thumb)
+            thumbnail_http = full_thumb_url.replace("https://", "http://")
+            self.add_dir(html.unescape(name.strip()), full_url, 2, thumbnail_http, self.fanart)
+            
+        self.add_next_button(content, url)
+        self.end_directory()
 
-def process_heavy_r_categories(url):
-    content = make_request(url)
-    parsed_url = urlparse(url)
-    base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-    categories = re.compile('<a href="([^"]*)" class="image nopopoff">.+?<img src="([^"]*)" alt="([^"]*)" class="img-responsive">', re.DOTALL).findall(content)
-    for video_url, thumb, name in categories:
-        full_url = urljoin(base_url, video_url)
-        add_dir(name, full_url, 2, urljoin(base_url, thumb), fanart)
+    def add_next_button(self, content, current_url):
+        match = re.search(r'<a[^>]+href="([^"]+)"[^>]*>Next</a>', content, re.IGNORECASE)
+        if match:
+            next_url = urllib.parse.urljoin(self.base_url, match.group(1))
+            self.add_dir('[COLOR blue]Next Page >>>>[/COLOR]', next_url, 2, self.icons['default'], self.fanart)
 
-def play_heavy_r_video(url):
-    xbmc.log(f"play_heavy_r_video aufgerufen mit URL: {url}", xbmc.LOGINFO)
-    content = make_request(url)
+    def play_video(self, url):
+        content = self.make_request(url)
+        if not content:
+            self.notify_error("Failed to load video page")
+            return
+        
+        match = re.search(r'<source[^>]+src=["\']([^"\']+\.mp4)', content, re.IGNORECASE)
+        if not match:
+            self.notify_error("No video source found")
+            return
+            
+        video_url = match.group(1)
+        video_url_http = video_url.replace("https://", "http://")
+        
+        li = xbmcgui.ListItem(path=video_url_http)
+        li.setProperty("IsPlayable", "true")
+        li.setMimeType("video/mp4")
+        xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
 
-    media_url_match = re.compile('<source type="video/mp4" src="([^"]+)">').findall(content)
-    if not media_url_match:
-        xbmc.log("Fehler: Keine Medien-URL auf der Seite gefunden.", xbmc.LOGERROR)
-        return
-    media_url = media_url_match[0]
-
-    headers = {
-        "Referer": "https://www.heavy-r.com/",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, wie Gecko)"
-    }
-
-    video_path = download_video_with_urllib(media_url, headers)
-    if video_path:
-        server_thread, port = start_local_http_server(video_path, headers)
-        if port:
-            local_url = f'http://127.0.0.1:{port}/{os.path.basename(video_path)}'
-            play_video(local_url)
-
-            monitor = xbmc.Monitor()
-            while not xbmc.Player().isPlaying():
-                if monitor.waitForAbort(1):
-                    break
-
-            while xbmc.Player().isPlaying():
-                if monitor.waitForAbort(1):
-                    break
-
-            stop_local_http_server()
-        else:
-            xbmc.log("Fehler: Konnte lokalen HTTP-Server nicht starten.", xbmc.LOGERROR)
-    else:
-        xbmc.log(f"Fehler: Konnte Video von {media_url} nicht herunterladen.", xbmc.LOGERROR)
-
-def download_video_with_urllib(media_url, headers):
-    addon_data_dir = xbmcvfs.translatePath(addon.getAddonInfo('path'))
-    folder_path = os.path.join(addon_data_dir, 'temp')
-
-    if not xbmcvfs.exists(folder_path):
-        xbmcvfs.mkdirs(folder_path)
-
-    filename_hash = hashlib.md5(media_url.encode('utf-8')).hexdigest()
-    video_filename = f"video_{filename_hash}.mp4"
-    video_path = os.path.join(folder_path, video_filename)
-
-    if xbmcvfs.exists(video_path):
-        xbmc.log(f"Video bereits heruntergeladen: {video_path}", xbmc.LOGINFO)
-        return video_path
-
-    request = urllib_request.Request(media_url, headers=headers)
-
-    try:
-        with urllib_request.urlopen(request) as response:
-            with xbmcvfs.File(video_path, 'wb') as out_file:
-                while True:
-                    data = response.read(1024 * 1024)  # Lese in 1MB-Blöcken
-                    if not data:
-                        break
-                    out_file.write(data)
-        xbmc.log(f"Video heruntergeladen: {video_path}", xbmc.LOGINFO)
-        return video_path
-    except Exception as e:
-        xbmc.log(f"Fehler beim Herunterladen des Videos: {e}", xbmc.LOGERROR)
-        return None
-
-def start_local_http_server(file_path, headers):
-    import shutil
-    global httpd
-
-    class ThreadingHTTPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-        daemon_threads = True
-        allow_reuse_address = True
-
-    class RangeRequestHandler(SimpleHTTPRequestHandler):
-        def __init__(self, *args, **kwargs):
-            self.directory = os.path.dirname(file_path)
-            self.headers_to_add = headers
-            super().__init__(*args, directory=self.directory, **kwargs)
-
-        def end_headers(self):
-            for key, value in self.headers_to_add.items():
-                self.send_header(key, value)
-            super().end_headers()
-
-        def send_head(self):
-            path = self.translate_path(self.path)
-            if not os.path.exists(path):
-                self.send_error(404, "Datei nicht gefunden")
-                return None
-
-            file_size = os.path.getsize(path)
-            ctype = self.guess_type(path)
-            range_header = self.headers.get('Range', None)
-            if range_header:
-                byte1, byte2 = 0, None
-                match = re.search(r'bytes=(\d+)-(\d*)', range_header)
-                if match:
-                    byte1 = int(match.group(1))
-                    if match.group(2):
-                        byte2 = int(match.group(2))
-                else:
-                    self.send_error(400, "Ungültiger Range-Header")
-                    return None
-
-                if byte2 is None or byte2 >= file_size:
-                    byte2 = file_size - 1
-                self.send_response(206)
-                self.send_header("Content-Type", ctype)
-                self.send_header("Content-Range", f"bytes {byte1}-{byte2}/{file_size}")
-                self.send_header("Content-Length", str(byte2 - byte1 + 1))
-                self.send_header("Accept-Ranges", "bytes")
-                self.end_headers()
-                return open(path, 'rb'), byte1, byte2
-            else:
-                self.send_response(200)
-                self.send_header("Content-Type", ctype)
-                self.send_header("Content-Length", str(file_size))
-                self.send_header("Accept-Ranges", "bytes")
-                self.end_headers()
-                return open(path, 'rb'), None, None
-
-        def do_HEAD(self):
-            result = self.send_head()
-            if result:
-                f, _, _ = result
-                f.close()
-
-        def do_GET(self):
-            result = self.send_head()
-            if result:
-                f, start, end = result
-                try:
-                    if start is not None and end is not None:
-                        f.seek(start)
-                        chunk_size = 1024 * 1024  # 1MB
-                        bytes_to_send = end - start + 1
-                        while bytes_to_send > 0:
-                            chunk = f.read(min(chunk_size, bytes_to_send))
-                            if not chunk:
-                                break
-                            self.wfile.write(chunk)
-                            bytes_to_send -= len(chunk)
-                    else:
-                        shutil.copyfileobj(f, self.wfile)
-                finally:
-                    f.close()
-
-        def log_message(self, format, *args):
-            pass
-
-    server_address = ('127.0.0.1', 0) 
-    httpd = ThreadingHTTPServer(server_address, RangeRequestHandler)
-    port = httpd.server_address[1]
-
-    def run_server():
-        try:
-            httpd.serve_forever()
-        except Exception as e:
-            xbmc.log(f"Lokaler HTTP-Server fehlgeschlagen: {e}", xbmc.LOGERROR)
-
-    server_thread = threading.Thread(target=run_server)
-    server_thread.start()
-    return server_thread, port
-
-def stop_local_http_server():
-    global httpd
-    if httpd:
-        httpd.shutdown()
-        httpd = None
-
-def play_video(video_url):
-    listitem = xbmcgui.ListItem(path=video_url)
-    listitem.setProperty('IsPlayable', 'true')
-    xbmcplugin.setResolvedUrl(handle, True, listitem)
-
-if __name__ == '__main__':
-    delete_temp_folder()
-    params = dict(urllib_parse.parse_qsl(sys.argv[2][1:]))
-    url = params.get('url')
-    mode = params.get('mode')
-
-    if mode is None:
-        process_heavy_r_content('https://www.heavy-r.com/videos/')
-    elif mode == '2':
-        process_heavy_r_content(url)
-    elif mode == '4':
-        play_heavy_r_video(url)
-    elif mode == '5':
-        pass
-    else:
-        process_heavy_r_content('https://www.heavy-r.com/videos/')
+    def search(self, query):
+        if not query:
+            return
+        post_data = {'keyword': query, 'handler': 'search', 'action': 'do_search'}
+        content = self.make_request(self.search_url, post_data=post_data)
+        if content:
+            self.add_basic_dirs(self.search_url)
+            self.parse_video_list(content, self.search_url)
+        self.end_directory()
