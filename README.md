@@ -15,9 +15,8 @@ Welcome to the AdultHideout repository! This is the official home for the Kodi v
    * Go to **Add-ons → Install from ZIP**
    * Download and point to the ZIP:
 
-     ```
-     repository.adulthideout-1.0.4.zip
-     ```
+     [repository.adulthideout-1.0.4.zip](https://vashiel.github.io/repository.adulthideout/)
+
 2. Browse **Add-ons → Download → Video add-ons → AdultHideout**
 3. Install **AdultHideout v1.0.0 “Jubilee”**
 
@@ -37,11 +36,11 @@ Welcome to the AdultHideout repository! This is the official home for the Kodi v
 ## 🔗 Repository Links
 
 * **Homepage / ZIP**:
-  `https://vashiel.github.io/repository.adulthideout/repository.adulthideout-1.0.4.zip`
+  [https://vashiel.github.io/repository.adulthideout/repository.adulthideout-1.0.4.zip](https://github.com/Vashiel/repository.adulthideout/raw/master/zips/repository.adulthideout/repository.adulthideout-1.0.4.zip)
 * **Source Code**:
-  `https://github.com/Vashiel/repository.adulthideout`
+  [https://github.com/Vashiel/repository.adulthideout](https://github.com/Vashiel/repository.adulthideout/raw/master/zips/repository.adulthideout/repository.adulthideout-1.0.4.zip)
 * **Issue Tracker**:
-  `https://github.com/Vashiel/repository.adulthideout/issues`
+  [https://github.com/Vashiel/repository.adulthideout/issues](https://github.com/Vashiel/repository.adulthideout/issues)
 
 ---
 
