@@ -91,9 +91,6 @@ class RealcuckoldsexWebsite(BaseWebsite):
 
         if url == self.config["base_url"] or not base_path:
             url = f"{self.config['base_url']}/latest-updates/"
-        if base_path == "channels":
-            self.process_categories(url)
-            return
         if query_params.get('q'):
             search_query = query_params.get('q', [''])[0]
             url = self.config["search_url"].format(urllib.parse.quote_plus(search_query))
@@ -110,7 +107,6 @@ class RealcuckoldsexWebsite(BaseWebsite):
         context_menu = []
         dirs = [
             ('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], self.config['name']),
-            ('Categories', self.config['categories_url'], 2, self.icons['categories']),
         ]
         for name, url, mode, icon, *extra in dirs:
             dir_name = name
@@ -120,24 +116,6 @@ class RealcuckoldsexWebsite(BaseWebsite):
             dir_fanart = self.fanart
             dir_name_param = extra[0] if extra else name
             self.add_dir(dir_name, dir_url, dir_mode, icon, dir_fanart, dir_context_menu, name_param=dir_name_param)
-
-    def process_categories(self, url):
-        content = self.make_request(url, headers=self.get_headers(url))
-        if not content:
-            self.notify_error("Failed to load categories")
-            return
-        pattern = r'<a href="([^"]*)"[^>]*title="([^"]+)"[^>]*>.*?<img src="([^"]*)"'
-        matches = re.findall(pattern, content, re.DOTALL)
-        if not matches:
-            pattern_alt = r'<a href="([^"]*)"[^>]*>.*?<img[^>]+src="([^"]*)"[^>]*alt="([^"]*)"'
-            matches = re.findall(pattern_alt, content, re.DOTALL)
-        for category_url, name, thumb in matches:
-            if "out.php" in category_url:
-                continue
-            full_url = urllib.parse.urljoin(self.config['base_url'], category_url)
-            thumb_url = urllib.parse.urljoin(self.config['base_url'], thumb)
-            self.add_dir(html.unescape(name), full_url, 2, self.icons['categories'], self.fanart)
-        self.end_directory()
 
     def process_content_matches(self, content, current_url):
         pattern = r'<a target="_blank" href="([^"]+)">.+?data-original="([^"]+)" alt="([^"]+)"'
