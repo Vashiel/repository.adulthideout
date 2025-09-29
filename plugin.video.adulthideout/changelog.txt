@@ -1,3 +1,16 @@
+v 1.0.1 - 2025-09-29
+- Added: 4 new adapters / websites (CrazyShit, Rule34Video, TXXX, XNXX)
+- Added: Decoder for TXXX (resources/lib/decoders/txxx_decoder.py)
+- Added: Reload button for "Being Watched Now" section
+- Added: Settings option to toggle visibility of each site (show/hide individually)
+- Changed: default.py - improved playback/download flow (sequential download+play, better temp-dir handling)
+- Changed: base_website.py - adjustments for new decoder & more stable HTTP/parsing logic
+- Changed: settings.xml - updated with new options
+- Changed: Updated website modules (ashemaletube.py, daftporn.py, eporner.py, xhamster.py, missav.py)
+- Improved: Unified and optimized logo files (pixel size & consistency)
+- Improved: Motherless sorting now persists across AH restarts
+- Notes: CrazyShit is disabled by default and must be enabled in settings (contains strong content).
+
 v 1.0.0 — 2025-08-02
 - Core refactor: unified HTTP/parsing/playback in BaseWebsite
 - 6 new adapters: DaftPorn, ePorner, MissAV, Pornhub, PornTN (+ decoder), TubePornClassic (+ decoder)
@@ -11,7 +24,7 @@ Changed: - All site plugins now extend BaseWebsite
 Fixed: - Restored functionality for all existing adapters
 
 v 0.9.81-beta8 30.09.2024
-- fixed Heavy_r (didn't work with Android)
+- fixed Heavy_r (didnt work with Android)
 - experimenting a lot
 
 v 0.9.81-beta7 26.09.2024
@@ -353,7 +366,7 @@ v 0.5.0 05-07-2016
 - fixed Efukt.com
 - fixed youporn.com
 - fixed porn.com
-- removed pornsocket.com (for now, because of "cloudflare's anti bot")
+- removed pornsocket.com (for now, because of "cloudflares anti bot")
 - added more resolver for tubegalore.com
 - minor fixes
 
@@ -383,7 +396,7 @@ v 0.4.7 30-04-2016
 
 v 0.4.6 19-04-2016
 - changed PornHD to play 720p videos by default
-- removed gotporn (adulthideout can't handle cookies)
+- removed gotporn (adulthideout cant handle cookies)
 - removed tnaflix
 - added txxx.com
 - added upornia.com
@@ -440,7 +453,7 @@ v 0.3 08-02-2016
 - rewrote efukt code
 - rewrote pornXS code
 - removed crazyshit.com
-- many other minor changes in code (Changed code so much, maybe it's more messed up then before)
+- many other minor changes in code (Changed code so much, maybe its more messed up then before)
 
 v 0.2
 - added Jamo.tv

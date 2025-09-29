@@ -1,38 +1,47 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.0" provider-name="Vashiel">
+<addons>
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.1" provider-name="Vashiel">
     <extension point="xbmc.python.pluginsource" library="default.py">
         <provides>video</provides>
     </extension>
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
-v 1.0.0 — 2025-08-02
-- Core refactor: unified HTTP/parsing/playback in BaseWebsite
-- 6 new adapters: DaftPorn, ePorner, MissAV, Pornhub, PornTN (+ decoder), TubePornClassic (+ decoder)
-- Removed legacy scripts (functions.py, search.py, content.py, queries.py, old website modules) and JSON caches
-- Long changelog on Github
+v 1.0.1 - 2025-09-29
+- Added: 4 new adapters / websites (CrazyShit, Rule34Video, TXXX, XNXX)
+- Added: Decoder for TXXX (resources/lib/decoders/txxx_decoder.py)
+- Added: Reload button for "Being Watched Now" section
+- Added: Settings option to toggle visibility of each site (show/hide individually)
+- Changed: default.py - improved playback/download flow (sequential download+play, better temp-dir handling)
+- Changed: base_website.py - adjustments for new decoder and more stable HTTP/parsing logic
+- Changed: settings.xml - updated with new options
+- Changed: Updated website modules (ashemaletube.py, daftporn.py, eporner.py, xhamster.py, missav.py)
+- Improved: Unified and optimized logo files (pixel size and consistency)
+- Improved: Motherless sorting now persists across AH restarts
+- Notes: CrazyShit is disabled by default and must be enabled in settings (contains strong content).
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>
 Internet [COLOR red]XXX Porn Video[COLOR white] Streams.
 
-[COLOR red][B]WARNING:[/B][COLOR red]Only for adults[/COLOR]    
+[COLOR red][B]WARNING:[/B][COLOR red]Only for adults[/COLOR]
 
 [COLOR white]Github:
 https://github.com/Vashiel/repository.adulthideout
-[/COLOR]    
+[/COLOR]
         </description>
-        <disclaimer></disclaimer>    
+        <disclaimer></disclaimer>
         <platform>all</platform>
         <license>http://www.gnu.org/licenses/</license>
         <forum></forum>
-        <website></website>    
+        <website></website>
         <email></email>
-        <mainsource>https://github.com/Vashiel/repository.adulthideout</mainsource>    
-        <source></source>         
+        <mainsource>https://github.com/Vashiel/repository.adulthideout</mainsource>
+        <source></source>
         <assets>
             <icon>resources/logos/icon.png</icon>
             <fanart>resources/logos/fanart.jpg</fanart>
         </assets>
     </extension>
 </addon>
+</addons>

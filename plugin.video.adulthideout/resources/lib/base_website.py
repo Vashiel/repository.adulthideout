@@ -191,7 +191,7 @@ class BaseWebsite:
             
         xbmcplugin.addDirectoryItem(handle=self.addon_handle, url=u, listitem=liz, isFolder=True)
 
-    def add_link(self, name, url, mode, icon, fanart, context_menu=None):
+    def add_link(self, name, url, mode, icon, fanart, context_menu=None, info_labels=None):
         u = f"{sys.argv[0]}?url={urllib.parse.quote_plus(url)}&mode={mode}&name={urllib.parse.quote_plus(name)}&website={self.name}"
         liz = xbmcgui.ListItem(name)
         liz.setArt({'thumb': icon, 'icon': icon, 'fanart': fanart})

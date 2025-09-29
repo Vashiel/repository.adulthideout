@@ -39,34 +39,38 @@ def load_websites(addon_handle):
 def main():
     websites = load_websites(addon_handle)
     for website in websites:
-        # Diese Methode baut jetzt die URL und das Label basierend auf den Filter-Einstellungen
-        start_url, label = website.get_start_url_and_label()
-        
-        # Dynamisches Erstellen der Kontextmenüs
-        context_menu = []
-        
-        # Mapping von options-Attributen zu Methoden-Namen (action)
-        filter_map = {
-            'content_options': ('Content Type...', 'select_content_type'),
-            'sort_options': ('Sort by...', 'select_sort_order'),
-            'duration_options': ('Filter by Duration...', 'select_duration'),
-            'quality_options': ('Filter by Quality...', 'select_quality'),
-        }
+        # NEUER TEIL: Überprüft den Kippschalter aus der settings.xml
+        setting_id = f"show_{website.name.lower().replace('-', '')}"
+        try:
+            is_visible = addon.getSettingBool(setting_id)
+        except:
+            # Fallback, falls die Einstellung noch nicht existiert (z.B. bei neuen Seiten)
+            is_visible = True
 
-        for option_attr, (menu_label, action_name) in filter_map.items():
-            if hasattr(website, option_attr) and getattr(website, option_attr):
+        # Fährt nur fort, wenn die Seite auf "sichtbar" geschaltet ist
+        if is_visible:
+            start_url, label = website.get_start_url_and_label()
+            
+            context_menu = []
+            
+            # Dynamisches Erstellen der Kontextmenüs
+            if hasattr(website, 'select_sort'):
                 context_menu.append(
-                    (menu_label, f'RunPlugin({sys.argv[0]}?mode=7&action={action_name}&website={website.name})')
+                    ('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={website.name})')
+                )
+            if hasattr(website, 'select_content_type'):
+                context_menu.append(
+                    ('Change Content...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_content_type&website={website.name})')
                 )
 
-        icon_path = os.path.join(addon.getAddonInfo('path'), 'resources', 'logos', f'{website.name}.png')
-        if not xbmcvfs.exists(icon_path):
-            icon_path = website.icon
+            icon_path = os.path.join(addon.getAddonInfo('path'), 'resources', 'logos', f'{website.name}.png')
+            if not xbmcvfs.exists(icon_path):
+                icon_path = website.icon
 
-        website.add_dir(
-            label, start_url, 2, icon_path, website.fanart,
-            context_menu=context_menu if context_menu else None
-        )
+            website.add_dir(
+                label, start_url, 2, icon_path, website.fanart,
+                context_menu=context_menu if context_menu else None
+            )
 
     xbmcplugin.setContent(addon_handle, 'videos')
     viewtype = int(addon.getSetting('viewtype') or '0')
@@ -121,7 +125,12 @@ def handle_routing():
             getattr(target_website, action)(original_url)
             
     elif mode == '8':
-        target_website.process_categories(url)
+        if hasattr(target_website, 'process_categories'):
+            target_website.process_categories(url)
+        else:
+            xbmc.log(f"Website {target_website.name} has no function for mode 8", xbmc.LOGWARNING)
+            xbmcplugin.endOfDirectory(addon_handle)
+
     elif mode == '9':
         if hasattr(target_website, 'process_actresses_list'):
             target_website.process_actresses_list(url)

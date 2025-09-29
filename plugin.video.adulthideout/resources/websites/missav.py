@@ -8,13 +8,10 @@ from http.cookiejar import CookieJar
 import xbmc
 import xbmcgui
 import xbmcplugin
-import xbmcvfs
 import sys
-import os
 from resources.lib.base_website import BaseWebsite
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
-import socket
 import time
 
 # --- PROXY SERVER LOGIK (unverändert) ---
@@ -27,7 +24,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             state = self.server.state
-            opener = state.get('opener') # Den neuen Opener verwenden
+            opener = state.get('opener')
             if not opener: return self.send_error(500, 'Proxy opener not configured')
             
             playlist_url = state.get('real_playlist_url')
@@ -39,7 +36,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
             if request_file.endswith('.m3u8'):
                 req = urllib_request.Request(playlist_url, headers=headers)
-                with opener.open(req, timeout=15) as response: # Opener benutzen
+                with opener.open(req, timeout=15) as response:
                     content = response.read().decode('utf-8', errors='ignore')
                 modified_lines, segment_map, segment_index = [], {}, 0
                 for line in content.splitlines():
@@ -61,7 +58,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 if not real_segment_url: return self.send_error(404, 'Segment not found')
                 
                 req = urllib_request.Request(real_segment_url, headers=headers)
-                with opener.open(req, timeout=15) as response: # Opener benutzen
+                with opener.open(req, timeout=15) as response:
                     segment_data = response.read()
                     content_type = response.getheader('Content-Type', 'video/mp2t')
                 self.send_response(200)
@@ -80,10 +77,14 @@ class MissavWebsite(BaseWebsite):
     def __init__(self, addon_handle):
         super().__init__(name='missav', base_url='https://missav.ws/', search_url='https://missav.ws/en/search/{}', addon_handle=addon_handle)
         
-        # --- NEU: Cookie-Management und ein zentraler HTTP-Opener ---
+        # --- WICHTIG: Cookie-Management und zentraler HTTP-Opener ---
         self.cookie_jar = CookieJar()
         self.opener = urllib_request.build_opener(urllib_request.HTTPCookieProcessor(self.cookie_jar))
+        
+        # --- NEU: Führe einen initialen Request aus, um Cloudflare-Cookies zu erhalten ---
+        self.establish_session()
 
+        # --- Unveränderte Sortier- und Filteroptionen ---
         self.sort_options = ['New Releases', 'Recent Update', 'Most Viewed Today', 'Most Viewed by Week', 'Most Viewed by Month']
         self.sort_paths = {
             'New Releases': 'dm588/en/release',
@@ -92,10 +93,8 @@ class MissavWebsite(BaseWebsite):
             'Most Viewed by Week': 'dm169/en/weekly-hot',
             'Most Viewed by Month': 'dm257/en/monthly-hot'
         }
-        
         self.actress_sort_options = ['Videos', 'Debut']
         self.actress_sort_paths = {'Videos': 'en/actresses?sort=videos', 'Debut': 'en/actresses?sort=debut'}
-        
         self.actress_filters = {
             'height': {
                 'label': 'Height', 'setting': f'{self.name}_actress_filter_height',
@@ -114,6 +113,62 @@ class MissavWebsite(BaseWebsite):
                 'options': [('All', ''), ('Before 2025', '2025'), ('Before 2024', '2024'), ('Before 2023', '2023'), ('Before 2022', '2022'), ('Before 2021', '2021'), ('Before 2020', '2020'), ('Before 2019', '2019'), ('Before 2018', '2018'), ('Before 2017', '2017'), ('Before 2016', '2016'), ('Before 2015', '2015'), ('Before 2014', '2014'), ('Before 2013', '2013'), ('Before 2012', '2012'), ('Before 2011', '2011'), ('Before 2010', '2010')]
             }
         }
+        
+    def get_headers(self, url):
+        # Der Referer ist wichtig, um den Eindruck eines normalen Navigationsflusses zu erwecken.
+        return {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language': 'de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Referer': url,
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-User': '?1',
+        }
+    
+    # --- NEUE FUNKTION: Baut eine erste Verbindung zur Webseite auf ---
+    def establish_session(self):
+        self.logger.info("Establishing session to get initial cookies...")
+        try:
+            # Ruft die Hauptseite auf, um die für Cloudflare notwendigen Cookies zu erhalten
+            headers = self.get_headers(self.base_url)
+            request = urllib_request.Request(self.base_url, headers=headers)
+            with self.opener.open(request, timeout=20) as response:
+                self.logger.info(f"Session established with status: {response.getcode()}")
+                # Die Cookies werden automatisch im self.cookie_jar gespeichert.
+        except Exception as e:
+            self.logger.error(f"Failed to establish session: {e}")
+            self.notify_error("Could not establish session with website.")
+
+    # --- ANGEPASSTE FUNKTION: Verwendet jetzt den zentralen Opener ---
+    def make_request(self, url, data=None, max_retries=3, retry_wait=3000):
+        headers = self.get_headers(url)
+        for attempt in range(max_retries):
+            try:
+                request = urllib_request.Request(url, data=data, headers=headers)
+                with self.opener.open(request, timeout=20) as response:
+                    return response.read().decode('utf-8', errors='ignore')
+            except urllib_request.HTTPError as e:
+                self.logger.error(f"HTTP error fetching {url} (attempt {attempt + 1}/{max_retries}): {e.code} {e.reason}")
+                if e.code == 403:
+                    # Der Fehler 403 tritt weiterhin auf. Versuche, die Session neu aufzubauen.
+                    self.logger.warning("Got 403 Forbidden, trying to re-establish session...")
+                    self.establish_session() # Cookies erneuern
+            except Exception as e:
+                self.logger.error(f"Request error fetching {url} (attempt {attempt + 1}/{max_retries}): {e}")
+            
+            if attempt < max_retries - 1:
+                self.logger.info(f"Retrying in {retry_wait / 1000} seconds...")
+                xbmc.sleep(retry_wait)
+        
+        self.notify_error(f"Failed to fetch URL after {max_retries} attempts: {url}")
+        return ""
+
+    # Ab hier bleiben die UI- und Parsing-Funktionen größtenteils unverändert.
+    # Sie profitieren automatisch von der verbesserten `make_request`-Methode.
 
     def get_video_url_and_label(self):
         setting_id = f"{self.name}_video_sort_by"
@@ -141,37 +196,6 @@ class MissavWebsite(BaseWebsite):
         self.addon.setSetting(setting_id, str(idx))
         new_base_url, _ = self.get_video_url_and_label()
         xbmc.executebuiltin(f"Container.Update({sys.argv[0]}?mode=2&url={urllib_parse.quote_plus(new_base_url)}&website={self.name},replace)")
-
-    def get_headers(self, url):
-        return {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8', 'Accept-Language': 'de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Origin': 'https://missav.ws', 'Referer': url, 'Sec-Ch-Ua': '"Not/A)Brand";v="99", "Google Chrome";v="126", "Chromium";v="126"',
-            'Sec-Ch-Ua-Mobile': '?0', 'Sec-Ch-Ua-Platform': '"Windows"', 'Sec-Fetch-Dest': 'document', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-Site': 'same-origin', 'Connection': 'keep-alive'
-        }
-
-    # --- ANGEPASSTE FUNKTION: Verwendet jetzt den zentralen Opener ---
-    def make_request(self, url, data=None, max_retries=3, retry_wait=5000):
-        headers = self.get_headers(url)
-        for attempt in range(max_retries):
-            try:
-                request = urllib_request.Request(url, data=data, headers=headers)
-                with self.opener.open(request, timeout=20) as response:
-                    self.logger.info(f"HTTP status code for {url}: {response.getcode()}")
-                    return response.read().decode('utf-8', errors='ignore')
-            except urllib_request.HTTPError as e:
-                self.logger.error(f"HTTP error fetching {url} (attempt {attempt + 1}/{max_retries}): {e}")
-                if e.code == 403:
-                    self.notify_error("Access denied (403). Possible IP block.")
-                    return ""
-                if attempt < max_retries - 1:
-                    xbmc.sleep(retry_wait)
-            except Exception as e:
-                self.logger.error(f"Request error fetching {url} (attempt {attempt + 1}/{max_retries}): {e}")
-                if attempt < max_retries - 1:
-                    xbmc.sleep(retry_wait)
-        self.notify_error(f"Failed to fetch URL: {url}")
-        return ""
 
     def _build_actress_url(self):
         base_url, _ = self.get_actress_url_and_label()
@@ -251,15 +275,13 @@ class MissavWebsite(BaseWebsite):
 
     def process_content(self, url):
         self.logger.info(f"Processing URL: {url}")
-
         if not url or url == self.base_url:
             url, _ = self.get_video_url_and_label()
 
-        content = self.make_request(url) # Headers werden jetzt vom Opener verwaltet
-        if not content: return self.notify_error("Failed to load content")
+        content = self.make_request(url)
+        if not content: return # Error already notified in make_request
 
         self.add_basic_dirs(url)
-        
         sort_command = f'RunPlugin({sys.argv[0]}?mode=7&action=select_video_sort&website={self.name})'
         video_context_menu = [('Sort Videos by...', sort_command)]
         
@@ -418,36 +440,40 @@ class MissavWebsite(BaseWebsite):
         self.logger.info(f"Starting to play video from URL: {url}")
         decoded_url = urllib_parse.unquote_plus(url)
         content = self.make_request(decoded_url)
-        if not content: return self.notify_error("Failed to load video page")
+        if not content: return
+        
         eval_pattern = r"eval\(function\(p,a,c,k,e,d\)\{.*?\}\('(.*?)',(\d+),(\d+),'(.*?)'\.split\('\|'\).*\)"
         eval_match = re.search(eval_pattern, content, re.DOTALL)
         stream_url = None
+        
         if eval_match:
             self.logger.info("Found packed JavaScript block. Attempting to de-obfuscate.")
             p, a_str, c_str, k_str = eval_match.groups()
-            a = int(a_str)
-            c = int(c_str)
+            a, c = int(a_str), int(c_str)
             k = k_str.split('|')
             def int_to_base(n, base):
-                if n < base:
-                    return "0123456789abcdefghijklmnopqrstuvwxyz"[n]
-                else:
-                    return int_to_base(n // base, base) + "0123456789abcdefghijklmnopqrstuvwxyz"[n % base]
+                if n < base: return "0123456789abcdefghijklmnopqrstuvwxyz"[n]
+                else: return int_to_base(n // base, base) + "0123456789abcdefghijklmnopqrstuvwxyz"[n % base]
             d = {}
             for i in range(c - 1, -1, -1):
                 key = int_to_base(i, a)
                 d[key] = k[i] if k[i] else key
             result = re.sub(r'\b\w+\b', lambda m: d.get(m.group(0), m.group(0)), p)
             self.logger.info("Successfully de-obfuscated script. Searching for stream URL.")
-            match = re.search(r"source1280=\\'([^']+)\\'", result)
-            if not match: match = re.search(r"source842=\\'([^']+)\\'", result)
-            if not match: match = re.search(r"source=\\'([^']+)\\'", result)
-            if match:
-                stream_url = match.group(1)
-                self.logger.info(f"Found real stream playlist: {stream_url}")
+            
+            # Suche nach URLs in verschiedenen Auflösungen, beginnend mit der höchsten
+            quality_patterns = [r"source1280=\\'([^']+)\\'", r"source842=\\'([^']+)\\'", r"source=\\'([^']+)\\'"]
+            for pattern in quality_patterns:
+                match = re.search(pattern, result)
+                if match:
+                    stream_url = match.group(1)
+                    self.logger.info(f"Found real stream playlist: {stream_url}")
+                    break
+
         if not stream_url:
-            self.logger.error("Could not find M3U8 stream URL after de-obfuscation or pattern search.")
+            self.logger.error("Could not find M3U8 stream URL.")
             return self.notify_error("Could not find M3U8 stream playlist.")
+            
         httpd = None
         try:
             win = xbmcgui.Window(10000)
@@ -458,7 +484,6 @@ class MissavWebsite(BaseWebsite):
             win.setProperty('missav_proxy.last_port', str(port))
             server_address = ('127.0.0.1', port)
             
-            # Den Opener an den Proxy weitergeben
             current_video_state = {
                 'real_playlist_url': stream_url,
                 'base_url': stream_url.rsplit('/', 1)[0],
@@ -471,24 +496,28 @@ class MissavWebsite(BaseWebsite):
             self.logger.info(f"Proxy server started on http://127.0.0.1:{port}")
             unique_token = str(time.time())
             local_playlist_url = f"http://127.0.0.1:{port}/{unique_token}/playlist.m3u8"
+            
             li = xbmcgui.ListItem(path=local_playlist_url)
             li.setProperty('IsPlayable', 'true'); li.setMimeType('application/vnd.apple.mpegurl')
             li.setProperty('inputstream', 'inputstream.adaptive'); li.setProperty('inputstream.adaptive.manifest_type', 'hls')
             xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+            
             monitor = xbmc.Monitor()
             playback_started = False
-            for _ in range(15):
-                if xbmc.Player().isPlaying(): playback_started = True; self.logger.info("Playback has started."); break
+            for _ in range(15): # Warte bis zu 15 Sekunden auf den Start der Wiedergabe
+                if xbmc.Player().isPlaying():
+                    playback_started = True
+                    self.logger.info("Playback has started.")
+                    break
                 if monitor.waitForAbort(1): break
+            
             if playback_started:
                 while xbmc.Player().isPlaying():
                     if monitor.waitForAbort(1): break
-        except socket.error as e:
-                self.logger.error(f"Proxy server could not be started on port {port}: {e}. Is another process using it?")
-                self.notify_error(f"Proxy-Fehler: Port {port} belegt.")
+        
         except Exception as e:
             self.logger.error(f"Failed to start or run proxy server: {e}")
-            self.notify_error(f"Proxy-Fehler: {e}")
+            self.notify_error(f"Proxy-Error: {e}")
         finally:
             if httpd:
                 self.logger.info(f"Playback finished or aborted. Shutting down proxy server on port {port}.")
