@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addons>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.1" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.0" provider-name="Vashiel">
     <extension point="xbmc.python.pluginsource" library="default.py">
         <provides>video</provides>
     </extension>
@@ -45,5 +44,4 @@ https://github.com/Vashiel/repository.adulthideout
         </assets>
     </extension>
 </addon>
-</addons>
 </addons>
