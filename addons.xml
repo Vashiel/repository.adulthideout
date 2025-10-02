@@ -1,25 +1,15 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addons>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.1" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.2" provider-name="Vashiel">
     <extension point="xbmc.python.pluginsource" library="default.py">
         <provides>video</provides>
     </extension>
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
-v 1.0.1 - 2025-09-29
-- Added: 4 new adapters / websites (CrazyShit, Rule34Video, TXXX, XNXX)
-- Added: Decoder for TXXX (resources/lib/decoders/txxx_decoder.py)
-- Added: Reload button for "Being Watched Now" section
-- Added: Settings option to toggle visibility of each site (show/hide individually)
-- Changed: default.py - improved playback/download flow (sequential download+play, better temp-dir handling)
-- Changed: base_website.py - adjustments for new decoder and more stable HTTP/parsing logic
-- Changed: settings.xml - updated with new options
-- Changed: Updated website modules (ashemaletube.py, daftporn.py, eporner.py, xhamster.py, missav.py)
-- Improved: Unified and optimized logo files (pixel size and consistency)
-- Improved: Motherless sorting now persists across AH restarts
-- Notes: CrazyShit is disabled by default and must be enabled in settings (contains strong content).
+v 1.0.2 - 2024-10-02
+- Fixed: Completely reworked the MissAV adapter to fix all issues with video listing and playback after major website changes.
+- Fixed: MissAV - Reworked the entire actress filtering system (now supports multi-filtering, UI updates, and reset).
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>
@@ -45,5 +35,4 @@ https://github.com/Vashiel/repository.adulthideout
         </assets>
     </extension>
 </addon>
-</addons>
 </addons>
