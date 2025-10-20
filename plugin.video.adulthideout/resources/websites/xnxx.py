@@ -78,11 +78,9 @@ class Xnxx(BaseWebsite):
         content_key = self.get_current_content_key()
         sort_key = self.get_current_sort_key()
 
-        # Get the specific path from the nested dictionary
         try:
             path = self.sort_paths[content_key][sort_key]
         except KeyError:
-            # Fallback to the default 'Best' for the selected category
             path = self.sort_paths[content_key]['Best']
 
         return urllib.parse.urljoin(self.base_url, path)
@@ -161,7 +159,6 @@ class Xnxx(BaseWebsite):
         if not html_content:
             return self.end_directory()
 
-        # Flexible pattern to find videos on all page types
         video_pattern = re.compile(
             r'<div[^>]*class="[^"]*thumb-block[^"]*"[^>]*>.*?'
             r'<img[^>]*data-src="(?P<thumb>https?://[^"]+)".*?'

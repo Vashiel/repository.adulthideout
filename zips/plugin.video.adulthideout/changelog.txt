@@ -1,4 +1,11 @@
-v 1.0.2 - 2024-10-02
+v. 1.0.3 - 2025-10-20
+- Added new sites: avjoy, beeg, eroasmr, freeomovie, hanime, hqporner, paradisehill, spankbang  
+- Fixed and updated existing sites: missav, porntn, rule34video, txxx, xnxx  
+- Added new resolver framework and Cloudscraper integration (Cloudflare bypass)  
+- Added reset_settings.py and improved cache handling  
+- Updated settings.xml and general performance improvements
+
+v 1.0.2 - 2025-10-02
 - Fixed: Completely reworked the MissAV adapter to fix all issues with video listing and playback after major website changes.
 - Fixed: MissAV - Reworked the entire actress filtering system (now supports multi-filtering, UI updates, and reset).
 

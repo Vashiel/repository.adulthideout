@@ -39,21 +39,17 @@ def load_websites(addon_handle):
 def main():
     websites = load_websites(addon_handle)
     for website in websites:
-        # NEUER TEIL: Überprüft den Kippschalter aus der settings.xml
         setting_id = f"show_{website.name.lower().replace('-', '')}"
         try:
             is_visible = addon.getSettingBool(setting_id)
         except:
-            # Fallback, falls die Einstellung noch nicht existiert (z.B. bei neuen Seiten)
             is_visible = True
 
-        # Fährt nur fort, wenn die Seite auf "sichtbar" geschaltet ist
         if is_visible:
             start_url, label = website.get_start_url_and_label()
             
             context_menu = []
             
-            # Dynamisches Erstellen der Kontextmenüs
             if hasattr(website, 'select_sort'):
                 context_menu.append(
                     ('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={website.name})')

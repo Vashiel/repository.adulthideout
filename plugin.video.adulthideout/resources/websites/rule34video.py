@@ -33,7 +33,6 @@ class Rule34video(BaseWebsite):
         }
         self.cookie_jar = CookieJar()
         self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.cookie_jar))
-        # Setze ein aggressiveres Timeout für HTTP-Anfragen
         self.timeout = 15
         self.make_request(self.base_url)
 
@@ -44,8 +43,8 @@ class Rule34video(BaseWebsite):
             "Accept-Encoding": "gzip, deflate",
             "Accept-Language": "en-US,en;q=0.9",
             "Referer": referer or self.base_url,
-            "Connection": "keep-alive",  # Verhindert Verbindungsabbrüche
-            "Cache-Control": "no-cache"  # Verhindert zwischengespeicherte Inhalte
+            "Connection": "keep-alive", 
+            "Cache-Control": "no-cache"
         }
 
     def make_request(self, url, headers=None):
@@ -180,7 +179,6 @@ class Rule34video(BaseWebsite):
                     final_intermediate_url += f"&rnd={rnd_value}"
                 else:
                     final_intermediate_url += f"?rnd={rnd_value}"
-            # Verwende die gleichen Header wie beim ursprünglichen Request
             headers = self.get_headers(referer=url)
             final_stream_url = self.make_request(final_intermediate_url, headers=headers)
             if final_stream_url and 'remote_control.php' in final_stream_url:
@@ -201,7 +199,6 @@ class Rule34video(BaseWebsite):
                 li = xbmcgui.ListItem(path=f"{final_stream_url}|{headers}")
                 li.setProperty('IsPlayable', 'true')
                 li.setMimeType('video/mp4')
-                # Setze Buffering-Einstellungen für bessere Seek-Stabilität
                 li.setProperty('inputstream.adaptive.stream_headers', headers)
                 li.setProperty('inputstream.adaptive.manifest_type', 'mpd')
                 xbmcplugin.setResolvedUrl(self.addon_handle, True, li)

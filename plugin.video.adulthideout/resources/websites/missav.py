@@ -15,7 +15,6 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import time
 from html.parser import HTMLParser
 
-# Helper class to parse HTML and find video blocks
 class MissAVParser(HTMLParser):
     def __init__(self):
         super().__init__()
@@ -27,12 +26,10 @@ class MissAVParser(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
-        # Find the main grid of videos
         if tag == 'div' and 'grid' in attrs.get('class', ''):
             self.in_video_grid = True
 
         if self.in_video_grid:
-            # Check for the start of a new video item
             if tag == 'div' and 'thumbnail group' in attrs.get('class', ''):
                 self.in_thumbnail_div = True
                 self.current_video = {}
@@ -47,7 +44,7 @@ class MissAVParser(HTMLParser):
                     self.current_video['title'] = attrs.get('alt', '')
 
                 if tag == 'span' and 'absolute bottom-1' in attrs.get('class', ''):
-                    self.in_title_link = True # A simple flag to grab the next data chunk
+                    self.in_title_link = True 
 
     def handle_data(self, data):
         if self.in_title_link:
@@ -58,14 +55,10 @@ class MissAVParser(HTMLParser):
 
     def handle_endtag(self, tag):
         if tag == 'div' and self.in_thumbnail_div:
-            # End of a video item, check if we have enough data
             if all(k in self.current_video for k in ['url', 'thumb', 'title']):
                 self.videos.append(self.current_video)
             self.in_thumbnail_div = False
             self.current_video = {}
-        
-        # This is a simplification; we assume the grid ends when parsing is done
-        # A more robust solution would track div nesting.
 
 class HlsProxy(HTTPServer):
     def __init__(self, server_address, RequestHandlerClass, state):
@@ -245,7 +238,6 @@ class MissavWebsite(BaseWebsite):
         if idx != -1: self.addon.setSetting(setting_id, str(idx)); new_base_url, _ = self.get_video_url_and_label(); xbmc.executebuiltin(f"Container.Update({sys.argv[0]}?mode=2&url={urllib_parse.quote_plus(new_base_url)}&website={self.name},replace)")
 
     def _build_actress_url(self, original_url=None, new_filter_key=None, new_filter_value=None):
-        # Fallback for first entry, builds URL from saved settings
         if not original_url:
             base_url, _ = self.get_actress_url_and_label()
             params = {}
@@ -258,17 +250,15 @@ class MissavWebsite(BaseWebsite):
             query_string = urllib_parse.urlencode(params)
             return f"{base_url}&{query_string}" if '?' in base_url else f"{base_url}?{query_string}"
 
-        # Main logic: Use the provided URL as the source of truth for existing filters
         parsed_url = urllib_parse.urlparse(original_url)
         base_path = parsed_url.scheme + "://" + parsed_url.netloc + parsed_url.path
         
         params = dict(urllib_parse.parse_qsl(parsed_url.query))
         
-        # Update or add the new filter value
         if new_filter_key:
-            if new_filter_value: # If a specific value is chosen
+            if new_filter_value:
                 params[new_filter_key] = new_filter_value
-            elif new_filter_key in params: # If "All" is chosen (empty value), remove the filter
+            elif new_filter_key in params:
                 del params[new_filter_key]
 
         if not params:
@@ -294,10 +284,8 @@ class MissavWebsite(BaseWebsite):
         
         if idx != -1:
             new_value = options[idx][1]
-            # Save setting for persistence across sessions
             self.addon.setSetting(setting_id, new_value)
             
-            # Build the new URL by combining existing filters from original_url with the new one
             new_url = self._build_actress_url(
                 original_url=original_url, 
                 new_filter_key=filter_key, 
@@ -307,11 +295,9 @@ class MissavWebsite(BaseWebsite):
             xbmc.executebuiltin(f"Container.Update({sys.argv[0]}?mode=9&url={urllib_parse.quote_plus(new_url)}&website={self.name},replace)")
 
     def reset_actress_filters(self, original_url=None):
-        # Clear all filter settings
         for key, data in self.actress_filters.items():
             self.addon.setSetting(data['setting'], "")
         
-        # Build the base URL which only contains the sorting parameter, no filters
         new_url, _ = self.get_actress_url_and_label()
         
         self.notify_info("All filters have been reset.")
@@ -337,15 +323,12 @@ class MissavWebsite(BaseWebsite):
         
         if idx != -1:
             self.addon.setSetting(setting_id, str(idx))
-            # Get the new base path for sorting
             new_sort_url, _ = self.get_actress_url_and_label()
             parsed_new = urllib_parse.urlparse(new_sort_url)
             
-            # Keep existing filters from the original URL
             parsed_original = urllib_parse.urlparse(original_url)
             params = dict(urllib_parse.parse_qsl(parsed_original.query))
             
-            # Update the sort parameter
             params['sort'] = dict(urllib_parse.parse_qsl(parsed_new.query)).get('sort', 'videos')
             
             query_string = urllib_parse.urlencode(params)
@@ -407,13 +390,11 @@ class MissavWebsite(BaseWebsite):
             
         self.add_basic_dirs(current_url)
         
-        # Parse the current URL to get active filters for the UI
         parsed_url = urllib_parse.urlparse(current_url)
         active_filters = dict(urllib_parse.parse_qsl(parsed_url.query))
         
         context_menu = [('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_actress_sort&website={self.name}&original_url={urllib_parse.quote_plus(current_url)})')]
         
-        # Build filter menu items based on the active URL
         for key, data in self.actress_filters.items():
             current_value_from_url = active_filters.get(key, '')
             current_label = next((label for label, value in data['options'] if value == current_value_from_url), "All")
@@ -421,7 +402,6 @@ class MissavWebsite(BaseWebsite):
             action = f"RunPlugin({sys.argv[0]}?mode=7&action=select_actress_filter&website={self.name}&filter_key={key}&original_url={urllib_parse.quote_plus(current_url)})"
             context_menu.append((label, action))
         
-        # Add "Reset All Filters" button if any filter is active
         if any(key in active_filters for key in self.actress_filters.keys()):
             context_menu.append(('[COLOR red]Reset All Filters[/COLOR]', f'RunPlugin({sys.argv[0]}?mode=7&action=reset_actress_filters&website={self.name}&original_url={urllib_parse.quote_plus(current_url)})'))
             

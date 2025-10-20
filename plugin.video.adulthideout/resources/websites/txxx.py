@@ -13,7 +13,6 @@ from resources.lib.decoders.txxx_decoder import TxxxDecoder
 
 class TxxxWebsite(BaseWebsite):
     def __init__(self, addon_handle):
-        """Initializes the TxxxWebsite class."""
         super().__init__('txxx', '', '', addon_handle)
         
         self.content_type_options = ['Straight', 'Gay', 'Trans']
@@ -42,7 +41,6 @@ class TxxxWebsite(BaseWebsite):
         self._set_dynamic_urls()
 
     def _set_dynamic_urls(self):
-        """Reads the content type setting and sets the correct domain and API filter."""
         try:
             content_idx = int(self.addon.getSetting('txxx_content_type'))
             if not (0 <= content_idx < len(self.content_type_options)):
@@ -61,7 +59,6 @@ class TxxxWebsite(BaseWebsite):
         self.logger.info(f"Txxx content type set to '{selected_content}', using domain: {self.base_url} and api_filter: {self.api_filter}")
 
     def get_start_url_and_label(self):
-        """Overrides the base method to show the content type in the label."""
         url, label = super().get_start_url_and_label()
         try:
             content_idx = int(self.addon.getSetting('txxx_content_type'))
@@ -77,7 +74,6 @@ class TxxxWebsite(BaseWebsite):
         return url, final_label
 
     def select_content_type(self, original_url=None):
-        """Opens a dialog to select the content type and updates the view."""
         try:
             current_setting_idx = int(self.addon.getSetting('txxx_content_type'))
         except (ValueError, TypeError):
