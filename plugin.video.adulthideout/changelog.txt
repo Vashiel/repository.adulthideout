@@ -1,3 +1,15 @@
+v. 1.0.4 "Gonzales" - 2025-11-25
+- Added new sites: DarknessPorn, FullXCinema, NoodleMagazine, PornZog, PunishWorld, ShemaleZ, VJAV, VoyeurHit, YouPorn
+- Reduced video startup latency by removing redundant stream pre-checks
+- Increased internal proxy buffer size for smoother seeking and reduced buffering
+- Fixed "Play from here" (playlist) functionality for proxy-based sites (e.g., DarknessPorn, PunishWorld)
+- Reorganized settings menu into categories (General, Sites, Filters)
+- Added specific filter options for Ashemaletube (Country, Body attributes)
+- MissAV: Rewritten parser and session handling for improved stability
+- Rule34Video: Updated for new site layout; added content type filters (Straight/Gay/Futa)
+- XNXX & LuxureTV: Fixed sorting, search, and navigation issues
+- General: Implemented unified proxy logic (proxy_utils) for better stability on Cloudflare-protected sites
+
 v. 1.0.3 - 2025-10-20
 - Added new sites: avjoy, beeg, eroasmr, freeomovie, hanime, hqporner, paradisehill, spankbang  
 - Fixed and updated existing sites: missav, porntn, rule34video, txxx, xnxx  

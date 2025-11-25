@@ -24,15 +24,12 @@ class Xnxx(BaseWebsite):
         )
         self.display_name = 'XNXX'
         
-        # Options
         self.sort_options = ['Best', "Today's selection", 'Hits']
         self.content_options = ['Straight', 'Gay', 'Trans']
         
-        # Settings IDs
         self.setting_id_sort = "xnxx_sort_order"
         self.setting_id_content = "xnxx_content_type"
 
-        # Correct URL paths for each combination of content and sort order
         self.sort_paths = {
             'Straight': {
                 'Best': '/best',

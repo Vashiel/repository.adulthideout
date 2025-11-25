@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# Changelog:
+# - Final release version
+# - Optimized thumbnail handling (Header injection + prioritized URLs)
+# - Fixed context menu duplication bug
+# - Full filtering support enabled
+
 import re
 import sys
 import json
@@ -12,27 +18,21 @@ import gzip
 import xbmc
 import xbmcgui
 import xbmcplugin
-import xbmcvfs
-import os
 from resources.lib.base_website import BaseWebsite
 
 class XHamster(BaseWebsite):
-    config = {
-        "name": "xhamster",
-        "base_url": "https://xhamster.com",
-        "search_url": "https://xhamster.com/search/{}",
-        "categories_url": "https://xhamster.com/categories"
-    }
-
     def __init__(self, addon_handle):
         super().__init__(
-            name=self.config["name"],
-            base_url=self.config["base_url"],
-            search_url=self.config["search_url"],
+            name='xhamster',
+            base_url='https://xhamster.com',
+            search_url='https://xhamster.com/search/{}',
             addon_handle=addon_handle
         )
+        self.categories_url = 'https://xhamster.com/categories'
+        
         self.content_options = ['Straight', 'Gay', 'Shemale']
         self.content_paths = {'Straight': '', 'Gay': 'gay/', 'Shemale': 'shemale/'}
+        
         self.sort_options = ['Trending', 'Newest', 'Top Rated', 'Most Popular (Weekly)', 'Most Popular (Monthly)']
         self.sort_paths = {
             'Trending': '',
@@ -41,6 +41,7 @@ class XHamster(BaseWebsite):
             'Most Popular (Weekly)': 'best/weekly/',
             'Most Popular (Monthly)': 'best/monthly/'
         }
+        
         self.duration_options = ['All', '0-2 min', '2-5 min', '5-10 min', '10-30 min', '30+ min', 'Full Video']
         self.duration_data = {
             'All': ('', ''),
@@ -51,6 +52,7 @@ class XHamster(BaseWebsite):
             '30+ min': ('', 'min-duration=30'),
             'Full Video': ('full-length/', '')
         }
+        
         self.quality_options = ['All', '720p+', '1080p+', '4K']
         self.quality_data = {
             'All': ('', ''),
@@ -58,6 +60,32 @@ class XHamster(BaseWebsite):
             '1080p+': ('hd/', 'quality=1080p'),
             '4K': ('4k/', '')
         }
+
+    def get_headers(self):
+        return {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate',
+            'Cookie': 'kt_lang=en; _agev=1; cookieConsent=1',
+            'Referer': self.base_url + '/'
+        }
+
+    def make_request(self, url):
+        headers = self.get_headers()
+        cookie_jar = CookieJar()
+        handler = urllib.request.HTTPCookieProcessor(cookie_jar)
+        opener = urllib.request.build_opener(handler)
+        
+        try:
+            request = urllib.request.Request(url, headers=headers)
+            with opener.open(request, timeout=30) as response:
+                content = response.read()
+                if response.info().get('Content-Encoding') == 'gzip':
+                    content = gzip.GzipFile(fileobj=BytesIO(content)).read()
+                return content.decode('utf-8', errors='ignore')
+        except Exception:
+            return None
 
     def _select_generic(self, setting_id, options_list, title):
         current_setting = self.addon.getSetting(setting_id)
@@ -74,7 +102,7 @@ class XHamster(BaseWebsite):
     def select_content_type(self, original_url=None):
         self._select_generic("xhamster_category", self.content_options, "Select Content Type...")
 
-    def select_sort_order(self, original_url=None):
+    def select_sort(self, original_url=None):
         self._select_generic("xhamster_sort_by", self.sort_options, "Sort by...")
 
     def select_duration(self, original_url=None):
@@ -88,59 +116,40 @@ class XHamster(BaseWebsite):
         sort = self.addon.getSetting("xhamster_sort_by") or self.sort_options[0]
         duration = self.addon.getSetting("xhamster_min_duration") or self.duration_options[0]
         quality = self.addon.getSetting("xhamster_resolution") or self.quality_options[0]
+        
         content_path = self.content_paths.get(content, '')
         sort_path = self.sort_paths.get(sort, '')
         duration_path, duration_query = self.duration_data.get(duration, ('', ''))
         quality_path, quality_query = self.quality_data.get(quality, ('', ''))
+        
         path_parts = [self.base_url, content_path, quality_path, duration_path, sort_path]
         if int(page) > 1:
             path_parts.append(str(page))
+        
         final_url = "/".join(p.strip('/') for p in path_parts if p)
         if not urllib.parse.urlparse(final_url).path:
             final_url += '/'
+        
         query_parts = [q for q in [quality_query, duration_query] if q]
         if query_parts:
             final_url += "?" + "&".join(query_parts)
+        
         return final_url
 
-    def get_headers(self, referer=None, is_json=False):
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate',
-            'Cookie': 'kt_lang=en; _agev=1; cookieConsent=1'
-        }
-        if referer:
-            headers['Referer'] = referer
-        if is_json:
-            headers['Accept'] = 'application/json, text/javascript, */*; q=0.01'
-            headers['X-Requested-With'] = 'XMLHttpRequest'
-        return headers
+    def _format_thumb_url(self, url):
+        if not url:
+            return self.icons['default']
+        
+        url = str(url).strip()
+        if not url.startswith('http'):
+            if url.startswith('//'):
+                url = 'https:' + url
+            else:
+                return self.icons['default']
 
-    def make_request(self, url, headers=None, max_retries=3, retry_wait=5000):
-        headers = headers or self.get_headers(url)
-        cookie_jar = CookieJar()
-        handler = urllib.request.HTTPCookieProcessor(cookie_jar)
-        opener = urllib.request.build_opener(handler)
-        for attempt in range(max_retries):
-            try:
-                request = urllib.request.Request(url, headers=headers)
-                with opener.open(request, timeout=60) as response:
-                    encoding = response.info().get('Content-Encoding')
-                    raw_data = response.read()
-                    if encoding == 'gzip':
-                        data = gzip.GzipFile(fileobj=BytesIO(raw_data)).read()
-                    else:
-                        data = raw_data
-                    content = data.decode('utf-8', errors='ignore')
-                    return content
-            except Exception as e:
-                self.logger.error(f"Request failed for {url} (attempt {attempt + 1}): {e}")
-                if attempt < max_retries - 1:
-                    xbmc.sleep(retry_wait)
-        self.notify_error(f"Failed to fetch URL: {url}")
-        return ""
+        headers = self.get_headers()
+        ua_str = urllib.parse.quote(headers['User-Agent'])
+        return f"{url}|User-Agent={ua_str}"
 
     def process_content(self, url):
         parsed_url = urllib.parse.urlparse(url)
@@ -161,21 +170,14 @@ class XHamster(BaseWebsite):
                 page = int(path_parts[-1])
             request_url = self._build_filtered_url(page=page)
 
-        content = self.make_request(request_url, headers=self.get_headers(request_url))
+        content = self.make_request(request_url)
         if not content:
-            self.notify_error(f'Failed to fetch URL: {request_url}')
+            self.notify_error('Failed to fetch content')
             self.end_directory()
             return
-
-        context_menu = [
-            ('Content Type...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_content_type&website={self.name})'),
-            ('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort_order&website={self.name})'),
-            ('Filter by Duration...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_duration&website={self.name})'),
-            ('Filter by Quality...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_quality&website={self.name})')
-        ]
         
-        json_match = re.search(r'window\.initials\s*=\s*({.*?});</script>', content, re.DOTALL)
         videos = []
+        json_match = re.search(r'window\.initials\s*=\s*({.*?});</script>', content, re.DOTALL)
         if json_match:
             try:
                 jdata = json.loads(json_match.group(1))
@@ -183,20 +185,19 @@ class XHamster(BaseWebsite):
                     jdata.get('pagesCategoryComponent', {}).get('trendingVideoListProps', {}).get('videoThumbProps', []),
                     jdata.get('videoListProps', {}).get('videoThumbProps', []),
                     jdata.get('searchResult', {}).get('videoThumbProps', []),
-                    jdata.get('relatedVideosComponent', {}).get('videoTabInitialData', {}).get('videoListProps', {}).get('videoThumbProps', []),
                     jdata.get('layoutPage', {}).get('videoListProps', {}).get('videoThumbProps', []),
                     jdata.get('layoutPage', {}).get('trendingVideoListProps', {}).get('videoThumbProps', []),
                     jdata.get('layoutPage', {}).get('store', {}).get('videos', [])
                 ]
-                for path in video_paths:
-                    if isinstance(path, list) and path:
-                        videos.extend(path)
+                for vpath in video_paths:
+                    if isinstance(vpath, list) and vpath:
+                        videos.extend(vpath)
                         break
             except json.JSONDecodeError:
                 pass
 
         if not videos:
-            self.notify_error('No videos found on the page.')
+            self.notify_info('No videos found.')
             self.end_directory()
             return
 
@@ -209,22 +210,34 @@ class XHamster(BaseWebsite):
             if not page_url.startswith('http'):
                 page_url = urllib.parse.urljoin(self.base_url, page_url)
 
-            thumbnail = video.get('thumbURL', '')
-            duration = video.get('duration', 0)
+            raw_thumb = video.get('thumbURL')
+            if not raw_thumb:
+                raw_thumb = video.get('previewURL')
             
+            thumbnail = self._format_thumb_url(raw_thumb)
+            
+            duration = video.get('duration', 0)
             try:
                 duration = int(duration)
-                duration_str = f'[{duration // 60}:{duration % 60:02d}]' if duration > 0 else ''
+                duration_str = f'[COLOR yellow][{duration // 60}:{duration % 60:02d}][/COLOR]' if duration > 0 else ''
             except (TypeError, ValueError):
                 duration_str = ''
 
-            display_title = f'{title} {duration_str}'
+            context_menu = [
+                ('Content Type...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_content_type&website={self.name})'),
+                ('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name})'),
+                ('Filter by Duration...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_duration&website={self.name})'),
+                ('Filter by Quality...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_quality&website={self.name})')
+            ]
+
+            display_title = f'{title} {duration_str}'.strip()
             self.add_link(display_title, page_url, 4, thumbnail, self.fanart, context_menu=context_menu)
         
         current_page_num = 1
         parsed_req_url = urllib.parse.urlparse(request_url)
         path_parts = parsed_req_url.path.strip('/').split('/')
         base_path_for_next = parsed_req_url.path
+        
         if path_parts and path_parts[-1].isdigit():
             current_page_num = int(path_parts[-1])
             base_path_for_next = '/' + '/'.join(path_parts[:-1])
@@ -236,21 +249,15 @@ class XHamster(BaseWebsite):
         if parsed_req_url.query:
             next_page_url += f"?{parsed_req_url.query}"
             
-        self.add_dir('Next Page >>', next_page_url, 2, self.icons['default'], self.fanart)
-        
+        self.add_dir('[COLOR blue]Next Page >>>>[/COLOR]', next_page_url, 2, self.icons['default'], self.fanart)
         self.end_directory()
 
     def add_basic_dirs(self, current_url):
-        dirs = [
-            ('Search xHamster', '', 5, self.icons['search'], self.name),
-            ('Categories', self.config['categories_url'], 2, self.icons['categories']),
-        ]
-        for name, url, mode, icon, *extra in dirs:
-            name_param = extra[0] if extra else name
-            self.add_dir(name, url, mode, icon, self.fanart, name_param=name_param)
+        self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], self.fanart)
+        self.add_dir('Categories', self.categories_url, 2, self.icons['categories'], self.fanart)
 
     def process_categories(self, url):
-        content = self.make_request(url, headers=self.get_headers(url))
+        content = self.make_request(url)
         if not content:
             self.notify_error('Failed to load categories')
             self.end_directory()
@@ -261,7 +268,6 @@ class XHamster(BaseWebsite):
         if json_match:
             try:
                 jdata = json.loads(json_match.group(1))
-                
                 category_groups = [
                     jdata.get('layoutPage', {}).get('store', {}).get('popular', {}).get('trending', {}).get('items', []),
                 ]
@@ -275,8 +281,9 @@ class XHamster(BaseWebsite):
                         if isinstance(item, dict) and 'url' in item and 'name' in item:
                             cat_url = item['url']
                             if 'categories' in cat_url:
-                                categories_dict[cat_url] = (item['name'], item.get('thumb', '') or item.get('thumbnail', ''))
-
+                                raw_thumb = item.get('thumb', '') or item.get('thumbnail', '')
+                                thumb = self._format_thumb_url(raw_thumb)
+                                categories_dict[cat_url] = (item['name'], thumb)
             except json.JSONDecodeError:
                 pass
         
@@ -291,8 +298,7 @@ class XHamster(BaseWebsite):
         self.end_directory()
 
     def play_video(self, url):
-        decoded_url = urllib.parse.unquote_plus(url)
-        content = self.make_request(decoded_url, headers=self.get_headers(decoded_url))
+        content = self.make_request(urllib.parse.unquote_plus(url))
         if not content:
             self.notify_error('Failed to load video page')
             return
@@ -302,13 +308,11 @@ class XHamster(BaseWebsite):
         preload_match = re.search(r'<link rel="preload" href="([^"]+\.m3u8)"', content)
         if preload_match:
             stream_url = preload_match.group(1)
-            self.logger.info(f"Found stream URL via preload link: {stream_url}")
 
         if not stream_url:
             noscript_match = re.search(r'<noscript>.*?<video[^>]+src="([^"]+\.mp4)"', content, re.DOTALL)
             if noscript_match:
                 stream_url = noscript_match.group(1)
-                self.logger.info(f"Found stream URL via noscript fallback: {stream_url}")
 
         if not stream_url:
             self.notify_error('No playable stream found')

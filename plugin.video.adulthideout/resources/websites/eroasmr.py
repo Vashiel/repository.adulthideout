@@ -1,181 +1,174 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import re
+# [CHANGELOG]
+# - OPTIMIZED: Added 'Connection: keep-alive' to headers to help with buffering/seeking stability
+# - ADDED: Cookie priming on startup to ensure Cloudflare tokens are ready
+# - FIXED: Category parsing logic
+# - INFO: Buffering issues are likely due to low Kodi cache size (see instructions)
+
 import sys
-import urllib.request
+import os
+import re
 import urllib.parse
-import urllib.error
-import http.cookiejar
 import xbmcgui
 import xbmcplugin
-
+import xbmcaddon
 from resources.lib.base_website import BaseWebsite
+
+# Vendor injection
+try:
+    addon_path = xbmcaddon.Addon().getAddonInfo('path')
+    vendor_path = os.path.join(addon_path, 'resources', 'lib', 'vendor')
+    if vendor_path not in sys.path:
+        sys.path.insert(0, vendor_path)
+except:
+    pass
+
+try:
+    import cloudscraper
+    HAS_CLOUDSCRAPER = True
+except ImportError:
+    HAS_CLOUDSCRAPER = False
+
+import requests
 
 class EroASMR(BaseWebsite):
     def __init__(self, addon_handle):
-        super(EroASMR, self).__init__(
-            name='EroASMR',
+        super().__init__(
+            name='eroasmr',
             base_url='https://eroasmr.com/',
             search_url='https://eroasmr.com/?s={}',
             addon_handle=addon_handle
         )
-        self.latest_url = 'https://eroasmr.com/recently-added-videos/'
-        self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        self.session = None
+        self.ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         
-        cookie_jar = http.cookiejar.CookieJar()
-        self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
-        self.opener.addheaders = [('User-Agent', self.user_agent)]
-        urllib.request.install_opener(self.opener)
+        if HAS_CLOUDSCRAPER:
+            self.session = cloudscraper.create_scraper(
+                browser={'browser': 'chrome', 'platform': 'windows', 'desktop': True}
+            )
+            self.ua = self.session.headers.get('User-Agent', self.ua)
+        else:
+            self.session = requests.Session()
+            self.session.headers.update({'User-Agent': self.ua})
+            
+        # Prime cookies to avoid first-request lag
+        try:
+            self.session.get(self.base_url, timeout=5)
+        except:
+            pass
 
-    def _get_html(self, url):
-        max_retries = int(self.addon.getSetting('max_retry_attempts') or 3)
-        for attempt in range(max_retries):
-            try:
-                req = urllib.request.Request(url)
-                with self.opener.open(req, timeout=30) as response:
-                    if response.getcode() == 200:
-                        return response.read().decode('utf-8', errors='ignore')
-            except Exception as e:
-                self.logger.error(f"EroASMR: Request failed for {url}: {e}")
-                if attempt < max_retries - 1:
-                    self.logger.info(f"Retrying ({attempt + 1}/{max_retries})...")
+    def make_request(self, url):
+        try:
+            headers = {'Referer': self.base_url, 'Connection': 'keep-alive'}
+            self.session.headers.update(headers)
+            response = self.session.get(url, timeout=20)
+            if response.status_code == 200:
+                return response.text
+        except Exception:
+            pass
         return None
 
-    def _parse_duration(self, duration_str):
-        seconds = 0
-        try:
-            parts = list(map(int, duration_str.split(':')))
-            if len(parts) == 3:
-                seconds = parts[0] * 3600 + parts[1] * 60 + parts[2]
-            elif len(parts) == 2:
-                seconds = parts[0] * 60 + parts[1]
-        except (ValueError, TypeError): return 0
-        return seconds
-
     def process_content(self, url):
-        if url == self.base_url:
-            self.add_dir('[COLOR blue]Search...[/COLOR]', self.base_url, 5, icon=self.icons['search'])
-            self.add_dir('[COLOR blue]Categories...[/COLOR]', self.base_url, 8, icon=self.icons['categories'])
-            html_content = self._get_html(self.latest_url)
-            if html_content:
-                video_pattern = re.compile(
-                    r'<article[^>]+class="[^"]*?viem_video[^"]*?".*?<a class="dt-image-link" href="([^"]+)".*?src="([^"]+)".*?<span class="video-duration">([^<]+)</span>.*?<h2 class="post-title.*?<a [^>]+>([^<]+)</a>',
-                    re.DOTALL
-                )
-                matches = video_pattern.findall(html_content)
-                for video_url, thumb_url, duration_str, title in matches:
-                    info_labels = {'title': title, 'duration': self._parse_duration(duration_str.strip()), 'plot': title}
-                    self.add_link(name=title, url=video_url, mode=4, icon=thumb_url, fanart=self.fanart, info_labels=info_labels)
-                
-                next_page_match = re.search(r'<a class="next page-numbers" href="([^"]+)">', html_content)
-                if next_page_match:
-                    self.add_dir('[COLOR blue]Next Page >>[/COLOR]', next_page_match.group(1), 2)
+        if url == "BOOTSTRAP":
+            url = self.base_url
+
+        html_content = self.make_request(url)
+        if not html_content:
+            self.notify_error("Failed to load content")
             self.end_directory()
             return
 
-        all_matches = []
-        current_url_to_fetch = url
-        next_page_for_button = None
-        PAGES_TO_LOAD = 3 
+        if url == self.base_url:
+            self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], self.fanart)
+            self.add_dir('[COLOR blue]Categories[/COLOR]', 'CATEGORIES', 8, self.icons['categories'], self.fanart)
 
-        for i in range(PAGES_TO_LOAD):
-            self.logger.info(f"EroASMR: Lade Seite {i+1}/{PAGES_TO_LOAD} von {current_url_to_fetch}")
-            html_content = self._get_html(current_url_to_fetch)
-            if not html_content:
-                break
-
-            video_pattern = re.compile(
-                r'<article[^>]+class="[^"]*?viem_video[^"]*?".*?<a class="dt-image-link" href="([^"]+)".*?src="([^"]+)".*?<span class="video-duration">([^<]+)</span>.*?<h2 class="post-title.*?<a [^>]+>([^<]+)</a>',
-                re.DOTALL
-            )
-            matches = video_pattern.findall(html_content)
-            
-            if not matches:
-                break 
-            
-            all_matches.extend(matches)
-
-            next_page_match = re.search(r'<a class="next page-numbers" href="([^"]+)">', html_content)
-            if next_page_match:
-                current_url_to_fetch = next_page_match.group(1)
-                next_page_for_button = current_url_to_fetch
-            else:
-                next_page_for_button = None
-                break
+        video_pattern = re.compile(r'<article[^>]+class="[^"]*?viem_video[^"]*?".*?<a class="dt-image-link" href="([^"]+)".*?src="([^"]+)".*?<span class="video-duration">([^<]+)</span>.*?<h2 class="post-title.*?<a [^>]+>([^<]+)</a>', re.DOTALL)
+        matches = video_pattern.findall(html_content)
         
-        if not all_matches:
-            self.notify_info("No videos found.")
+        if not matches:
+             video_pattern = re.compile(r'<article.*?>.*?<a href="([^"]+)".*?src="([^"]+)".*?title="([^"]+)"', re.DOTALL)
+             matches_fallback = video_pattern.findall(html_content)
+             matches = [(m[0], m[1], "0:00", m[2]) for m in matches_fallback]
 
-        for video_url, thumb_url, duration_str, title in all_matches:
-            info_labels = {'title': title, 'duration': self._parse_duration(duration_str.strip()), 'plot': title}
-            self.add_link(name=title, url=video_url, mode=4, icon=thumb_url, fanart=self.fanart, info_labels=info_labels)
+        for video_url, thumb_url, duration_str, title in matches:
+            info = {
+                'title': title.strip(),
+                'duration': self._parse_duration(duration_str.strip()),
+                'plot': title.strip(),
+                'mediatype': 'video'
+            }
+            self.add_link(title.strip(), video_url, 4, thumb_url, self.fanart, info_labels=info)
 
-        if next_page_for_button:
-            self.add_dir('[COLOR blue]Next Page >>[/COLOR]', next_page_for_button, 2)
+        next_page_match = re.search(r'<a class="next page-numbers" href="([^"]+)">', html_content)
+        if next_page_match:
+            self.add_dir('[COLOR blue]Next Page >>[/COLOR]', next_page_match.group(1), 2, self.icons['default'], self.fanart)
 
         self.end_directory()
 
     def process_categories(self, url):
-        category_page_url = 'https://eroasmr.com/video-category/sex-roleplays/'
-        html_content = self._get_html(category_page_url)
-        
-        if not html_content:
-            self.notify_error("Failed to load page content for categories.")
-            self.end_directory()
-            return
-        
-        category_pattern = re.compile(r'<li class="cat-item.*?<a [^>]*?href="([^"]+/video-category/[^"]+)">([^<]+)</a>')
+        html_content = self.make_request(self.base_url)
+        if not html_content: return
+
+        category_pattern = re.compile(r'<li[^>]*><a href="([^"]+/video-category/[^"]+)">([^<]+)</a>')
         matches = category_pattern.findall(html_content)
         
-        if not matches:
-            self.notify_info("No categories found.")
-            self.end_directory()
-            return
+        unique_cats = {}
+        for cat_url, cat_name in matches:
+            name = cat_name.strip()
+            if name and name not in unique_cats:
+                unique_cats[name] = cat_url
 
-        seen = set()
-        for cat_url, cat_title in matches:
-            cat_title_clean = cat_title.strip().capitalize()
-            if cat_title_clean and cat_title_clean.lower() not in seen:
-                seen.add(cat_title_clean.lower())
-                self.add_dir(cat_title_clean, cat_url, 2, icon=self.icons['categories'])
+        for name, cat_url in sorted(unique_cats.items()):
+            self.add_dir(name, cat_url, 2, self.icons['categories'], self.fanart)
 
         self.end_directory()
 
     def play_video(self, url):
-        self.logger.info(f"EroASMR: Lade Videoseite: {url}")
-        html_content = self._get_html(url)
+        html_content = self.make_request(url)
         if not html_content:
-            self.notify_error("Failed to load video page.")
-            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
+            self.notify_error("Failed to load page")
             return
 
-        source_match = re.search(r'(?:<video id="video-id"><source|<source)\s+src="([^"]+\.mp4)"', html_content)
+        video_url = None
+        source_match = re.search(r'(?:<video[^>]*><source|<source)\s+src="([^"]+\.mp4)"', html_content)
         
         if source_match:
-            initial_url = source_match.group(1)
-            self.logger.info(f"EroASMR: Initialen Videostream gefunden: {initial_url}")
-            
-            final_url = initial_url
-            if '/get_video/' in initial_url:
-                self.logger.info("EroASMR: Redirect-Link erkannt, löse finale URL auf...")
+            video_url = source_match.group(1)
+            if '/get_video/' in video_url:
                 try:
-                    req = urllib.request.Request(initial_url, method='HEAD')
-                    with self.opener.open(req, timeout=15) as response:
-                        final_url = response.geturl() 
-                        self.logger.info(f"EroASMR: Aufgelöste finale URL: {final_url}")
-                except Exception as e:
-                    self.logger.error(f"EroASMR: Fehler beim Auflösen der Weiterleitung: {e}")
-                    final_url = initial_url
+                    resp = self.session.head(video_url, allow_redirects=True)
+                    video_url = resp.url
+                except: pass
+        
+        if video_url:
+            headers = {
+                'User-Agent': self.ua,
+                'Referer': url,
+                'Connection': 'keep-alive'
+            }
+            cookies = self.session.cookies.get_dict()
+            if cookies:
+                headers['Cookie'] = "; ".join([f"{k}={v}" for k, v in cookies.items()])
             
-            header_string = f"Referer={url}&User-Agent={self.user_agent}"
-            play_path = f"{final_url}|{header_string}"
+            # Pass headers to Kodi
+            final_url = f"{video_url}|{urllib.parse.urlencode(headers)}"
             
-            self.logger.info(f"EroASMR: Finaler Wiedergabepfad: {play_path}")
-            
-            list_item = xbmcgui.ListItem(path=play_path)
-            xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
+            li = xbmcgui.ListItem(path=final_url)
+            li.setProperty('IsPlayable', 'true')
+            xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
         else:
-            self.logger.error(f"EroASMR: Konnte auf Seite {url} keine abspielbare URL finden.")
-            self.notify_error("Could not find a playable video stream on the page.")
+            self.notify_error("No stream found")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
+
+    def _parse_duration(self, duration_str):
+        try:
+            parts = list(map(int, duration_str.split(':')))
+            if len(parts) == 3: return parts[0] * 3600 + parts[1] * 60 + parts[2]
+            elif len(parts) == 2: return parts[0] * 60 + parts[1]
+        except: pass
+        return 0
+
+    def notify_error(self, msg):
+        xbmcgui.Dialog().notification('EroASMR', msg, xbmcgui.NOTIFICATION_ERROR)

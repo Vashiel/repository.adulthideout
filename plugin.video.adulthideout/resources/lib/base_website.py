@@ -197,7 +197,22 @@ class BaseWebsite:
         liz.setArt({'thumb': icon, 'icon': icon, 'fanart': fanart})
         liz.getVideoInfoTag().setTitle(name)
         liz.setProperty('IsPlayable', 'true')
-        if context_menu: liz.addContextMenuItems(context_menu)
+        
+        # Auto-add context menu for sorting if not provided
+        if context_menu is None:
+            context_menu = []
+        
+        # Add sort menu if available
+        if hasattr(self, 'select_sort'):
+            # Get current URL from sys.argv
+            current_url = sys.argv[0] + sys.argv[2] if len(sys.argv) > 2 else ""
+            context_menu.append(
+                ('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={urllib.parse.quote_plus(current_url)})')
+            )
+        
+        if context_menu: 
+            liz.addContextMenuItems(context_menu)
+        
         xbmcplugin.addDirectoryItem(handle=self.addon_handle, url=u, listitem=liz, isFolder=False)
 
     def notify_error(self, message):

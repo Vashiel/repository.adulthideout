@@ -1,92 +1,56 @@
 # -*- coding: utf-8 -*-
 import re
-import logging
-import cloudscraper
+import time
 import random
-from urllib.parse import urljoin, urlparse
-import html
+import logging
+from resources.lib.resolvers.resolver_utils import http_get
+# Falls packer im lib Ordner ist:
+try:
+    from resources.lib.modules import packer 
+except:
+    pass
 
-logger = logging.getLogger(__name__)
+try:
+    import cloudscraper
+except:
+    pass
 
-USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; rv:128.0) Gecko/20100101 Firefox/128.0",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15",
-]
-
-def _get_random_ua():
-    return random.choice(USER_AGENTS)
-
+# FIX: Signatur angepasst, um mit resolver.py kompatibel zu sein
 def resolve(url, referer=None, headers=None):
-    logger.info("[AdultHideout][resolver:bigwarp] Input: %s", url)
-
+    
+    # Falls Cloudscraper vorhanden, nutzen wir ihn für den ersten Request
     try:
-        pattern = r'(?://|\.)((?:bigwarp|bgwp)\.(?:io|cc|art|pro))/(?:e/|embed-)?([0-9a-zA-Z=]+)'
-        match = re.search(pattern, url)
-        if not match:
-            raise Exception("Bigwarp: Could not extract host/media_id from URL.")
-        
-        host, media_id = match.groups()
-        host_with_scheme = "https://" + host
-        
-        web_url = url 
-        ref = urljoin(host_with_scheme, '/') 
-        dl_url = urljoin(host_with_scheme, '/dl')
-        
-        post_data = {
-            'op': 'embed',
-            'file_code': media_id,
-            'auto': '0'
-        }
-        
-        request_headers = {
-            "User-Agent": _get_random_ua(),
-            "Referer": ref,
-            "Origin": host_with_scheme 
-        }
-        if headers:
-             request_headers.update(headers)
+        scraper = cloudscraper.create_scraper()
+        html = scraper.get(url).text
+    except:
+        # Fallback
+        html = http_get(url)
 
-        scraper = cloudscraper.create_scraper(browser={"browser": "chrome", "platform": "windows", "mobile": False})
+    if not html:
+        return "", {}
+
+    # Suche nach gepacktem Code (Dean Edwards Packer)
+    packed_data = re.search(r"eval\(function\(p,a,c,k,e,d\).*?\.split\('\|'\)\)\)", html)
+    
+    unpacked = ""
+    if packed_data:
+        try:
+            unpacked = packer.unpack(packed_data.group())
+        except:
+            pass
+    
+    # Suche in unpacked oder original html nach .mp4
+    sources = []
+    content_to_search = unpacked if unpacked else html
+    
+    # Suche nach file: "url" Muster
+    r = re.search(r'file\s*:\s*["\']([^"\']+\.mp4[^"\']*)["\']', content_to_search)
+    if r:
+        return r.group(1), {}
         
-        logger.info("[Bigwarp] Sending POST to %s", dl_url)
-        response = scraper.post(dl_url, data=post_data, headers=request_headers)
-        
-        if response.status_code != 200:
-             logger.error("[Bigwarp] POST request failed with status %d", response.status_code)
-             raise Exception("Bigwarp: POST request failed with status {}.".format(response.status_code))
-             
-        html_content = response.text
+    # Einfacher Regex Fallback
+    r = re.search(r'["\'](https?://[^"\']+\.mp4[^"\']*)["\']', content_to_search)
+    if r:
+        return r.group(1), {}
 
-        s = re.search(r'''sources:\s*\[{\s*file\s*:\s*['"]([^'"]+)''', html_content, re.IGNORECASE)
-        if s:
-            stream_url = s.group(1).strip()
-            
-            play_headers = {
-                "User-Agent": request_headers["User-Agent"], 
-                "Referer": web_url 
-            }
-            
-            # Unescape potential HTML entities
-            stream_url = html.unescape(stream_url)
-
-            logger.info("[Bigwarp] Final stream URL: %s", stream_url)
-            return stream_url, play_headers
-        else:
-            logger.warning("[Bigwarp] Could not find 'sources' pattern in POST response.")
-            raise Exception("Bigwarp: Stream URL not found after POST.")
-
-    except Exception as e:
-         logger.error("[Bigwarp] Error: %s", e, exc_info=True)
-         raise Exception("Bigwarp Error: {}".format(e))
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    test_url = "https://bigwarp.io/embed-yw7yd0we2xdu.html" 
-    try:
-        result, hdrs = resolve(test_url, referer="https://www.freeomovie.to/cougar-sightings-6/")
-        print("Final URL:", result)
-        print("Headers:", hdrs)
-    except Exception as e:
-        print("Error:", e)
+    return "", {}

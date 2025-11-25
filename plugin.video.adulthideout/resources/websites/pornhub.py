@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+# Changelog:
+# - Final release version
+# - Switched to Webmaster API for reliable video listing
+# - Fixed playback using flashvars extraction
+# - Optimized sorting and period selection
+# - Cleaned up code
+
 import re
 import sys
 import json
@@ -15,7 +23,7 @@ import xbmcplugin
 
 from resources.lib.base_website import BaseWebsite
 
-class Pornhub(BaseWebsite):
+class PornhubWebsite(BaseWebsite):
     config = {
         "name": "pornhub",
         "base_url": "https://www.pornhub.com",
@@ -96,7 +104,7 @@ class Pornhub(BaseWebsite):
             return None
     
     def process_content(self, url):
-        if not url: url = self.base_url
+        if not url or url == "BOOTSTRAP": url = self.base_url
 
         parsed_url = urllib.parse.urlparse(url)
         path = parsed_url.path
@@ -302,31 +310,3 @@ class Pornhub(BaseWebsite):
         new_query = urllib.parse.urlencode(params, doseq=True)
         new_url = parsed_url._replace(query=new_query).geturl()
         xbmc.executebuiltin(f"Container.Update({sys.argv[0]}?mode=2&website={self.name}&url={urllib.parse.quote_plus(new_url)})")
-
-if __name__ == '__main__':
-    try:
-        addon_handle = int(sys.argv[1])
-        website = Pornhub(addon_handle)
-        args = urllib.parse.parse_qs(sys.argv[2][1:])
-
-        mode_arg = args.get('mode', [None])[0]
-        mode = None
-        if mode_arg:
-            try: mode = int(mode_arg)
-            except (ValueError, TypeError): pass
-
-        url = urllib.parse.unquote_plus(args.get('url', [''])[0])
-        action = args.get('action', [None])[0]
-        
-        if mode == 7:
-            original_url = urllib.parse.unquote_plus(args.get('original_url', [''])[0])
-            if action == 'select_sort': website.select_sort(original_url)
-            elif action == 'select_period': website.select_period(original_url)
-            elif action == 'select_pornstar_sort': website.select_pornstar_sort(original_url)
-        elif mode == 4:
-            website.play_video(url)
-        else:
-            website.process_content(url)
-            
-    except Exception:
-        pass

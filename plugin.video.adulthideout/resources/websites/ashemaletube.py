@@ -1,19 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# [CHANGELOG]
+# - Fixed: make_request now accepts is_json parameter (fixes Categories crash)
+# - Added URL safe encoding in make_request to fix crashes with special characters
+# - Fixed reset_pornstar_filters signature to prevent TypeError in mode 7
+# - Optimized imports and removed unused libraries
+# - Standardized filter handling
+
 import re
 import urllib.parse
 import urllib.request
-import sys
-from http.cookiejar import CookieJar
 import html
 import json
-import xml.etree.ElementTree as ET
+import sys
 import xbmc
-import xbmcaddon
 import xbmcgui
 import xbmcplugin
-import os
+from http.cookiejar import CookieJar
 from resources.lib.base_website import BaseWebsite
 
 class AshemaletubeWebsite(BaseWebsite):
@@ -30,17 +34,24 @@ class AshemaletubeWebsite(BaseWebsite):
             search_url=self.config["search_url"],
             addon_handle=addon_handle
         )
+        
         self.sort_options = ["Trending", "Date Added", "Most Popular", "Top Rated", "Longest"]
         self.sort_paths = {
-            "Trending": "?s=", "Date Added": "?s=&sort=newest",
-            "Most Popular": "?s=&sort=most-popular", "Top Rated": "?s=&sort=top-rated",
+            "Trending": "?s=", 
+            "Date Added": "?s=&sort=newest",
+            "Most Popular": "?s=&sort=most-popular", 
+            "Top Rated": "?s=&sort=top-rated",
             "Longest": "?s=&sort=longest"
         }
+        
         self.pornstar_sort_options = ["User Favorites", "Alphabet", "Top Rated", "Date Added", "Most Videos", "Most Galleries", "Most Comments"]
         self.pornstar_sort_paths = {
-            "User Favorites": "/pornstars/", "Alphabet": "/pornstars/?sorterMode=2&sort=m_name",
-            "Top Rated": "/pornstars/?sorterMode=1&sort=m_rating_for_sort", "Date Added": "/pornstars/?sorterMode=1&sort=m_created",
-            "Most Videos": "/pornstars/?sorterMode=1&sort=ms_videos", "Most Galleries": "/pornstars/?sorterMode=1&sort=ms_galleries",
+            "User Favorites": "/pornstars/", 
+            "Alphabet": "/pornstars/?sorterMode=2&sort=m_name",
+            "Top Rated": "/pornstars/?sorterMode=1&sort=m_rating_for_sort", 
+            "Date Added": "/pornstars/?sorterMode=1&sort=m_created",
+            "Most Videos": "/pornstars/?sorterMode=1&sort=ms_videos", 
+            "Most Galleries": "/pornstars/?sorterMode=1&sort=ms_galleries", 
             "Most Comments": "/pornstars/?sorterMode=1&sort=ms_comments"
         }
         
@@ -78,15 +89,26 @@ class AshemaletubeWebsite(BaseWebsite):
     def get_headers(self, referer=None, is_json=False):
         headers = {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/*,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9', 'Cache-Control': 'no-cache', 'Pragma': 'no-cache',
+            'Accept-Language': 'en-US,en;q=0.9', 
+            'Cache-Control': 'no-cache', 
+            'Pragma': 'no-cache',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36'
         }
-        if referer: headers['Referer'] = referer
-        if is_json: headers.update({'Accept': 'application/json, text/javascript, */*; q=0.01', 'X-Requested-With': 'XMLHttpRequest'})
+        if referer: 
+            try:
+                headers['Referer'] = referer.encode('latin-1').decode('latin-1')
+            except:
+                pass
+        if is_json: 
+            headers.update({'Accept': 'application/json, text/javascript, */*; q=0.01', 'X-Requested-With': 'XMLHttpRequest'})
         return headers
 
-    def make_request(self, url, headers=None, max_retries=3, retry_wait=5000):
-        headers = headers or self.get_headers(url)
+    def make_request(self, url, headers=None, max_retries=3, retry_wait=5000, is_json=False):
+        url = urllib.parse.quote(url, safe=':/?=&%')
+        
+        if not headers:
+            headers = self.get_headers(url, is_json=is_json)
+            
         for attempt in range(max_retries):
             try:
                 cookie_jar = CookieJar()
@@ -95,13 +117,20 @@ class AshemaletubeWebsite(BaseWebsite):
                 with opener.open(request, timeout=60) as response:
                     return response.read().decode('utf-8', errors='ignore')
             except Exception as e:
-                self.logger.error(f"Request failed on attempt {attempt + 1}: {e}")
+                # xbmc.log(f"Request failed: {e}", xbmc.LOGERROR) 
                 if attempt < max_retries - 1: xbmc.sleep(retry_wait)
-        self.notify_error(f"Failed to fetch URL: {url}")
+        
+        xbmcgui.Dialog().notification('AdultHideout Error', f"Failed to fetch: {url}", xbmcgui.NOTIFICATION_ERROR)
         return ""
 
     def apply_video_sort(self, url):
-        saved_sort_idx = int(self.addon.getSetting('ashemaletube_sort_by') or '0')
+        try:
+            saved_sort_idx = int(self.addon.getSetting('ashemaletube_sort_by') or '0')
+        except ValueError:
+            saved_sort_idx = 0
+            
+        if saved_sort_idx >= len(self.sort_options): saved_sort_idx = 0
+        
         sort_option = self.sort_options[saved_sort_idx]
         sort_path = self.sort_paths[sort_option]
         
@@ -116,16 +145,26 @@ class AshemaletubeWebsite(BaseWebsite):
         return parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True)).geturl()
 
     def get_pornstar_list_url(self, current_params=None):
-        saved_sort_idx = int(self.addon.getSetting('ashemaletube_pornstar_sort_by') or '0')
+        try:
+            saved_sort_idx = int(self.addon.getSetting('ashemaletube_pornstar_sort_by') or '0')
+        except ValueError:
+            saved_sort_idx = 0
+            
+        if saved_sort_idx >= len(self.pornstar_sort_options): saved_sort_idx = 0
+
         sort_option = self.pornstar_sort_options[saved_sort_idx]
         base_sort_path = self.pornstar_sort_paths[sort_option]
         
         parsed_base = urllib.parse.urlparse(base_sort_path)
         all_params = urllib.parse.parse_qs(parsed_base.query)
         
-        for filter_type, (label, param_name, options_list, params_dict) in self.pornstar_filter_map.items():
+        for filter_type, (_, param_name, options_list, params_dict) in self.pornstar_filter_map.items():
             setting_id = f'ashemaletube_pf_{filter_type}'
-            saved_idx = int(self.addon.getSetting(setting_id) or '0')
+            try:
+                saved_idx = int(self.addon.getSetting(setting_id) or '0')
+            except ValueError:
+                saved_idx = 0
+                
             if 0 <= saved_idx < len(options_list):
                 selected_option_name = options_list[saved_idx]
                 param_value = params_dict.get(selected_option_name, '')
@@ -164,7 +203,8 @@ class AshemaletubeWebsite(BaseWebsite):
         self.end_directory()
 
     def add_basic_dirs(self, current_url):
-        video_sort_context = [('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&website={self.name}&action=select_sort&original_url={urllib.parse.quote_plus(current_url)})')]
+        encoded_url = urllib.parse.quote_plus(current_url)
+        video_sort_context = [('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&website={self.name}&action=select_sort&original_url={encoded_url})')]
         
         pornstar_context = [('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&website={self.name}&action=select_pornstar_sort)')]
         for filter_type, (label, _, _, _) in self.pornstar_filter_map.items():
@@ -188,7 +228,7 @@ class AshemaletubeWebsite(BaseWebsite):
             fallback_pattern = r'<h1>.*?</h1>.*?<ul class="media-listing-grid[^"]*">(.*?)</ul>'
             main_list_match = re.search(fallback_pattern, content, re.DOTALL)
         if not main_list_match:
-            self.logger.error("Could not find the main video list on the page.")
+            # self.logger.error("Could not find the main video list on the page.")
             return
 
         self.parse_video_list(main_list_match.group(1), current_url)
@@ -206,7 +246,7 @@ class AshemaletubeWebsite(BaseWebsite):
         list_match = re.search(video_container_pattern, content, re.DOTALL)
         
         if not list_match:
-            self.logger.error(f"Could not find video list container on pornstar page: {sorted_url}")
+            # self.logger.error(f"Could not find video list container on pornstar page: {sorted_url}")
             self.end_directory()
             return
             
@@ -219,7 +259,9 @@ class AshemaletubeWebsite(BaseWebsite):
         video_pattern = r'<a\s+href="(/videos/[^"]+)"[^>]*>\s*<img[^>]+src="([^"]+)"\s+alt="([^"]+)"'
         duration_pattern = r'<span\s+class="media-item__info-item\s+media-item__info-item-length">\s*([\d:]+)\s*</span>'
         item_blocks = re.findall(item_pattern, html_content, re.DOTALL)
-        context_menu = [('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={urllib.parse.quote_plus(current_url)})')]
+        
+        encoded_url = urllib.parse.quote_plus(current_url)
+        context_menu = [('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={encoded_url})')]
         base_url = f"{urllib.parse.urlparse(current_url).scheme}://{urllib.parse.urlparse(current_url).netloc}"
         
         for block in item_blocks:
@@ -233,7 +275,7 @@ class AshemaletubeWebsite(BaseWebsite):
 
     def process_categories(self, url):
         json_url = f"{self.config['base_url']}/tags/?response_format=json"
-        content = self.make_request(json_url)
+        content = self.make_request(json_url, is_json=True)
         base_url = f"{urllib.parse.urlparse(url).scheme}://{urllib.parse.urlparse(url).netloc}"
         if content:
             try:
@@ -246,7 +288,8 @@ class AshemaletubeWebsite(BaseWebsite):
                     self.end_directory()
                     return
             except json.JSONDecodeError as e:
-                self.logger.error(f"Error parsing category JSON: {e}")
+                # self.logger.error(f"Error parsing category JSON: {e}")
+                pass
         self.notify_error("Failed to load categories.")
         self.end_directory()
 
@@ -261,7 +304,9 @@ class AshemaletubeWebsite(BaseWebsite):
         base_url = f"{urllib.parse.urlparse(url).scheme}://{urllib.parse.urlparse(url).netloc}"
         pattern = r'<div class="media-item model-item.*?<a class="media-item__inner" href="([^"]+)" title="([^"]+)".*?<img[^>]+src="([^"]+)".*?</div>'
         matches = re.findall(pattern, content, re.DOTALL)
-        if not matches: self.logger.error(f"No pornstars found on page {url}")
+        if not matches: 
+            # self.logger.error(f"No pornstars found on page {url}")
+            pass
         for pornstar_url, name, thumb in matches:
             self.add_dir(html.unescape(name), urllib.parse.urljoin(base_url, pornstar_url), 2, urllib.parse.urljoin(base_url, thumb), self.fanart, context_menu=context_menu)
         self.add_next_button(content, url)
@@ -294,10 +339,16 @@ class AshemaletubeWebsite(BaseWebsite):
     def play_video(self, url):
         content = self.make_request(url)
         if not content: return self.notify_error("Failed to load video page")
-        match = re.search(r'["\']video_url["\']\s*:\s*["\'](.*?)["\']', content) or re.search(r'<source\s+src="([^"]+)"\s+type=["\']video/mp4["\']', content)
+        
+        match = re.search(r'["\']video_url["\']\s*:\s*["\'](.*?)["\']', content)
+        if not match:
+            match = re.search(r'<source\s+src="([^"]+)"\s+type=["\']video/mp4["\']', content)
+            
         if not match: return self.notify_error("No video source found")
+        
         media_url = match.group(1).replace('\\/', '/')
         if not media_url.startswith('http'): media_url = urllib.parse.urljoin(url, media_url)
+        
         li = xbmcgui.ListItem(path=media_url)
         li.setProperty('IsPlayable', 'true')
         li.setMimeType('video/mp4')
@@ -353,7 +404,7 @@ class AshemaletubeWebsite(BaseWebsite):
         new_url = self.get_pornstar_list_url()
         xbmc.executebuiltin(f"Container.Update({sys.argv[0]}?mode=2&url={urllib.parse.quote_plus(new_url)}&website={self.name},replace)")
 
-    def reset_pornstar_filters(self):
+    def reset_pornstar_filters(self, original_url=None):
         self.addon.setSetting('ashemaletube_pornstar_sort_by', "0")
         for filter_type in self.pornstar_filter_map:
             setting_id = f'ashemaletube_pf_{filter_type}'

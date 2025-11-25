@@ -1,5 +1,6 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# Changelog:
+# - Fixed duplicate "Sort by" context menu item
+# - Optimized code structure
 
 import re
 import sys
@@ -93,12 +94,8 @@ class HQPorner(BaseWebsite):
         return seconds
 
     def process_content(self, url):
-        context_menu_items = [
-            ('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&website={self.name}&action=select_sort&original_url={urllib.parse.quote_plus(url)})')
-        ]
-
-        self.add_dir('[COLOR blue]Search...[/COLOR]', self.base_url, 5, icon=self.icons['search'], fanart=self.fanart, context_menu=context_menu_items)
-        self.add_dir('[COLOR blue]Categories...[/COLOR]', self.base_url, 8, icon=self.icons['categories'], fanart=self.fanart, context_menu=context_menu_items)
+        self.add_dir('[COLOR blue]Search...[/COLOR]', self.base_url, 5, icon=self.icons['search'], fanart=self.fanart)
+        self.add_dir('[COLOR blue]Categories...[/COLOR]', self.base_url, 8, icon=self.icons['categories'], fanart=self.fanart)
 
         html_content = self._get_html(url)
         if not html_content:
@@ -120,7 +117,9 @@ class HQPorner(BaseWebsite):
                 thumbnail = f"https:{thumb_url}"
                 duration = self._parse_duration(duration_str)
                 info_labels = {'title': title, 'duration': duration, 'plot': title}
-                self.add_link(name=title, url=video_url, mode=4, icon=thumbnail, fanart=self.fanart, info_labels=info_labels, context_menu=context_menu_items)
+                
+                # BaseWebsite fügt automatisch "Sort by..." hinzu, daher hier kein manuelles context_menu nötig
+                self.add_link(name=title, url=video_url, mode=4, icon=thumbnail, fanart=self.fanart, info_labels=info_labels)
 
             next_page_match = re.search(r'<li><a href="([^"]+)" class="button[^"]*?pagi-btn">Next</a></li>', html_content)
             if not next_page_match:
@@ -129,7 +128,7 @@ class HQPorner(BaseWebsite):
             if next_page_match:
                 next_url = next_page_match.group(1).replace('&amp;', '&')
                 next_page_url = urllib.parse.urljoin(self.base_url, next_url)
-                self.add_dir('[COLOR blue]Next Page >>[/COLOR]', next_page_url, 2, context_menu=context_menu_items)
+                self.add_dir('[COLOR blue]Next Page >>[/COLOR]', next_page_url, 2)
 
         except Exception as e:
             self.logger.error(f"HQPorner: Error parsing content: {e}")
@@ -176,7 +175,7 @@ class HQPorner(BaseWebsite):
         self.logger.info(f"HQPorner: Starting play_video for URL: {url}")
         
         self._get_html(self.base_url)
-        hqporner_html = self._get_html(url, referer=self.base_url)  # Referer hinzugefügt
+        hqporner_html = self._get_html(url, referer=self.base_url)
         if not hqporner_html:
             self.logger.error(f"HQPorner: Failed to load main video page. URL: {url}")
             self._save_debug_html("HQPorner: No HTML", f"debug_hqporner_{url[-10:]}.html")

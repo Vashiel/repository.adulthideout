@@ -1,0 +1,204 @@
+# Kodi Media Center language file
+# Addon Name: AdultHideout
+# Addon id: plugin.video.adulthideout
+msgid ""
+msgstr ""
+"Project-Id-Version: plugin.video.adulthideout\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-11-18 21:00+0000\n"
+"PO-Revision-Date: 2025-11-18 21:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: German\n"
+"Language: de_DE\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# General & Common
+msgctxt "#30001"
+msgid "General"
+msgstr "Allgemein"
+
+msgctxt "#30002"
+msgid "Sites"
+msgstr "Seiten"
+
+msgctxt "#30003"
+msgid "Enable"
+msgstr "Aktivieren"
+
+msgctxt "#30004"
+msgid "Sort By"
+msgstr "Sortieren nach"
+
+msgctxt "#30005"
+msgid "Content Type"
+msgstr "Inhaltstyp"
+
+msgctxt "#30010"
+msgid "Optimize Mouse Navigation"
+msgstr "Maus-Navigation optimieren"
+
+msgctxt "#30011"
+msgid "Max Retries"
+msgstr "Max. Wiederholungsversuche"
+
+msgctxt "#30012"
+msgid "View Type"
+msgstr "Ansichtstyp"
+
+msgctxt "#30013"
+msgid "Clear Cache"
+msgstr "Cache leeren"
+
+msgctxt "#30014"
+msgid "[B]Reset All Settings[/B]"
+msgstr "[B]Alle Einstellungen zurücksetzen[/B]"
+
+# Site Specific Filters Categories
+msgctxt "#30100"
+msgid "Ashemaletube Filters"
+msgstr "Ashemaletube Filter"
+
+msgctxt "#30110"
+msgid "Beeg Filters"
+msgstr "Beeg Filter"
+
+msgctxt "#30120"
+msgid "eporner Filters"
+msgstr "eporner Filter"
+
+msgctxt "#30130"
+msgid "Freeomovie Filters"
+msgstr "Freeomovie Filter"
+
+msgctxt "#30140"
+msgid "Hanime Filters"
+msgstr "Hanime Filter"
+
+msgctxt "#30150"
+msgid "Hentaigasm Filters"
+msgstr "Hentaigasm Filter"
+
+msgctxt "#30160"
+msgid "Hypnotube Filters"
+msgstr "Hypnotube Filter"
+
+msgctxt "#30170"
+msgid "LuxureTV Filters"
+msgstr "LuxureTV Filter"
+
+msgctxt "#30180"
+msgid "MissAV Filters"
+msgstr "MissAV Filter"
+
+msgctxt "#30190"
+msgid "Motherless Filters"
+msgstr "Motherless Filter"
+
+msgctxt "#30200"
+msgid "PornTN Filters"
+msgstr "PornTN Filter"
+
+msgctxt "#30210"
+msgid "Rule34video Filters"
+msgstr "Rule34video Filter"
+
+msgctxt "#30220"
+msgid "Spankbang Filters"
+msgstr "Spankbang Filter"
+
+msgctxt "#30230"
+msgid "TubePornClassic Filters"
+msgstr "TubePornClassic Filter"
+
+msgctxt "#30240"
+msgid "Txxx Filters"
+msgstr "Txxx Filter"
+
+msgctxt "#30250"
+msgid "xHamster Filters"
+msgstr "xHamster Filter"
+
+msgctxt "#30260"
+msgid "XNXX Filters"
+msgstr "XNXX Filter"
+
+msgctxt "#30270"
+msgid "YouPorn Filters"
+msgstr "YouPorn Filter"
+
+# Specific Filter Labels
+msgctxt "#30101"
+msgid "Sort Videos By"
+msgstr "Videos sortieren nach"
+
+msgctxt "#30102"
+msgid "Sort Pornstars By"
+msgstr "Darsteller sortieren nach"
+
+msgctxt "#30131"
+msgid "Auto-Select Hoster"
+msgstr "Hoster automatisch wählen"
+
+msgctxt "#30232"
+msgid "Search Sort By"
+msgstr "Suche sortieren nach"
+
+msgctxt "#30233"
+msgid "Min Duration (Minutes)"
+msgstr "Min. Dauer (Minuten)"
+
+msgctxt "#30223"
+msgid "Quality"
+msgstr "Qualität"
+
+msgctxt "#30224"
+msgid "Duration"
+msgstr "Dauer"
+
+# Shared Filter Attributes
+msgctxt "#30500"
+msgid "Country"
+msgstr "Land"
+
+msgctxt "#30501"
+msgid "Penis Size"
+msgstr "Penisgröße"
+
+msgctxt "#30502"
+msgid "Breast Size"
+msgstr "Brustgröße"
+
+msgctxt "#30503"
+msgid "Hair Color"
+msgstr "Haarfarbe"
+
+msgctxt "#30504"
+msgid "Birth Year"
+msgstr "Geburtsjahr"
+
+msgctxt "#30505"
+msgid "Eye Color"
+msgstr "Augenfarbe"
+
+msgctxt "#30506"
+msgid "Gender"
+msgstr "Geschlecht"
+
+msgctxt "#30507"
+msgid "Height"
+msgstr "Größe"
+
+msgctxt "#30508"
+msgid "Cup Size"
+msgstr "Körbchengröße"
+
+msgctxt "#30509"
+msgid "Age"
+msgstr "Alter"
+
+msgctxt "#30510"
+msgid "Debut Year"
+msgstr "Debütjahr"

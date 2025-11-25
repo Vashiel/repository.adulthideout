@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# Changelog:
+# - Maintained urllib implementation for best Cloudflare bypass
+# - Added select_sort for correct URL routing
+# - Removed duplicate context menu entries
+# - Cleaned up code and imports
+
 import re
 import urllib.parse
 import urllib.request
@@ -63,7 +69,6 @@ class LuxuretvWebsite(BaseWebsite):
             request = urllib.request.Request(url, headers=headers)
             with opener.open(request, timeout=30) as response:
                 cookies = "; ".join([f"{cookie.name}={cookie.value}" for cookie in cookie_jar])
-                self.logger.info(f"Fetched cookies: {cookies}")
                 return cookies
         except Exception as e:
             self.logger.error(f"Failed to fetch cookies from {url}: {e}")
@@ -94,7 +99,7 @@ class LuxuretvWebsite(BaseWebsite):
                     content = data.decode('utf-8', errors='ignore')
                     if cookie_jar:
                         headers["cookie"] = "; ".join([f"{cookie.name}={cookie.value}" for cookie in cookie_jar])
-                    return content
+                    return content, response.geturl()
             except urllib.error.HTTPError as e:
                 self.logger.error(f"HTTP Error {e.code} fetching {url} (attempt {attempt + 1}/{max_retries}): {e}")
                 if e.code == 403 and attempt < max_retries - 1:
@@ -105,30 +110,29 @@ class LuxuretvWebsite(BaseWebsite):
                 if attempt < max_retries - 1:
                     xbmc.sleep(retry_wait)
         self.notify_error(f"Failed to fetch URL: {url}")
-        return None
+        return None, url
 
     def process_content(self, url):
         start_url, _ = self.get_start_url_and_label()
-        if url == self.config["base_url"]:
+        if url == self.config["base_url"] or url == "BOOTSTRAP":
              url = start_url
 
         self.add_basic_dirs(url)
         
-        content = self.make_request(url)
+        content, final_url = self.make_request(url)
         if content:
-            self.process_content_matches(content, url)
-            self.add_next_button(content, url)
+            self.process_content_matches(content, final_url)
+            self.add_next_button(content, final_url)
         
         self.end_directory()
 
     def add_basic_dirs(self, current_url):
-        context_menu = [('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={urllib.parse.quote_plus(current_url)})')]
-        self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], self.fanart, context_menu=context_menu, name_param=self.name)
-        self.add_dir('Categories', self.config['categories_url'], 8, self.icons['categories'], self.fanart, context_menu=context_menu)
+        self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], self.fanart, name_param=self.name)
+        self.add_dir('Categories', self.config['categories_url'], 8, self.icons['categories'], self.fanart)
 
     def process_categories(self, url):
         self.add_basic_dirs(url)
-        content = self.make_request(url)
+        content, _ = self.make_request(url)
         if not content:
             self.end_directory()
             return
@@ -150,8 +154,6 @@ class LuxuretvWebsite(BaseWebsite):
             self.logger.error(f"PARSER: No video item blocks found on {current_url}")
             return
 
-        context_menu = [('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={urllib.parse.quote_plus(current_url)})')]
-
         for block in item_blocks:
             url_thumb_match = re.search(r'<a href="([^"]+)" title="[^"]*"><img[^>]+data-src="([^"]+)"', block, re.DOTALL)
             title_match = re.search(r'<div class="vtitle"><a[^>]+>([^<]+)</a></div>', block, re.DOTALL)
@@ -165,7 +167,7 @@ class LuxuretvWebsite(BaseWebsite):
 
                 full_url = urllib.parse.urljoin(self.base_url, video_url)
                 title_with_duration = f"{html.unescape(title)} [COLOR gray]({duration})[/COLOR]"
-                self.add_link(title_with_duration, full_url, 4, thumb, self.fanart, context_menu)
+                self.add_link(title_with_duration, full_url, 4, thumb, self.fanart)
 
     def add_next_button(self, content, current_url):
         next_page_match = re.search(r'<link rel="next" href="([^"]+)"', content)
@@ -177,7 +179,7 @@ class LuxuretvWebsite(BaseWebsite):
             self.add_dir('[COLOR blue]Next Page >>>>[/COLOR]', next_url, 2, self.icons['default'], self.fanart)
 
     def play_video(self, url):
-        content = self.make_request(url)
+        content, _ = self.make_request(url)
         if not content: return
         
         match = re.search(r'source src="([^"]+)"', content)
@@ -199,11 +201,45 @@ class LuxuretvWebsite(BaseWebsite):
 
     def search(self, query):
         if not query: return
-        search_url = self.config['search_url'].format(urllib.parse.quote_plus(query))
+        post_data = {'q': query, 'type': 'videos'}
+        content, final_url = self.make_request(
+            self.config['search_url'], 
+            post_data=post_data, 
+            referer=self.config['base_url']
+        )
         
-        self.add_basic_dirs(search_url)
-        content = self.make_request(search_url)
+        self.add_basic_dirs(final_url)
         if content:
-            self.process_content_matches(content, search_url)
-            self.add_next_button(content, search_url)
+            self.process_content_matches(content, final_url)
+            self.add_next_button(content, final_url)
         self.end_directory()
+
+    def select_sort(self, original_url=None):
+        if not original_url: return self.notify_error("Cannot sort, original URL not provided.")
+        
+        if original_url.startswith('plugin://'):
+            try:
+                params = dict(urllib.parse.parse_qsl(urllib.parse.urlparse(original_url).query))
+                if 'url' in params and params['url'] != 'BOOTSTRAP':
+                    original_url = params['url']
+                elif params.get('url') == 'BOOTSTRAP':
+                    start_url, _ = self.get_start_url_and_label()
+                    original_url = start_url
+            except:
+                pass
+
+        dialog = xbmcgui.Dialog()
+        preselect = -1
+        
+        # Try to match current URL to sort options
+        for i, option in enumerate(self.sort_options):
+            if self.sort_paths[option] in original_url:
+                preselect = i
+                break
+        
+        idx = dialog.select("Sort by...", self.sort_options, preselect=preselect)
+        if idx != -1:
+            sort_key = self.sort_options[idx]
+            path = self.sort_paths[sort_key]
+            new_url = urllib.parse.urljoin(self.config['base_url'], path)
+            xbmc.executebuiltin(f'Container.Update({sys.argv[0]}?mode=2&url={urllib.parse.quote_plus(new_url)}&website={self.name},replace)')

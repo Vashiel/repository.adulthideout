@@ -1,17 +1,22 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.3" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.4" provider-name="Vashiel">
     <extension point="xbmc.python.pluginsource" library="default.py">
         <provides>video</provides>
     </extension>
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
-v. 1.0.3 - 2025-10-20
-- Added new sites: avjoy, beeg, eroasmr, freeomovie, hanime, hqporner, paradisehill, spankbang  
-- Fixed and updated existing sites: missav, porntn, rule34video, txxx, xnxx  
-- Added new resolver framework and Cloudscraper integration (Cloudflare bypass)  
-- Added reset_settings.py and improved cache handling  
-- Updated settings.xml and general performance improvements
+v. 1.0.4 "Gonzales" - 2025-11-25
+- Added new sites: DarknessPorn, FullXCinema, NoodleMagazine, PornZog, PunishWorld, ShemaleZ, VJAV, VoyeurHit, YouPorn
+- Reduced video startup latency by removing redundant stream pre-checks
+- Increased internal proxy buffer size for smoother seeking and reduced buffering
+- Fixed "Play from here" (playlist) functionality for proxy-based sites (e.g., DarknessPorn, PunishWorld)
+- Reorganized settings menu into categories (General, Sites, Filters)
+- Added specific filter options for Ashemaletube (Country, Body attributes)
+- MissAV: Rewritten parser and session handling for improved stability
+- Rule34Video: Updated for new site layout; added content type filters (Straight/Gay/Futa)
+- XNXX and LuxureTV: Fixed sorting, search, and navigation issues
+- General: Implemented unified proxy logic (proxy_utils) for better stability on Cloudflare-protected sites
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>

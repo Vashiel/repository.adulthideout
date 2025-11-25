@@ -1,6 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# Changelog:
+# - Final release version
+# - Fixed sorting functionality with URL redirection support
+# - Optimized HTML parsing for video listings and categories
+# - Cleaned up code and removed debug comments
+# - Unified context menu handling
+
 import re
 import urllib.parse
 import urllib.request
@@ -65,6 +72,9 @@ class HypnotubeWebsite(BaseWebsite):
         return None, url
 
     def process_content(self, url):
+        if not url or url == "BOOTSTRAP":
+            url = self.config['base_url'] + "/videos/"
+
         self.add_basic_dirs(url)
         content, final_url = self.make_request(url, referer=self.base_url)
         if content:
@@ -73,7 +83,6 @@ class HypnotubeWebsite(BaseWebsite):
         self.end_directory()
 
     def add_basic_dirs(self, current_url):
-        context_menu = [('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={urllib.parse.quote_plus(current_url)})')]
         self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], self.fanart, name_param=self.config['name'])
         self.add_dir('Categories', f"{self.config['base_url']}/channels/", 8, self.icons['categories'], self.fanart)
 
@@ -87,12 +96,11 @@ class HypnotubeWebsite(BaseWebsite):
              self.logger.error(f"PARSER: No video items found on {current_url}")
              return
 
-        context_menu = [('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={urllib.parse.quote_plus(current_url)})')]
         for video_url, title, thumbnail, duration in matches:
             title_with_duration = f"{html.unescape(title)} [COLOR gray]({duration.strip()})[/COLOR]"
             full_url = urllib.parse.urljoin(self.config['base_url'], video_url)
             thumb_url = urllib.parse.urljoin(self.config['base_url'], thumbnail)
-            self.add_link(title_with_duration, full_url, 4, thumb_url, self.fanart, context_menu=context_menu)
+            self.add_link(title_with_duration, full_url, 4, thumb_url, self.fanart)
 
     def process_categories(self, url):
         self.add_basic_dirs(url)
@@ -142,9 +150,20 @@ class HypnotubeWebsite(BaseWebsite):
 
     def select_sort(self, original_url=None):
         if not original_url: return self.notify_error("Cannot sort, original URL not provided.")
+        
+        if original_url.startswith('plugin://'):
+            try:
+                params = dict(urllib.parse.parse_qsl(urllib.parse.urlparse(original_url).query))
+                if 'url' in params and params['url'] != 'BOOTSTRAP':
+                    original_url = params['url']
+                elif params.get('url') == 'BOOTSTRAP':
+                    original_url = self.config['base_url'] + "/videos/"
+            except:
+                pass
+
         dialog = xbmcgui.Dialog()
         
-        if '/search/' in original_url:
+        if '/search/' in original_url or 'searchgate.php' in original_url:
             choices = ["Most Relevant", "Newest", "Top Rated", "Most Viewed"]
             slug_map = {"Most Relevant": "", "Newest": "newest", "Top Rated": "rating", "Most Viewed": "views"}
             choice_map = {v: k for k, v in slug_map.items()}
@@ -159,5 +178,17 @@ class HypnotubeWebsite(BaseWebsite):
                 base_search_url = re.sub(r'/(newest|rating|views)/?$', '', original_url.rstrip('/'))
                 new_url = f"{base_search_url}/{selected_slug}/" if selected_slug else f"{base_search_url}/"
                 xbmc.executebuiltin(f'Container.Update({sys.argv[0]}?mode=2&url={urllib.parse.quote_plus(new_url)}&website={self.name},replace)')
+        
         else:
-            super().select_sort(original_url)
+            preselect = -1
+            for i, option in enumerate(self.sort_options):
+                if self.sort_paths[option] in original_url:
+                    preselect = i
+                    break
+            
+            idx = dialog.select("Sort by...", self.sort_options, preselect=preselect)
+            if idx != -1:
+                sort_key = self.sort_options[idx]
+                path = self.sort_paths[sort_key]
+                new_url = urllib.parse.urljoin(self.config['base_url'], path)
+                xbmc.executebuiltin(f'Container.Update({sys.argv[0]}?mode=2&url={urllib.parse.quote_plus(new_url)}&website={self.name},replace)')

@@ -1,6 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# Changelog:
+# - Final release version
+# - Implemented custom HTMLParser for efficient content extraction
+# - Integrated local HLS Proxy for stream playback
+# - Optimized session handling with lazy loading
+# - Cleaned up code, logging and comments
+
 import re
 import urllib.parse as urllib_parse
 import urllib.request as urllib_request
@@ -109,7 +116,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
             else:
                 self.send_error(404, 'File Not Found')
         except Exception as e:
-            xbmc.log(f"Proxy Error: {e}", level=xbmc.LOGERROR)
+            xbmc.log(f"MissAV Proxy Error: {e}", level=xbmc.LOGERROR)
             self.send_error(500, str(e))
     def log_message(self, format, *args): pass
 
@@ -118,7 +125,7 @@ class MissavWebsite(BaseWebsite):
         super().__init__(name='missav', base_url='https://missav123.com/', search_url='https://missav123.com/en/search/{}', addon_handle=addon_handle)
         self.cookie_jar = CookieJar()
         self.opener = urllib_request.build_opener(urllib_request.HTTPCookieProcessor(self.cookie_jar))
-        self.establish_session()
+        self.session_established = False 
         self.sort_options = ['New Releases', 'Recent Update', 'Most Viewed Today', 'Most Viewed by Week', 'Most Viewed by Month']
         self.sort_paths = {'New Releases': 'dm588/en/release', 'Recent Update': 'dm514/en/new', 'Most Viewed Today': 'dm291/en/today-hot', 'Most Viewed by Week': 'dm169/en/weekly-hot', 'Most Viewed by Month': 'dm257/en/monthly-hot'}
         self.actress_sort_options = ['Videos', 'Debut']
@@ -129,17 +136,25 @@ class MissavWebsite(BaseWebsite):
         return {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8', 'Accept-Language': 'de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7', 'Referer': url, 'Connection': 'keep-alive', 'Upgrade-Insecure-Requests': '1', 'Sec-Fetch-Dest': 'document', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-User': '?1'}
 
     def establish_session(self):
-        self.logger.info("Establishing session to get initial cookies...")
+        if self.session_established: return True
         try:
             headers = self.get_headers(self.base_url)
             request = urllib_request.Request(self.base_url, headers=headers)
             with self.opener.open(request, timeout=20) as response:
-                self.logger.info(f"Session established with status: {response.getcode()}")
+                self.session_established = True
+                return True
         except Exception as e:
             self.logger.error(f"Failed to establish session: {e}")
             self.notify_error("Could not establish session with website.")
+            self.session_established = False
+            return False
 
     def make_request(self, url, data=None, max_retries=3, retry_wait=3000):
+        if not self.session_established:
+            if not self.establish_session():
+                self.notify_error(f"Failed to fetch URL (session failed): {url}")
+                return ""
+
         headers = self.get_headers(url)
         for attempt in range(max_retries):
             try:
@@ -149,24 +164,21 @@ class MissavWebsite(BaseWebsite):
             except urllib_request.HTTPError as e:
                 self.logger.error(f"HTTP error fetching {url} (attempt {attempt + 1}/{max_retries}): {e.code} {e.reason}")
                 if e.code == 403:
-                    self.logger.warning("Got 403 Forbidden, trying to re-establish session...")
-                    self.establish_session() 
+                    self.session_established = False
+                    if not self.establish_session(): break
             except Exception as e:
                 self.logger.error(f"Request error fetching {url} (attempt {attempt + 1}/{max_retries}): {e}")
             if attempt < max_retries - 1:
-                self.logger.info(f"Retrying in {retry_wait / 1000} seconds...")
                 xbmc.sleep(retry_wait)
         self.notify_error(f"Failed to fetch URL after {max_retries} attempts: {url}")
         return ""
 
     def process_content(self, url):
-        self.logger.info(f"Processing URL: {url}")
         if not url or url == self.base_url:
             url, _ = self.get_video_url_and_label()
 
         content = self.make_request(url)
-        if not content:
-            return
+        if not content: return
 
         self.add_basic_dirs(url)
         sort_command = f'RunPlugin({sys.argv[0]}?mode=7&action=select_video_sort&website={self.name})'
@@ -177,7 +189,7 @@ class MissavWebsite(BaseWebsite):
         videos = parser.videos
 
         if not videos:
-            self.logger.error("No videos found using HTMLParser. The page layout may have changed.")
+            self.logger.error("No videos found using HTMLParser.")
             self.end_directory()
             return
 
@@ -187,8 +199,7 @@ class MissavWebsite(BaseWebsite):
             name = video.get('title', '').strip()
             duration = video.get('duration', '').strip()
 
-            if not all([video_url, thumbnail, name]):
-                continue
+            if not all([video_url, thumbnail, name]): continue
             
             display_title = f"{name} ({duration})" if duration else name
             
@@ -245,25 +256,19 @@ class MissavWebsite(BaseWebsite):
                 value = self.addon.getSetting(data['setting'])
                 if value:
                     params[key] = value
-            if not params:
-                return base_url
+            if not params: return base_url
             query_string = urllib_parse.urlencode(params)
             return f"{base_url}&{query_string}" if '?' in base_url else f"{base_url}?{query_string}"
 
         parsed_url = urllib_parse.urlparse(original_url)
         base_path = parsed_url.scheme + "://" + parsed_url.netloc + parsed_url.path
-        
         params = dict(urllib_parse.parse_qsl(parsed_url.query))
         
         if new_filter_key:
-            if new_filter_value:
-                params[new_filter_key] = new_filter_value
-            elif new_filter_key in params:
-                del params[new_filter_key]
+            if new_filter_value: params[new_filter_key] = new_filter_value
+            elif new_filter_key in params: del params[new_filter_key]
 
-        if not params:
-            return base_path
-
+        if not params: return base_path
         query_string = urllib_parse.urlencode(params)
         return f"{base_path}?{query_string}"
 
@@ -285,21 +290,12 @@ class MissavWebsite(BaseWebsite):
         if idx != -1:
             new_value = options[idx][1]
             self.addon.setSetting(setting_id, new_value)
-            
-            new_url = self._build_actress_url(
-                original_url=original_url, 
-                new_filter_key=filter_key, 
-                new_filter_value=new_value
-            )
-            
+            new_url = self._build_actress_url(original_url=original_url, new_filter_key=filter_key, new_filter_value=new_value)
             xbmc.executebuiltin(f"Container.Update({sys.argv[0]}?mode=9&url={urllib_parse.quote_plus(new_url)}&website={self.name},replace)")
 
     def reset_actress_filters(self, original_url=None):
-        for key, data in self.actress_filters.items():
-            self.addon.setSetting(data['setting'], "")
-        
+        for key, data in self.actress_filters.items(): self.addon.setSetting(data['setting'], "")
         new_url, _ = self.get_actress_url_and_label()
-        
         self.notify_info("All filters have been reset.")
         xbmc.executebuiltin(f"Container.Update({sys.argv[0]}?mode=9&url={urllib_parse.quote_plus(new_url)}&website={self.name},replace)")
 
@@ -313,8 +309,7 @@ class MissavWebsite(BaseWebsite):
         return url, f"Actresses [COLOR yellow]{sort_option}[/COLOR]"
 
     def select_actress_sort(self, original_url=None):
-        setting_id = f"{self.name}_actress_sort_by"
-        current_idx = 0
+        setting_id = f"{self.name}_actress_sort_by"; current_idx = 0
         try: current_idx = int(self.addon.getSetting(setting_id))
         except (ValueError, TypeError): pass
         
@@ -325,15 +320,11 @@ class MissavWebsite(BaseWebsite):
             self.addon.setSetting(setting_id, str(idx))
             new_sort_url, _ = self.get_actress_url_and_label()
             parsed_new = urllib_parse.urlparse(new_sort_url)
-            
             parsed_original = urllib_parse.urlparse(original_url)
             params = dict(urllib_parse.parse_qsl(parsed_original.query))
-            
             params['sort'] = dict(urllib_parse.parse_qsl(parsed_new.query)).get('sort', 'videos')
-            
             query_string = urllib_parse.urlencode(params)
             new_url = f"{parsed_new.scheme}://{parsed_new.netloc}{parsed_new.path}?{query_string}"
-            
             xbmc.executebuiltin(f"Container.Update({sys.argv[0]}?mode=9&url={urllib_parse.quote_plus(new_url)}&website={self.name},replace)")
 
     def add_basic_dirs(self, current_url):
@@ -343,12 +334,12 @@ class MissavWebsite(BaseWebsite):
         for item in dirs_data: self.add_dir(name=item['name'], url=item['url'], mode=item['mode'], icon=item['icon'], fanart=self.fanart, context_menu=item.get('context_menu'), name_param=item.get('name_param'))
 
     def process_categories(self, url):
-        self.logger.info(f"Processing Categories, URL: {url}"); main_cat_match = re.search(r'main_cat=([^&]+)', url)
+        main_cat_match = re.search(r'main_cat=([^&]+)', url)
         if main_cat_match: self._process_sub_categories(urllib_parse.unquote_plus(main_cat_match.group(1)))
         else: self._process_main_categories()
 
     def _process_main_categories(self):
-        self.logger.info("Processing main categories from homepage"); content = self.make_request(self.base_url + "en")
+        content = self.make_request(self.base_url + "en")
         if not content: return self.notify_error("Failed to load main page for categories")
         nav_match = re.search(r'<nav class="hidden xl:flex.*?>(.*?)</nav>', content, re.DOTALL)
         if not nav_match: return self.notify_error("Could not find the main navigation container.")
@@ -358,7 +349,7 @@ class MissavWebsite(BaseWebsite):
         self.end_directory()
 
     def _process_sub_categories(self, category_title):
-        self.logger.info(f"Processing sub-categories for '{category_title}'"); content = self.make_request(self.base_url + "en")
+        content = self.make_request(self.base_url + "en")
         if not content: return self.notify_error("Failed to load main page for sub-categories")
         nav_match = re.search(r'<nav class="hidden xl:flex.*?>(.*?)</nav>', content, re.DOTALL)
         if not nav_match: return self.notify_error("Could not find the main navigation container.")
@@ -377,80 +368,53 @@ class MissavWebsite(BaseWebsite):
         self.end_directory()
 
     def process_actresses_list(self, url):
-        self.logger.info(f"Processing Actresses List from URL: {url}")
-        
-        if not url or url == self.name:
-            current_url = self._build_actress_url()
-        else:
-            current_url = url
-            
+        if not url or url == self.name: current_url = self._build_actress_url()
+        else: current_url = url
         content = self.make_request(current_url)
-        if not content: 
-            return self.notify_error("Failed to load actresses page")
-            
+        if not content: return self.notify_error("Failed to load actresses page")
         self.add_basic_dirs(current_url)
-        
-        parsed_url = urllib_parse.urlparse(current_url)
-        active_filters = dict(urllib_parse.parse_qsl(parsed_url.query))
-        
+        parsed_url = urllib_parse.urlparse(current_url); active_filters = dict(urllib_parse.parse_qsl(parsed_url.query))
         context_menu = [('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_actress_sort&website={self.name}&original_url={urllib_parse.quote_plus(current_url)})')]
-        
         for key, data in self.actress_filters.items():
             current_value_from_url = active_filters.get(key, '')
             current_label = next((label for label, value in data['options'] if value == current_value_from_url), "All")
             label = f"Filter by {data['label']} ([COLOR yellow]{current_label}[/COLOR])"
             action = f"RunPlugin({sys.argv[0]}?mode=7&action=select_actress_filter&website={self.name}&filter_key={key}&original_url={urllib_parse.quote_plus(current_url)})"
             context_menu.append((label, action))
-        
         if any(key in active_filters for key in self.actress_filters.keys()):
             context_menu.append(('[COLOR red]Reset All Filters[/COLOR]', f'RunPlugin({sys.argv[0]}?mode=7&action=reset_actress_filters&website={self.name}&original_url={urllib_parse.quote_plus(current_url)})'))
-            
-        list_container_match = re.search(r'<ul class="mx-auto grid.*?">(.*?)</ul>', content, re.DOTALL)
-        matches = []
+        list_container_match = re.search(r'<ul class="mx-auto grid.*?">(.*?)</ul>', content, re.DOTALL); matches = []
         if list_container_match: 
-            list_html = list_container_match.group(1)
-            actress_pattern = re.compile(r'<li>.*?<a href="([^"]+)".*?<img src="([^"]+)".*?<h4[^>]*>([^<]+)</h4>.*?<p[^>]*>([\d,]+\s*videos)</p>.*?</li>', re.DOTALL)
-            matches = actress_pattern.findall(list_html)
-            
+            list_html = list_container_match.group(1); actress_pattern = re.compile(r'<li>.*?<a href="([^"]+)".*?<img src="([^"]+)".*?<h4[^>]*>([^<]+)</h4>.*?<p[^>]*>([\d,]+\s*videos)</p>.*?</li>', re.DOTALL); matches = actress_pattern.findall(list_html)
         if not matches:
-            self.notify_error("No actresses found. The current filter combination might be too restrictive.")
+            self.notify_error("No actresses found.")
             li = xbmcgui.ListItem('[I]No results found - Right-click to change filters[/I]')
-            li.addContextMenuItems(context_menu)
-            li.setProperty('IsPlayable', 'false')
-            xbmcplugin.addDirectoryItem(handle=self.addon_handle, url='', listitem=li, isFolder=False)
-            self.end_directory()
-            return
-            
+            li.addContextMenuItems(context_menu); li.setProperty('IsPlayable', 'false'); xbmcplugin.addDirectoryItem(handle=self.addon_handle, url='', listitem=li, isFolder=False); self.end_directory(); return
         for page_url, thumb_url, name, video_count in matches:
             display_title = f"{name.strip()} ({video_count.strip()})"
             info = {'title': name.strip(), 'plot': f"{video_count.strip()} available."}
             self.add_dir(name=display_title, url=page_url, mode=2, icon=thumb_url, fanart=self.fanart, info_labels=info, context_menu=context_menu)
-            
         next_page_match = re.search(r'<a href="([^"]+)" rel="next"', content)
         if next_page_match:
-            next_url = urllib_parse.urljoin(self.base_url, next_page_match.group(1))
-            page_num_match = re.search(r'page=(\d+)', next_url)
-            if page_num_match:
-                page_num = page_num_match.group(1)
-                self.add_dir(f"Next Page ({page_num})", next_url, 9, self.icons['default'], '')
-                
+            next_url = urllib_parse.urljoin(self.base_url, next_page_match.group(1)); page_num_match = re.search(r'page=(\d+)', next_url)
+            if page_num_match: page_num = page_num_match.group(1); self.add_dir(f"Next Page ({page_num})", next_url, 9, self.icons['default'], '')
         self.end_directory()
 
     def play_video(self, url):
-        self.logger.info(f"Starting to play video from URL: {url}"); decoded_url = urllib_parse.unquote_plus(url); content = self.make_request(decoded_url)
+        decoded_url = urllib_parse.unquote_plus(url); content = self.make_request(decoded_url)
         if not content: return
         eval_pattern = r"eval\(function\(p,a,c,k,e,d\)\{.*?\}\('(.*?)',(\d+),(\d+),'(.*?)'\.split\('\|'\).*\)"; eval_match = re.search(eval_pattern, content, re.DOTALL); stream_url = None
         if eval_match:
-            self.logger.info("Found packed JavaScript block. Attempting to de-obfuscate."); p, a_str, c_str, k_str = eval_match.groups(); a, c = int(a_str), int(c_str); k = k_str.split('|')
+            p, a_str, c_str, k_str = eval_match.groups(); a, c = int(a_str), int(c_str); k = k_str.split('|')
             def int_to_base(n, base): return "0123456789abcdefghijklmnopqrstuvwxyz"[n] if n < base else int_to_base(n // base, base) + "0123456789abcdefghijklmnopqrstuvwxyz"[n % base]
-            d = {};
+            d = {}; 
             for i in range(c - 1, -1, -1): key = int_to_base(i, a); d[key] = k[i] if k[i] else key
-            result = re.sub(r'\b\w+\b', lambda m: d.get(m.group(0), m.group(0)), p); self.logger.info("Successfully de-obfuscated script. Searching for stream URL.")
+            result = re.sub(r'\b\w+\b', lambda m: d.get(m.group(0), m.group(0)), p)
             quality_patterns = [r"source1280=\\'([^']+)\\'", r"source842=\\'([^']+)\\'", r"source=\\'([^']+)\\'"]
             for pattern in quality_patterns:
                 match = re.search(pattern, result)
-                if match: stream_url = match.group(1); self.logger.info(f"Found real stream playlist: {stream_url}"); break
-        if not stream_url: self.logger.error("Could not find M3U8 stream URL."); return self.notify_error("Could not find M3U8 stream playlist.")
+                if match: stream_url = match.group(1); break
+        if not stream_url: return self.notify_error("Could not find M3U8 stream playlist.")
         httpd = None
         try:
             win = xbmcgui.Window(10000)
@@ -461,17 +425,17 @@ class MissavWebsite(BaseWebsite):
             win.setProperty('missav_proxy.last_port', str(port)); server_address = ('127.0.0.1', port)
             current_video_state = {'real_playlist_url': stream_url, 'base_url': stream_url.rsplit('/', 1)[0], 'headers': self.get_headers(decoded_url), 'opener': self.opener}
             httpd = HlsProxy(server_address, ProxyHandler, current_video_state)
-            server_thread = threading.Thread(target=httpd.serve_forever); server_thread.daemon = True; server_thread.start(); self.logger.info(f"Proxy server started on http://127.0.0.1:{port}")
+            server_thread = threading.Thread(target=httpd.serve_forever); server_thread.daemon = True; server_thread.start()
             unique_token = str(time.time()); local_playlist_url = f"http://127.0.0.1:{port}/{unique_token}/playlist.m3u8"
             li = xbmcgui.ListItem(path=local_playlist_url); li.setProperty('IsPlayable', 'true'); li.setMimeType('application/vnd.apple.mpegurl'); li.setProperty('inputstream', 'inputstream.adaptive'); li.setProperty('inputstream.adaptive.manifest_type', 'hls'); xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
             monitor = xbmc.Monitor(); playback_started = False
             for _ in range(15):
-                if xbmc.Player().isPlaying(): playback_started = True; self.logger.info("Playback has started."); break
+                if xbmc.Player().isPlaying(): playback_started = True; break
                 if monitor.waitForAbort(1): break
             if playback_started:
                 while xbmc.Player().isPlaying():
                     if monitor.waitForAbort(1): break
         except Exception as e:
-            self.logger.error(f"Failed to start or run proxy server: {e}"); self.notify_error(f"Proxy-Error: {e}")
+            self.notify_error(f"Proxy-Error: {e}")
         finally:
-            if httpd: self.logger.info(f"Playback finished or aborted. Shutting down proxy server on port {port}."); httpd.shutdown(); httpd.server_close()
+            if httpd: httpd.shutdown(); httpd.server_close()
