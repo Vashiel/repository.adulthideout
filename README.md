@@ -22,7 +22,7 @@ This update represents a **massive expansion** of the addon's capabilities, intr
    * Go to **Add-ons → Install from ZIP**
    * Download and point to the ZIP:
 
-     [repository.adulthideout-1.0.5.zip](https://vashiel.github.io/repository.adulthideout/)
+     [repository.adulthideout-1.0.4.zip](https://vashiel.github.io/repository.adulthideout/)
 
 2. Browse **Add-ons → Download → Video add-ons → AdultHideout**
 3. Install **AdultHideout**
