@@ -1,6 +1,3 @@
-# Changelog:
-# - Fixed duplicate "Sort by" context menu item
-# - Optimized code structure
 
 import re
 import sys
@@ -118,7 +115,6 @@ class HQPorner(BaseWebsite):
                 duration = self._parse_duration(duration_str)
                 info_labels = {'title': title, 'duration': duration, 'plot': title}
                 
-                # BaseWebsite fügt automatisch "Sort by..." hinzu, daher hier kein manuelles context_menu nötig
                 self.add_link(name=title, url=video_url, mode=4, icon=thumbnail, fanart=self.fanart, info_labels=info_labels)
 
             next_page_match = re.search(r'<li><a href="([^"]+)" class="button[^"]*?pagi-btn">Next</a></li>', html_content)

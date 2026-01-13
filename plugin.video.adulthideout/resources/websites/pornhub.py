@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Changelog:
-# - Final release version
-# - Switched to Webmaster API for reliable video listing
-# - Fixed playback using flashvars extraction
-# - Optimized sorting and period selection
-# - Cleaned up code
 
 import re
 import sys

@@ -14,7 +14,6 @@ import os
 import json
 
 try:
-    # Vendor-Pfad für Cloudscraper hinzufügen
     addon_path = xbmcaddon.Addon().getAddonInfo('path')
     vendor_path = os.path.join(addon_path, 'resources', 'lib', 'vendor')
     if vendor_path not in sys.path:
@@ -31,10 +30,8 @@ except Exception as e:
 
 from resources.lib.base_website import BaseWebsite
 
-# === SESSION CACHE ===
 _SESSION_CACHE = None
 _SESSION_LOCK = threading.Lock()
-# =====================
 
 class Rule34video(BaseWebsite):
     def __init__(self, addon_handle, addon=None):
@@ -51,7 +48,6 @@ class Rule34video(BaseWebsite):
         self.setting_id_sort = "rule34video_sort_order"
         self.setting_id_content = "rule34video_content_type"
         
-        # IDs basierend auf dem neuen Quelltext (data-tags)
         self.content_params = {
             'All': None,
             'Straight': '2109',
@@ -111,7 +107,6 @@ class Rule34video(BaseWebsite):
             return None
 
     def _get_start_url(self):
-        # Einstellungen laden
         try:
             sort_idx = int(self.addon.getSetting(self.setting_id_sort))
             sort_key = self.sort_options[sort_idx]
@@ -124,17 +119,12 @@ class Rule34video(BaseWebsite):
         except:
             content_key = 'All'
 
-        # Basis-URL bestimmen (Tag-Filter oder Latest)
         tag_id = self.content_params.get(content_key)
         if tag_id:
-            # content type -> /tags/ID/
             base = f"/tags/{tag_id}/"
         else:
-            # All -> /latest-updates/
             base = "/latest-updates/"
 
-        # Sortierung anhängen (Query params für KVS)
-        # Mappings basierend auf neuem HTML
         sort_map = {
             'Newest': 'post_date',
             'Most Viewed': 'video_viewed',
@@ -144,14 +134,12 @@ class Rule34video(BaseWebsite):
         }
         sort_val = sort_map.get(sort_key, 'post_date')
         
-        # URL bauen
         url = urllib.parse.urljoin(self.base_url, base)
         url += f"?sort_by={sort_val}"
         
         return url
 
     def get_start_url_and_label(self):
-        # Kleiner Helper für das Label im Hauptmenü
         try:
             s_idx = int(self.addon.getSetting(self.setting_id_sort))
             c_idx = int(self.addon.getSetting(self.setting_id_content))
@@ -168,12 +156,9 @@ class Rule34video(BaseWebsite):
             self.end_directory()
             return
 
-        # Menü-Links
         self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], name_param=self.name)
         self.add_dir('[COLOR blue]Categories[/COLOR]', urllib.parse.urljoin(self.base_url, '/categories/'), 8, self.icons['categories'])
 
-        # REGEX für die neue Struktur (basierend auf neu 1.txt)
-        # Sucht nach <div class="item thumb ..."> ... <a href="..."> ... <img data-original="...">
         video_pattern = re.compile(
             r'<div class="item thumb[^"]*">.*?'
             r'<a class="th[^"]*" href="(?P<url>[^"]+)"[^>]*title="(?P<title>[^"]+)".*?'
@@ -192,7 +177,6 @@ class Rule34video(BaseWebsite):
             
             full_url = urllib.parse.urljoin(self.base_url, v_url)
             
-            # Kontextmenü
             cm = [
                 ('Select Content...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_content_type&website={self.name})'),
                 ('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort_order&website={self.name})')
@@ -204,8 +188,6 @@ class Rule34video(BaseWebsite):
         if not found:
             self.logger.warning(f"[{self.name}] No videos found on {url}")
 
-        # Pagination (Pager Next)
-        # <div class="item pager next"><a href="...">
         next_match = re.search(r'<div class="item pager next">\s*<a href="(?P<next>[^"]+)"', html_content)
         if next_match:
             next_link = urllib.parse.urljoin(self.base_url, next_match.group('next'))
@@ -219,8 +201,6 @@ class Rule34video(BaseWebsite):
             self.end_directory()
             return
 
-        # Regex für Kategorien (Sidebar-Stil oder Grid, KVS Standard)
-        # <a href="..." class="item"><div class="image"><img src="..."></div><div class="name">...</div></a>
         cat_pattern = re.compile(
             r'<a href="(?P<url>[^"]+)" class="item">\s*'
             r'.*?<img src="(?P<thumb>[^"]+)".*?'
@@ -233,7 +213,6 @@ class Rule34video(BaseWebsite):
             thumb = match.group('thumb')
             title = html.unescape(match.group('title').strip())
             
-            # Filter "All Categories" link out usually
             if "All Categories" in title: continue
             
             self.add_dir(title, c_url, 2, thumb, self.fanart)
@@ -247,17 +226,10 @@ class Rule34video(BaseWebsite):
             self.notify_error("Failed to load video page")
             return
 
-        # Generic KVS Video Extraction
-        # Suche nach mp4 Links im Source, oft in flashvars oder <video> tags
-        # Prio 1: Source Tags
         video_url = None
         
-        # Suche nach direktem MP4 Link in Quotes
-        # Oft: video_url: 'https://...' oder "video_url": "..."
         mp4_matches = re.findall(r'["\'](https?://[^"\']+\.mp4[^"\']*)["\']', html_content)
         
-        # Filter logic: Wir wollen keine Preview/Thumbnail Videos, sondern das Main Video
-        # Oft ist das längste URL oder hat bestimmte Keywords nicht
         candidates = []
         for m in mp4_matches:
             if 'preview' in m: continue
@@ -265,14 +237,11 @@ class Rule34video(BaseWebsite):
                 candidates.append(m)
         
         if candidates:
-            # Nimm den ersten guten Kandidaten (oft highest quality)
             video_url = candidates[0]
         elif mp4_matches:
-            # Fallback
             video_url = mp4_matches[0]
 
         if video_url:
-            # URL cleanen (JSON slashes)
             video_url = video_url.replace(r'\/', '/')
             self.logger.info(f"[{self.name}] Found video URL: {video_url}")
             
@@ -295,9 +264,7 @@ class Rule34video(BaseWebsite):
             pass
         return 0
 
-    # Helper für Kontextmenü-Funktionen (müssen existieren, damit RunPlugin funktioniert)
     def select_content_type(self, original_url=None):
-        # Settings-Dialog Logik (wie gehabt, nur auf neue Content-Liste angepasst)
         try:
             current_idx = int(self.addon.getSetting(self.setting_id_content) or 0)
         except: current_idx = 0

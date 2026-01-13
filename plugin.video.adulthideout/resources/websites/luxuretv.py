@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Changelog:
-# - Maintained urllib implementation for best Cloudflare bypass
-# - Added select_sort for correct URL routing
-# - Removed duplicate context menu entries
-# - Cleaned up code and imports
 
 import re
 import urllib.parse
@@ -231,7 +226,6 @@ class LuxuretvWebsite(BaseWebsite):
         dialog = xbmcgui.Dialog()
         preselect = -1
         
-        # Try to match current URL to sort options
         for i, option in enumerate(self.sort_options):
             if self.sort_paths[option] in original_url:
                 preselect = i

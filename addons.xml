@@ -1,23 +1,17 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.4" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.5" provider-name="Vashiel">
     <extension point="xbmc.python.pluginsource" library="default.py">
         <provides>video</provides>
     </extension>
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
-v. 1.0.4 "Gonzales" - 2025-11-25
-- Added new sites: DarknessPorn, FullXCinema, NoodleMagazine, PornZog, PunishWorld, ShemaleZ, VJAV, VoyeurHit, YouPorn
-- Reduced video startup latency by removing redundant stream pre-checks
-- Increased internal proxy buffer size for smoother seeking and reduced buffering
-- Fixed "Play from here" (playlist) functionality for proxy-based sites (e.g., DarknessPorn, PunishWorld)
-- Reorganized settings menu into categories (General, Sites, Filters)
-- Added specific filter options for Ashemaletube (Country, Body attributes)
-- MissAV: Rewritten parser and session handling for improved stability
-- Rule34Video: Updated for new site layout; added content type filters (Straight/Gay/Futa)
-- XNXX and LuxureTV: Fixed sorting, search, and navigation issues
-- General: Implemented unified proxy logic (proxy_utils) for better stability on Cloudflare-protected sites
+v. 1.0.5 "Massive Expansion" - 2026-01-13
+- 14 New Sites : Analdin, BdsmStreak, DrTuber, Empflix, Erome, PervClips, PorCore, Shameless, Shooshtime, SunPorno (+ Decoder), SxyPrn, ThisVid, TnaFlix.
+- Improvements : Ashemaletube (Refactored), Beeg, Spankbang, Rule34Video.
+- Cleanup : Global codebase cleanup (all 57 sites).
+- Erome : Full rewrite with robust filters and pagination.
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>

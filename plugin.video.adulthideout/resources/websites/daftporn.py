@@ -5,7 +5,6 @@ import sys
 import os
 import xbmcaddon
 
-# Vendor-Pfad registrieren
 try:
     addon_path = xbmcaddon.Addon().getAddonInfo('path')
     vendor_path = os.path.join(addon_path, 'resources', 'lib', 'vendor')
@@ -40,7 +39,6 @@ class DaftpornWebsite(BaseWebsite):
 
     def make_request(self, url):
         try:
-            # URL encoding safety
             url = urllib.parse.quote(url, safe=':/?=&%')
             self.logger.info(f"Fetching: {url}")
             
@@ -94,7 +92,6 @@ class DaftpornWebsite(BaseWebsite):
             if "out.php" in video_url:
                 continue
             
-            # Duplikate filtern
             if video_url in seen_urls:
                 continue
             seen_urls.add(video_url)
@@ -132,7 +129,6 @@ class DaftpornWebsite(BaseWebsite):
         li.setProperty('IsPlayable', 'true')
         li.setMimeType("video/mp4" if stream_url.endswith(".mp4") else "application/x-mpegURL")
         
-        # Header setzen für stabile Wiedergabe
         headers = f"User-Agent={urllib.parse.quote(self.session.headers['User-Agent'])}&Referer={urllib.parse.quote(self.base_url)}"
         li.setPath(f"{stream_url}|{headers}")
 

@@ -35,6 +35,9 @@ class Spankbang(BaseWebsite):
         self.orientation_options = ["Straight", "Gay", "Transsexual"]
         self.orientation_paths = {"Straight": "straight", "Gay": "gay", "Transsexual": "transexual"}
         
+        self.model_sort_options = ["Trending", "Alphabetical"]
+        self.model_sort_paths = {"Trending": "pornstars", "Alphabetical": "pornstars_alphabet"}
+        
         self.cookie_jar = http.cookiejar.CookieJar()
         self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.cookie_jar))
         self.opener.addheaders = [('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/5.0 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')]
@@ -207,7 +210,16 @@ class Spankbang(BaseWebsite):
         
         self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons.get('search'), context_menu=context_menu_items)
         self.add_dir('[COLOR yellow]Tags[/COLOR]', urllib.parse.urljoin(self.base_url, 'tags'), 8, self.icons.get('categories'), context_menu=context_menu_items)
-        self.add_dir('[COLOR yellow]Models[/COLOR]', urllib.parse.urljoin(self.base_url, 'pornstars'), 9, self.icons.get('pornstars'), context_menu=context_menu_items)
+        model_sort_idx = int(self.addon.getSetting('spankbang_model_sort') or '0')
+        if not (0 <= model_sort_idx < len(self.model_sort_options)):
+            model_sort_idx = 0
+        model_sort_key = self.model_sort_options[model_sort_idx]
+        model_sort_path = self.model_sort_paths.get(model_sort_key, 'pornstars')
+        
+        models_context = [
+            ('[COLOR yellow]Sort Models[/COLOR]', f'RunPlugin({sys.argv[0]}?mode=7&action=select_model_sort&website={self.name})')
+        ]
+        self.add_dir('[COLOR yellow]Models[/COLOR]', urllib.parse.urljoin(self.base_url, model_sort_path), 9, self.icons.get('pornstars'), context_menu=models_context)
 
         final_url = self._build_url(url)
         html_content = self._get_html(final_url)
@@ -217,9 +229,18 @@ class Spankbang(BaseWebsite):
             self.end_directory()
             return
 
-        main_content_match = re.search(r'<main[^>]+data-testid="main"[^>]*>(.*?)</footer>', html_content, re.DOTALL)
-        content_html = main_content_match.group(1) if main_content_match else html_content
-        video_chunks = content_html.split('data-testid="video-item"')
+        main_content_match = re.search(r'<main[^>]+data-testid="main"[^>]*>(.*)', html_content, re.DOTALL)
+        if main_content_match:
+            html_content = main_content_match.group(1)
+            self.logger.info("Spankbang: Extracted main content area for video parsing")
+
+        video_chunks = re.split(r'<div[^>]+class="[^"]*video-item[^"]*"[^>]*>', html_content)
+        
+        if len(video_chunks) < 2:
+            video_chunks = html_content.split('data-testid="video-item"')
+        
+        if len(video_chunks) < 2:
+            video_chunks = re.split(r'<a[^>]+class="[^"]*thumb[^"]*"[^>]+href="[^"]+/video/', html_content)
         
         if len(video_chunks) < 2:
             self.notify_info("No videos found on this page.")
@@ -228,17 +249,31 @@ class Spankbang(BaseWebsite):
 
         for chunk in video_chunks[1:]:
             try:
-                href_match = re.search(r'href="([^"]+/video/[^"]+)"', chunk)
+                href_match = re.search(r'href="([^"]+/video/[^"]+)"', chunk) or \
+                             re.search(r'href="(/[^"]+)"[^>]*class="[^"]*thumb', chunk)
                 if not href_match: continue
                 video_url = urllib.parse.urljoin(self.base_url, href_match.group(1))
                 
-                title_match = re.search(r'alt="([^"]+)"', chunk)
+                title_match = re.search(r'alt="([^"]+)"', chunk) or \
+                              re.search(r'title="([^"]+)"', chunk) or \
+                              re.search(r'<h\d[^>]*>([^<]+)</h\d>', chunk)
                 title = html.unescape(title_match.group(1).strip()) if title_match else 'Untitled Video'
                 
-                img_match = re.search(r'data-src="([^"]+)"', chunk) or re.search(r'src="([^"]+)"', chunk)
-                img = 'https:' + img_match.group(1) if img_match and img_match.group(1).startswith('//') else (img_match.group(1) if img_match else self.icon)
+                img_match = re.search(r'<img[^>]+src="(https?://tbi\.sb-cd\.com[^"]+)"', chunk) or \
+                            re.search(r'<img[^>]+src="(https?://[^"]+\.(?:jpg|webp|png))"', chunk) or \
+                            re.search(r'data-src="(https?://tbi\.sb-cd\.com[^"]+)"', chunk) or \
+                            re.search(r'data-src="([^"]+\.(?:jpg|webp|png))"', chunk)
+                
+                if img_match:
+                    img = img_match.group(1)
+                    if img.startswith('//'):
+                        img = 'https:' + img
+                else:
+                    img = self.icon
 
-                duration_match = re.search(r'data-testid="video-item-length"[^>]*>\s*([^<]+)\s*<', chunk)
+                duration_match = re.search(r'data-testid="video-item-length"[^>]*>\s*([^<]+)\s*<', chunk) or \
+                                 re.search(r'class="[^"]*length[^"]*"[^>]*>\s*([^<]+)\s*<', chunk) or \
+                                 re.search(r'<span[^>]*>\s*(\d+:\d+)\s*</span>', chunk)
                 duration_str = duration_match.group(1).strip() if duration_match else ''
                 
                 info_labels = {'title': title, 'mediatype': 'video'}
@@ -281,44 +316,153 @@ class Spankbang(BaseWebsite):
             self.end_directory()
             return
         
-        model_chunks = re.findall(r'<div class="flex flex-col" data-testid="(?:trending|hottest)-models">(.*?)</div>', html_content, re.DOTALL)
-        if not model_chunks:
+        main_content_match = re.search(r'<main[^>]+data-testid="main"[^>]*>(.*)', html_content, re.DOTALL)
+        if main_content_match:
+            html_content = main_content_match.group(1)
+        
+        sort_context = [
+            ('[COLOR yellow]Sort Models[/COLOR]', f'RunPlugin({sys.argv[0]}?mode=7&action=select_model_sort&website={self.name})')
+        ]
+        
+        model_list = []
+        seen_urls = set()
+        is_alphabetical = 'pornstars_alphabet' in url
+        
+        if is_alphabetical:
+            letter_matches = re.findall(r'href="(/pornstars_alphabet/[a-z])"[^>]+data-testid="alphabet-letter"', html_content)
+            if letter_matches and '/pornstars_alphabet/' in url and len(url.split('/pornstars_alphabet/')) > 1:
+                pass
+            elif letter_matches:
+                for letter_url in letter_matches:
+                    letter = letter_url.split('/')[-1].upper()
+                    self.add_dir(f'[COLOR cyan]Letter {letter}[/COLOR]', urllib.parse.urljoin(self.base_url, letter_url), 9, self.icons.get('categories'), context_menu=sort_context)
+            
+            text_pattern = r'data-testid="pornstar-link-item"[^>]*>.*?href="(/[a-z0-9]+/pornstar/[^"]+/)"[^>]*>([^<]+)'
+            for match in re.finditer(text_pattern, html_content, re.DOTALL):
+                href, name_text = match.groups()
+                name = name_text.strip()
+                if href not in seen_urls and name:
+                    seen_urls.add(href)
+                    model_list.append((href, self.icon, name))
+        else:
+            card_pattern = r'<div[^>]+data-testid="(?:trending|hottest)-models"[^>]*>.*?href="([^"]+/pornstar/[^"]+)".*?data-src="([^"]+)"[^>]+alt="([^"]+)"'
+            
+            for match in re.finditer(card_pattern, html_content, re.DOTALL):
+                href, thumb, name = match.groups()
+                if href not in seen_urls:
+                    seen_urls.add(href)
+                    model_list.append((href, thumb, name))
+            
+            if not model_list:
+                ps_pattern = r'<a[^>]+class="ps[^"]*"[^>]+href="(/[^"]+/pornstar/[^"]+/)"[^>]*>.*?data-src="([^"]+)"[^>]+alt="([^"]+)"'
+                for match in re.finditer(ps_pattern, html_content, re.DOTALL):
+                    href, thumb, name = match.groups()
+                    if href not in seen_urls:
+                        seen_urls.add(href)
+                        model_list.append((href, thumb, name))
+        
+        if not model_list and not is_alphabetical:
             self.notify_info("No models found on this page.")
             self.end_directory()
             return
+        
+        self.logger.info(f"Spankbang Models: Found {len(model_list)} models (alphabetical={is_alphabetical})")
 
-        model_list = []
-        for chunk in model_chunks:
-            model_match = re.search(r'<a\s+href="([^"]+)".*?<img[^>]+data-src="([^"]+)"[^>]+alt="([^"]+)"', chunk, re.DOTALL)
-            if model_match:
-                model_list.append(model_match.groups())
-
-        for model_url, thumb_url, model_name in sorted(set(model_list), key=lambda x: x[2]):
-            thumb = 'https:' + thumb_url if thumb_url.startswith('//') else thumb_url
-            self.add_dir(html.unescape(model_name.strip()), urllib.parse.urljoin(self.base_url, model_url), 2, thumb)
+        if is_alphabetical:
+            for model_url, thumb_url, model_name in model_list:
+                thumb = 'https:' + thumb_url if thumb_url.startswith('//') else thumb_url
+                self.add_dir(html.unescape(model_name.strip()), urllib.parse.urljoin(self.base_url, model_url), 2, thumb, context_menu=sort_context)
+        else:
+            for model_url, thumb_url, model_name in model_list:
+                thumb = 'https:' + thumb_url if thumb_url.startswith('//') else thumb_url
+                self.add_dir(html.unescape(model_name.strip()), urllib.parse.urljoin(self.base_url, model_url), 2, thumb, context_menu=sort_context)
             
-        next_page_match = re.search(r'class="next"><a\s*href="([^"]+)"', html_content)
+        next_page_match = re.search(r'class="next">\s*<a\s*href="([^"]+)"', html_content)
         if next_page_match:
-            self.add_dir('[COLOR blue]Next Page >>[/COLOR]', urllib.parse.urljoin(url, next_page_match.group(1)), 9)
+            self.add_dir('[COLOR blue]Next Page >>[/COLOR]', urllib.parse.urljoin(url, next_page_match.group(1)), 9, context_menu=sort_context)
         self.end_directory()
 
     def play_video(self, url):
+        if ' ' in url and '/video/' in url:
+            url = url.replace(' ', '+')
+        
+        self.logger.info(f"Spankbang: Playing video URL: {url}")
+        
         html_content = self._get_html(url)
         if not html_content:
             self.notify_error("Failed to load video page.")
             return
 
-        hls_url_match = re.search(r"['\"](https?://[^'\"]+\.m3u8[^'\"]*)['\"]", html_content)
-        best_url = hls_url_match.group(1) if hls_url_match else None
+        best_url = None
+        
+        stream_data_match = re.search(r"var\s+stream_data\s*=\s*\{(.{1,5000})\}", html_content, re.DOTALL)
+        if stream_data_match:
+            stream_data_str = stream_data_match.group(1)
+            self.logger.info(f"Spankbang: Found stream_data: {stream_data_str[:300]}")
+            
+            m3u8_match = re.search(r"'m3u8'\s*:\s*\[\s*'([^']+)'", stream_data_str)
+            if m3u8_match:
+                best_url = m3u8_match.group(1)
+                self.logger.info(f"Spankbang: Found m3u8: {best_url}")
+            
+            if not best_url:
+                qualities = ['1080p', '720p', '480p', '360p', '240p']
+                for quality in qualities:
+                    quality_match = re.search(rf"'{quality}'\s*:\s*\[\s*'([^']+)'", stream_data_str)
+                    if quality_match:
+                        best_url = quality_match.group(1)
+                        self.logger.info(f"Spankbang: Found {quality}: {best_url}")
+                        break
         
         if not best_url:
-            mp4s = re.findall(r'"(https?://[^"]+\d{3,4}p\.mp4[^"]*)"', html_content)
+            hls_url_match = re.search(r"['\"]?(https?://[^'\"\\s]+\.m3u8[^'\"\\s]*)['\"]?", html_content)
+            if hls_url_match:
+                best_url = hls_url_match.group(1)
+                self.logger.info(f"Spankbang: Found direct m3u8: {best_url}")
+        
+        if not best_url:
+            video_src_match = re.search(r'<video[^>]+src="([^"]+)"', html_content)
+            if video_src_match:
+                best_url = video_src_match.group(1)
+                self.logger.info(f"Spankbang: Found video src: {best_url}")
+        
+        if not best_url:
+            mp4s = re.findall(r'"(https?://[^"]+(?:vdownload|cdn|sb-cd)[^"]+\.mp4[^"]*)"', html_content)
+            if not mp4s:
+                mp4s = re.findall(r'"(https?://[^"]+\d{3,4}p\.mp4[^"]*)"', html_content)
             if mp4s:
-                best_url = sorted(list(set(mp4s)), key=lambda u: int(re.search(r'(\d{3,4})p', u).group(1)) if re.search(r'(\d{3,4})p', u) else 0, reverse=True)[0]
+                def get_quality(u):
+                    match = re.search(r'(\d{3,4})p', u)
+                    return int(match.group(1)) if match else 0
+                best_url = sorted(list(set(mp4s)), key=get_quality, reverse=True)[0]
+                self.logger.info(f"Spankbang: Found mp4: {best_url}")
 
         if not best_url:
             self.notify_error("No playable video streams found.")
             return
+        
+        best_url = best_url.replace('\\/', '/').replace('\\u0026', '&')
             
         play_item = xbmcgui.ListItem(path=best_url)
+        
+        if '.m3u8' in best_url:
+            play_item.setProperty('inputstream', 'inputstream.adaptive')
+            play_item.setProperty('inputstream.adaptive.manifest_type', 'hls')
+        
         xbmcplugin.setResolvedUrl(self.addon_handle, True, listitem=play_item)
+
+    def select_model_sort(self):
+        """Show dialog to select model sorting order."""
+        current_sort_idx = int(self.addon.getSetting('spankbang_model_sort') or '0')
+        
+        dialog = xbmcgui.Dialog()
+        selected = dialog.select('Sort Models By', self.model_sort_options, preselect=current_sort_idx)
+        
+        if selected >= 0:
+            self.addon.setSetting('spankbang_model_sort', str(selected))
+            sort_key = self.model_sort_options[selected]
+            sort_path = self.model_sort_paths.get(sort_key, 'pornstars')
+            self.notify_info(f"Models sorted by: {sort_key}")
+            
+            new_url = urllib.parse.urljoin(self.base_url, sort_path)
+            xbmc.executebuiltin(f'Container.Update({sys.argv[0]}?mode=9&url={urllib.parse.quote_plus(new_url)}&website={self.name})')

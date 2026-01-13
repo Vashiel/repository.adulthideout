@@ -214,17 +214,11 @@ class _ProxyHandler(BaseHTTPRequestHandler):
 
     def _extra_browser_headers(self):
         extra = {
-            "Accept": "video/mp4,application/octet-stream;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Connection": "keep-alive",
             "Accept-Encoding": "identity",
             "Sec-Fetch-Site": "cross-site",
             "Sec-Fetch-Mode": "no-cors",
             "Sec-Fetch-Dest": "video",
         }
-        origin = self._infer_origin()
-        if origin:
-            extra["Origin"] = origin
         return extra
 
     def _write_head_from_upstream(self, rsp):

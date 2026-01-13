@@ -39,10 +39,8 @@ except Exception:
 
 warnings.filterwarnings('ignore')
 
-# === GLOBAL SESSION CACHE ===
 _SESSION = None
 _LOCK = threading.Lock()
-# ============================
 
 class NoodleMagazine(BaseWebsite):
     def __init__(self, addon_handle):
@@ -147,25 +145,19 @@ class NoodleMagazine(BaseWebsite):
         if not url or "img.pvvstream" not in url:
             return url
         
-        # Attempt 1: Aggressive Extraction (Fastest & Safest against 403)
-        # Structure: .../240/domain.com/path...
         try:
-            # Match /240/ or other resolutions, then capture the rest
             match = re.search(r'/(?:240|320|480|720|1080)/(?:https?://)?([a-zA-Z0-9.-]+\.[a-z]{2,}/.+)$', url)
             if match:
                 extracted = match.group(1)
-                # Ensure protocol
                 if not extracted.startswith('http'):
                     extracted = 'https://' + extracted
                 
-                # Clean potentially double-encoded entities just in case
                 extracted = html.unescape(extracted)
                 self.logger.info(f"[NM] Extracted embedded thumb: {extracted}")
                 return extracted
         except Exception as e:
             self.logger.warning(f"[NM] Extraction error: {e}")
 
-        # Attempt 2: Network Resolve (Fallback)
         try:
             session = self.get_session()
             headers = {
@@ -267,7 +259,6 @@ class NoodleMagazine(BaseWebsite):
 
         items_to_process = []
         
-        # --- PARSING PHASE ---
         if html_content.strip().startswith('[') and html_content.strip().endswith(']'):
             try:
                 data = json.loads(html_content)
@@ -319,14 +310,12 @@ class NoodleMagazine(BaseWebsite):
                 except Exception:
                     continue
 
-        # --- RESOLUTION PHASE ---
         self.logger.info(f"Resolving {len(items_to_process)} thumbs with max_workers=5...")
         
         with ThreadPoolExecutor(max_workers=5) as executor:
             future_to_item = {}
             for item in items_to_process:
                 t_url = item['thumb']
-                # Resolve if it is the proxy domain
                 if t_url and "img.pvvstream" in t_url:
                     future = executor.submit(self._resolve_single_thumb, t_url)
                     future_to_item[future] = item
@@ -340,7 +329,6 @@ class NoodleMagazine(BaseWebsite):
                 except Exception:
                     pass
 
-        # --- OUTPUT PHASE ---
         for item in items_to_process:
             label = item['title']
             if item['duration']: label += f" [COLOR yellow]{item['duration']}[/COLOR]"
@@ -350,8 +338,6 @@ class NoodleMagazine(BaseWebsite):
             if item['thumb']:
                 thumb = self._get_kodi_thumb_url(item['thumb'])
             
-            # FIX: Manually adding context menu removed to avoid duplicate "Sort by..."
-            # BaseWebsite handles standard sort options automatically.
             
             info_labels = {'title': item['title'], 'plot': f"{item['title']}\n\n{item['duration']} | {item['views']} views"}
             
@@ -359,7 +345,6 @@ class NoodleMagazine(BaseWebsite):
 
         self.logger.info(f"✓ Output {len(items_to_process)} items")
 
-        # --- PAGINATION ---
         next_page_num_str = None
         next_page_match = re.search(r'class="more"\s+data-page="(\d+)"', html_content)
         if next_page_match:

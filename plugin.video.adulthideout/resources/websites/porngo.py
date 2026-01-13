@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Changelog:
-# - Final release version
-# - Added Categories (Top/Popular) and Models support
-# - Fixed video playback (single quote support in source tag)
-# - Added required Referer header to stream URL
-# - Enabled sorting and pagination
 
 import re
 import sys

@@ -11,9 +11,6 @@ import http.cookiejar
 import html
 import ssl
 
-# --------------------------------------------------------------------------------
-# Vendor-Pfad
-# --------------------------------------------------------------------------------
 try:
     _addon = xbmcaddon.Addon()
     _addon_path = _addon.getAddonInfo('path')
@@ -50,12 +47,10 @@ class HeavyRWebsite(BaseWebsite):
         
         self.cookie_jar = http.cookiejar.CookieJar()
         
-        # Regex für Videos
         self.video_pattern = re.compile(
             r'<div class="[^"]*video-item[^"]*">.*?<a href="([^"]+)"[^>]*class="image[^"]*">.*?<img[^>]+src="([^"]+)"[^>]*alt="([^"]+)"',
             re.DOTALL | re.IGNORECASE
         )
-        # Regex für Kategorien (nur Link und Name, Bild ignorieren wir für Speed)
         self.category_pattern = re.compile(
             r'<div class="video-item category">.*?<a href="([^"]+)"[^>]*class="image[^"]*">.*?alt="([^"]+)"',
             re.DOTALL | re.IGNORECASE
@@ -141,8 +136,6 @@ class HeavyRWebsite(BaseWebsite):
             if not matches:
                 self.notify_info("Keine Kategorien gefunden")
             
-            # Speed-Optimierung: Keine Bilder für Kategorien!
-            # Wir nutzen einfach das Standard-Icon.
             thumb = self.icons['categories']
             
             for link, name in matches:
@@ -161,7 +154,6 @@ class HeavyRWebsite(BaseWebsite):
             full_video_url = urllib.parse.urljoin(self.base_url, video_url)
             full_thumb_url = urllib.parse.urljoin(self.base_url, thumb_url)
             
-            # Nur einfache HTTPS-Korrektur, keine komplexen Rewrites mehr
             full_thumb_url = full_thumb_url.replace("http://", "https://")
             
             self.add_link(html.unescape(title.strip()), full_video_url, 4, full_thumb_url, self.fanart)

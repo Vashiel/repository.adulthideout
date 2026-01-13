@@ -153,8 +153,11 @@ def handle_routing():
 
     url = params.get('url')
     action = params.get('action')
+    original_url = params.get('url')
 
-    if url == 'BOOTSTRAP':
+    websites_with_internal_bootstrap = ['drtuber']
+    
+    if url == 'BOOTSTRAP' and mode == '2' and website_name not in websites_with_internal_bootstrap:
         if hasattr(target_website, 'get_start_url_and_label'):
              url, _ = target_website.get_start_url_and_label()
         else:
@@ -173,7 +176,7 @@ def handle_routing():
         target_website.handle_search_entry(url, mode, target_website.name, action)
         
     elif mode == '7':
-        original_url = params.get('original_url')
+        original_url = params.get('original_url') or params.get('url')
         filter_type = params.get('filter_type')
         
         if action and hasattr(target_website, action):
@@ -194,8 +197,22 @@ def handle_routing():
             xbmcplugin.endOfDirectory(ADDON_HANDLE)
             
     elif mode == '9':
-        if hasattr(target_website, 'process_actresses_list'):
+        if hasattr(target_website, 'process_pornstars'):
+            target_website.process_pornstars(url)
+        elif hasattr(target_website, 'process_actresses_list'):
             target_website.process_actresses_list(url)
+        else:
+            xbmcplugin.endOfDirectory(ADDON_HANDLE)
+            
+    elif mode == '10':
+        if hasattr(target_website, 'process_channels'):
+            target_website.process_channels(url)
+        else:
+            xbmcplugin.endOfDirectory(ADDON_HANDLE)
+            
+    elif mode == '11':
+        if hasattr(target_website, 'process_collections'):
+            target_website.process_collections(url)
         else:
             xbmcplugin.endOfDirectory(ADDON_HANDLE)
             

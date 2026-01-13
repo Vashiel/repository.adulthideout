@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Changelog:
-# - Final release version
-# - Added full sorting support
-# - Categories and search support
 
 import re
 import sys

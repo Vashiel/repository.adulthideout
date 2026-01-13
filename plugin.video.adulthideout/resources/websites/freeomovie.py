@@ -1,19 +1,10 @@
 # -*- coding: utf-8 -*-
-# [CHANGELOG]
-# - FIXED: Path injection logic (Up 1 level to 'resources', then into 'lib/vendor') to fix ImportError
-# - FIXED: Categories menu item is now added on every page listing
-# - RESTORED: Robust parsing and playback logic from original version
-# - CLEANUP: Removed comments and dead code
 
 import sys
 import os
 
-# 1. Force Path Injection (Corrected relative path)
 try:
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    # Current: resources/websites/
-    # Target:  resources/lib/vendor/
-    # Move up 1 level: resources/
     vendor_path = os.path.abspath(os.path.join(current_dir, '..', 'lib', 'vendor'))
     
     if os.path.exists(vendor_path) and vendor_path not in sys.path:
@@ -30,7 +21,6 @@ import xbmcgui
 import xbmcplugin
 import xbmcaddon
 
-# Safe import after path injection
 import requests
 
 try:
@@ -84,7 +74,6 @@ class freeomovie(BaseWebsite):
         return ""
 
     def process_content(self, url):
-        # Static items on every page
         self.add_dir('[COLOR blue]Search...[/COLOR]', '', 5, self.icons.get('search', ''))
         self.add_dir('[COLOR blue]Categories[/COLOR]', self.base_url, 8, self.icons.get('categories', ''))
 

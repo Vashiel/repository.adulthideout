@@ -1,3 +1,9 @@
+v. 1.0.5 "Massive Expansion" - 2026-01-13
+- **14 New Sites**: Analdin, BdsmStreak, DrTuber, Empflix, Erome, PervClips, PorCore, Shameless, Shooshtime, SunPorno (+ Decoder), SxyPrn, ThisVid, TnaFlix.
+- **Improvements**: Ashemaletube (Refactored), Beeg, Spankbang, Rule34Video.
+- **Cleanup**: Global codebase cleanup (all 57 sites).
+- **Erome**: Full rewrite with robust filters and pagination.
+
 v. 1.0.4 "Gonzales" - 2025-11-25
 - Added new sites: DarknessPorn, FullXCinema, NoodleMagazine, PornZog, PunishWorld, ShemaleZ, VJAV, VoyeurHit, YouPorn
 - Reduced video startup latency by removing redundant stream pre-checks

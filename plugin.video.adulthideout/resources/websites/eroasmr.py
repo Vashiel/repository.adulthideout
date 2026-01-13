@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# [CHANGELOG]
-# - OPTIMIZED: Added 'Connection: keep-alive' to headers to help with buffering/seeking stability
-# - ADDED: Cookie priming on startup to ensure Cloudflare tokens are ready
-# - FIXED: Category parsing logic
-# - INFO: Buffering issues are likely due to low Kodi cache size (see instructions)
 
 import sys
 import os
@@ -16,7 +11,6 @@ import xbmcplugin
 import xbmcaddon
 from resources.lib.base_website import BaseWebsite
 
-# Vendor injection
 try:
     addon_path = xbmcaddon.Addon().getAddonInfo('path')
     vendor_path = os.path.join(addon_path, 'resources', 'lib', 'vendor')
@@ -53,7 +47,6 @@ class EroASMR(BaseWebsite):
             self.session = requests.Session()
             self.session.headers.update({'User-Agent': self.ua})
             
-        # Prime cookies to avoid first-request lag
         try:
             self.session.get(self.base_url, timeout=5)
         except:
@@ -152,7 +145,6 @@ class EroASMR(BaseWebsite):
             if cookies:
                 headers['Cookie'] = "; ".join([f"{k}={v}" for k, v in cookies.items()])
             
-            # Pass headers to Kodi
             final_url = f"{video_url}|{urllib.parse.urlencode(headers)}"
             
             li = xbmcgui.ListItem(path=final_url)

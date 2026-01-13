@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Changelog:
-# - Final release version
-# - Fixed sorting functionality with URL redirection support
-# - Optimized HTML parsing for video listings and categories
-# - Cleaned up code and removed debug comments
-# - Unified context menu handling
 
 import re
 import urllib.parse

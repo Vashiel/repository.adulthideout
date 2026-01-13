@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Changelog:
-# - Final release version
-# - Conditional "Reload List" button (only visible for "Being Watched Now")
-# - Implemented custom select_sort for correct path-based sorting
-# - Optimized request handling with cookie support
-# - Cleaned up code and removed comments
 
 import re
 import sys
@@ -93,7 +87,6 @@ class MotherlessWebsite(BaseWebsite):
     def process_video_list(self, content, current_url):
         try:
             sort_index = int(self.addon.getSetting('motherless_sort_by') or '0')
-            # Button nur anzeigen, wenn "Being Watched Now" aktiv ist
             if 0 <= sort_index < len(self.sort_options) and self.sort_options[sort_index] == "Being Watched Now":
                 self.add_dir('[COLOR blue]Reload List[/COLOR]', current_url, 2, self.icons['default'], self.fanart)
         except:

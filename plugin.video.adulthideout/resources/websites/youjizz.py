@@ -1,13 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Changelog:
-# - Final Release
-# - Integrated Cloudscraper for robust anti-bot protection bypass
-# - Fixed sorting URLs and logic matches HTML source
-# - Optimized Regex for content parsing (Image -> Title -> Duration)
-# - Added hours support for duration parsing
-# - Added robust fallback mechanisms for Thumbnails and Requests
 
 import re
 import sys

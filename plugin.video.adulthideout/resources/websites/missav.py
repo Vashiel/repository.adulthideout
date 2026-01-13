@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Changelog:
-# - Final release version
-# - Implemented custom HTMLParser for efficient content extraction
-# - Integrated local HLS Proxy for stream playback
-# - Optimized session handling with lazy loading
-# - Cleaned up code, logging and comments
 
 import re
 import urllib.parse as urllib_parse

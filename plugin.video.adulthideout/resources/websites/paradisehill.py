@@ -82,7 +82,10 @@ class ParadisehillWebsite(BaseWebsite):
             self.add_dir('[COLOR blue]Next Page >>>>[/COLOR]', next_url, 2, self.icons['default'], self.fanart)
 
     def play_video(self, url):
-        params = dict(urllib.parse.parse_qsl(sys.argv[2][1:]))
+        if len(sys.argv) > 2:
+            params = dict(urllib.parse.parse_qsl(sys.argv[2][1:]))
+        else:
+            params = {}
         name = params.get('name', 'Video')
 
         content = self.make_request(url)

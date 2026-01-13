@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# [CHANGELOG]
-# - FIXED: Category content listing now works (mapped /cat/ URLs to API query params)
-# - OPTIMIZED: Refined URL parsing logic in process_content to handle search, categories, and API links
-# - KEPT: Hybrid playback logic (Hash calculation + XHR) for reliability
-# - KEPT: Cloudscraper for Cloudflare bypass
 
 import sys
 import os
@@ -18,7 +13,6 @@ import xbmcplugin
 import xbmcaddon
 from resources.lib.base_website import BaseWebsite
 
-# Vendor injection
 try:
     addon_path = xbmcaddon.Addon().getAddonInfo('path')
     vendor_path = os.path.join(addon_path, 'resources', 'lib', 'vendor')
@@ -92,7 +86,6 @@ class Eporner(BaseWebsite):
         self.add_dir('Categories', cat_url, 8, self.icons['categories'], self.fanart, context_menu=context_menu)
 
     def process_content(self, url):
-        # Handle main categories list
         if '/cats/' in url:
             self.process_categories(url)
             return
@@ -102,31 +95,22 @@ class Eporner(BaseWebsite):
         page = 1
         query = ""
         
-        # URL Parsing Logic
         if "api/v2" in url:
-            # Case 1: Pagination URL (already has params)
             parsed = urllib.parse.urlparse(url)
             params = urllib.parse.parse_qs(parsed.query)
             query = params.get('query', [''])[0]
             page = int(params.get('page', ['1'])[0])
         else:
-            # Case 2: Web URL (Search or Category)
-            # Remove trailing slash and split
             clean_url = url.rstrip('/')
             parts = clean_url.split('/')
             
             if '/cat/' in url:
-                # Category URL: https://www.eporner.com/cat/teen/
-                # Extract the category slug to use as query
                 if parts:
-                    # Last part is usually the category name
                     query = parts[-1]
-                    # Handle pagination in category urls if present (rarely via this path in this plugin logic, but for safety)
                     if query.isdigit(): 
                         page = int(query)
                         query = parts[-2]
             elif '/search/' in url:
-                # Search URL: https://www.eporner.com/search/term/
                 if parts:
                     if parts[-1].isdigit():
                         query = parts[-2]
@@ -134,7 +118,6 @@ class Eporner(BaseWebsite):
                     else:
                         query = parts[-1]
 
-        # Load User Settings
         saved_sort_idx = self.addon.getSetting(f'{self.name}_sort_by') or '0'
         try: sort_idx = int(saved_sort_idx)
         except: sort_idx = 0
@@ -143,7 +126,6 @@ class Eporner(BaseWebsite):
         
         saved_gay_idx = self.addon.getSetting('eporner_gay_filter') or '0'
         
-        # Build API Params
         api_params = {
             'query': query,
             'page': page,

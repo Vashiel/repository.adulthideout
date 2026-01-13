@@ -204,11 +204,20 @@ class BaseWebsite:
         
         # Add sort menu if available
         if hasattr(self, 'select_sort'):
-            # Get current URL from sys.argv
-            current_url = sys.argv[0] + sys.argv[2] if len(sys.argv) > 2 else ""
-            context_menu.append(
-                ('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={urllib.parse.quote_plus(current_url)})')
-            )
+            # Check if sort is already present
+            sort_action = 'action=select_sort'
+            is_present = False
+            for label, command in context_menu:
+                 if sort_action in command:
+                     is_present = True
+                     break
+            
+            if not is_present:
+                # Get current URL from sys.argv
+                current_url = sys.argv[0] + sys.argv[2] if len(sys.argv) > 2 else ""
+                context_menu.append(
+                    ('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={urllib.parse.quote_plus(current_url)})')
+                )
         
         if context_menu: 
             liz.addContextMenuItems(context_menu)

@@ -1,272 +1,150 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-import sys
-import os
-import xbmcaddon
-
-# Vendor-Pfad für requests registrieren
-try:
-    addon_path = xbmcaddon.Addon().getAddonInfo('path')
-    vendor_path = os.path.join(addon_path, 'resources', 'lib', 'vendor')
-    if vendor_path not in sys.path:
-        sys.path.insert(0, vendor_path)
-except Exception:
-    pass
-
-import json
-import base64
-import random
-import urllib.parse
-import xbmcgui
-import xbmcplugin
-import requests
+import sys, os, json, re, urllib.parse
+import xbmc, xbmcaddon, xbmcgui, xbmcplugin
 from resources.lib.base_website import BaseWebsite
 
-class Beeg(BaseWebsite):
+try:
+    ADDON = xbmcaddon.Addon()
+    ADDON_PATH = ADDON.getAddonInfo('path')
+    VENDOR_PATH = os.path.join(ADDON_PATH, 'resources', 'lib', 'vendor')
+    if VENDOR_PATH not in sys.path:
+        sys.path.insert(0, VENDOR_PATH)
+except: pass
+
+try:
+    import cloudscraper
+    HAS_CLOUDSCRAPER = True
+except ImportError:
+    HAS_CLOUDSCRAPER = False
+    import requests
+
+class BeegWebsite(BaseWebsite):
     def __init__(self, addon_handle):
-        super(Beeg, self).__init__(
-            name='beeg',
-            base_url='https://beeg.com',
-            search_url=None, # Beeg hat keine einfache Such-URL Struktur für direkte Links
-            addon_handle=addon_handle
-        )
-        self.sort_options = ['Newest', 'Popular', 'Top Rated']
-        self.sort_ids = {'Newest': '27173', 'Popular': '13', 'Top Rated': '14'}
-        self.session = requests.Session()
-        self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-            'Referer': self.base_url
-        })
+        super().__init__(name='beeg', base_url='https://beeg.com', search_url='https://beeg.com/search?q={}', addon_handle=addon_handle)
+        self.scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'desktop': True}) if HAS_CLOUDSCRAPER else requests.Session()
+        self.scraper.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', 'Referer': 'https://beeg.com/', 'Origin': 'https://beeg.com'})
+        self.sort_options = []
 
-    def get_start_url_and_label(self):
-        label = "Beeg"
-        setting_id = f"{self.name}_sort_by"
+    def make_request(self, url):
         try:
-            sort_idx = int(self.addon.getSetting(setting_id) or 0)
-            sort_option = self.sort_options[sort_idx]
-        except (ValueError, IndexError, TypeError):
-            sort_option = self.sort_options[0]
-            self.addon.setSetting(setting_id, "0")
-
-        sort_id = self.sort_ids.get(sort_option, '27173')
-        # API URL construction
-        url = f'https://store.externulls.com/facts/tag?id={sort_id}&limit=48&offset=0'
-        final_label = f"{label} [COLOR yellow]{sort_option}[/COLOR]"
-        return url, final_label
-        
-    def _get_json_content(self, url):
-        try:
-            self.logger.info(f"Fetching API: {url}")
-            response = self.session.get(url, timeout=15)
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            self.logger.error(f"Failed to fetch API content from {url}: {e}")
-            self.notify_error("Could not load content from API.")
-            return None
+            r = self.scraper.get(url, timeout=20)
+            return r.text if r.status_code == 200 else None
+        except: return None
 
     def process_content(self, url):
-        if not url or url == "BOOTSTRAP":
-            url, _ = self.get_start_url_and_label()
-
-        # Manuelles Kontextmenü für Ordner
-        encoded_url = urllib.parse.quote_plus(url)
-        context_menu = [('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={encoded_url})')]
-
-        self.add_dir('[COLOR cyan]Categories[/COLOR]', 'other', 8, self.icons['categories'], context_menu=context_menu)
-        self.add_dir('[COLOR cyan]Channels[/COLOR]', 'productions', 8, self.icons['groups'], context_menu=context_menu)
-        self.add_dir('[COLOR cyan]Models[/COLOR]', 'human', 8, self.icons['pornstars'], context_menu=context_menu)
-
-        json_data = self._get_json_content(url)
-        if not json_data:
+        final_url = url
+        if url == "BOOTSTRAP" or url == self.base_url or url == self.base_url + "/":
+            final_url = "https://store.externulls.com/facts/tag?id=27173&limit=24&offset=0"
+        elif "/tag/" in url:
+            final_url = f"https://store.externulls.com/facts/tag?slug={url.split('/tag/')[-1].strip('/')}&limit=24&offset=0"
+        elif url == "TAGS_MENU":
+            self.add_dir('Pornstars', 'CAT_TYPE:human', 2, self.icons.get('categories'))
+            self.add_dir('Productions', 'CAT_TYPE:productions', 2, self.icons.get('categories'))
+            self.add_dir('Categories', 'CAT_TYPE:other', 2, self.icons.get('categories'))
             self.end_directory()
             return
+        elif url.startswith("CAT_TYPE:"):
+             return self.process_categories(url.split(":")[1])
 
-        # JSON ist bei Beeg oft eine Liste von Videos
-        if isinstance(json_data, list):
-            self.parse_video_list(json_data)
-            self.add_next_button(json_data, url)
-        
-        self.end_directory()
+        if "id=27173" in final_url:
+            self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons.get('search'))
+            self.add_dir('[COLOR yellow]Categories[/COLOR]', 'TAGS_MENU', 2, self.icons.get('categories'))
 
-    def parse_video_list(self, json_data):
-        for video in json_data:
-            try:
-                file_data = video.get("file", {})
-                if not file_data: continue
-
-                # Metadaten extrahieren
-                owner_tag = next((t for t in video.get("tags", []) if t.get("is_owner")), {})
-                
-                # Titel finden (manchmal verschachtelt)
-                video_title = "Untitled"
-                data_fields = file_data.get("data", [])
-                for d in data_fields:
-                    if d.get("cd_column") == "sf_name":
-                        video_title = d.get("cd_value")
-                        break
-                
-                studio_name = owner_tag.get("tg_name", "")
-                display_title = f'{studio_name} - {video_title}' if studio_name else video_title
-                
-                # Plot finden
-                plot = display_title
-                for d in data_fields:
-                    if d.get("cd_column") == "sf_story":
-                        plot = d.get("cd_value")
-                        break
-                
-                duration_sec = file_data.get("fl_duration", 0)
-                
-                # Thumbnails
-                thumb_url = self.icons['default']
-                fc_facts = video.get("fc_facts", [])
-                if fc_facts:
-                    fc_fact = fc_facts[0]
-                    thumbs = fc_fact.get("fc_thumbs", [])
-                    if thumbs:
-                        thumb_offset = random.choice(thumbs)
-                        video_id = file_data.get("id")
-                        if video_id:
-                            thumb_url = f'https://thumbs.externulls.com/videos/{video_id}/{thumb_offset}.webp?size=480x270'
-                
-                # Wir packen das ganze Video-Objekt in den Link, um einen weiteren API Call beim Abspielen zu sparen
-                # Das ist effizienter als nur die ID zu übergeben
-                video_payload = base64.b64encode(json.dumps(video).encode('utf-8')).decode('utf-8')
-                
-                info_labels = {
-                    'title': display_title, 
-                    'duration': duration_sec, 
-                    'plot': plot, 
-                    'studio': studio_name,
-                    'mediatype': 'video'
-                }
-                
-                # BaseWebsite fügt "Sort by" automatisch hinzu für Videos
-                self.add_link(
-                    name=display_title, 
-                    url=video_payload, 
-                    mode=4, 
-                    icon=thumb_url, 
-                    fanart=self.fanart, 
-                    info_labels=info_labels
-                )
-
-            except Exception as e:
-                self.logger.error(f"Error processing video item: {e}")
-                continue
-
-    def add_next_button(self, json_data, current_url):
-        # Beeg API liefert standardmäßig 48 Items. Wenn wir weniger haben, sind wir am Ende.
-        if len(json_data) >= 48:
-            try:
-                parsed_url = urllib.parse.urlparse(current_url)
-                query_params = urllib.parse.parse_qs(parsed_url.query)
-                
-                current_offset = int(query_params.get('offset', ['0'])[0])
-                next_offset = current_offset + 48
-                
-                query_params['offset'] = [str(next_offset)]
-                next_page_url = urllib.parse.urlunparse((
-                    parsed_url.scheme, 
-                    parsed_url.netloc, 
-                    parsed_url.path, 
-                    parsed_url.params, 
-                    urllib.parse.urlencode(query_params, doseq=True), 
-                    ''
-                ))
-                
-                self.add_dir('[COLOR blue]Next Page >>[/COLOR]', next_page_url, 2, self.icons['default'])
-            except Exception: 
-                pass
-
-    def process_categories(self, url):
-        # "url" ist hier der key, z.B. 'other', 'productions', 'human'
-        category_key = url
-        api_url = 'https://store.externulls.com/tag/facts/tags?get_original=true&slug=index'
-        
-        json_data = self._get_json_content(api_url)
-        
-        if not json_data or category_key not in json_data:
-            self.notify_error(f"Could not load '{category_key}' categories.")
-            self.end_directory()
-            return
-
-        category_list = json_data[category_key]
-        
-        # Manuelles Kontextmenü
-        context_menu = [('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name})')]
-
-        for cat in sorted(category_list, key=lambda x: x.get("tg_name", "")):
-            name = cat.get("tg_name", "Unknown")
-            slug = cat.get("tg_slug", "")
-            
-            # Thumb resolution
-            img = self.icons['default']
-            thumbs = cat.get("thumbs")
-            if thumbs and isinstance(thumbs, dict):
-                thumb_id = thumbs.get('id')
-                crops = thumbs.get('crops')
-                if thumb_id and crops and len(crops) > 0:
-                    crop_id = crops[0].get('id')
-                    img = f"https://thumbs.externulls.com/photos/{thumb_id}/to.webp?crop_id={crop_id}&size_new=112x112"
-
-            cat_url = f'https://store.externulls.com/facts/tag?slug={slug}&limit=48&offset=0'
-            
-            self.add_dir(name, cat_url, 2, img, context_menu=context_menu)
-        
-        self.end_directory()
-
-    def play_video(self, url_payload):
         try:
-            # Payload ist das base64 codierte JSON Objekt von process_content
-            video_data_json = base64.b64decode(url_payload).decode('utf-8')
-            video_data = json.loads(video_data_json)
-            
-            hls_resources = video_data.get("file", {}).get("hls_resources", {}) 
-            # Fallback falls file leer ist
-            if not hls_resources:
-                fc_facts = video_data.get("fc_facts", [{}])
-                if fc_facts:
-                    hls_resources = fc_facts[0].get("hls_resources", {})
+            headers = self.scraper.headers.copy()
+            headers.update({'Accept': 'application/json, text/plain, */*', 'Sec-Fetch-Dest': 'empty', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Site': 'cross-site'})
+            r = self.scraper.get(final_url, headers=headers, timeout=20)
+            if r.status_code != 200: raise Exception()
+            data = r.json()
+        except: return self.notify_error("API Error") or self.end_directory()
 
-            if not hls_resources:
-                self.notify_error("No video streams found.")
+        count = 0
+        if isinstance(data, list):
+            for v in data:
+                try:
+                    vid = str(v.get('file', {}).get('id', ''))
+                    if not vid: continue
+                    title = f"Video {vid}"
+                    for d in v.get('file', {}).get('data', []):
+                        if d.get('cd_column') == 'sf_name': title = d.get('cd_value', title); break
+                    
+                    thumb = self.icons.get('default')
+                    if v.get('fc_facts') and v['fc_facts'][0].get('fc_thumbs'):
+                        thumb = f"https://thumbs.externulls.com/videos/{vid}/{v['fc_facts'][0]['fc_thumbs'][0]}.webp?size=1280x720"
+                    
+                    self.add_link(title, f"{self.base_url}/{vid}", 4, thumb, self.fanart)
+                    count += 1
+                except: pass
+
+        if count >= 20:
+            if "offset" in final_url:
+                c = int(re.search(r'offset=(\d+)', final_url).group(1))
+                nxt = re.sub(r'offset=\d+', f'offset={c+24}', final_url)
+                self.add_dir(f"[COLOR blue]Next Page ({c//24 + 2})[/COLOR]", nxt, 2, self.icons.get('next'))
+            else:
+                self.add_dir("[COLOR blue]Next Page (2)[/COLOR]", final_url + "&offset=24", 2, self.icons.get('next'))
+        self.end_directory()
+
+    def process_categories(self, cat_key):
+        try:
+            r = self.scraper.get("https://store.externulls.com/tag/facts/tags?get_original=true&slug=index", headers=self.scraper.headers, timeout=20)
+            data = r.json()
+            tags = data[cat_key] if cat_key in data else [t for s in data.values() if isinstance(s, list) for t in s]
+            tags.sort(key=lambda x: x.get('tg_name', '').lower())
+            
+            for t in tags:
+                if not t.get('tg_name') or not t.get('tg_slug'): continue
+                icon = self.icons.get('default')
+                if t.get('pt_photo'):
+                     icon = f"https://img.externulls.com/photos/v/{t['pt_photo']}.jpg"
+                elif t.get('thumbs') and t['thumbs'][0].get('crops'):
+                    icon = f"https://thumbs.externulls.com/photos/{t['thumbs'][0]['id']}/to.webp?crop_id={t['thumbs'][0]['crops'][0]['id']}&size_new=300x300"
+                
+                self.add_dir(t['tg_name'].title(), f"https://store.externulls.com/facts/tag?slug={t['tg_slug']}&limit=24&offset=0", 2, icon)
+        except: pass
+        self.end_directory()
+
+    def search(self, query):
+        if not query: return
+        try:
+            r = self.scraper.get("https://store.externulls.com/tag/facts/tags?get_original=true&slug=index", headers=self.scraper.headers, timeout=20)
+            tags = [t for s in r.json().values() if isinstance(s, list) for t in s]
+            matches = [t for t in tags if query.lower() in t.get('tg_name', '').lower()]
+            
+            if not matches: return self.notify_error(f"No results for: {query}")
+            if len(matches) == 1:
+                self.process_content(f"https://store.externulls.com/facts/tag?slug={matches[0]['tg_slug']}&limit=24&offset=0")
                 return
 
-            # Qualitäten mappen (Schlüssel wie 'fl_cdn_1080')
-            streams = {key.replace('fl_cdn_', ''): val for key, val in hls_resources.items()}
-            
-            # Qualität wählen (Bevorzugt 1080 -> 720 -> 480 -> 360)
-            qualities = ['1080', '720', '480', '360']
-            stream_key = None
-            for q in qualities:
-                if q in streams:
-                    stream_key = streams[q]
-                    self.logger.info(f"Selected quality: {q}p")
-                    break
-            
-            if not stream_key:
-                stream_key = streams.get('multi')
+            for t in matches:
+                icon = self.icons.get('default')
+                if t.get('pt_photo'):
+                     icon = f"https://img.externulls.com/photos/v/{t['pt_photo']}.jpg"
+                elif t.get('thumbs') and t['thumbs'][0].get('crops'):
+                    icon = f"https://thumbs.externulls.com/photos/{t['thumbs'][0]['id']}/to.webp?crop_id={t['thumbs'][0]['crops'][0]['id']}&size_new=300x300"
+                self.add_dir(f"{t['tg_name'].title()} [Tag]", f"https://store.externulls.com/facts/tag?slug={t['tg_slug']}&limit=24&offset=0", 2, icon)
+            self.end_directory()
+        except: self.notify_error("Search Error")
 
-            if not stream_key:
-                self.notify_error("Could not find a playable stream URL.")
-                return
-
-            # URL zusammenbauen
-            playback_url = f"https://video.externulls.com/{stream_key}"
-            
-            # Header für Kodi Player anhängen
-            # WICHTIG: Beeg braucht oft keinen speziellen Referer für den Stream selbst, 
-            # aber User-Agent schadet nicht.
-            headers = f"User-Agent={urllib.parse.quote(self.session.headers['User-Agent'])}"
-            final_url = f"{playback_url}|{headers}"
-            
-            list_item = xbmcgui.ListItem(path=final_url)
-            list_item.setMimeType('video/mp4') # Beeg streams sind oft mp4 oder m3u8, mp4 header helps
-            xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
-
-        except Exception as e:
-            self.logger.error(f"Error resolving video for playback: {e}")
-            self.notify_error("Failed to play video.")
+    def play_video(self, url):
+        vid = url.split('/')[-1]
+        try:
+            r = self.scraper.get(f"https://store.externulls.com/facts/file/{vid}", headers={'Accept': 'application/json'}, timeout=20)
+            if r.status_code == 200:
+                d = r.json()
+                hls = d.get('file', {}).get('hls_resources') or d.get('fc_facts', [{}])[0].get('hls_resources')
+                vurl = None
+                if hls:
+                    vurl = f"https://video.externulls.com/{hls.get('fl_cdn_multi')}.m3u8" if hls.get('fl_cdn_multi') else None
+                    if not vurl:
+                        for q in ['fl_cdn_1080', 'fl_cdn_720', 'fl_cdn_480', 'fl_cdn_360']:
+                            if hls.get(q): vurl = f"https://video.externulls.com/{hls[q]}.m3u8"; break
+                
+                if vurl:
+                    li = xbmcgui.ListItem(path=vurl)
+                    li.setMimeType('application/vnd.apple.mpegurl')
+                    li.setProperty('inputstream', 'inputstream.adaptive')
+                    li.setProperty('inputstream.adaptive.manifest_type', 'hls')
+                    xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+                    return
+        except: pass
+        self.notify_error("Video not found")

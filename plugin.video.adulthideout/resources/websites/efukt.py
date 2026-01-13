@@ -5,7 +5,6 @@ import sys
 import os
 import xbmcaddon
 
-# Vendor-Pfad
 try:
     addon_path = xbmcaddon.Addon().getAddonInfo('path')
     vendor_path = os.path.join(addon_path, 'resources', 'lib', 'vendor')
@@ -71,7 +70,6 @@ class EfuktWebsite(BaseWebsite):
             self.end_directory()
             return
         
-        # Pattern für Kategorien
         pattern = re.compile(
             r'<a\s+href="([^"]+)"[^>]*title="([^"]+)"[^>]*>.*?'
             r'background-image:\s*url\(\'?([^\')]+)\'?\).*?'
@@ -80,7 +78,6 @@ class EfuktWebsite(BaseWebsite):
         )
         matches = pattern.findall(content)
         
-        # Fallback Pattern
         if not matches:
              matches = re.findall(r'<a class="tile" href="([^"]+)">.*?<img src="([^"]+)".*?<p>([^<]+)</p>', content, re.DOTALL)
              matches = [(m[0], "unused", m[1], m[2]) for m in matches]
@@ -124,7 +121,6 @@ class EfuktWebsite(BaseWebsite):
 
         stream_url = self._extract_stream(content)
         
-        # Fallback: Iframes durchsuchen
         if not stream_url:
             iframe_matches = re.findall(r'<iframe[^>]+src="([^"]+)"', content, re.IGNORECASE)
             for iframe_src in iframe_matches:
@@ -156,23 +152,18 @@ class EfuktWebsite(BaseWebsite):
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
 
     def _extract_stream(self, content):
-        # 1. Source Tag mit type video/mp4 (flexibler)
-        # Sucht nach <source ... src="..." ... type="video/mp4"> oder umgekehrt
         m = re.search(r'<source[^>]+src="([^"]+)"[^>]*type=["\']video/mp4["\']', content, re.IGNORECASE)
         if m: return html.unescape(m.group(1))
         
         m = re.search(r'<source[^>]+type=["\']video/mp4["\'][^>]*src="([^"]+)"', content, re.IGNORECASE)
         if m: return html.unescape(m.group(1))
 
-        # 2. Generisches Video src
         m = re.search(r'<video[^>]+src="([^"]+)"', content, re.IGNORECASE)
         if m: return html.unescape(m.group(1))
         
-        # 3. JSON-LD oder Script-Variablen
         m = re.search(r'(?:file|src|video_url|contentUrl)\s*[:=]\s*["\']([^"\']+\.mp4[^"\']*)["\']', content, re.IGNORECASE)
         if m: return html.unescape(m.group(1).replace(r'\/', '/'))
 
-        # 4. JSON-LD Block parsing
         try:
             json_match = re.search(r'<script type="application/ld\+json">(.*?)</script>', content, re.DOTALL)
             if json_match:

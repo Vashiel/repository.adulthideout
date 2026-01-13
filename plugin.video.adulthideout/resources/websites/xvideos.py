@@ -33,6 +33,11 @@ class XvideosWebsite(BaseWebsite):
         )
         self.category_options = ["Straight", "Gay", "Shemale"]
 
+    def get_start_url_and_label(self):
+        category = self.addon.getSetting(f"{self.config['name']}_category") or "Straight"
+        url = self.get_category_url(category)
+        return url, f"{self.config['name'].capitalize()} - {category}"
+
     def get_headers(self, referer=None, is_json=False):
         headers = {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/*,*/*;q=0.8',
@@ -117,16 +122,33 @@ class XvideosWebsite(BaseWebsite):
         search_query = query_params.get('k', [None])[0]
         if search_query:
             search_url = url
+            if cat_value and 'typef=' not in search_url:
+                search_url += f"&typef={cat_value}"
         elif parsed_url.path in ["", "/"]:
+            search_url = self.get_category_url(category)
+        elif parsed_url.path.rstrip('/') == '/popular-tags':
             search_url = self.get_category_url(category)
         else:
             search_url = url
+            if cat_value and (parsed_url.path.startswith('/c/') or parsed_url.path.startswith('/tags/')):
+                if '?' in search_url:
+                    if 'typef=' not in search_url:
+                        search_url += f"&typef={cat_value}"
+                else:
+                    search_url += f"?typef={cat_value}"
 
         content = self.make_request(search_url)
         if content:
-            self.add_basic_dirs(search_url, cat_value)
-            if "/tags" in url.lower():
-                self.process_category_matches(content, search_url)
+            parsed = urllib.parse.urlparse(url)
+            path = parsed.path.rstrip('/')
+            is_category_page = path in ['/tags', '/popular-tags']
+            
+            self.add_basic_dirs(search_url, cat_value, is_category_page)
+            
+            if path == '/tags':
+                self.process_all_tags(content, search_url)
+            elif path == '/popular-tags':
+                self.process_popular_tags(content, search_url)
             else:
                 self.process_content_matches(content, search_url, cat_value)
         else:
@@ -134,14 +156,15 @@ class XvideosWebsite(BaseWebsite):
 
         self.end_directory()
 
-    def add_basic_dirs(self, current_url, cat_value):
+    def add_basic_dirs(self, current_url, cat_value, is_category_page=False):
         context_menu = [
             ('Select Category', f'RunPlugin(plugin://plugin.video.adulthideout/?mode=7&action=select_category&website={self.config["name"]}&original_url={urllib.parse.quote_plus(current_url)})'),
         ]
         dirs = [
             ('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], self.config["name"]),
-            ('Categories', f"{self.config['base_url']}/tags", 2, self.icons['categories']),
         ]
+        if not is_category_page:
+            dirs.append(('Categories', f"{self.config['base_url']}/popular-tags", 2, self.icons['categories']))
         for name, url, mode, icon, *extra in dirs:
             dir_name_param = extra[0] if extra else name
             self.add_dir(name, url, mode, icon, self.fanart, context_menu, name_param=dir_name_param)
@@ -198,9 +221,37 @@ class XvideosWebsite(BaseWebsite):
         except Exception as e:
             self.notify_error(f"Parsing failed: {str(e)}")
 
-    def process_category_matches(self, content, current_url):
+    def process_popular_tags(self, content, current_url):
+        """Show popular tags from homepage dropdown (dyntop-cat, dyntopterm classes)"""
         try:
-            pattern = r'<li class="dyn (top-cat|topterm)[^"]*"><a href="(/[^"]+)"(?:[^>]+)?>([^<]+)</a></li>'
+            base_url = urllib.parse.urlparse(current_url).scheme + "://" + urllib.parse.urlparse(current_url).netloc
+            context_menu = [
+                ('Select Category', f'RunPlugin(plugin://plugin.video.adulthideout/?mode=7&action=select_category&website={self.config["name"]}&original_url={urllib.parse.quote_plus(current_url)})'),
+            ]
+
+            cat_pattern = r'<li class="dyntop-cat[^"]*"><a href="([^"]+)">([^<]+)</a></li>'
+            for match in re.finditer(cat_pattern, content):
+                relative_url = match.group(1)
+                name = html.unescape(match.group(2).strip())
+                url = urllib.parse.urljoin(base_url, relative_url)
+                self.add_dir(name, url, 2, self.icons['categories'], self.fanart, context_menu)
+            
+            term_pattern = r'<li class="dyntopterm[^"]*"><a href="([^"]+)">([^<]+)</a></li>'
+            for match in re.finditer(term_pattern, content):
+                relative_url = html.unescape(match.group(1))
+                name = html.unescape(match.group(2).strip())
+                url = urllib.parse.urljoin(base_url, relative_url)
+                self.add_dir(name, url, 2, self.icons['categories'], self.fanart, context_menu)
+            
+            self.add_dir('[COLOR blue]All Tags >>>>[/COLOR]', f"{base_url}/tags", 2, self.icons['categories'], self.fanart, context_menu)
+            
+        except Exception as e:
+            self.notify_error(f"Parsing failed: {str(e)}")
+
+    def process_all_tags(self, content, current_url):
+        """Show all tags from /tags page"""
+        try:
+            pattern = r'<li>\s*<a href="(/tags/[^"]+)"[^>]*>\s*<b>([^<]+)</b>'
             matches = re.finditer(pattern, content)
 
             base_url = urllib.parse.urlparse(current_url).scheme + "://" + urllib.parse.urlparse(current_url).netloc
@@ -209,8 +260,8 @@ class XvideosWebsite(BaseWebsite):
             ]
 
             for match in matches:
-                relative_url = match.group(2)
-                name = match.group(3).strip()
+                relative_url = match.group(1)
+                name = match.group(2).strip()
                 url = urllib.parse.urljoin(base_url, relative_url)
                 self.add_dir(name, url, 2, self.icons['categories'], self.fanart, context_menu)
         except Exception as e:
@@ -219,25 +270,34 @@ class XvideosWebsite(BaseWebsite):
     def play_video(self, url):
         content = self.make_request(url)
         if content:
-            high_quality = re.search(r"html5player\.setVideoHLS\('(.+?)'\)", content)
-            med_quality = re.search(r"html5player\.setVideoUrlHigh\('(.+?)'\)", content)
-            low_quality = re.search(r"html5player\.setVideoUrlLow\('(.+?)'\)", content)
+            hls_url = re.search(r"html5player\.setVideoHLS\('(.+?)'\)", content)
+            high_mp4 = re.search(r"html5player\.setVideoUrlHigh\('(.+?)'\)", content)
+            low_mp4 = re.search(r"html5player\.setVideoUrlLow\('(.+?)'\)", content)
             
-            path = None
-            if high_quality:
-                path = high_quality.group(1)
-            elif med_quality:
-                path = med_quality.group(1)
-            elif low_quality:
-                path = low_quality.group(1)
+            li = xbmcgui.ListItem()
+            li.setProperty('IsPlayable', 'true')
             
-            if path:
-                li = xbmcgui.ListItem(path=path)
-                li.setProperty('IsPlayable', 'true')
+            if hls_url:
+                path = hls_url.group(1)
+                li.setPath(path)
+                li.setMimeType('application/vnd.apple.mpegurl')
+                li.setContentLookup(False)
+                if xbmc.getCondVisibility('System.HasAddon(inputstream.adaptive)'):
+                    li.setProperty('inputstream', 'inputstream.adaptive')
+                    li.setProperty('inputstream.adaptive.manifest_type', 'hls')
+            elif high_mp4:
+                path = high_mp4.group(1)
+                li.setPath(path)
                 li.setMimeType('video/mp4')
-                xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+            elif low_mp4:
+                path = low_mp4.group(1)
+                li.setPath(path)
+                li.setMimeType('video/mp4')
             else:
                 self.notify_error("No video found")
+                return
+            
+            xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
         else:
             self.notify_error("Failed to load video page")
 

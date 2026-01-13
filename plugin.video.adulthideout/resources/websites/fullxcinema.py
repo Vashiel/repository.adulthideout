@@ -155,7 +155,8 @@ class FullXCinema(BaseWebsite):
         if is_main_page_variant:
              self.add_dir('Categories', 'show_categories_placeholder', 8, self.icons['categories'])
 
-        articles = re.findall(r'<article\s+data-video-uid=.*?class="loop-video\s+thumb-block.*?</article>', content, re.DOTALL)
+        articles = re.findall(r'<article\s+[^>]*class="[^"]*loop-video[^"]*"[^>]*>.*?</article>', content, re.DOTALL)
+        
         if not articles: self.logger.info(f"No <article> blocks found on {url}")
         else: self.logger.info(f"Found {len(articles)} <article> blocks.")
 
@@ -165,7 +166,10 @@ class FullXCinema(BaseWebsite):
                 if not match_link: continue
                 video_url_part, title = match_link.groups()
 
-                match_thumb = re.search(r'<img\s+.*?data-src="([^"]+)"', block, re.DOTALL | re.IGNORECASE)
+                match_thumb = re.search(r'data-main-thumb="([^"]+)"', block, re.IGNORECASE)
+                if not match_thumb:
+                     match_thumb = re.search(r'<img\s+[^>]*(?:data-src|src)="([^"]+)"', block, re.DOTALL | re.IGNORECASE)
+
                 thumb_url = match_thumb.group(1) if match_thumb else self.icon
 
                 match_duration = re.search(r'<span\s+class="duration">.*?</i>\s*([\d:]+)\s*</span>', block, re.DOTALL | re.IGNORECASE)
@@ -370,8 +374,6 @@ class FullXCinema(BaseWebsite):
         return None
 
     def _play_stream(self, stream_url, referer_url=None, mime_type='video/mp4'):
-        # WICHTIG: Referer nur für Hclips/Eporner anhängen. 
-        # Für direkte MP4 Links KEINE Header erzwingen, da dies das Seeking/Probing in Kodi verlangsamt (6-10s Delay).
         if referer_url:
             headers = {'User-Agent': self.ua, 'Referer': referer_url}
             url_final = stream_url + '|' + urllib.parse.urlencode(headers)
@@ -396,7 +398,6 @@ class FullXCinema(BaseWebsite):
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
             return
 
-        # Direct Links (KEIN Referer, damit Kodi nativ probed)
         mp4_match = re.search(r'["\'](https?://[^"\']+\.mp4(?:\?[^"\']*)?)["\']', content, re.IGNORECASE)
         if mp4_match:
             self._play_stream(html.unescape(mp4_match.group(1)))

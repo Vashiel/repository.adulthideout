@@ -11,9 +11,7 @@ import xbmcgui
 import xbmcplugin
 import xbmcaddon
 
-# === START PROXY IMPORTS ===
 import threading
-# === ENDE PROXY IMPORTS ===
 
 try:
     addon_path = xbmcaddon.Addon().getAddonInfo('path')
@@ -32,13 +30,10 @@ except Exception as e:
 
 import requests
 from resources.lib.base_website import BaseWebsite
-# === NEUER PROXY-IMPORT ===
 from resources.lib.proxy_utils import ProxyController, PlaybackGuard
 
-# === SESSION CACHE ===
 _SESSION_CACHE = None
 _SESSION_LOCK = threading.Lock()
-# =====================
 
 
 class PunishWorld(BaseWebsite):
@@ -74,19 +69,15 @@ class PunishWorld(BaseWebsite):
         """
         global _SESSION_CACHE, _SESSION_LOCK
         
-        # 1. Lock holen, um Thread-sicher zu sein
         with _SESSION_LOCK:
-            # 2. Prüfen, ob diese Instanz bereits eine Sitzung hat
             if self.scraper:
                 return self.scraper
             
-            # 3. Prüfen, ob eine global gecachte Sitzung existiert
             if _SESSION_CACHE:
                 self.logger.info(f"[{self.name}] Reusing cached Cloudscraper session.")
                 self.scraper = _SESSION_CACHE
                 return self.scraper
 
-            # 4. Neue Sitzung erstellen
             self.logger.info(f"[{self.name}] Initializing new Cloudscraper session...")
             
             if not _HAS_CF:
@@ -113,7 +104,6 @@ class PunishWorld(BaseWebsite):
                     'Connection': 'keep-alive',
                 })
 
-                # 5. Sitzung in der Instanz UND im globalen Cache speichern
                 self.scraper = scraper 
                 _SESSION_CACHE = scraper
                 return self.scraper
@@ -320,7 +310,6 @@ class PunishWorld(BaseWebsite):
         hdrs = {'Referer': url}
         self.logger.debug(f"Using manual headers for proxy: {hdrs}")
 
-        # Sicherstellen, dass die Session existiert, bevor wir Cookies holen
         scraper_session = self.get_session()
         if not scraper_session:
             self.notify_error("Failed to get scraper session for proxy.")

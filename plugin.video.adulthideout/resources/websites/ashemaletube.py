@@ -1,13 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# [CHANGELOG]
-# - Fixed: make_request now accepts is_json parameter (fixes Categories crash)
-# - Added URL safe encoding in make_request to fix crashes with special characters
-# - Fixed reset_pornstar_filters signature to prevent TypeError in mode 7
-# - Optimized imports and removed unused libraries
-# - Standardized filter handling
-
 import re
 import urllib.parse
 import urllib.request
@@ -117,7 +110,6 @@ class AshemaletubeWebsite(BaseWebsite):
                 with opener.open(request, timeout=60) as response:
                     return response.read().decode('utf-8', errors='ignore')
             except Exception as e:
-                # xbmc.log(f"Request failed: {e}", xbmc.LOGERROR) 
                 if attempt < max_retries - 1: xbmc.sleep(retry_wait)
         
         xbmcgui.Dialog().notification('AdultHideout Error', f"Failed to fetch: {url}", xbmcgui.NOTIFICATION_ERROR)
@@ -228,7 +220,6 @@ class AshemaletubeWebsite(BaseWebsite):
             fallback_pattern = r'<h1>.*?</h1>.*?<ul class="media-listing-grid[^"]*">(.*?)</ul>'
             main_list_match = re.search(fallback_pattern, content, re.DOTALL)
         if not main_list_match:
-            # self.logger.error("Could not find the main video list on the page.")
             return
 
         self.parse_video_list(main_list_match.group(1), current_url)
@@ -246,7 +237,6 @@ class AshemaletubeWebsite(BaseWebsite):
         list_match = re.search(video_container_pattern, content, re.DOTALL)
         
         if not list_match:
-            # self.logger.error(f"Could not find video list container on pornstar page: {sorted_url}")
             self.end_directory()
             return
             
@@ -288,7 +278,6 @@ class AshemaletubeWebsite(BaseWebsite):
                     self.end_directory()
                     return
             except json.JSONDecodeError as e:
-                # self.logger.error(f"Error parsing category JSON: {e}")
                 pass
         self.notify_error("Failed to load categories.")
         self.end_directory()
@@ -304,9 +293,7 @@ class AshemaletubeWebsite(BaseWebsite):
         base_url = f"{urllib.parse.urlparse(url).scheme}://{urllib.parse.urlparse(url).netloc}"
         pattern = r'<div class="media-item model-item.*?<a class="media-item__inner" href="([^"]+)" title="([^"]+)".*?<img[^>]+src="([^"]+)".*?</div>'
         matches = re.findall(pattern, content, re.DOTALL)
-        if not matches: 
-            # self.logger.error(f"No pornstars found on page {url}")
-            pass
+
         for pornstar_url, name, thumb in matches:
             self.add_dir(html.unescape(name), urllib.parse.urljoin(base_url, pornstar_url), 2, urllib.parse.urljoin(base_url, thumb), self.fanart, context_menu=context_menu)
         self.add_next_button(content, url)
@@ -339,7 +326,41 @@ class AshemaletubeWebsite(BaseWebsite):
     def play_video(self, url):
         content = self.make_request(url)
         if not content: return self.notify_error("Failed to load video page")
-        
+
+        match = re.search(r'var\s+sources\s*=\s*(\[.*?\]);', content, re.DOTALL)
+        if match:
+            try:
+                sources = json.loads(match.group(1))
+                selected_source = None
+                for source in sources:
+                    if source.get('hls') is True or source.get('format') == 'hls':
+                        selected_source = source
+                        break
+                
+                if not selected_source and sources:
+                    selected_source = sources[0]
+                
+                if selected_source:
+                    media_url = selected_source.get('src')
+                    media_url = media_url.replace('\\/', '/')
+                    if not media_url.startswith('http'): media_url = urllib.parse.urljoin(url, media_url)
+                    
+                    li = xbmcgui.ListItem(path=media_url)
+                    
+                    if selected_source.get('hls') is True or '.m3u8' in media_url:
+                        li.setProperty('inputstream', 'inputstream.adaptive')
+                        li.setProperty('inputstream.adaptive.manifest_type', 'hls')
+                        li.setMimeType('application/vnd.apple.mpegurl')
+                    else:
+                        li.setMimeType('video/mp4')
+                        
+                    li.setProperty('IsPlayable', 'true')
+                    xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+                    return
+
+            except json.JSONDecodeError:
+                pass # Fallback to old regex
+
         match = re.search(r'["\']video_url["\']\s*:\s*["\'](.*?)["\']', content)
         if not match:
             match = re.search(r'<source\s+src="([^"]+)"\s+type=["\']video/mp4["\']', content)

@@ -58,12 +58,12 @@ class YouPornWebsite(BaseWebsite):
                    "AppleWebKit/537.36 (KHTML, like Gecko) "
                    "Chrome/124.0 Safari/537.36")
         
-        # Sort options
-        self.sort_options = ["Videos", "Most Viewed", "Top Rated", "Longest"]
+        self.sort_options = ["Videos", "Most Viewed", "Top Rated", "Most Favorited", "Longest"]
         self.sort_paths = {
             "Videos": "/browse/time/",
             "Most Viewed": "/most_viewed/",
             "Top Rated": "/top_rated/",
+            "Most Favorited": "/most_favorited/",
             "Longest": "/browse/duration/"
         }
 
@@ -279,7 +279,6 @@ class YouPornWebsite(BaseWebsite):
             self.end_directory()
             return
 
-        # Umschalter zwischen 'Alphabetical' und 'Popularity'
         if "/categories/popular/" not in url:
             self.add_dir(
                 "[COLOR blue]Sort: Popularity[/COLOR]",
@@ -297,7 +296,6 @@ class YouPornWebsite(BaseWebsite):
                 name_param=self.name,
             )
 
-        # 1) Versuche, nur den Categories-Block zu isolieren (ohne Pagination-Annahme)
         block = None
         m = re.search(
             r'<div\s+class="categoriesList[^"]*">(.*?)</div>\s*</div>',
@@ -307,7 +305,6 @@ class YouPornWebsite(BaseWebsite):
         if m:
             block = m.group(1)
         else:
-            # 2) Alternativer Versuch: enger gefasst nur den inneren Block nehmen
             m2 = re.search(
                 r'<div\s+class="categoriesList[^"]*">(.*)',
                 html_text,
@@ -316,12 +313,9 @@ class YouPornWebsite(BaseWebsite):
             if m2:
                 block = m2.group(1)
             else:
-                # 3) Fallback: komplettes HTML durchsuchen (enthält auch Header-Dropdown,
-                # ist aber besser als gar nichts zu listen)
                 self.logger.warning("[youporn] categoriesList block not found; falling back to full HTML.")
                 block = html_text
 
-        # Einträge extrahieren (href, thumb, title)
         count = 0
         for m in re.finditer(
             r'<a\s+href="(/category/[^"]+)"\s+class="categoryBox[^"]*">[\s\S]*?'
@@ -333,7 +327,6 @@ class YouPornWebsite(BaseWebsite):
             thumb = html.unescape(m.group(2))
             title = html.unescape(m.group(3)).strip()
 
-            # data-src kann absolut oder relativ sein
             if not thumb.startswith("http"):
                 thumb = urllib.parse.urljoin(self.base_url, thumb)
 
@@ -342,7 +335,6 @@ class YouPornWebsite(BaseWebsite):
             count += 1
 
         if count == 0:
-            # Als letzte Rettung: noch großzügiger nur nach Links + Alt-Text suchen
             for m in re.finditer(
                 r'<a\s+href="(/category/[^"]+)"[^>]*>[\s\S]*?'
                 r'<img[^>]+(?:data-src|src)="([^"]+)"[^>]*alt="([^"]+)"',
@@ -424,14 +416,17 @@ class YouPornWebsite(BaseWebsite):
             self.end_directory()
             return
 
-        # Add Search at the top
         self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons.get('search', ''), name_param=self.name)
         
-        # Add Categories
         self.add_dir('[COLOR yellow]Categories[/COLOR]', f"{self.base_url}/categories/", 8, self.icons.get('categories', ''), name_param=self.name)
 
-        # Add Pornstars
         self.add_dir('[COLOR yellow]Pornstars[/COLOR]', f"{self.base_url}/pornstars/", 9, self.icons.get('pornstars', ''), name_param=self.name)
+
+        self.add_dir('[COLOR yellow]Channels[/COLOR]', f"{self.base_url}/channels/", 10, self.icons.get('channels', ''), name_param=self.name)
+
+        self.add_dir('[COLOR yellow]Collections[/COLOR]', f"{self.base_url}/collections/", 11, self.icons.get('default', ''), name_param=self.name)
+
+        self.add_dir('[COLOR orange]Verified Amateurs[/COLOR]', f"{self.base_url}/category/verifiedamateurs/", 2, self.icons.get('default', ''), name_param=self.name)
 
         seen = set()
         for m in re.finditer(r'href="(/watch/\d+/[^"]*)"', html_text, flags=re.I):
@@ -442,12 +437,10 @@ class YouPornWebsite(BaseWebsite):
             title = ""
             thumb = ""
             
-            # Context window around the link
             ctx_s = max(0, m.start() - 1500)
             ctx_e = min(len(html_text), m.end() + 1500)
             block = html_text[ctx_s:ctx_e]
             
-            # Extract title
             t = re.search(r'\btitle="([^"]+)"', block, re.I)
             if not t:
                 t = re.search(r'\baria-label="([^"]+)"', block, re.I)
@@ -456,7 +449,6 @@ class YouPornWebsite(BaseWebsite):
             if t:
                 title = html.unescape(t.group(1)).strip()
             
-            # Extract thumbnail - multiple patterns
             thumb_m = re.search(r'data-thumb="([^"]+)"', block, re.I)
             if thumb_m:
                 thumb = html.unescape(thumb_m.group(1))
@@ -478,7 +470,6 @@ class YouPornWebsite(BaseWebsite):
                 if thumb_m:
                     thumb = html.unescape(thumb_m.group(1))
             
-            # Extract duration
             dur = ""
             d = re.search(r'video-duration[^>]*>\s*<span>\s*([0-9:\s]+)\s*</span>', block, re.I | re.S)
             if not d:
@@ -494,7 +485,6 @@ class YouPornWebsite(BaseWebsite):
             icon = thumb if thumb else self.icons.get('default', '')
             self.add_link(label, full_url, 4, icon, self.fanart)
 
-        # Add Next Page button at the end
         next_url = self._extract_next_page(html_text, url)
         if next_url:
             self.add_dir('[COLOR green]Next Page >>[/COLOR]', next_url, 2, self.icons.get('default', ''), self.fanart)
@@ -639,3 +629,86 @@ class YouPornWebsite(BaseWebsite):
 
         self.notify_error("YouPorn: Keine abspielbare Quelle gefunden.")
         xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
+
+    def process_channels(self, url):
+        """List channels from YouPorn."""
+        html_text = self._get(url)
+        if not html_text:
+            self.notify_error("YouPorn: Channels konnten nicht geladen werden.")
+            self.end_directory()
+            return
+        
+        pattern = r'<a[^>]*href="(/channel/[^"]+)"[^>]*>.*?(?:data-src|src)="([^"]+)"[^>]*alt="([^"]*)"'
+        found_any = False
+        
+        for m in re.finditer(pattern, html_text, re.DOTALL | re.IGNORECASE):
+            href = m.group(1)
+            thumb = m.group(2)
+            name = html.unescape(m.group(3).strip())
+            
+            if not name:
+                name = href.split('/')[-2].replace('-', ' ').title() if '/' in href else "Channel"
+            
+            full_url = urllib.parse.urljoin(self.base_url, href)
+            self.add_dir(name, full_url, 2, thumb, name_param=self.name)
+            found_any = True
+        
+        if not found_any:
+            for m in re.finditer(r'href="(/channel/[^"]+)"[^>]*>\s*([^<]+)<', html_text):
+                href = m.group(1)
+                name = html.unescape(m.group(2).strip())
+                if name and len(name) > 2:
+                    full_url = urllib.parse.urljoin(self.base_url, href)
+                    self.add_dir(name, full_url, 2, self.icons.get('default', ''), name_param=self.name)
+                    found_any = True
+        
+        next_match = re.search(r'<a[^>]*href="([^"]*)"[^>]*class="[^"]*next[^"]*"', html_text, re.IGNORECASE)
+        if next_match:
+            next_url = urllib.parse.urljoin(self.base_url, html.unescape(next_match.group(1)))
+            self.add_dir('[COLOR blue]>>> Next Page[/COLOR]', next_url, 10, self.icons.get('next', ''), name_param=self.name)
+        
+        self.end_directory()
+
+    def process_collections(self, url):
+        """List collections from YouPorn."""
+        html_text = self._get(url)
+        if not html_text:
+            self.notify_error("YouPorn: Collections konnten nicht geladen werden.")
+            self.end_directory()
+            return
+        
+        pattern = r'<li[^>]*class="[^"]*collection-box[^"]*"[^>]*>.*?href="(/collections/(?:videos/)?[^"]+)".*?(?:data-src|src)="([^"]+)".*?<div[^>]*class="[^"]*(?:videoCount|collection-box-title)[^"]*"[^>]*>([^<]*)</div>'
+        found_any = False
+        
+        for m in re.finditer(pattern, html_text, re.DOTALL | re.IGNORECASE):
+            href = m.group(1)
+            thumb = m.group(2)
+            info = html.unescape(m.group(3).strip())
+            
+            full_url = urllib.parse.urljoin(self.base_url, href)
+            self.add_dir(info if info else "Collection", full_url, 2, thumb, name_param=self.name)
+            found_any = True
+        
+        if not found_any:
+            for m in re.finditer(r'href="(/collections/(?:videos/)?\d+/?)"\s*(?:title|data-title)="([^"]+)"', html_text, re.IGNORECASE):
+                href = m.group(1)
+                title = html.unescape(m.group(2).strip())
+                full_url = urllib.parse.urljoin(self.base_url, href)
+                self.add_dir(title, full_url, 2, self.icons.get('default', ''), name_param=self.name)
+                found_any = True
+        
+        if not found_any:
+            for m in re.finditer(r'href="(/collections/(?:videos/)?\d+/?)"[^>]*>([^<]+)<', html_text):
+                href = m.group(1)
+                title = html.unescape(m.group(2).strip())
+                if title and len(title) > 2:
+                    full_url = urllib.parse.urljoin(self.base_url, href)
+                    self.add_dir(title, full_url, 2, self.icons.get('default', ''), name_param=self.name)
+                    found_any = True
+        
+        next_match = re.search(r'<a[^>]*href="([^"]*)"[^>]*class="[^"]*next[^"]*"', html_text, re.IGNORECASE)
+        if next_match:
+            next_url = urllib.parse.urljoin(self.base_url, html.unescape(next_match.group(1)))
+            self.add_dir('[COLOR blue]>>> Next Page[/COLOR]', next_url, 11, self.icons.get('next', ''), name_param=self.name)
+        
+        self.end_directory()

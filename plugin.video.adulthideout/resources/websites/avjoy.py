@@ -1,18 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# [CHANGELOG]
-# - Fixed: Added vendor library path registration to load 'requests' and 'cloudscraper'
-# - Fixed: Removed duplicate "Sort by" context menu (handled by base class for videos)
-# - Optimized regex to prevent duplicate entries from "Featured" sections
-# - Refined session handling with optional Cloudscraper support
-# - Improved play_video logic with robust proxy headers
-
 import sys
 import os
 import xbmcaddon
 
-# 1. ZUERST den Pfad zu den Bibliotheken (vendor) hinzufügen
+
 try:
     addon_path = xbmcaddon.Addon().getAddonInfo('path')
     vendor_path = os.path.join(addon_path, 'resources', 'lib', 'vendor')
@@ -31,7 +24,7 @@ import requests
 from resources.lib.base_website import BaseWebsite
 from resources.lib.proxy_utils import ProxyController, PlaybackGuard
 
-# Optional: Cloudscraper für Cloudflare-Schutz
+
 try:
     import cloudscraper
     _HAS_CF = True
@@ -71,7 +64,6 @@ class AvjoyWebsite(BaseWebsite):
 
     def make_request(self, url):
         try:
-            # Encoding fix für URLs mit Sonderzeichen
             url = urllib.parse.quote(url, safe=':/?=&%')
             self.logger.info(f"Fetching: {url}")
             
@@ -107,7 +99,7 @@ class AvjoyWebsite(BaseWebsite):
             self.end_directory()
             return
 
-        # Für Ordner (add_dir) müssen wir das Kontextmenü manuell bauen
+
         encoded_url = urllib.parse.quote_plus(url)
         dir_context_menu = [('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={encoded_url})')]
         
@@ -119,7 +111,7 @@ class AvjoyWebsite(BaseWebsite):
         self.end_directory()
 
     def parse_video_list(self, content, current_url):
-        # OPTIMIERUNG: Schneide "Featured" Bereich ab, um Duplikate zu vermeiden
+
         if 'class="well-filters"' in content:
             parts = content.split('class="well-filters"')
             content = parts[-1] # Nimm nur den Teil nach den Filtern
@@ -127,19 +119,18 @@ class AvjoyWebsite(BaseWebsite):
             parts = content.split('Most Recent')
             content = parts[-1]
 
-        # Regex angepasst für AVJoy Struktur
+
         pattern = r'<div class="[^"]*col-[^"]*">.*?<a href="([^"]+)">.*?<div class="thumb-overlay".*?>.*?<img src="([^"]+)" title="([^"]+)"'
         matches = re.findall(pattern, content, re.DOTALL | re.IGNORECASE)
         
         count = 0
-        seen_urls = set() # Set um absolute Eindeutigkeit zu garantieren
+        seen_urls = set()
 
         for video_path, thumb, title in matches:
-            # Ignoriere alles was kein echtes Video ist
+
             if '/video/' not in video_path or '/videos/' in video_path:
                 continue
             
-            # Ignoriere Duplikate
             if video_path in seen_urls:
                 continue
             seen_urls.add(video_path)
@@ -148,7 +139,7 @@ class AvjoyWebsite(BaseWebsite):
             thumb_url = urllib.parse.urljoin(self.base_url, thumb)
             clean_title = html.unescape(title.strip())
             
-            # BaseWebsite fügt "Sort by" automatisch hinzu für add_link
+
             self.add_link(clean_title, full_url, 4, thumb_url, self.fanart, info_labels={'title': clean_title})
             count += 1
             
@@ -157,10 +148,8 @@ class AvjoyWebsite(BaseWebsite):
     def add_next_button(self, content, current_url):
         next_url = None
         
-        # Pattern 1: Standard Pagination Link
         match = re.search(r'<a [^>]*href="([^"]+)"[^>]*class="[^"]*prevnext"[^>]*>', content)
         if not match:
-             # Pattern 2: Bootstrap Pagination
              match = re.search(r'<li class="page-item">\s*<a class="page-link" href="([^"]+)"[^>]*aria-label="Next"', content)
         
         if match:
@@ -182,7 +171,6 @@ class AvjoyWebsite(BaseWebsite):
         if match:
             video_url = match.group(1)
             
-            # Proxy Setup für stabile Wiedergabe
             stream_session = requests.Session()
             stream_session.headers.update({
                 'User-Agent': self.user_agent,
