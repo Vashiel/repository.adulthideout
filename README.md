@@ -2,9 +2,16 @@
 
 # Adulthideout Video Addon Repository
 
-**Version 1.0.0 “Jubilee” — Repo v1.0.4 — 2025-08-02**
+**Version 1.0.4 “Gonzales” — 2025-11-25**
 
-Welcome to the AdultHideout repository! This is the official home for the Kodi video add-on, now fully refactored and stabilized in v1.0.0 "Jubilee".
+This is the largest update since v1.0.0. Version 1.0.4 "Gonzales" focuses entirely on speed and optimization while adapting to modern website security mechanisms.
+
+To bypass these protections, a new internal **Proxy Framework** and robust **Vendored Libraries** (Requests, Urllib3, Cloudscraper, JS2Py) have been implemented. While such security layers typically add latency, the architecture was heavily optimized to counter this effect. Video startup times have been reduced from approximately 14 seconds to **instant playback**.
+
+### Key Changes in v1.0.4
+* **Performance:** Implemented `proxy_utils.py` for efficient session handling and local proxy streaming.
+* **New Content:** Added **9 new sites**: DarknessPorn, FullXCinema, NoodleMagazine, PornZog, PunishWorld, ShemaleZ, VJAV, VoyeurHit, and YouPorn.
+* **Refactoring:** Extensive changes to core logic and adapters. See `changelog.txt` for the full technical breakdown.
 
 ---
 
@@ -18,7 +25,7 @@ Welcome to the AdultHideout repository! This is the official home for the Kodi v
      [repository.adulthideout-1.0.4.zip](https://vashiel.github.io/repository.adulthideout/)
 
 2. Browse **Add-ons → Download → Video add-ons → AdultHideout**
-3. Install **AdultHideout v1.0.0 “Jubilee”**
+3. Install **AdultHideout**
 
 ---
 
@@ -36,9 +43,9 @@ Welcome to the AdultHideout repository! This is the official home for the Kodi v
 ## 🔗 Repository Links
 
 * **Homepage / ZIP**:
-  [https://vashiel.github.io/repository.adulthideout/repository.adulthideout-1.0.4.zip](https://github.com/Vashiel/repository.adulthideout/raw/master/zips/repository.adulthideout/repository.adulthideout-1.0.4.zip)
+  [https://vashiel.github.io/repository.adulthideout/](https://github.com/Vashiel/repository.adulthideout/raw/master/zips/repository.adulthideout/repository.adulthideout-1.0.4.zip)
 * **Source Code**:
-  [https://github.com/Vashiel/repository.adulthideout](https://github.com/Vashiel/repository.adulthideout/raw/master/zips/repository.adulthideout/repository.adulthideout-1.0.4.zip)
+  [https://github.com/Vashiel/repository.adulthideout](https://github.com/Vashiel/repository.adulthideout)
 * **Issue Tracker**:
   [https://github.com/Vashiel/repository.adulthideout/issues](https://github.com/Vashiel/repository.adulthideout/issues)
 
@@ -51,7 +58,7 @@ Welcome to the AdultHideout repository! This is the official home for the Kodi v
 
 ---
 
-*Enjoy AdultHideout v1.0.0 “Jubilee”!*
+*Enjoy AdultHideout v1.0.4 “Gonzales”!*
 
 
 # Update 05.01.2023
@@ -65,11 +72,4 @@ Cheers, Anton.
 
 # AdultHideout
 XXX Porn Adult Addon. Matrix and Leia compatible.<br />
-The one and only official site for my Repo is this Github Page.<br />
-If you find my Repo somewhere else, he/she has nothing to do with me.
-
-# Installation
-Download repository.adulthideout-1.0.3.zip here https://vashiel.github.io/repository.adulthideout/
-
-# Contact me
-Too busy right now.
+The one and only official site for my Repo is this Github Page.
