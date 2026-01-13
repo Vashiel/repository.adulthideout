@@ -2,16 +2,16 @@
 
 # Adulthideout Video Addon Repository
 
-**Version 1.0.4 “Gonzales” — 2025-11-25**
+**Version 1.0.5 “Massive Expansion” — 2026-01-13**
 
-This is the largest update since v1.0.0. Version 1.0.4 "Gonzales" focuses entirely on speed and optimization while adapting to modern website security mechanisms.
+This update represents a **massive expansion** of the addon's capabilities, introducing 14 new sites, a completely rewritten Erome scraper, and a comprehensive codebase cleanup.
 
-To bypass these protections, a new internal **Proxy Framework** and robust **Vendored Libraries** (Requests, Urllib3, Cloudscraper, JS2Py) have been implemented. While such security layers typically add latency, the architecture was heavily optimized to counter this effect. Video startup times have been reduced from approximately 14 seconds to **instant playback**.
-
-### Key Changes in v1.0.4
-* **Performance:** Implemented `proxy_utils.py` for efficient session handling and local proxy streaming.
-* **New Content:** Added **9 new sites**: DarknessPorn, FullXCinema, NoodleMagazine, PornZog, PunishWorld, ShemaleZ, VJAV, VoyeurHit, and YouPorn.
-* **Refactoring:** Extensive changes to core logic and adapters. See `changelog.txt` for the full technical breakdown.
+### Key Changes in v1.0.5
+* **Expansion:** Added support for **14 new sites**, including:
+  * Analdin, BdsmStreak, DrTuber, Empflix, **Erome**, PervClips, PorCore, Shameless, Shooshtime, SunPorno, SxyPrn, ThisVid, TnaFlix.
+* **Erome Overhaul:** Complete rewrite with robust filters (Straight/Gay/Trans/Hentai), persistent search, and seamless pagination.
+* **Refactoring:** Removed all debugging comments from **all 57 websites** for a clean, production-ready codebase.
+* **Decoders:** Added new decoding logic for SunPorno and optimized existing ones.
 
 ---
 
@@ -22,10 +22,23 @@ To bypass these protections, a new internal **Proxy Framework** and robust **Ven
    * Go to **Add-ons → Install from ZIP**
    * Download and point to the ZIP:
 
-     [repository.adulthideout-1.0.4.zip](https://vashiel.github.io/repository.adulthideout/)
+     [repository.adulthideout-1.0.5.zip](https://vashiel.github.io/repository.adulthideout/)
 
 2. Browse **Add-ons → Download → Video add-ons → AdultHideout**
 3. Install **AdultHideout**
+
+---
+
+**Version 1.0.4 “Gonzales” — 2025-11-25**
+
+This is the largest update since v1.0.0. Version 1.0.4 "Gonzales" focuses entirely on speed and optimization while adapting to modern website security mechanisms.
+
+To bypass these protections, a new internal **Proxy Framework** and robust **Vendored Libraries** (Requests, Urllib3, Cloudscraper, JS2Py) have been implemented. While such security layers typically add latency, the architecture was heavily optimized to counter this effect. Video startup times have been reduced from approximately 14 seconds to **instant playback**.
+
+### Key Changes in v1.0.4
+* **Performance:** Implemented `proxy_utils.py` for efficient session handling and local proxy streaming.
+* **New Content:** Added **9 new sites**: DarknessPorn, FullXCinema, NoodleMagazine, PornZog, PunishWorld, ShemaleZ, VJAV, VoyeurHit, and YouPorn.
+* **Refactoring:** Extensive changes to core logic and adapters. See `changelog.txt` for the full technical breakdown.
 
 ---
 
