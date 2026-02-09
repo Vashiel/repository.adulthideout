@@ -18,6 +18,7 @@ class BdsmstreakWebsite(BaseWebsite):
             addon=addon
         )
         self.sort_options = ["Newest", "Popular"]
+        self.ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
     def get_start_url_and_label(self):
         setting_id = f"{self.name}_sort_by"
@@ -32,11 +33,12 @@ class BdsmstreakWebsite(BaseWebsite):
 
     def make_request(self, url):
         try:
-            req = urllib.request.Request(url, headers={'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"})
+            req = urllib.request.Request(url, headers={'User-Agent': self.ua})
             with urllib.request.urlopen(req, timeout=15) as response:
                 return response.read().decode('utf-8')
         except Exception:
             return None
+
 
     def process_content(self, url):
         self.add_basic_dirs(url)
@@ -102,6 +104,9 @@ class BdsmstreakWebsite(BaseWebsite):
                 video_url = match.group(1)
                 if not video_url.startswith('http'):
                     video_url = urllib.parse.urljoin(self.base_url, video_url)
+                
+                video_url += f"|User-Agent={urllib.parse.quote(self.ua)}"
+                
                 li = xbmcgui.ListItem(path=video_url)
                 xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
                 return

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 import re
 import urllib.parse
@@ -45,6 +44,8 @@ _LOCK = threading.Lock()
 
 
 class YouPornWebsite(BaseWebsite):
+
+
 
     def __init__(self, addon_handle):
         super().__init__(
@@ -95,6 +96,8 @@ class YouPornWebsite(BaseWebsite):
                 s.cookies.set("access", "1", domain=dom, path="/")
                 s.cookies.set("cookieConsent", "5", domain=dom, path="/")
                 s.cookies.set("necessary", "true", domain=dom, path="/")
+                s.cookies.set("age_verified", "1", domain=dom, path="/")
+                s.cookies.set("is_pc", "1", domain=dom, path="/")
 
             self._warmup(s, f"https://{host}/")
 
@@ -264,11 +267,6 @@ class YouPornWebsite(BaseWebsite):
         return None
 
     def process_categories(self, url):
-        """
-        Robust parser für https://www.youporn.com/categories/
-        - Kein Abbruch mehr, wenn es keinen <div id="pagination"> gibt.
-        - Liest <a class="categoryBox ..."> Einträge innerhalb der categoriesList.
-        """
         url = url or f"{self.base_url}/categories/"
         if not url.startswith("http"):
             url = urllib.parse.urljoin(self.base_url, url)
@@ -352,7 +350,7 @@ class YouPornWebsite(BaseWebsite):
 
         if count == 0:
             self.logger.error("[youporn] No categories found in page markup.")
-            self.notify_error("YouPorn: Keine Kategorien gefunden.")
+            self.notify_error("YouPorn: No categories found.")
         self.end_directory()
 
     def process_actresses_list(self, url):
@@ -412,7 +410,7 @@ class YouPornWebsite(BaseWebsite):
         
         html_text = self._get(url)
         if not html_text:
-            self.notify_error("YouPorn: Seite konnte nicht geladen werden.")
+            self.notify_error("YouPorn: Failed to load page.")
             self.end_directory()
             return
 
@@ -428,61 +426,74 @@ class YouPornWebsite(BaseWebsite):
 
         self.add_dir('[COLOR orange]Verified Amateurs[/COLOR]', f"{self.base_url}/category/verifiedamateurs/", 2, self.icons.get('default', ''), name_param=self.name)
 
+        video_matches = list(re.finditer(r'href="(/watch/\d+/[^"]*)"', html_text, re.I))
+        thumbs = []
+        for m in re.finditer(r'(?:data-poster|data-thumb|data-image|data-src)=["\']([^"\']+)["\']', html_text, re.I):
+            val = html.unescape(m.group(1))
+            if 'http' in val and ('.jpg' in val or '.webp' in val or 'cdn' in val):
+                thumbs.append((val, m.start()))
+        
+
+
+        for m in re.finditer(r'<img[^>]+src=["\']([^"\']+)["\']', html_text, re.I):
+            val = html.unescape(m.group(1))
+            if 'http' in val and ('.jpg' in val or '.webp' in val) and not 'loader' in val:
+                 thumbs.append((val, m.start()))
+
+        titles = []
+        for m in re.finditer(r'(?:title|alt|aria-label)=["\']([^"\']+)["\']', html_text, re.I):
+            val = html.unescape(m.group(1)).strip()
+            if len(val) > 2 and 'watch' not in val.lower(): # Basic noise filter
+                titles.append((val, m.start()))
+        
+        for m in re.finditer(r'class=["\']video-title[^"\']*["\'][^>]*>(.*?)</a>', html_text, re.DOTALL | re.I):
+             val = html.unescape(m.group(1)).strip()
+             if val: titles.append((val, m.start()))
+
         seen = set()
-        for m in re.finditer(r'href="(/watch/\d+/[^"]*)"', html_text, flags=re.I):
-            href = html.unescape(m.group(1))
-            if href in seen:
-                continue
+        
+        for v_match in video_matches:
+            href = html.unescape(v_match.group(1))
+            if href in seen: continue
             seen.add(href)
-            title = ""
-            thumb = ""
             
-            ctx_s = max(0, m.start() - 1500)
-            ctx_e = min(len(html_text), m.end() + 1500)
-            block = html_text[ctx_s:ctx_e]
+            v_pos = v_match.start()
             
-            t = re.search(r'\btitle="([^"]+)"', block, re.I)
-            if not t:
-                t = re.search(r'\baria-label="([^"]+)"', block, re.I)
-            if not t:
-                t = re.search(r'<img[^>]*\balt="([^"]+)"', block, re.I)
-            if t:
-                title = html.unescape(t.group(1)).strip()
+            best_thumb = ""
+            min_dist = 5000 # Increased search radius
             
-            thumb_m = re.search(r'data-thumb="([^"]+)"', block, re.I)
-            if thumb_m:
-                thumb = html.unescape(thumb_m.group(1))
+            for url, pos in thumbs:
+                dist = abs(pos - v_pos)
+                if dist < min_dist:
+                    min_dist = dist
+                    best_thumb = url
             
-            if not thumb:
-                thumb_m = re.search(r'data-poster="([^"]+)"', block, re.I)
-                if thumb_m:
-                    thumb = html.unescape(thumb_m.group(1))
-            
-            if not thumb:
-                thumb_m = re.search(r'<img[^>]+src="([^"]+)"', block, re.I)
-                if thumb_m:
-                    thumb_url = html.unescape(thumb_m.group(1))
-                    if any(x in thumb_url.lower() for x in ['thumb', 'poster', 'preview', '.jpg', '.webp']):
-                        thumb = thumb_url
-            
-            if not thumb:
-                thumb_m = re.search(r'data-src="([^"]+)"', block, re.I)
-                if thumb_m:
-                    thumb = html.unescape(thumb_m.group(1))
+            best_title = ""
+            min_dist = 5000
+            for title, pos in titles:
+                dist = abs(pos - v_pos)
+                if dist < min_dist:
+                    min_dist = dist
+                    best_title = title
             
             dur = ""
-            d = re.search(r'video-duration[^>]*>\s*<span>\s*([0-9:\s]+)\s*</span>', block, re.I | re.S)
+            context = html_text[max(0, v_pos-1000):min(len(html_text), v_pos+1000)]
+            d = re.search(r'video-duration[^>]*>\s*<span>\s*([0-9:\s]+)\s*</span>', context, re.I | re.S)
             if not d:
-                d = re.search(r'duration["\']?\s*[>:]\s*["\']?([0-9:]+)', block, re.I)
+                d = re.search(r'duration["\']?\s*[>:]\s*["\']?([0-9:]+)', context, re.I)
             if d:
                 dur = d.group(1).strip()
 
             full_url = urllib.parse.urljoin(self.base_url, href)
-            label = title or full_url
+            label = best_title or "Unknown Video"
             if dur:
                 label = f"{label} [COLOR gray]({dur})[/COLOR]"
             
-            icon = thumb if thumb else self.icons.get('default', '')
+            icon = best_thumb if best_thumb else self.icons.get('default', '')
+            
+            if icon.startswith('http'):
+                icon = f"{icon}|User-Agent={urllib.parse.quote(self.ua)}&Referer={urllib.parse.quote(self.base_url)}/"
+
             self.add_link(label, full_url, 4, icon, self.fanart)
 
         next_url = self._extract_next_page(html_text, url)
@@ -498,7 +509,7 @@ class YouPornWebsite(BaseWebsite):
             return None
         m3u8s = self._find_all_m3u8(html_text)
         if m3u8s:
-            self.logger.info(f"[youporn] EMBED HLS gefunden: {m3u8s[0]}")
+            self.logger.info(f"[youporn] EMBED HLS found: {m3u8s[0]}")
             return m3u8s[0]
         
         for m in re.finditer(r'src"\s*:\s*"([^"]+)"\s*,\s*"type"\s*:\s*"(application/x-mpegURL|application/vnd.apple.mpegurl)"', html_text, re.I):
@@ -506,34 +517,35 @@ class YouPornWebsite(BaseWebsite):
         return None
 
     def play_video(self, url):
-        html_text = self._get(url, headers=self._std_headers(self.base_url))
-        if not html_text:
-            self.notify_error("YouPorn: Seite nicht geladen.")
-            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
-            return
-
-        if self._looks_like_home(html_text) and "/watch/" in url:
-            self.logger.warning("[youporn] Watch-URL lieferte Home/Disclaimer – erzwungener Retry mit Cookie-Header.")
-            hdr = self._std_headers(self.base_url)
-            
-            cj = self._ensure_session().cookies
+        self._ensure_session()
+        
+        hdr = {"User-Agent": self.ua}
+        if self.scraper:
+            cj = self.scraper.cookies
             cookie_pairs = []
             for c in cj:
                 if c.domain.endswith("youporn.com"):
                     cookie_pairs.append(f"{c.name}={c.value}")
             if cookie_pairs:
                 hdr["Cookie"] = "; ".join(cookie_pairs)
-            html_text = self._get(url, headers=hdr)
+        
+        html_text = self._get(url, headers=hdr)
+
+        if not html_text:
+            self.notify_error("YouPorn: Page not loaded.")
+            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
+            return
 
         if self._looks_like_home(html_text):
-            self.notify_error("Zugriff von YouPorn auf Startseite umgeleitet (Age/Consent).")
+            self.notify_error("Redirected to Home (Age/Consent).")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
             return
 
         video_id = self._extract_video_id(url, html_text)
-        self.logger.info(f"[youporn] VIDEO-ID: {video_id or 'unbekannt'}")
-
+        
         hls_url = None
+        mp4_url = None
+        
         if video_id:
             hls_url = self._resolve_hls_from_embed(video_id)
 
@@ -541,15 +553,88 @@ class YouPornWebsite(BaseWebsite):
             m3u8s = self._find_all_m3u8(html_text)
             if m3u8s:
                 hls_url = m3u8s[0]
-                self.logger.info(f"[youporn] WATCH HLS gefunden: {hls_url}")
+        
+        if not hls_url:
+            m_cu = re.search(r'["\']contentUrl["\']\s*:\s*["\']([^"\']+)["\']', html_text)
+            if m_cu:
+                cand = html.unescape(m_cu.group(1)).replace(r"\/", "/")
+                if "/rs:fit" not in cand and "/preview/" not in cand:
+                    if ".m3u8" in cand:
+                        hls_url = cand
+                    elif ".mp4" in cand:
+                        mp4_url = cand
+
+        if not hls_url and not mp4_url:
+            vurls = re.findall(r'["\']videoUrl["\']\s*:\s*["\']([^"\']+)["\']', html_text)
+            
+            api_hls_url = None
+            for v in vurls:
+                v = v.replace(r"\/", "/")
+                if "/media/hls/" in v:
+                    api_hls_url = v
+                    break
+            
+            if api_hls_url:
+                try:
+                    hls_data_html = self._get(api_hls_url)
+                    if hls_data_html:
+                        data = json.loads(hls_data_html)
+                        candidates = []
+                        if isinstance(data, list):
+                            for item in data:
+                                u = item.get("videoUrl", "")
+                                if u: candidates.append(u)
+                        elif isinstance(data, dict):
+                            u = data.get("videoUrl", "")
+                            if u: candidates.append(u)
+                        
+                        if candidates:
+                            for c in candidates:
+                                if "master.m3u8" in c or "/master" in c:
+                                    hls_url = c
+                                    break
+                            if not hls_url:
+                                hls_url = candidates[0]
+                except Exception:
+                    pass
+
+            if not hls_url:
+                api_mp4_url = None
+                for v in vurls:
+                    v = v.replace(r"\/", "/")
+                    if "/media/mp4/" in v:
+                        api_mp4_url = v
+                        break
+                
+                if api_mp4_url:
+                    try:
+                        mp4_data_html = self._get(api_mp4_url)
+                        if mp4_data_html:
+                            data = json.loads(mp4_data_html)
+                            candidates = []
+                            if isinstance(data, list):
+                                for item in data:
+                                    q = item.get("quality", "0")
+                                    u = item.get("videoUrl", "")
+                                    if u:
+                                        candidates.append((int(q) if q.isdigit() else 0, u))
+                            elif isinstance(data, dict):
+                                u = data.get("videoUrl", "")
+                                if u:
+                                    candidates.append((1080, u)) 
+                            
+                            if candidates:
+                                best_q, best_url = max(candidates, key=lambda x: x[0])
+                                mp4_url = best_url
+                    except Exception:
+                        pass
 
         mp4_candidates = []
-        if not hls_url:
+        if not hls_url and not mp4_url:
             defs = self._extract_media_definitions(html_text)
             defs = self._expand_remote_defs(defs, referer=url)
             for d in defs:
-                if not isinstance(d, dict):
-                    continue
+                if not isinstance(d, dict): continue
                 v = (d.get("videoUrl") or d.get("manifestUrl") or "").strip()
                 fmt = (d.get("format") or "").lower()
                 q = d.get("quality") or d.get("label") or 0
@@ -561,8 +646,12 @@ class YouPornWebsite(BaseWebsite):
                     break
                 if v and (fmt == "mp4" or ".mp4" in v.lower().split("?")[0]):
                     mp4_candidates.append((q, v))
+            
+            if not hls_url and mp4_candidates:
+                best_q, mp4_cand = max(mp4_candidates, key=lambda x: x[0])
+                mp4_url = mp4_cand
 
-        if not hls_url:
+        if not hls_url and not mp4_url:
             extras = self._parse_jsonld_and_meta(html_text)
             for e in extras:
                 v = e.get("videoUrl") or e.get("contentUrl") or ""
@@ -571,70 +660,68 @@ class YouPornWebsite(BaseWebsite):
                     hls_url = v
                     break
                 if v and (f == "mp4" or ".mp4" in v.lower().split("?")[0]):
-                    mp4_candidates.append((e.get("quality") or 0, v))
+                    if not mp4_url: mp4_url = v
+
+        play_url = None
+        is_hls = False
 
         if hls_url:
-            header_pipe = "|User-Agent={}&Referer={}&Origin={}".format(
-                urllib.parse.quote(self.ua), urllib.parse.quote(url), urllib.parse.quote(self.base_url)
+            play_url = hls_url
+            is_hls = True
+        elif mp4_url:
+            play_url = mp4_url
+
+        if play_url:
+            c_dict = self.scraper.cookies.get_dict(domain=".youporn.com")
+            c_dict.update(self.scraper.cookies.get_dict(domain="www.youporn.com"))
+            
+            for k, v in {"age_verified":"1", "is_pc":"1", "access":"1", "cookieConsent":"5", "necessary":"true"}.items():
+                if k not in c_dict: c_dict[k] = v
+
+            relevant_keys = ["age_verified", "is_pc", "access", "necessary", "cookieConsent", "RNLBSERVERID", "LBSERVERID"]
+            cookie_parts = [f"{k}={c_dict[k]}" for k in relevant_keys if k in c_dict]
+            cookie_string = "; ".join(cookie_parts)
+            dl_ua = self.scraper.headers.get("User-Agent", self.ua)
+
+            encoded_headers = "|User-Agent={}&Referer={}&Origin={}&Cookie={}".format(
+                urllib.parse.quote(dl_ua), 
+                urllib.parse.quote(url), 
+                urllib.parse.quote(self.base_url),
+                urllib.parse.quote(cookie_string)
             )
-            play_url = hls_url + header_pipe
-            self.logger.info(f"[youporn] DECISION: HLS → inputstream.adaptive (ohne Proxy)")
+            play_url += encoded_headers
+            
             li = xbmcgui.ListItem(path=play_url)
             li.setProperty("IsPlayable", "true")
-            li.setMimeType("application/vnd.apple.mpegurl")
+            if is_hls:
+                li.setMimeType("application/vnd.apple.mpegurl")
+                try:
+                    li.setProperty("inputstream", "inputstream.adaptive")
+                    li.setProperty("inputstream.adaptive.manifest_type", "hls")
+                    li.setProperty("inputstream.adaptive.stream_headers",
+                                   "User-Agent=%s&Referer=%s&Origin=%s&Cookie=%s" % (
+                                       urllib.parse.quote(dl_ua), 
+                                       urllib.parse.quote(url), 
+                                       urllib.parse.quote(self.base_url),
+                                       urllib.parse.quote(cookie_string)
+                                   ))
+                except:
+                    pass
+            else:
+                li.setMimeType("video/mp4")
+            
             li.setContentLookup(False)
-            try:
-                li.setProperty("inputstream", "inputstream.adaptive")
-                li.setProperty("inputstream.adaptive.manifest_type", "hls")
-                li.setProperty("inputstream.adaptive.stream_headers",
-                               "User-Agent=%s&Referer=%s&Origin=%s" % (urllib.parse.quote(self.ua), urllib.parse.quote(url), urllib.parse.quote(self.base_url)))
-            except Exception:
-                pass
             xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
             return
 
-        if mp4_candidates:
-            best_q, mp4_url = max(mp4_candidates, key=lambda x: x[0])
-            self.logger.info(f"[youporn] DECISION: MP4 via Proxy (Qualität={best_q})")
-            sess = self._ensure_session()
-            headers = {"Referer": url, "User-Agent": self.ua, "Origin": self.base_url}
-            try:
-                ctrl = ProxyController(
-                    mp4_url, headers,
-                    cookies=(sess.cookies if sess else None),
-                    session=sess,
-                    host="127.0.0.1", port=0
-                )
-                local_url = ctrl.start()
-            except Exception as e:
-                self.logger.error(f"[youporn] Proxy-Start fehlgeschlagen: {e}")
-                self.notify_error("YouPorn: Proxy konnte nicht gestartet werden.")
-                xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
-                return
-
-            li = xbmcgui.ListItem(path=local_url)
-            li.setProperty("IsPlayable", "true")
-            li.setMimeType("video/mp4")
-            li.setContentLookup(False)
-            xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
-
-            try:
-                monitor = xbmc.Monitor()
-                player = xbmc.Player()
-                guard = PlaybackGuard(player, monitor, local_url, ctrl, idle_timeout=3600)
-                guard.start()
-            except Exception:
-                pass
-            return
-
-        self.notify_error("YouPorn: Keine abspielbare Quelle gefunden.")
+        self.notify_error("YouPorn: No video stream found.")
         xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
 
     def process_channels(self, url):
         """List channels from YouPorn."""
         html_text = self._get(url)
         if not html_text:
-            self.notify_error("YouPorn: Channels konnten nicht geladen werden.")
+            self.notify_error("YouPorn: Failed to load channels.")
             self.end_directory()
             return
         
@@ -673,7 +760,7 @@ class YouPornWebsite(BaseWebsite):
         """List collections from YouPorn."""
         html_text = self._get(url)
         if not html_text:
-            self.notify_error("YouPorn: Collections konnten nicht geladen werden.")
+            self.notify_error("YouPorn: Failed to load collections.")
             self.end_directory()
             return
         

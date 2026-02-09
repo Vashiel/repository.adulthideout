@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 
 import sys
@@ -51,6 +50,19 @@ class EroASMR(BaseWebsite):
             self.session.get(self.base_url, timeout=5)
         except:
             pass
+            
+        self.sort_options = ["Newest", "Top 100"]
+
+    def get_start_url_and_label(self):
+        setting_id = f"{self.name}_sort_by"
+        try:
+            sort_index = int(self.addon.getSetting(setting_id) or '0')
+        except ValueError:
+            sort_index = 0
+        
+        if sort_index == 1:
+            return "https://eroasmr.com/top-100-porn-asmr-videos-of-all-time/", f"EroASMR - Top 100"
+        return self.base_url, f"EroASMR - Newest"
 
     def make_request(self, url):
         try:
@@ -73,9 +85,9 @@ class EroASMR(BaseWebsite):
             self.end_directory()
             return
 
-        if url == self.base_url:
-            self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], self.fanart)
-            self.add_dir('[COLOR blue]Categories[/COLOR]', 'CATEGORIES', 8, self.icons['categories'], self.fanart)
+        # Always show navigation (Search/Categories) as requested
+        self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], self.fanart)
+        self.add_dir('[COLOR blue]Categories[/COLOR]', 'CATEGORIES', 8, self.icons['categories'], self.fanart)
 
         video_pattern = re.compile(r'<article[^>]+class="[^"]*?viem_video[^"]*?".*?<a class="dt-image-link" href="([^"]+)".*?src="([^"]+)".*?<span class="video-duration">([^<]+)</span>.*?<h2 class="post-title.*?<a [^>]+>([^<]+)</a>', re.DOTALL)
         matches = video_pattern.findall(html_content)

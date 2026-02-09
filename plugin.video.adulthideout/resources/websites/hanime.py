@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 """
 Hanime.red Website Module for Adult Hideout

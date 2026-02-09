@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 import re
 import urllib.parse
@@ -32,13 +31,123 @@ class XvideosWebsite(BaseWebsite):
             addon_handle=addon_handle
         )
         self.category_options = ["Straight", "Gay", "Shemale"]
+        self.sort_options = ["Relevance", "Newest", "Rating", "Length", "Views", "Random"]
+        self.sort_values = {
+            "Relevance": "relevance",
+            "Newest": "uploaddate",
+            "Rating": "rating",
+            "Length": "length",
+            "Views": "views",
+            "Random": "random"
+        }
+        self.EXCLUDED_CATEGORIES = {
+            "gay": ["AI", "ASMR"],
+            "shemale": ["AI", "ASMR", "Ebony", "Interracial", "Asian", "Indian", "Latin", "Euro"], # Added some likely targets for Shemale
+        }
+
 
     def get_start_url_and_label(self):
+        # 1. Category (Straight/Gay/Shemale)
         category = self.addon.getSetting(f"{self.config['name']}_category") or "Straight"
-        url = self.get_category_url(category)
-        return url, f"{self.config['name'].capitalize()} - {category}"
+        base_url = self.get_category_url(category)
+        
+        # 2. Sort
+        sort_index = 0
+        try:
+            sort_index = int(self.addon.getSetting(f"{self.config['name']}_sort_by") or '0')
+        except: pass
+        
+        if not (0 <= sort_index < len(self.sort_options)):
+            sort_index = 0
+            
+        sort_label = self.sort_options[sort_index]
+        sort_value = self.sort_values[sort_label]
+        
+        # 3. Build URL
+        if '?' in base_url:
+            url = f"{base_url}&sort={sort_value}"
+        else:
+            url = f"{base_url}?sort={sort_value}"
+            
+        return url, f"XVideos - {category} ({sort_label})"
+
+
+    def get_sorted_url(self, url, sort_token):
+        parsed = urllib.parse.urlparse(url)
+        params = urllib.parse.parse_qs(parsed.query)
+        
+        # Detect orientation from current URL (typef param or /t:orientation/ path)
+        orientation = params.get('typef', [None])[0]
+        if not orientation and '/t:' in parsed.path:
+            match = re.search(r'/t:([^/]+)/', parsed.path)
+            if match:
+                orientation = match.group(1)
+        
+        # 1. Search Result
+        if 'k=' in parsed.query:
+            params['sort'] = [sort_token]
+            params.pop('p', None)
+            if orientation:
+                params['typef'] = [orientation]
+            new_query = urllib.parse.urlencode(params, doseq=True)
+            return urllib.parse.urlunparse(parsed._replace(query=new_query))
+        
+        # 2. Category / Tag Path
+        if '/c/' in parsed.path or '/tags/' in parsed.path:
+            # Use /tags/ format for combined sorting + orientation (robust)
+            tag_match = re.search(r'/(?:c|tags)/(?:s:[^/]+/)?(?:t:[^/]+/)?([^/]+)', parsed.path)
+            tag_name = tag_match.group(1) if tag_match else parsed.path.split('/')[-1]
+            
+            if orientation and orientation != "straight":
+                # Combined path: /tags/s:sort/t:orientation/tagname
+                new_path = f"/tags/s:{sort_token}/t:{orientation}/{tag_name}"
+            else:
+                # Standard path based on original prefix
+                prefix = '/c/' if '/c/' in parsed.path else '/tags/'
+                new_path = f"{prefix}s:{sort_token}/{tag_name}"
+            
+            return urllib.parse.urlunparse(parsed._replace(path=new_path, query=''))
+
+        # 3. Homepage / Orientation Roots -> Map to Tags for sorting
+        base_paths = ["", "/", "/gay", "/gay/", "/shemale", "/shemale/"]
+        if parsed.path in base_paths:
+            base = orientation if orientation else parsed.path.strip('/')
+            base = base or "straight"
+            tag_name = "shemale" if base == "shemale" else base
+            
+            if sort_token in ['uploaddate', 'relevance']:
+                # Newest or Relevance -> Root Homepage
+                target = '/' + base if base != 'straight' else '/'
+                return self.config['base_url'] + target
+            else:
+                # Use virtual tag path for robust sorting
+                return f"{self.config['base_url']}/tags/s:{sort_token}/t:{tag_name}/{tag_name}"
+
+        return url
+
+
+    def select_sort(self, original_url=None):
+        current_idx = 0
+        try:
+            current_idx = int(self.addon.getSetting(f"{self.config['name']}_sort_by") or '0')
+        except: pass
+        
+        idx = xbmcgui.Dialog().select("Sort by...", self.sort_options, preselect=current_idx)
+        if idx == -1: return
+
+        self.addon.setSetting(f"{self.config['name']}_sort_by", str(idx))
+        sort_token = self.sort_values[self.sort_options[idx]]
+        
+        target_url = original_url if original_url else self.get_start_url_and_label()[0]
+        target_url = self.get_sorted_url(target_url, sort_token)
+
+        xbmc.executebuiltin(
+            f"Container.Update({sys.argv[0]}?mode=2&url={urllib.parse.quote_plus(target_url)}&website={self.config['name']},replace)"
+        )
+
 
     def get_headers(self, referer=None, is_json=False):
+
         headers = {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/*,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
@@ -123,7 +232,10 @@ class XvideosWebsite(BaseWebsite):
         if search_query:
             search_url = url
             if cat_value and 'typef=' not in search_url:
-                search_url += f"&typef={cat_value}"
+                if '?' in search_url:
+                    search_url += f"&typef={cat_value}"
+                else:
+                    search_url += f"?typef={cat_value}"
         elif parsed_url.path in ["", "/"]:
             search_url = self.get_category_url(category)
         elif parsed_url.path.rstrip('/') == '/popular-tags':
@@ -131,13 +243,27 @@ class XvideosWebsite(BaseWebsite):
         else:
             search_url = url
             if cat_value and (parsed_url.path.startswith('/c/') or parsed_url.path.startswith('/tags/')):
-                if '?' in search_url:
-                    if 'typef=' not in search_url:
+                # Ensure orientation is applied via typef for initial category navigation
+                if 'typef=' not in search_url:
+                    if '?' in search_url:
                         search_url += f"&typef={cat_value}"
-                else:
-                    search_url += f"?typef={cat_value}"
+                    else:
+                        search_url += f"?typef={cat_value}"
+
+        # Apply current Sort if not present in search_url
+        sort_index = 0
+        try:
+            sort_index = int(self.addon.getSetting(f"{self.config['name']}_sort_by") or '0')
+        except: pass
+        
+        if 0 <= sort_index < len(self.sort_options):
+            sort_token = self.sort_values[self.sort_options[sort_index]]
+            search_url = self.get_sorted_url(search_url, sort_token)
 
         content = self.make_request(search_url)
+
+
+
         if content:
             parsed = urllib.parse.urlparse(url)
             path = parsed.path.rstrip('/')
@@ -146,9 +272,9 @@ class XvideosWebsite(BaseWebsite):
             self.add_basic_dirs(search_url, cat_value, is_category_page)
             
             if path == '/tags':
-                self.process_all_tags(content, search_url)
+                self.process_all_tags(content, search_url, cat_value)
             elif path == '/popular-tags':
-                self.process_popular_tags(content, search_url)
+                self.process_popular_tags(content, search_url, cat_value)
             else:
                 self.process_content_matches(content, search_url, cat_value)
         else:
@@ -159,7 +285,9 @@ class XvideosWebsite(BaseWebsite):
     def add_basic_dirs(self, current_url, cat_value, is_category_page=False):
         context_menu = [
             ('Select Category', f'RunPlugin(plugin://plugin.video.adulthideout/?mode=7&action=select_category&website={self.config["name"]}&original_url={urllib.parse.quote_plus(current_url)})'),
+            ('Sort by...', f'RunPlugin(plugin://plugin.video.adulthideout/?mode=7&action=select_sort&website={self.config["name"]}&original_url={urllib.parse.quote_plus(current_url)})'),
         ]
+
         dirs = [
             ('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], self.config["name"]),
         ]
@@ -177,7 +305,9 @@ class XvideosWebsite(BaseWebsite):
             base_url = urllib.parse.urlparse(current_url).scheme + "://" + urllib.parse.urlparse(current_url).netloc
             context_menu = [
                 ('Select Category', f'RunPlugin(plugin://plugin.video.adulthideout/?mode=7&action=select_category&website={self.config["name"]}&original_url={urllib.parse.quote_plus(current_url)})'),
+                ('Sort by...', f'RunPlugin(plugin://plugin.video.adulthideout/?mode=7&action=select_sort&website={self.config["name"]}&original_url={urllib.parse.quote_plus(current_url)})'),
             ]
+
 
             for match in matches:
                 relative_url = match.group(1).replace('THUMBNUM/', '')
@@ -221,7 +351,7 @@ class XvideosWebsite(BaseWebsite):
         except Exception as e:
             self.notify_error(f"Parsing failed: {str(e)}")
 
-    def process_popular_tags(self, content, current_url):
+    def process_popular_tags(self, content, current_url, cat_value):
         """Show popular tags from homepage dropdown (dyntop-cat, dyntopterm classes)"""
         try:
             base_url = urllib.parse.urlparse(current_url).scheme + "://" + urllib.parse.urlparse(current_url).netloc
@@ -233,14 +363,36 @@ class XvideosWebsite(BaseWebsite):
             for match in re.finditer(cat_pattern, content):
                 relative_url = match.group(1)
                 name = html.unescape(match.group(2).strip())
+                
+                # Filter based on orientation
+                if cat_value and cat_value in self.EXCLUDED_CATEGORIES:
+                    if name in self.EXCLUDED_CATEGORIES[cat_value]:
+                        continue
+
                 url = urllib.parse.urljoin(base_url, relative_url)
+                if cat_value:
+                    if '?' in url:
+                        url += f"&typef={cat_value}"
+                    else:
+                        url += f"?typef={cat_value}"
                 self.add_dir(name, url, 2, self.icons['categories'], self.fanart, context_menu)
             
             term_pattern = r'<li class="dyntopterm[^"]*"><a href="([^"]+)">([^<]+)</a></li>'
             for match in re.finditer(term_pattern, content):
                 relative_url = html.unescape(match.group(1))
                 name = html.unescape(match.group(2).strip())
+
+                # Filter based on orientation
+                if cat_value and cat_value in self.EXCLUDED_CATEGORIES:
+                    if name in self.EXCLUDED_CATEGORIES[cat_value]:
+                        continue
+
                 url = urllib.parse.urljoin(base_url, relative_url)
+                if cat_value:
+                    if '?' in url:
+                        url += f"&typef={cat_value}"
+                    else:
+                        url += f"?typef={cat_value}"
                 self.add_dir(name, url, 2, self.icons['categories'], self.fanart, context_menu)
             
             self.add_dir('[COLOR blue]All Tags >>>>[/COLOR]', f"{base_url}/tags", 2, self.icons['categories'], self.fanart, context_menu)
@@ -248,7 +400,7 @@ class XvideosWebsite(BaseWebsite):
         except Exception as e:
             self.notify_error(f"Parsing failed: {str(e)}")
 
-    def process_all_tags(self, content, current_url):
+    def process_all_tags(self, content, current_url, cat_value):
         """Show all tags from /tags page"""
         try:
             pattern = r'<li>\s*<a href="(/tags/[^"]+)"[^>]*>\s*<b>([^<]+)</b>'
@@ -262,7 +414,18 @@ class XvideosWebsite(BaseWebsite):
             for match in matches:
                 relative_url = match.group(1)
                 name = match.group(2).strip()
+                
+                # Filter based on orientation blacklist
+                if cat_value and cat_value in self.EXCLUDED_CATEGORIES:
+                    if name in self.EXCLUDED_CATEGORIES[cat_value]:
+                        continue
+
                 url = urllib.parse.urljoin(base_url, relative_url)
+                if cat_value:
+                    if '?' in url:
+                        url += f"&typef={cat_value}"
+                    else:
+                        url += f"?typef={cat_value}"
                 self.add_dir(name, url, 2, self.icons['categories'], self.fanart, context_menu)
         except Exception as e:
             self.notify_error(f"Parsing failed: {str(e)}")

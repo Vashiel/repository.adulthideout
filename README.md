@@ -2,6 +2,20 @@
 
 # Adulthideout Video Addon Repository
 
+**Version 1.0.6 "Nautilus" — 2026-02-09**
+
+This update, codenamed **"Nautilus"**, focuses on the **depth of navigation** and technical **refinement**. It introduces 9 new sites, a completely unified sorting engine, and major overhauls of the addon's most popular providers.
+
+### Key Changes in v1.0.6
+* **Expansion:** Added support for **9 new sites**, bringing the total to 66 specialized adapters:
+  * Area51, BoundHub, Fuqer, GoPorn, HeavyFetish, Pervertium, PussySpace, Rapelust, and Smutr.
+* **Unified Sorting:** Integrated a standard "Sort By" system across major sites (Newest, Top Rated, Most Viewed, etc.) accessible via the context menu.
+* **Site Redesign:** Major updates and stability fixes for flagship providers including **Redtube**, **Spankbang**, **Xhamster**, **XVideos**, and **YouPorn**.
+* **Navigation Depth:** Added core support for **Channels**, **Collections**, and enhanced **Pornstar** listings.
+* **Scraper Robustness:** Improved metadata parsing and layout-compatibility for various long-standing providers.
+
+---
+
 **Version 1.0.5 “Massive Expansion” — 2026-01-13**
 
 This update represents a **massive expansion** of the addon's capabilities, introducing 14 new sites, a completely rewritten Erome scraper, and a comprehensive codebase cleanup.
@@ -22,7 +36,7 @@ This update represents a **massive expansion** of the addon's capabilities, intr
    * Go to **Add-ons → Install from ZIP**
    * Download and point to the ZIP:
 
-     [repository.adulthideout-1.0.4.zip](https://vashiel.github.io/repository.adulthideout/)
+     [repository.adulthideout-1.0.6.zip](https://vashiel.github.io/repository.adulthideout/)
 
 2. Browse **Add-ons → Download → Video add-ons → AdultHideout**
 3. Install **AdultHideout**
@@ -56,7 +70,7 @@ To bypass these protections, a new internal **Proxy Framework** and robust **Ven
 ## 🔗 Repository Links
 
 * **Homepage / ZIP**:
-  [https://vashiel.github.io/repository.adulthideout/](https://github.com/Vashiel/repository.adulthideout/raw/master/zips/repository.adulthideout/repository.adulthideout-1.0.4.zip)
+  [https://vashiel.github.io/repository.adulthideout/](https://github.com/Vashiel/repository.adulthideout/raw/master/zips/repository.adulthideout/repository.adulthideout-1.0.6.zip)
 * **Source Code**:
   [https://github.com/Vashiel/repository.adulthideout](https://github.com/Vashiel/repository.adulthideout)
 * **Issue Tracker**:
@@ -71,7 +85,7 @@ To bypass these protections, a new internal **Proxy Framework** and robust **Ven
 
 ---
 
-*Enjoy AdultHideout v1.0.4 “Gonzales”!*
+*Enjoy AdultHideout v1.0.6 “Nautilus”!*
 
 
 # Update 05.01.2023

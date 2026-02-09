@@ -1,3 +1,11 @@
+v. 1.0.6 "Nautilus" - 2026-02-09
+- **9 New Sites**: Area51, BoundHub, Fuqer, GoPorn, HeavyFetish, Pervertium, PussySpace, Rapelust, Smutr.
+- **Major Site Updates**: Reworked Redtube, Spankbang, Xhamster, XVideos, and YouPorn for unmatched reliability and features.
+- **Sorting System**: Added unified "Sort By" functionality across major sites (Newest, Top Rated, Most Viewed, etc.).
+- **New Navigation Modes**: Support for "Channels" and "Collections" added to the core engine.
+- **Improved Metadata**: Enhanced video info labels, duration handling, and display tags.
+- **Stability**: Fixed numerous layout breaking issues and improved scraping robustness.
+
 v. 1.0.5 "Massive Expansion" - 2026-01-13
 - **14 New Sites**: Analdin, BdsmStreak, DrTuber, Empflix, Erome, PervClips, PorCore, Shameless, Shooshtime, SunPorno (+ Decoder), SxyPrn, ThisVid, TnaFlix.
 - **Improvements**: Ashemaletube (Refactored), Beeg, Spankbang, Rule34Video.
