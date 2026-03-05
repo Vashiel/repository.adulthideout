@@ -31,15 +31,33 @@ This update represents a **massive expansion** of the addon's capabilities, intr
 
 ## 📦Installation / Update
 
-1. Add my repository in Kodi:
+You can install the **AdultHideout Repository** using one of the three methods below. Once the repository is installed, you can easily install or update the video addon from it.
 
-   * Go to **Add-ons → Install from ZIP**
-   * Download and point to the ZIP:
+### Method 1: File Manager Source (Recommended)
+1. Open Kodi and select the **Gear Icon** (Settings) at the top left.
+2. Go to **File manager** → **Add source**.
+3. Click on `<None>` and enter the exact URL: `https://vashiel.github.io/repository.adulthideout/`
+4. Name the media source `AdultHideout` and click **OK**.
+5. Return to the Kodi home screen and go to **Add-ons**.
+6. Click the **Package Icon** (open box) at the top left.
+7. Select **Install from zip file** → `AdultHideout` → click on `repository.adulthideout-1.0.4.zip`.
+8. Once installed, go to **Install from repository** → **Adulthideout Video Addon Repository** → **Video add-ons** → **AdultHideout** and install it.
 
-     [repository.adulthideout-1.0.6.zip](https://vashiel.github.io/repository.adulthideout/)
+### Method 2: Direct ZIP Download
+1. Download the latest repository ZIP file directly using your browser:
+   👉 **[Download repository.adulthideout-1.0.4.zip](https://github.com/Vashiel/repository.adulthideout/raw/master/repository.adulthideout-1.0.4.zip)**
+2. Transfer the file to your Kodi device if necessary.
+3. Open Kodi and navigate to **Add-ons** → **Package Icon** → **Install from zip file**.
+4. Browse to the folder where you downloaded the file and select `repository.adulthideout-1.0.4.zip`.
+5. Finally, go to **Install from repository** → **Adulthideout Video Addon Repository** → **Video add-ons** → **AdultHideout** and install it.
 
-2. Browse **Add-ons → Download → Video add-ons → AdultHideout**
-3. Install **AdultHideout**
+### Method 3: Downloader App (For FireTV / Android TV)
+If you are using an Amazon Fire TV Stick or Android TV with the **Downloader App**, you can use this quick shortcode:
+1. Open the **Downloader** app on your device.
+2. Enter the shortcode: **`9480267`** *(Alternatively, enter `aftv.news/9480267` in the URL field).*
+3. Press **Go / Enter**. The download of `repository.adulthideout-1.0.4.zip` will start automatically.
+4. Open Kodi, go to **Add-ons** → **Package Icon** → **Install from zip file** and locate the file in your device's `Downloader` folder.
+5. Finish by going to **Install from repository** → **Adulthideout Video Addon Repository** → **Video add-ons** → **AdultHideout** and install it.
 
 ---
 
@@ -70,7 +88,7 @@ To bypass these protections, a new internal **Proxy Framework** and robust **Ven
 ## 🔗 Repository Links
 
 * **Homepage / ZIP**:
-  [https://vashiel.github.io/repository.adulthideout/](https://github.com/Vashiel/repository.adulthideout/raw/master/zips/repository.adulthideout/repository.adulthideout-1.0.6.zip)
+  [https://vashiel.github.io/repository.adulthideout/](https://github.com/Vashiel/repository.adulthideout/raw/master/repository.adulthideout-1.0.4.zip)
 * **Source Code**:
   [https://github.com/Vashiel/repository.adulthideout](https://github.com/Vashiel/repository.adulthideout)
 * **Issue Tracker**:
@@ -93,7 +111,7 @@ If anyone was wondering why I haven't been working on AH... I couldn't. I got Co
 
 In short, I had other concerns. 
 
-In the meantime, someone managed to get access to my email address linked to Github and locked me out of both. I have access again since this morning. Nothing was changed. Someone just wanted to annoy me. I will work on the project again in the coming days."
+In the meantime, someone managed to get access to my email address linked to Github and locked me out of both. I have access again since this morning. Nothing was changed. Someone just wanted to annoy me. I will work on the project again in the coming days.
 
 Cheers, Anton.
 
