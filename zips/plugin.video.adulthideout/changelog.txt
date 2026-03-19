@@ -1,3 +1,14 @@
+v. 1.0.7 "10th Anniversary Release" - 2026-03-06
+- **50 New Sites**: PornDoe, PornOne, PornHat, PornTrex, CumLouder, PornMZ, AnySex, PornDig, Tube8, xCafe, LetMeJerk, Upornia, FullPorner, XXXFiles, 3Movs, PornHD3X, XMoviesForYou, Porn300, OK.xxx, PerfectGirls, SuperPorn, XBabe, Veporn, Porn7, Porn00, Tubev, HClips, ThePornBang, BravoPorn, PornSlash, Pornheed, HDZog, ZBPorn, TrendyPorn, Nudez, Pornwhite, Pornflip, PornTry, BananaMovies, SaintPorn, WatchPorn, BigAssPorn, FPO, TheyAreHuge, BigTitsLust, BlackPorn24, MilfPorn8, MaturePorn.Tube, Blowjobs.pro, LesbianPorn8.
+- **Improved & Fixed**: Ashemaletube, Hanime, Vikiporn, Spankbang, Rule34video, Pornhub, Redtube, PornHits, PerfectGirls, SuperPorn.
+- **Hanime**: Reworked playback for the current nhplayer flow, added new challenge/PoW handling and improved playback fallback for Android/Fire TV.
+- **PerfectGirls**: Fixed pagination and stabilized playback.
+- **SuperPorn**: Added Select Content (Straight/Gay) and improved playback behavior.
+- **View Handling**: Improved persistent Wall/List view behavior across pagination and when returning from playback.
+- **Advanced Networking**: Implemented Local Proxy Controller for Rule34video and Native PoW Bypass for Hanime.
+- **Core Engine**: Added Smart WebP caching and parallel preloading for lightning-fast browsing.
+- **UI Enhancements**: Persistent navigation controls and unified WideList view for a premium experience.
+
 v. 1.0.6 "Nautilus" - 2026-02-09
 - **9 New Sites**: Area51, BoundHub, Fuqer, GoPorn, HeavyFetish, Pervertium, PussySpace, Rapelust, Smutr.
 - **Major Site Updates**: Reworked Redtube, Spankbang, Xhamster, XVideos, and YouPorn for unmatched reliability and features.
@@ -456,23 +467,9 @@ v 0.4.4 22-03-2016
 
 
 v 0.4.3 13-03-2016
-- added gotporn.com
-- added categories and pornstars subs for xvideos.com
-- fixed search for xvideos.com 
-- added categories for yes.xxx
-- added categories for tubepornclassic.com 
-- added categories for pornxs.com
-- added logo for pornsocket.com
-- code reorginized and minor fixes
+- added gotpornv1.1.2
 
-v 0.4.2 05-03-2016
-- removed Jamo.tv
-- added Jav720p.net
-- fixed motherless.com group names 
-- fixed redtube.com search and channels
-- removed trash code 
-
-v 0.4.1 13-02-2016
+v1.1.1 13-02-2016
 - removed FlyFLV
 - Minor fixes
 

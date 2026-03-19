@@ -1,120 +1,108 @@
-# ![Adulthideout Fan Art](repository.adulthideout/resources/fanart.jpg)
+# AdultHideout Repository
 
-# Adulthideout Video Addon Repository
+![Adulthideout 10th Anniversary](repository.adulthideout/resources/fanart.jpg)
 
-**Version 1.0.6 "Nautilus" — 2026-02-09**
+## 1.0.7 "Lucky 7" - 10th Anniversary Release
 
-This update, codenamed **"Nautilus"**, focuses on the **depth of navigation** and technical **refinement**. It introduces 9 new sites, a completely unified sorting engine, and major overhauls of the addon's most popular providers.
+Nearly 10 years ago, AdultHideout came to life in **January 2016** as version **0.1 "Besa first try"**.
 
-### Key Changes in v1.0.6
-* **Expansion:** Added support for **9 new sites**, bringing the total to 66 specialized adapters:
-  * Area51, BoundHub, Fuqer, GoPorn, HeavyFetish, Pervertium, PussySpace, Rapelust, and Smutr.
-* **Unified Sorting:** Integrated a standard "Sort By" system across major sites (Newest, Top Rated, Most Viewed, etc.) accessible via the context menu.
-* **Site Redesign:** Major updates and stability fixes for flagship providers including **Redtube**, **Spankbang**, **Xhamster**, **XVideos**, and **YouPorn**.
-* **Navigation Depth:** Added core support for **Channels**, **Collections**, and enhanced **Pornstar** listings.
-* **Scraper Robustness:** Improved metadata parsing and layout-compatibility for various long-standing providers.
+It was never meant to become a big mainstream project. It started for one very specific reason: I wanted to play a single website in Kodi.
+
+That website was Motherless.
+
+What began as one small personal addon for one site slowly turned into something much bigger. One site became a few. A few became dozens. Fixes turned into rewrites. Quick experiments turned into something people actually kept using.
+
+And now, somehow, we have had 10 years together.
+
+Even after all this time, AdultHideout is still a niche addon, and that is a good thing. A lot of the sites inside it are niche. The reason this addon exists in the first place was niche. It started with one very specific need, and that spirit never really disappeared.
+
+So even if this birthday is being celebrated a little later, version **1.0.7 "Lucky 7"** is our **10th Anniversary release** — and a fitting one, with an incredible **50 new sites** added for the occasion.
+
+### Highlights
+- **50 new sites** added for the 1.0.7 release
+- A special anniversary release built around the roots of the addon
+- Major repair wave across existing providers, playback, pagination, sorting, thumbnails, and Kodi view behavior
+- Expanded niche coverage while staying true to what AdultHideout has always been
+
+### 1.0.7 New Sites
+PornDoe, PornOne, PornHat, PornTrex, CumLouder, PornMZ, AnySex, PornDig, Tube8, xCafe, LetMeJerk, Upornia, FullPorner, XXXFiles, 3Movs, PornHD3X, XMoviesForYou, Porn300, OK.xxx, PerfectGirls, SuperPorn, XBabe, Veporn, Porn7, Porn00, Tubev, HClips, ThePornBang, BravoPorn, PornSlash, Pornheed, HDZog, ZBPorn, TrendyPorn, Nudez, Pornwhite, Pornflip, PornTry, BananaMovies, SaintPorn, WatchPorn, BigAssPorn, FPO, TheyAreHuge, BigTitsLust, BlackPorn24, MilfPorn8, MaturePorn.Tube, Blowjobs.pro, LesbianPorn8.
 
 ---
 
-**Version 1.0.5 “Massive Expansion” — 2026-01-13**
+## Installation / Update
 
-This update represents a **massive expansion** of the addon's capabilities, introducing 14 new sites, a completely rewritten Erome scraper, and a comprehensive codebase cleanup.
+You can install the **AdultHideout Repository** using one of the methods below. Once the repository is installed, you can install or update the video addon from it.
 
-### Key Changes in v1.0.5
-* **Expansion:** Added support for **14 new sites**, including:
-  * Analdin, BdsmStreak, DrTuber, Empflix, **Erome**, PervClips, PorCore, Shameless, Shooshtime, SunPorno, SxyPrn, ThisVid, TnaFlix.
-* **Erome Overhaul:** Complete rewrite with robust filters (Straight/Gay/Trans/Hentai), persistent search, and seamless pagination.
-* **Refactoring:** Removed all debugging comments from **all 57 websites** for a clean, production-ready codebase.
-* **Decoders:** Added new decoding logic for SunPorno and optimized existing ones.
-
----
-
-## 📦Installation / Update
-
-You can install the **AdultHideout Repository** using one of the three methods below. Once the repository is installed, you can easily install or update the video addon from it.
-
-### Method 1: File Manager Source (Recommended)
-1. Open Kodi and select the **Gear Icon** (Settings) at the top left.
-2. Go to **File manager** → **Add source**.
-3. Click on `<None>` and enter the exact URL: `https://vashiel.github.io/repository.adulthideout/`
-4. Name the media source `AdultHideout` and click **OK**.
-5. Return to the Kodi home screen and go to **Add-ons**.
-6. Click the **Package Icon** (open box) at the top left.
-7. Select **Install from zip file** → `AdultHideout` → click on `repository.adulthideout-1.0.4.zip`.
-8. Once installed, go to **Install from repository** → **Adulthideout Video Addon Repository** → **Video add-ons** → **AdultHideout** and install it.
+### Method 1: File Manager Source
+1. Open Kodi and select the **Gear Icon**.
+2. Go to **File manager** -> **Add source**.
+3. Click on `<None>` and enter: `https://vashiel.github.io/repository.adulthideout/`
+4. Name the source `AdultHideout` and click **OK**.
+5. Return to Kodi and open **Add-ons**.
+6. Click the **Package Icon**.
+7. Select **Install from zip file** -> `AdultHideout` -> `repository.adulthideout-1.0.4.zip`.
+8. Then go to **Install from repository** -> **Adulthideout Video Addon Repository** -> **Video add-ons** -> **AdultHideout**.
 
 ### Method 2: Direct ZIP Download
-1. Download the latest repository ZIP file directly using your browser:
-   👉 **[Download repository.adulthideout-1.0.4.zip](https://github.com/Vashiel/repository.adulthideout/raw/master/repository.adulthideout-1.0.4.zip)**
-2. Transfer the file to your Kodi device if necessary.
-3. Open Kodi and navigate to **Add-ons** → **Package Icon** → **Install from zip file**.
-4. Browse to the folder where you downloaded the file and select `repository.adulthideout-1.0.4.zip`.
-5. Finally, go to **Install from repository** → **Adulthideout Video Addon Repository** → **Video add-ons** → **AdultHideout** and install it.
+1. Download the repository ZIP:
+   [Download repository.adulthideout-1.0.4.zip](https://github.com/Vashiel/repository.adulthideout/raw/master/repository.adulthideout-1.0.4.zip)
+2. Open Kodi -> **Add-ons** -> **Package Icon** -> **Install from zip file**.
+3. Select the downloaded `repository.adulthideout-1.0.4.zip`.
+4. Then install **AdultHideout** from the repository.
 
-### Method 3: Downloader App (For FireTV / Android TV)
-If you are using an Amazon Fire TV Stick or Android TV with the **Downloader App**, you can use this quick shortcode:
-1. Open the **Downloader** app on your device.
-2. Enter the shortcode: **`9480267`** *(Alternatively, enter `aftv.news/9480267` in the URL field).*
-3. Press **Go / Enter**. The download of `repository.adulthideout-1.0.4.zip` will start automatically.
-4. Open Kodi, go to **Add-ons** → **Package Icon** → **Install from zip file** and locate the file in your device's `Downloader` folder.
-5. Finish by going to **Install from repository** → **Adulthideout Video Addon Repository** → **Video add-ons** → **AdultHideout** and install it.
+### Method 3: Downloader App (Fire TV / Android TV)
+1. Open the **Downloader** app.
+2. Enter the shortcode **`9480267`** or `aftv.news/9480267`.
+3. Download `repository.adulthideout-1.0.4.zip`.
+4. In Kodi, go to **Add-ons** -> **Package Icon** -> **Install from zip file**.
+5. Install the repository ZIP, then install **AdultHideout** from the repository.
 
 ---
 
-**Version 1.0.4 “Gonzales” — 2025-11-25**
+## Repository Links
 
-This is the largest update since v1.0.0. Version 1.0.4 "Gonzales" focuses entirely on speed and optimization while adapting to modern website security mechanisms.
-
-To bypass these protections, a new internal **Proxy Framework** and robust **Vendored Libraries** (Requests, Urllib3, Cloudscraper, JS2Py) have been implemented. While such security layers typically add latency, the architecture was heavily optimized to counter this effect. Video startup times have been reduced from approximately 14 seconds to **instant playback**.
-
-### Key Changes in v1.0.4
-* **Performance:** Implemented `proxy_utils.py` for efficient session handling and local proxy streaming.
-* **New Content:** Added **9 new sites**: DarknessPorn, FullXCinema, NoodleMagazine, PornZog, PunishWorld, ShemaleZ, VJAV, VoyeurHit, and YouPorn.
-* **Refactoring:** Extensive changes to core logic and adapters. See `changelog.txt` for the full technical breakdown.
+- **Homepage / ZIP**: [https://vashiel.github.io/repository.adulthideout/](https://github.com/Vashiel/repository.adulthideout/raw/master/repository.adulthideout-1.0.4.zip)
+- **Source Code**: [https://github.com/Vashiel/repository.adulthideout](https://github.com/Vashiel/repository.adulthideout)
+- **Issue Tracker**: [https://github.com/Vashiel/repository.adulthideout/issues](https://github.com/Vashiel/repository.adulthideout/issues)
 
 ---
 
-##  What’s New in v1.0.0 "Jubilee"
+## Release Archive
 
-* **Core refactor:** unified `BaseWebsite` class for HTTP, parsing, filtering & playback
-* **Six new adapters:** DaftPorn, ePorner, MissAV, Pornhub, PornTN (+ decoder), TubePornClassic (+ decoder)
-* **Legacy removal:** dropped old scripts, modules and JSON caches
-* **Dynamic menus:** category, sort, duration & quality filters
-* **Central query history** via `queries.json`
-* **Enhanced error handling** to avoid silent failures
+<details>
+<summary>Older release notes</summary>
+
+### 1.0.6 "Nautilus" - 2026-02-09
+- Added 9 new sites
+- Unified sorting across major providers
+- Major updates for Redtube, Spankbang, Xhamster, XVideos, and YouPorn
+- Added stronger support for channels, collections, and pornstar navigation
+
+### 1.0.5 "Massive Expansion" - 2026-01-13
+- Added 14 new sites
+- Complete Erome overhaul
+- Large cleanup pass across the website adapters
+
+### 1.0.4 "Gonzales" - 2025-11-25
+- Added 9 new sites
+- Introduced the internal proxy framework and vendored networking libraries
+- Significant playback startup optimizations
+
+### 1.0.0 "Jubilee"
+- Unified BaseWebsite core
+- Added DaftPorn, ePorner, MissAV, Pornhub, PornTN, and TubePornClassic
+- Introduced dynamic menus, filters, and centralized query history
+
+### Project Note - 2023-01-05
+If anyone was wondering why I was away from AdultHideout for a while: life got in the way, health had to come first, and access to my GitHub-linked email account was lost for some time. Access was restored, nothing major had been changed, and work resumed afterward.
+
+</details>
 
 ---
 
-## 🔗 Repository Links
+## Contributing and Support
 
-* **Homepage / ZIP**:
-  [https://vashiel.github.io/repository.adulthideout/](https://github.com/Vashiel/repository.adulthideout/raw/master/repository.adulthideout-1.0.4.zip)
-* **Source Code**:
-  [https://github.com/Vashiel/repository.adulthideout](https://github.com/Vashiel/repository.adulthideout)
-* **Issue Tracker**:
-  [https://github.com/Vashiel/repository.adulthideout/issues](https://github.com/Vashiel/repository.adulthideout/issues)
+- Submit bugs or feature requests through the issue tracker.
+- Pull requests are welcome.
 
----
-
-## 🤝 Contributing & Support
-
-* **Submit bugs** or **feature requests** via the Issue Tracker.
-* **Pull requests** are welcome — please follow the existing code style.
-
----
-
-*Enjoy AdultHideout v1.0.6 “Nautilus”!*
-
-
-# Update 05.01.2023
-If anyone was wondering why I haven't been working on AH... I couldn't. I got Corona two years ago and there were aftermaths that I had to work on for a while.
-
-In short, I had other concerns. 
-
-In the meantime, someone managed to get access to my email address linked to Github and locked me out of both. I have access again since this morning. Nothing was changed. Someone just wanted to annoy me. I will work on the project again in the coming days.
-
-Cheers, Anton.
-
-# AdultHideout
-XXX Porn Adult Addon. Matrix and Leia compatible.<br />
-The one and only official site for my Repo is this Github Page.
+AdultHideout started with Motherless. Ten years later, it is still here.

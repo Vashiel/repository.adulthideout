@@ -198,12 +198,15 @@ class BaseWebsite:
         liz.getVideoInfoTag().setTitle(name)
         liz.setProperty('IsPlayable', 'true')
         
+        if info_labels:
+            liz.setInfo('video', info_labels)
+        
         # Auto-add context menu for sorting if not provided
         if context_menu is None:
             context_menu = []
         
         # Add sort menu if available
-        if hasattr(self, 'select_sort'):
+        if hasattr(self, 'select_sort') and hasattr(self, 'sort_options') and self.sort_options:
             # Check if sort is already present
             sort_action = 'action=select_sort'
             is_present = False
@@ -262,8 +265,22 @@ class BaseWebsite:
         elif action == 'edit_search_item': self.edit_query(query_to_edit=url)
         elif action == 'clear_history': self.clear_search_history()
 
-    def process_content(self, url):
+    def process_content(self, url, **kwargs):
         raise NotImplementedError
+
+    def convert_duration(self, duration_str):
+        """Converts duration string (MM:SS or HH:MM:SS) to total seconds for Kodi."""
+        if not duration_str:
+            return 0
+        try:
+            parts = duration_str.split(':')
+            if len(parts) == 2:  # MM:SS
+                return int(parts[0]) * 60 + int(parts[1])
+            elif len(parts) == 3:  # HH:MM:SS
+                return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+        except (ValueError, IndexError):
+            pass
+        return 0
 
     def play_video(self, url):
         raise NotImplementedError
@@ -272,5 +289,6 @@ class BaseWebsite:
         xbmcplugin.setContent(self.addon_handle, content_type)
         viewtype = int(self.addon.getSetting('viewtype') or '0')
         view_modes = [50, 51, 500, 501, 502]
-        xbmc.executebuiltin(f'Container.SetViewMode({view_modes[viewtype]})')
         xbmcplugin.endOfDirectory(self.addon_handle)
+        xbmc.sleep(75)
+        xbmc.executebuiltin(f'Container.SetViewMode({view_modes[viewtype]})')

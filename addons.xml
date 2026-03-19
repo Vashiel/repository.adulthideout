@@ -1,17 +1,24 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.6" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.7" provider-name="Vashiel">
+    <requires>
+        <import addon="xbmc.python" version="3.0.0"/>
+        <import addon="script.module.requests" version="2.25.1"/>
+    </requires>
     <extension point="xbmc.python.pluginsource" library="default.py">
         <provides>video</provides>
     </extension>
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
-v. 1.0.6 "Nautilus" - 2026-02-09
-- 9 New Sites: Area51, BoundHub, Fuqer, GoPorn, HeavyFetish, Pervertium, PussySpace, Rapelust, Smutr.
-- Site Redesign: Reworked Redtube, Spankbang, Xhamster, XVideos, and YouPorn.
-- Features: Unified Sorting Engine, Channels support, Collections support.
-- Stability: Massive improvements to scraper reliability and metadata parsing.
+v. 1.0.7 "10th Anniversary Release" - 2026-03-06
+- **50 New Sites**: PornDoe, PornOne, PornHat, PornTrex, CumLouder, PornMZ, AnySex, PornDig, Tube8, xCafe, LetMeJerk, Upornia, FullPorner, XXXFiles, 3Movs, PornHD3X, XMoviesForYou, Porn300, OK.xxx, PerfectGirls, SuperPorn, XBabe, Veporn, Porn7, Porn00, Tubev, HClips, ThePornBang, BravoPorn, PornSlash, Pornheed, HDZog, ZBPorn, TrendyPorn, Nudez, Pornwhite, Pornflip, PornTry, BananaMovies, SaintPorn, WatchPorn, BigAssPorn, FPO, TheyAreHuge, BigTitsLust, BlackPorn24, MilfPorn8, MaturePorn.Tube, Blowjobs.pro, LesbianPorn8.
+- **Improved and Fixed**: Ashemaletube, Hanime, Vikiporn, Spankbang, Rule34video, Pornhub, Redtube, PornHits, PerfectGirls, SuperPorn.
+- **Hanime**: Reworked playback for the current nhplayer flow, added updated challenge/PoW handling and improved playback fallback for Android/Fire TV.
+- **PerfectGirls**: Fixed pagination and stabilized playback.
+- **SuperPorn**: Added Select Content (Straight/Gay) and improved playback behavior.
+- **View Handling**: Improved persistent Wall/List view behavior across pagination and when returning from playback.
+- **Core Engine &amp; Networking**: Smart WebP caching, parallel preloading, Native PoW Bypass for Hanime, Local Proxy Controller.
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>

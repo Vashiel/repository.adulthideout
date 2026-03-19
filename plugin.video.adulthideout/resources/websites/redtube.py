@@ -232,11 +232,9 @@ class RedtubeWebsite(BaseWebsite):
         except Exception:
             return None, None
 
-    def scrape_main_page(self, sort_path):
-        """Scrape videos from the main page with sorting (HTML scraping)."""
-        url = f"{self.web_base.rstrip('/')}{sort_path}"
+    def scrape_main_page(self, path):
+        url = urllib_parse.urljoin(self.web_base, path)
         self.logger.info(f"Redtube Debug: Scraping main page: {url}")
-        
         html_content, cookie_jar = self.make_request(url)
         if not html_content:
             return []
@@ -244,23 +242,40 @@ class RedtubeWebsite(BaseWebsite):
         videos = []
         seen_ids = set()
         
-        video_block_pattern = re.compile(
-            r'data-video-id="(\d+)".*?'  # Video ID
-            r'data-src="([^"]+)".*?'  # Thumbnail
-            r'tm_video_duration["\s>]+(\d+:\d+).*?'  # Duration
-            r'title="([^"]+)"',  # Title
-            re.DOTALL
-        )
+        # Extract individual video blocks
+        # Redtube uses <li ... data-video-id="123" ...>
+        block_pattern = re.compile(r'<li[^>]+data-video-id="(\d+)"[^>]*>.*?</li>', re.DOTALL)
         
-        for match in video_block_pattern.finditer(html_content):
-            video_id = match.group(1)
+        for block_match in block_pattern.finditer(html_content):
+            video_id = block_match.group(1)
             if video_id in seen_ids:
                 continue
             seen_ids.add(video_id)
             
-            thumb = match.group(2)
-            duration = match.group(3)
-            title = match.group(4).strip()
+            block_html = block_match.group(0)
+            
+            # Extract details from the block
+            thumb = ""
+            thumb_match = re.search(r'data-src="([^"]+)"', block_html)
+            if thumb_match:
+                thumb = thumb_match.group(1).replace("&amp;", "&")
+            
+            if thumb and "|" not in thumb:
+                thumb += "|User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125.0.0.0&Referer=https://www.redtube.com/"
+            
+            duration = "0:00"
+            duration_match = re.search(r'tm_video_duration["\s>]+(\d+:\d+)', block_html)
+            if duration_match:
+                duration = duration_match.group(1)
+                
+            title = f"Video {video_id}"
+            # Title can be in various places, try a few
+            title_match = re.search(r'class="[^"]*video-title-text[^"]*"[^>]*>\s*([^<]+)', block_html)
+            if not title_match:
+                title_match = re.search(r'title="([^"]+)"', block_html)
+            
+            if title_match:
+                title = title_match.group(1).strip()
             
             videos.append({
                 "video_id": video_id,
@@ -273,39 +288,12 @@ class RedtubeWebsite(BaseWebsite):
             if len(videos) >= 40:
                 break
         
-        if not videos:
-            self.logger.info("Redtube Debug: Primary pattern failed, trying fallback")
-            id_matches = re.findall(r'data-video-id="(\d+)"', html_content)
-            title_matches = re.findall(r'class="[^"]*video-title[^"]*"[^>]*title="([^"]+)"', html_content)
-            duration_matches = re.findall(r'tm_video_duration["\s>]+(\d+:\d+)', html_content)
-            thumb_matches = re.findall(r'data-src="(https://[^"]+\.jpg[^"]*)"', html_content)
-            
-            for i, vid_id in enumerate(id_matches):
-                if vid_id in seen_ids:
-                    continue
-                seen_ids.add(vid_id)
-                
-                title = title_matches[i] if i < len(title_matches) else f"Video {vid_id}"
-                duration = duration_matches[i] if i < len(duration_matches) else "0:00"
-                thumb = thumb_matches[i] if i < len(thumb_matches) else ""
-                
-                videos.append({
-                    "video_id": vid_id,
-                    "url": f"{self.web_base}{vid_id}",
-                    "title": title,
-                    "duration": duration,
-                    "thumb": thumb
-                })
-                
-                if len(videos) >= 40:
-                    break
-        
-        self.logger.info(f"Redtube Debug: Scraped {len(videos)} videos (with details: {len([v for v in videos if v['thumb']])})")
+        self.logger.info(f"Redtube Debug: Scraped {len(videos)} videos")
         return videos
 
-    def scrape_categories(self):
+    def scrape_categories(self, url_suffix=""):
         """Scrape categories with thumbnails from the website."""
-        url = f"{self.web_base}categories"
+        url = f"{self.web_base}categories{url_suffix}"
         self.logger.info(f"Redtube Debug: Scraping categories from: {url}")
         
         html_content, _ = self.make_request(url)
@@ -321,14 +309,19 @@ class RedtubeWebsite(BaseWebsite):
         for match in cat_pattern.finditer(html_content):
             cat_url = match.group(1)
             thumb = match.group(2)
+            if thumb:
+                thumb = thumb.replace("&amp;", "&")
+            
+            if thumb and "|" not in thumb:
+                thumb += "|User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125.0.0.0&Referer=https://www.redtube.com/"
             name = match.group(3).strip()
             
-            cat_name = cat_url.split('/')[-1] if '/' in cat_url else cat_url
-            api_url = f"{self.api_base}?data=redtube.Videos.searchVideos&output=json&category={urllib_parse.quote(name)}&page=1"
+            # The category path: e.g. /redtube/asian
+            full_cat_url = cat_url if cat_url.startswith("http") else f"{self.web_base.rstrip('/')}{cat_url}"
             
             categories.append({
                 "name": name,
-                "url": api_url,
+                "url": full_cat_url,
                 "thumb": thumb
             })
         
@@ -399,9 +392,12 @@ class RedtubeWebsite(BaseWebsite):
             
             self.logger.info(f"Redtube Debug: base_path='{base_path}', netloc='{netloc}', query='{query}'")
 
+            params = urllib_parse.parse_qs(query)
+            page = params.get("page", ["1"])[0]
+
             is_main_page = (url == self.base_url or url == self.web_base or 
-                           not netloc or 
-                           (not base_path and netloc == "www.redtube.com"))
+                           url == "BOOTSTRAP" or not netloc or 
+                           (not base_path and netloc == "www.redtube.com" and "search" not in params))
             
             if is_main_page:
                 self.logger.info("Redtube Debug: Main page - using HTML scraping for sorting")
@@ -416,9 +412,14 @@ class RedtubeWebsite(BaseWebsite):
                     sort_option = self.sort_options[0]
                 
                 sort_path = self.web_sort_paths.get(sort_option, "/newest")
-                self.logger.info(f"Redtube Debug: Sort option={sort_option}, path={sort_path}")
+                if int(page) > 1:
+                    scrape_url = f"{sort_path}?page={page}"
+                else:
+                    scrape_url = sort_path
+                    
+                self.logger.info(f"Redtube Debug: Sort option={sort_option}, path={scrape_url}")
                 
-                videos = self.scrape_main_page(sort_path)
+                videos = self.scrape_main_page(scrape_url)
                 
                 if not videos:
                     self.notify_error("No videos found")
@@ -431,19 +432,34 @@ class RedtubeWebsite(BaseWebsite):
                     display_title = f"{video['title']} [{video.get('duration', '0:00')}]"
                     self.add_link(display_title, video["url"], 4, video.get("thumb", ""), self.fanart)
 
+                next_page = int(page) + 1
+                if len(videos) >= 10: 
+                    next_url = f"{self.web_base}?page={next_page}"
+                    self.add_dir(f">> Next Page ({next_page}) >>", next_url, 2, self.icons['default'], self.fanart)
+
                 self.end_directory()
                 return
 
-            page = urllib_parse.parse_qs(query).get("page", ["1"])[0]
-
             if base_path == "categories":
-                categories = self.scrape_categories()
+                # For paginating categories
+                cat_suffix = ""
+                if int(page) > 1:
+                    cat_suffix = f"?page={page}"
+                    
+                categories = self.scrape_categories(cat_suffix)
                 if not categories:
                     self.notify_error("Failed to load categories")
                 else:
                     self.add_basic_dirs(url)
                     for cat in sorted(categories, key=lambda x: x["name"]):
                         self.add_dir(cat["name"], cat["url"], 2, cat["thumb"], self.fanart)
+                        
+                    next_page = int(page) + 1
+                    # Hard cap at 5 since they don't have thousands
+                    if next_page <= 5 and len(categories) == 40: 
+                        next_url = f"{self.web_base}categories?page={next_page}"
+                        self.add_dir("Next Page", next_url, 2, self.icons['default'], self.fanart)
+                        
                 self.end_directory()
                 return
 
@@ -544,39 +560,71 @@ class RedtubeWebsite(BaseWebsite):
             params = urllib_parse.parse_qs(query)
             params["page"] = page
             
-            if "search" in params or "tags[]" in params or "category" in params:
+            # Since the API is broken, we scrape all lists directly via HTML.
+            # Convert a Category URL or search URL directly to the scraping function.
+            is_category = base_path.startswith("redtube/")
+            is_search = "search" in params
+            
+            scrape_url = ""
+            sort_param = ""
+            
+            if is_search or is_category:
                 try:
                     sort_idx = int(self.addon.getSetting(f"{self.name}_sort_by") or "0")
                     if 0 <= sort_idx < len(self.sort_options):
                         sort_option = self.sort_options[sort_idx]
-                        sort_path = self.sort_paths.get(sort_option, "")
-                        sort_params = urllib_parse.parse_qs(sort_path.lstrip("?"))
-                        if "ordering" in sort_params:
-                            params["ordering"] = sort_params["ordering"][0]
-                        if "period" in sort_params:
-                            params["period"] = sort_params["period"][0]
-                        self.logger.info(f"Redtube Debug: Applied sort for search - {sort_option}")
+                        if is_search:
+                            # For searches, it uses the hyphenated path
+                            sort_path = self.web_sort_paths.get(sort_option, "/newest")
+                            sort_param = sort_path.replace("/", "-") # e.g. -newest
+                        else:
+                            # For categories, it uses standard query args
+                            sort_param = self.sort_paths.get(sort_option, "?ordering=newest&period=alltime")
                 except (ValueError, TypeError):
                     pass
             
-            data, _ = self.api_request("redtube.Videos.searchVideos", params)
-            if not data or "videos" not in data or not data["videos"]:
-                self.notify_error("No videos found")
+            if is_category:
+                 # It's a category e.g. /redtube/asian
+                 # Add sort path e.g. /redtube/asian?ordering=newest
+                 scrape_url = f"{self.web_base.rstrip('/')}/{base_path}{sort_param}"
+                 if int(page) > 1:
+                     if "?" in scrape_url:
+                         scrape_url += f"&page={page}"
+                     else:
+                         scrape_url += f"?page={page}"
+                     
+            elif is_search:
+                 search_term = params["search"][0]
+                 scrape_url = f"{self.web_base.rstrip('/')}/?search={urllib_parse.quote_plus(search_term)}"
+                 if sort_param: # Usually they don't support sort on search well, but if they do it's an extra param
+                     pass 
+                 if int(page) > 1:
+                     scrape_url += f"&page={page}"
+            
+            if scrape_url:
+                self.logger.info(f"Redtube Debug: Scraping list from {scrape_url}")
+                # We can reuse the main page scraper because the HTML grid structure is identical
+                videos = self.scrape_main_page(scrape_url.replace(self.web_base.rstrip('/'), ''))
+                
+                if not videos:
+                    self.notify_error("No videos found")
+                    self.end_directory()
+                    return
+    
+                self.add_basic_dirs(url)
+                for video in videos:
+                    display_title = f"{video['title']} [{video.get('duration', '0:00')}]"
+                    self.add_link(display_title, video["url"], 4, video.get("thumb", ""), self.fanart)
+    
+                next_page = int(page) + 1
+                if len(videos) >= 20: # Typically 40 per page, but if it's over 20 assume a full page
+                    params["page"] = str(next_page)
+                    # Reconstruct the original URL to keep the kodi router happy
+                    next_url = f"{self.base_url}/{base_path}?{urllib_parse.urlencode(params, doseq=True)}"
+                    self.add_dir("Next Page", next_url, 2, self.icons['default'], self.fanart)
+    
                 self.end_directory()
                 return
-
-            self.add_basic_dirs(url)
-            for video in data["videos"]:
-                video_data = video["video"]
-                display_title = f"{video_data['title']} [{video_data.get('duration', '0:00')}]"
-                self.add_link(display_title, video_data["url"], 4, video_data.get("thumb", ""), self.fanart)
-
-            next_page = int(page) + 1
-            total_videos = data.get("count", 0)
-            if next_page <= (total_videos + 19) // 20:
-                params["page"] = str(next_page)
-                next_url = f"{self.api_base}?{urllib_parse.urlencode(params, doseq=True)}"
-                self.add_dir("Next Page", next_url, 2, self.icons['default'], self.fanart)
 
             self.end_directory()
         except Exception as e:
@@ -597,12 +645,19 @@ class RedtubeWebsite(BaseWebsite):
     def play_video(self, url):
         try:
             decoded_url = urllib_parse.unquote_plus(url)
-            video_id_match = re.search(r'/(\d+)', decoded_url)
+            
+            # Extract Video ID
+            video_id_match = re.search(r'(?:redtube\.com)?/(\d+)$', decoded_url)
             if not video_id_match:
                 self.notify_error("Invalid video URL")
                 return xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
 
             video_id = video_id_match.group(1)
+            
+            # Normalize to absolute URL for the HTML request and Referer
+            if not decoded_url.startswith("http"):
+                 decoded_url = f"{self.web_base.rstrip('/')}/{video_id}"
+                 
             params = {"video_id": video_id, "thumbsize": "medium"}
             data, _ = self.api_request("redtube.Videos.getVideoById", params)
 

@@ -10,6 +10,7 @@ import xbmcgui
 import xbmcplugin
 import xbmcvfs
 import traceback
+import inspect
 from importlib import import_module
 
 ADDON = xbmcaddon.Addon()
@@ -86,10 +87,10 @@ def build_main_menu_fast():
     xbmcplugin.setContent(ADDON_HANDLE, 'videos')
     
     view_modes = [50, 51, 500, 501, 502]
+    xbmcplugin.endOfDirectory(ADDON_HANDLE)
+    xbmc.sleep(75)
     if viewtype < len(view_modes):
         xbmc.executebuiltin(f'Container.SetViewMode({view_modes[viewtype]})')
-    
-    xbmcplugin.endOfDirectory(ADDON_HANDLE)
 
 def load_single_website(website_name):
     if ADDON_PATH not in sys.path:
@@ -155,7 +156,7 @@ def handle_routing():
     action = params.get('action')
     original_url = params.get('url')
 
-    websites_with_internal_bootstrap = ['drtuber']
+    websites_with_internal_bootstrap = ['drtuber', 'cumlouder', 'pornhat']
     
     if url == 'BOOTSTRAP' and mode == '2' and website_name not in websites_with_internal_bootstrap:
         if hasattr(target_website, 'get_start_url_and_label'):
@@ -164,7 +165,14 @@ def handle_routing():
              url = target_website.base_url
 
     if mode == '2':
-        target_website.process_content(url)
+        page = int(params.get('page', '1'))
+        
+        # Safe call: check if process_content supports 'page' argument
+        sig = inspect.signature(target_website.process_content)
+        if 'page' in sig.parameters:
+            target_website.process_content(url, page=page)
+        else:
+            target_website.process_content(url)
         
     elif mode == '4':
         target_website.play_video(url)

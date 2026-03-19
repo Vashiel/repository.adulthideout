@@ -1,4 +1,3 @@
-
 import sys
 import os
 
@@ -31,6 +30,17 @@ except ImportError:
 
 from resources.lib.base_website import BaseWebsite
 from resources.lib.resolvers import resolver
+
+# Keys returned by resolvers that are Kodi ListItem properties,
+# NOT HTTP headers.  Must never be appended to the URL via |pipe.
+_KODI_PROPERTY_KEYS = {
+    'inputstream.adaptive.manifest_type',
+    'inputstream.adaptive.stream_headers',
+    'inputstream.adaptive.license_type',
+    'inputstream.adaptive.license_key',
+    'inputstream',
+}
+
 
 class freeomovie(BaseWebsite):
     def __init__(self, addon_handle):
@@ -215,7 +225,17 @@ class freeomovie(BaseWebsite):
                      stream_url, headers = resolver.resolve(link, headers=self._headers)
                      
                      if stream_url and stream_url.startswith("http"):
-                         if self._check_stream_valid(stream_url, headers):
+                         # Determine if we should skip the stream validation:
+                         # 1. Local proxy URLs — proxy already validated
+                         # 2. HLS URLs — HEAD doesn't work on m3u8, and
+                         #    CDN might reject Python but accept Kodi's curl
+                         if (self._is_local_proxy(stream_url)
+                                 or '.m3u8' in stream_url):
+                             resolved_host = host_name
+                             mode = "proxy" if self._is_local_proxy(stream_url) else "direct-hls"
+                             xbmc.log(f"[freeomovie] Success with {host_name} ({mode})", xbmc.LOGINFO)
+                             break
+                         elif self._check_stream_valid(stream_url, headers):
                              resolved_host = host_name
                              xbmc.log(f"[freeomovie] Success with {host_name}", xbmc.LOGINFO)
                              break
@@ -246,15 +266,50 @@ class freeomovie(BaseWebsite):
             duration = round(time.time() - start_time, 2)
             xbmc.log(f"[freeomovie] Resolved {resolved_host} in {duration}s", xbmc.LOGINFO)
             
-            li = xbmcgui.ListItem(path=self._append_headers(stream_url, headers))
+            # Separate Kodi properties from actual HTTP headers
+            kodi_props = {}
+            http_headers = {}
+            for k, v in headers.items():
+                if k in _KODI_PROPERTY_KEYS:
+                    kodi_props[k] = v
+                else:
+                    http_headers[k] = v
+
+            # Build ListItem — only append real HTTP headers to URL
+            play_url = self._append_headers(stream_url, http_headers)
+            li = xbmcgui.ListItem(path=play_url)
             li.setProperty('IsPlayable', 'true')
+            
+            # Set Kodi inputstream properties via setProperty
+            for k, v in kodi_props.items():
+                li.setProperty(k, v)
+
+            # Set mime type for HLS streams
+            if (kodi_props.get('inputstream.adaptive.manifest_type') == 'hls'
+                    or '.m3u8' in stream_url):
+                li.setMimeType('application/vnd.apple.mpegurl')
+                
             xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
         else:
             self.notify_error("Kein funktionierender Stream gefunden.")
 
-    def _check_stream_valid(self, url, headers):
+    def _is_local_proxy(self, url):
+        """Check if a URL points to a local proxy server."""
         try:
-            r = requests.head(url, headers=headers, timeout=3, verify=False)
+            parsed = urllib.parse.urlparse(url)
+            return parsed.hostname in ('127.0.0.1', 'localhost', '::1')
+        except Exception:
+            return False
+
+    def _check_stream_valid(self, url, headers):
+        """Check if a stream URL is reachable.
+        Only uses real HTTP headers, not Kodi properties."""
+        try:
+            check_headers = {
+                k: v for k, v in headers.items()
+                if k not in _KODI_PROPERTY_KEYS
+            }
+            r = requests.head(url, headers=check_headers, timeout=5, verify=False)
             return r.status_code in [200, 302, 301, 206]
         except:
             return False
@@ -286,8 +341,17 @@ class freeomovie(BaseWebsite):
         return None
 
     def _append_headers(self, url, headers):
-        if not headers: return url
-        parts = [f"{k}={urllib.parse.quote(v)}" for k, v in headers.items()]
+        """Append HTTP headers to URL using Kodi's |pipe syntax.
+        Only includes actual HTTP headers, NOT Kodi properties."""
+        if not headers:
+            return url
+        http_only = {
+            k: v for k, v in headers.items()
+            if k not in _KODI_PROPERTY_KEYS
+        }
+        if not http_only:
+            return url
+        parts = [f"{k}={urllib.parse.quote(v)}" for k, v in http_only.items()]
         return url + "|" + "&".join(parts)
 
     def notify_error(self, msg):

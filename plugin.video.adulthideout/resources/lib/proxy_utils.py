@@ -4,13 +4,23 @@
 import sys
 import os
 import urllib.parse
+import urllib.request
+import urllib.error
 import xbmc
 import xbmcaddon
 import threading
 import socket
 import json
 import re
-from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+import ssl
+from http.server import BaseHTTPRequestHandler
+try:
+    from http.server import ThreadingHTTPServer
+except ImportError:
+    from http.server import HTTPServer
+    import socketserver
+    class ThreadingHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
+        pass
 
 try:
     addon_path = xbmcaddon.Addon().getAddonInfo('path')
@@ -29,13 +39,260 @@ except Exception as e:
 
 import requests
 
-DEFAULT_CHUNK = 512 * 1024  # 512 KB chunks for faster streaming
+# Kleinere Chunks (32 KB) damit read() schneller zurückkehrt — kritisch für Seeks!
+# 512 KB blockiert zu lange wenn mehrere Streams parallel laufen.
+PROXY_CHUNK = 32 * 1024
+DEFAULT_CHUNK = 512 * 1024  # Für requests-Backend (bleibt wie gehabt)
+
 _DEFAULT_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/126.0.0.0 Safari/537.36"
 )
 
+
+# =============================================================================
+# urllib-basierter Upstream (für CDNs die requests/urllib3 blocken)
+# Nutzt Pythons stdlib http.client + ssl direkt → anderer TLS-Fingerprint
+# =============================================================================
+
+class _UrllibUpstream:
+    """
+    Upstream-Fetcher der Pythons stdlib urllib.request nutzt.
+    
+    Features:
+    - Anderer TLS-Fingerprint als requests/urllib3 → umgeht CDN-Blocking
+    - Verbindungs-Management: alte Streams werden bei Seek geschlossen
+    - HEAD-Request beim Init für Content-Length (nötig für Kodi-Seeking)
+    """
+    
+    def __init__(self, url, headers=None, cookies=None):
+        self.original_url = url
+        self.resolved_url = None
+        self.headers = {
+            'User-Agent': _DEFAULT_UA,
+            'Accept-Encoding': 'identity',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Connection': 'keep-alive',
+        }
+        if headers:
+            self.headers.update(headers)
+        
+        self.cookie_str = ""
+        if cookies:
+            if isinstance(cookies, dict):
+                self.cookie_str = "; ".join(f"{k}={v}" for k, v in cookies.items())
+            elif isinstance(cookies, str):
+                self.cookie_str = cookies
+        
+        self._ssl_ctx = ssl.create_default_context()
+        self._ssl_ctx.check_hostname = False
+        self._ssl_ctx.verify_mode = ssl.CERT_NONE
+        
+        # Tracking der aktiven Verbindung für sauberes Cleanup bei Seek
+        self._active_resp = None
+        self._active_lock = threading.Lock()
+        self._cancel_event = threading.Event()
+        
+        # Gesamtgröße der Datei (per HEAD ermittelt)
+        self.total_size = None
+        self._head_failed = False
+        
+        xbmc.log(f"[AHProxy-urllib] Upstream URL: {url[:200]}", xbmc.LOGINFO)
+        
+        # HEAD-Request um Dateigröße zu ermitteln (Kodi braucht das für Seeks)
+        self._probe_size()
+
+    def _probe_size(self):
+        """HEAD-Request um Content-Length zu ermitteln."""
+        try:
+            req = self._build_request(self.url)
+            req.get_method = lambda: 'HEAD'
+            resp = urllib.request.urlopen(req, timeout=3, context=self._ssl_ctx)
+            cl = resp.headers.get('Content-Length')
+            if cl:
+                self.total_size = int(cl)
+                xbmc.log(f"[AHProxy-urllib] Total file size: {self.total_size} bytes", xbmc.LOGINFO)
+            resp.close()
+        except Exception as e:
+            self._head_failed = True
+            xbmc.log(f"[AHProxy-urllib] HEAD probe failed ({e}). Trying GET Range probe...", xbmc.LOGINFO)
+            try:
+                req = self._build_request(self.url, {'Range': 'bytes=0-1'})
+                resp = urllib.request.urlopen(req, timeout=10, context=self._ssl_ctx)
+                cr = resp.headers.get('Content-Range')
+                if cr and '/' in cr:
+                    self.total_size = int(cr.split('/')[-1].strip())
+                    xbmc.log(f"[AHProxy-urllib] Total file size (via GET probe): {self.total_size} bytes", xbmc.LOGINFO)
+                resp.close()
+            except Exception as e2:
+                xbmc.log(f"[AHProxy-urllib] GET Range probe failed: {e2}", xbmc.LOGWARNING)
+
+    @property
+    def url(self):
+        return self.resolved_url or self.original_url
+    
+    def _build_request(self, url, extra_headers=None):
+        h = {
+            'User-Agent': self.headers.get('User-Agent', _DEFAULT_UA),
+            'Accept': '*/*',
+            'Accept-Encoding': 'identity',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Connection': 'keep-alive',
+            'Sec-Fetch-Dest': 'video',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'cross-site'
+        }
+        h.update(self.headers)
+        if extra_headers:
+            h.update(extra_headers)
+        if self.cookie_str and 'Cookie' not in h:
+            h['Cookie'] = self.cookie_str
+        
+        # Log headers for debugging (abbreviate Cookie)
+        clean_h = {k: (v[:20] + '...' if k == 'Cookie' and len(v) > 20 else v) for k, v in h.items()}
+        xbmc.log(f"[AHProxy-urllib] Request Headers: {clean_h}", xbmc.LOGDEBUG)
+            
+        req = urllib.request.Request(url, headers=h)
+        return req
+    
+    def _close_active(self):
+        """Schließt die aktive Upstream-Verbindung (z.B. bei Seek)."""
+        # Signal any running iter_content to stop immediately
+        self._cancel_event.set()
+        with self._active_lock:
+            if self._active_resp is not None:
+                try:
+                    # Close the underlying socket to unblock any pending read()
+                    raw = getattr(self._active_resp, 'fp', None)
+                    if raw:
+                        raw_sock = getattr(raw, 'raw', getattr(raw, '_sock', None))
+                        if raw_sock:
+                            try:
+                                raw_sock.close()
+                            except Exception:
+                                pass
+                    self._active_resp.close()
+                except Exception:
+                    pass
+                self._active_resp = None
+    
+    def make_head(self, extra=None, timeout=15):
+        if self._head_failed:
+            xbmc.log("[AHProxy-urllib] Skipping HEAD request due to previous failure. Using GET Range 0-1.", xbmc.LOGINFO)
+            return self._make_head_via_get(extra, timeout)
+            
+        req = self._build_request(self.url, extra)
+        req.get_method = lambda: 'HEAD'
+        xbmc.log(f"[AHProxy-urllib] HEAD {self.url[:120]}", xbmc.LOGINFO)
+        try:
+            # We enforce a short timeout (3s) for the HEAD request since a valid CDN should answer instantly
+            head_timeout = min(timeout, 3)
+            resp = urllib.request.urlopen(req, timeout=head_timeout, context=self._ssl_ctx)
+            wrapped = _UrllibResponse(resp, total_size=self.total_size)
+            xbmc.log(f"[AHProxy-urllib] HEAD Response: {resp.status}", xbmc.LOGINFO)
+            return wrapped
+        except Exception as e:
+            self._head_failed = True
+            xbmc.log(f"[AHProxy-urllib] HEAD failed ({e}). Falling back to GET Range 0-1.", xbmc.LOGWARNING)
+            return self._make_head_via_get(extra, timeout)
+            
+    def _make_head_via_get(self, extra=None, timeout=15):
+        try:
+            fallback_extra = dict(extra) if extra else {}
+            if 'Range' not in fallback_extra:
+                fallback_extra['Range'] = 'bytes=0-1'
+            req = self._build_request(self.url, fallback_extra)
+            resp = urllib.request.urlopen(req, timeout=timeout, context=self._ssl_ctx)
+            wrapped = _UrllibResponse(resp, total_size=self.total_size)
+            
+            # Fakes a classic HEAD response out of the partial GET
+            if 'Content-Range' in wrapped.headers and '/' in wrapped.headers['Content-Range']:
+                total = wrapped.headers['Content-Range'].split('/')[-1].strip()
+                wrapped.headers['Content-Length'] = total
+                if not extra or 'Range' not in extra:
+                    wrapped.status_code = 200
+                    del wrapped.headers['Content-Range']
+            
+            xbmc.log(f"[AHProxy-urllib] HEAD Fallback GET Response: {wrapped.status_code}", xbmc.LOGINFO)
+            return wrapped
+        except urllib.error.HTTPError as e2:
+            xbmc.log(f"[AHProxy-urllib] HEAD Fallback GET HTTP Error: {e2.code}", xbmc.LOGWARNING)
+            return _UrllibResponse(e2, total_size=self.total_size)
+        except Exception as e2:
+            xbmc.log(f"[AHProxy-urllib] HEAD Fallback GET Error: {e2}", xbmc.LOGWARNING)
+            raise
+    
+    def make_get(self, extra=None, stream=True, timeout=60):
+        # Alte Verbindung schließen — gibt Bandbreite frei für den neuen Request!
+        self._close_active()
+        # Reset cancel flag for the new request
+        self._cancel_event.clear()
+        
+        req = self._build_request(self.url, extra)
+        range_hdr = (extra or {}).get('Range', 'none')
+        xbmc.log(f"[AHProxy-urllib] GET {self.url[:100]} Range={range_hdr}", xbmc.LOGINFO)
+        try:
+            resp = urllib.request.urlopen(req, timeout=timeout, context=self._ssl_ctx)
+            
+            with self._active_lock:
+                self._active_resp = resp
+            
+            xbmc.log(
+                f"[AHProxy-urllib] Response: {resp.status}, "
+                f"Content-Length: {resp.headers.get('Content-Length', '?')}, "
+                f"Content-Range: {resp.headers.get('Content-Range', 'none')}",
+                xbmc.LOGINFO
+            )
+            return _UrllibResponse(resp, total_size=self.total_size, cancel_event=self._cancel_event)
+        except urllib.error.HTTPError as e:
+            xbmc.log(f"[AHProxy-urllib] HTTP Error: {e.code} {e.reason}", xbmc.LOGERROR)
+            return _UrllibResponse(e, total_size=self.total_size)
+        except Exception as e:
+            xbmc.log(f"[AHProxy-urllib] Request failed: {e}", xbmc.LOGERROR)
+            raise
+
+
+class _UrllibResponse:
+    """Wrapper um urllib-Response der das gleiche Interface wie requests.Response hat."""
+    
+    def __init__(self, resp, total_size=None, cancel_event=None):
+        self._resp = resp
+        self.total_size = total_size
+        self._cancel = cancel_event
+        if isinstance(resp, urllib.error.HTTPError):
+            self.status_code = resp.code
+            self.headers = dict(resp.headers)
+        else:
+            self.status_code = resp.status
+            self.headers = dict(resp.headers)
+    
+    def iter_content(self, chunk_size=PROXY_CHUNK):
+        """Yield chunks — checks cancel event between reads so seeks don't block."""
+        try:
+            while True:
+                if self._cancel and self._cancel.is_set():
+                    return
+                try:
+                    chunk = self._resp.read(chunk_size)
+                except (OSError, Exception):
+                    return
+                if not chunk:
+                    break
+                yield chunk
+        except Exception:
+            return
+    
+    def close(self):
+        try:
+            self._resp.close()
+        except Exception:
+            pass
+
+
+# =============================================================================
+# requests-basierter Upstream (Original, für andere Websites)
+# =============================================================================
 
 class _Upstream:
     def __init__(
@@ -44,9 +301,11 @@ class _Upstream:
         headers=None,
         cookies=None,
         session=None,
+        skip_resolve=False,
     ):
         self.original_url = url
         self.resolved_url = None
+        self.total_size = None
         xbmc.log(f"[AHProxy] Upstream URL: {url[:200]}", xbmc.LOGINFO)
 
         if session is not None:
@@ -72,10 +331,18 @@ class _Upstream:
                     self.session.cookies.update(cookies)
                 except Exception:
                     pass
+            
+            # Mask cookies for logging
+            clean_cookies = {k: '***' for k in cookies} if cookies else {}
+            xbmc.log(f"[AHProxy] Session initialized with cookies: {clean_cookies}", xbmc.LOGDEBUG)
+            xbmc.log(f"[AHProxy] Session headers: {self.session.headers}", xbmc.LOGDEBUG)
         except Exception:
             pass
 
-        self._resolve_url()
+        if not skip_resolve:
+            self._resolve_url()
+        else:
+            xbmc.log("[AHProxy] Skipping URL resolution (skip_resolve=True)", xbmc.LOGINFO)
 
     def _resolve_url(self):
         try:
@@ -85,6 +352,9 @@ class _Upstream:
                 content_type = head_resp.headers.get('Content-Type', '').lower()
                 if 'video/' in content_type or 'octet-stream' in content_type:
                     xbmc.log("[AHProxy] HEAD shows video content, no resolution needed", xbmc.LOGINFO)
+                    cl = head_resp.headers.get('Content-Length')
+                    if cl:
+                        self.total_size = int(cl)
                     return
             except Exception:
                 pass
@@ -186,6 +456,10 @@ class _Upstream:
             raise
 
 
+# =============================================================================
+# Proxy Handler (unterstützt beide Upstream-Typen)
+# =============================================================================
+
 class _ProxyHandler(BaseHTTPRequestHandler):
     server_version = "AHProxy/2.0"
     upstream = None 
@@ -198,10 +472,13 @@ class _ProxyHandler(BaseHTTPRequestHandler):
         return rng if rng else None
 
     def _infer_origin(self):
-        try:
-            ref = getattr(self.upstream.session, "headers", {}).get("Referer")
-        except Exception:
-            ref = None
+        if isinstance(self.upstream, _UrllibUpstream):
+            ref = self.upstream.headers.get("Referer", "")
+        else:
+            try:
+                ref = getattr(self.upstream.session, "headers", {}).get("Referer")
+            except Exception:
+                ref = None
         if not ref:
             return None
         try:
@@ -213,15 +490,23 @@ class _ProxyHandler(BaseHTTPRequestHandler):
         return None
 
     def _extra_browser_headers(self):
+        if isinstance(self.upstream, _UrllibUpstream):
+            src = self.upstream.headers
+        else:
+            src = getattr(self.upstream.session, "headers", {}) or {}
+        
         extra = {
             "Accept-Encoding": "identity",
-            "Sec-Fetch-Site": "cross-site",
-            "Sec-Fetch-Mode": "no-cors",
-            "Sec-Fetch-Dest": "video",
+            "Sec-Fetch-Site": src.get("Sec-Fetch-Site", "cross-site"),
+            "Sec-Fetch-Mode": src.get("Sec-Fetch-Mode", "cors"),
+            "Sec-Fetch-Dest": src.get("Sec-Fetch-Dest", "video"),
         }
+        origin = self._infer_origin()
+        if origin:
+            extra["Origin"] = origin
         return extra
 
-    def _write_head_from_upstream(self, rsp):
+    def _write_head_from_upstream(self, rsp, force_accept_ranges=True):
         status = getattr(rsp, "status_code", 502)
         self.send_response(status)
         
@@ -229,12 +514,30 @@ class _ProxyHandler(BaseHTTPRequestHandler):
             "transfer-encoding", "connection", "proxy-authenticate", "proxy-authorization",
             "te", "trailer", "upgrade", "keep-alive",
         }
+        
+        has_accept_ranges = False
+        has_content_length = False
+        
         for k, v in getattr(rsp, "headers", {}).items():
             lk = k.lower()
             if lk in hop_by_hop:
                 continue
             if lk in ("content-length", "content-type", "accept-ranges", "content-range", "etag", "last-modified"):
                 self.send_header(k, v)
+                if lk == "accept-ranges":
+                    has_accept_ranges = True
+                if lk == "content-length":
+                    has_content_length = True
+        
+        # KRITISCH: Accept-Ranges immer setzen damit Kodi weiß dass Seeks möglich sind
+        if force_accept_ranges and not has_accept_ranges:
+            self.send_header("Accept-Ranges", "bytes")
+        
+        # Falls Content-Length fehlt aber wir die Gesamtgröße kennen (200er Response)
+        total = getattr(rsp, 'total_size', None) or getattr(self.upstream, 'total_size', None)
+        if not has_content_length and total and status == 200:
+            self.send_header("Content-Length", str(total))
+        
         self.send_header("Cache-Control", "no-store")
         self.send_header("Pragma", "no-cache")
 
@@ -257,6 +560,7 @@ class _ProxyHandler(BaseHTTPRequestHandler):
         
         if rng:
             extra["Range"] = rng
+            xbmc.log(f"[AHProxy] Kodi requested Range: {rng}", xbmc.LOGINFO)
         
         try:
             rsp = self.upstream.make_get(extra=extra, stream=True)
@@ -265,11 +569,17 @@ class _ProxyHandler(BaseHTTPRequestHandler):
 
             status = getattr(rsp, "status_code", 0)
             
+            # Chunk-Size: klein für urllib (Seek-Performance), normal für requests
+            if isinstance(self.upstream, _UrllibUpstream):
+                chunk_size = PROXY_CHUNK  # 32 KB
+            else:
+                chunk_size = DEFAULT_CHUNK  # 512 KB
+            
             if status in (200, 206):
                 bytes_sent = 0
                 chunk_count = 0
                 try:
-                    for chunk in rsp.iter_content(chunk_size=DEFAULT_CHUNK):
+                    for chunk in rsp.iter_content(chunk_size=chunk_size):
                         if not chunk:
                             continue
                         try:
@@ -277,19 +587,29 @@ class _ProxyHandler(BaseHTTPRequestHandler):
                             bytes_sent += len(chunk)
                             chunk_count += 1
                             
-                            if chunk_count % 2 == 0: 
+                            # Flush nach jedem Chunk für minimale Latenz
+                            if chunk_count <= 4 or chunk_count % 4 == 0:
                                 self.wfile.flush()
                                 
                             if chunk_count == 1:
-                                xbmc.log(f"[AHProxy] First chunk sent: {bytes_sent} bytes", xbmc.LOGINFO)
+                                xbmc.log(f"[AHProxy] First chunk sent: {bytes_sent} bytes (Range={rng})", xbmc.LOGINFO)
                         except (socket.error, ConnectionResetError, ConnectionAbortedError) as e:
                             xbmc.log(f"[AHProxy] Connection broken after {bytes_sent} bytes: {e}", xbmc.LOGDEBUG)
                             break
                     xbmc.log(f"[AHProxy] Stream complete: {bytes_sent} bytes", xbmc.LOGINFO)
                 except Exception as e:
-                    xbmc.log(f"[AHProxy] Stream error: {e}", xbmc.LOGERROR)
+                    xbmc.log(f"[AHProxy] Stream error after {bytes_sent} bytes: {e}", xbmc.LOGERROR)
             else:
                 xbmc.log(f"[AHProxy] Unexpected status code: {status}", xbmc.LOGWARNING)
+                try:
+                    body = b""
+                    for chunk in rsp.iter_content(chunk_size=4096):
+                        body += chunk
+                        if len(body) > 2048:
+                            break
+                    xbmc.log(f"[AHProxy] Error body: {body[:500].decode('utf-8', errors='replace')}", xbmc.LOGWARNING)
+                except Exception:
+                    pass
         except Exception as e:
             xbmc.log(f"[AHProxy] GET error: {e}", xbmc.LOGERROR)
             try:
@@ -312,13 +632,34 @@ class ProxyController:
         session=None,
         host="127.0.0.1",
         port=0,
+        skip_resolve=False,
+        use_urllib=False,
     ):
-        self.up = _Upstream(
-            upstream_url,
-            headers=upstream_headers,
-            cookies=cookies,
-            session=session, 
-        )
+        """
+        Args:
+            upstream_url: Die Video-URL die geproxied werden soll.
+            upstream_headers: Dict mit HTTP-Headers für den Upstream.
+            cookies: Dict oder String mit Cookies.
+            session: requests.Session (nur für requests-Modus).
+            skip_resolve: Wenn True, wird _resolve_url() übersprungen.
+            use_urllib: Wenn True, wird urllib.request statt requests benutzt.
+                        Das umgeht TLS-Fingerprint-Probleme mit CDNs die
+                        requests/urllib3 blocken (z.B. Cloudflare R2).
+        """
+        if use_urllib:
+            self.up = _UrllibUpstream(
+                upstream_url,
+                headers=upstream_headers,
+                cookies=cookies,
+            )
+        else:
+            self.up = _Upstream(
+                upstream_url,
+                headers=upstream_headers,
+                cookies=cookies,
+                session=session,
+                skip_resolve=skip_resolve,
+            )
         self.host = host
         self.port = port
         self.httpd = None
@@ -326,39 +667,44 @@ class ProxyController:
         self.local_url = None
 
     def start(self):
-        if self.port == 0:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.bind((self.host, 0))
-                self.port = s.getsockname()[1]
-
         def _handler_factory(upstream_obj):
             class _H(_ProxyHandler):
                 upstream = upstream_obj
             return _H
 
         self.httpd = _HTTPServer((self.host, self.port), _handler_factory(self.up))
+        if self.port == 0:
+            self.port = self.httpd.server_port
         self.thread = threading.Thread(target=self.httpd.serve_forever, name="AHProxyThread", daemon=True)
         self.thread.start()
         self.local_url = f"http://{self.host}:{self.port}/stream"
         xbmc.log(f"[AHProxy] Started on {self.local_url}", xbmc.LOGINFO)
         return self.local_url
 
-    def stop(self, timeout=3.0):
+    def stop(self, timeout=1.0):
         try:
             if self.httpd:
+                # Close the socket first to break any active do_GET loops
+                try:
+                    self.httpd.server_close()
+                except:
+                    pass
                 self.httpd.shutdown()
-                self.httpd.server_close()
                 xbmc.log("[AHProxy] Stopped", xbmc.LOGINFO)
-        except Exception:
-            pass
-        if self.thread:
+        except Exception as e:
+            xbmc.log(f"[AHProxy] Error during stop: {e}", xbmc.LOGDEBUG)
+        
+        # Upstream-Verbindung sauber schließen
+        if hasattr(self.up, '_close_active'):
+            self.up._close_active()
+            
+        if self.thread and self.thread.is_alive():
             self.thread.join(timeout=timeout)
 
 
 class PlaybackGuard(threading.Thread):
     def __init__(self, kodi_player, monitor, target_path, controller, idle_timeout=60 * 60):
-        # daemon=False hält das Skript am Leben
-        super(PlaybackGuard, self).__init__(name="AHProxyGuard", daemon=False)
+        super(PlaybackGuard, self).__init__(name="AHProxyGuard", daemon=True)
         self.player = kodi_player
         self.monitor = monitor
         self.target = target_path
@@ -369,49 +715,48 @@ class PlaybackGuard(threading.Thread):
         import time
         start_ts = time.time()
 
-        # PHASE 1: Warten, bis DIESER spezifische Proxy-Link abgespielt wird.
-        # Das verhindert, dass der Proxy beendet wird, während das ALTE Video noch ausläuft.
         target_started = False
         while not self.monitor.abortRequested():
-            # Timeout nach 30 Sekunden
             if time.time() - start_ts > 30:
                 xbmc.log(f"[AHProxy] Timed out waiting for target: {self.target}", xbmc.LOGWARNING)
                 break
 
-            # Prüfen, ob Player aktiv
-            if self.player.isPlayingVideo():
+            if hasattr(self.player, 'isPlayingVideo') and self.player.isPlayingVideo():
                 try:
-                    current_file = self.player.getPlayingFile()
+                    current_file = self.player.getPlayingFile() if hasattr(self.player, 'getPlayingFile') else ""
                 except Exception:
                     current_file = ""
                 
-                # Nur weitermachen, wenn der Player wirklich UNSERE Datei spielt
-                if current_file == self.target:
+                if current_file:
+                    # Log what we see, helps debugging "target not found"
+                    # Only log every few seconds to avoid spam
+                    if int(time.time() - start_ts) % 5 == 0:
+                        xbmc.log(f"[AHProxy-Guard] Current: {current_file[:120]}, Target: {self.target[:120]}", xbmc.LOGDEBUG)
+
+                if (self.target == current_file) or (self.target and current_file and (self.target in current_file or current_file in self.target)):
                     target_started = True
                     xbmc.log(f"[AHProxy] Playback detected for {self.target}", xbmc.LOGINFO)
                     break
             
             self.monitor.waitForAbort(0.5)
 
-        # Wenn unser Video nie gestartet wurde, Proxy beenden
         if not target_started:
             try:
+                xbmc.log(f"[AHProxy] Timed out waiting for target: {self.target}. Last seen: {current_file if 'current_file' in locals() else 'None'}", xbmc.LOGWARNING)
                 self.ctrl.stop()
             except Exception:
                 pass
             return
 
-        # PHASE 2: Überwachen (Proxy aktiv halten, solange unser Video läuft)
         while not self.monitor.abortRequested():
-            if not self.player.isPlayingVideo():
+            if hasattr(self.player, 'isPlayingVideo') and not self.player.isPlayingVideo():
                 break
             
             try:
-                current_file = self.player.getPlayingFile()
+                current_file = self.player.getPlayingFile() if hasattr(self.player, 'getPlayingFile') else ""
             except Exception:
                 current_file = ""
             
-            # Wenn der Player zu einem anderen Video wechselt, Proxy beenden
             if current_file != self.target:
                 xbmc.log(f"[AHProxy] Player switched to {current_file}, stopping proxy for {self.target}", xbmc.LOGINFO)
                 break

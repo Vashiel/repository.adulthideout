@@ -7,6 +7,8 @@ from resources.lib.resolvers import doodstream_resolver
 from resources.lib.resolvers import lulustream_resolver
 from resources.lib.resolvers import voesx_resolver
 from resources.lib.resolvers import bigwarp_resolver
+from resources.lib.resolvers import streamtape_resolver
+from resources.lib.resolvers import mixdrop_resolver
 
 def resolve(url, referer="", headers=None):
     xbmc.log("[AdultHideout][resolver] Input: {}".format(url), xbmc.LOGINFO)
@@ -14,6 +16,7 @@ def resolve(url, referer="", headers=None):
     hoster_map = {
         "dood": doodstream_resolver,
         "dsvplay": doodstream_resolver,
+        "myvidplay": doodstream_resolver,
         "lulu": lulustream_resolver,
         "lulustream": lulustream_resolver,
         "voe.sx": voesx_resolver,
@@ -26,7 +29,10 @@ def resolve(url, referer="", headers=None):
         "fittingcentermondaysunday.com": voesx_resolver,
         "bigwarp": bigwarp_resolver,
         "bgwp": bigwarp_resolver,
-
+        "streamtape": streamtape_resolver,
+        "stape": streamtape_resolver,
+        "mixdrop": mixdrop_resolver,
+        "m1xdrop": mixdrop_resolver,
     }
 
     selected_module = None

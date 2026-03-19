@@ -97,7 +97,6 @@ class AshemaletubeWebsite(BaseWebsite):
 
     def make_request(self, url, headers=None, max_retries=3, retry_wait=5000, is_json=False):
         url = urllib.parse.quote(url, safe=':/?=&%')
-        
         if not headers:
             headers = self.get_headers(url, is_json=is_json)
             
@@ -106,11 +105,10 @@ class AshemaletubeWebsite(BaseWebsite):
                 cookie_jar = CookieJar()
                 opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
                 request = urllib.request.Request(url, headers=headers)
-                with opener.open(request, timeout=60) as response:
+                with opener.open(request, timeout=10) as response:
                     return response.read().decode('utf-8', errors='ignore')
             except Exception as e:
                 if attempt < max_retries - 1: xbmc.sleep(retry_wait)
-        
         xbmcgui.Dialog().notification('AdultHideout Error', f"Failed to fetch: {url}", xbmcgui.NOTIFICATION_ERROR)
         return ""
 
@@ -169,6 +167,7 @@ class AshemaletubeWebsite(BaseWebsite):
         return urllib.parse.urljoin(self.base_url, f"{parsed_base.path}?{final_query}") if final_query else urllib.parse.urljoin(self.base_url, parsed_base.path)
 
     def process_content(self, url):
+        if isinstance(url, bytes): url = url.decode('utf-8')
         parsed_path = urllib.parse.urlparse(url).path.rstrip('/')
 
         if parsed_path == '/pornstars':
@@ -205,7 +204,7 @@ class AshemaletubeWebsite(BaseWebsite):
         pornstar_context.append(('[COLOR yellow]Reset Filters[/COLOR]', f'RunPlugin({sys.argv[0]}?mode=7&website={self.name}&action=reset_pornstar_filters)'))
 
         dirs = [
-            {'name': '[COLOR blue]Search[/COLOR]', 'url': '', 'mode': 5, 'icon': self.icons['search'], 'context': video_sort_context},
+            {'name': '[COLOR blue]Search[/COLOR]', 'url': 'SEARCH:input', 'mode': 5, 'icon': self.icons['search'], 'context': video_sort_context},
             {'name': 'Categories', 'url': f"{self.config['base_url']}/tags/", 'mode': 8, 'icon': self.icons['categories'], 'context': video_sort_context},
             {'name': 'Pornstars', 'url': self.get_pornstar_list_url(), 'mode': 2, 'icon': self.icons['pornstars'], 'context': pornstar_context}
         ]
@@ -245,7 +244,10 @@ class AshemaletubeWebsite(BaseWebsite):
 
     def parse_video_list(self, html_content, current_url):
         item_pattern = r'(<li class="js-pop media-item.*?</li>)'
-        video_pattern = r'<a\s+href="(/videos/[^"]+)"[^>]*>\s*<img[^>]+src="([^"]+)"\s+alt="([^"]+)"'
+        video_pattern = re.compile(
+            r'<a[^>]*href="(/videos/[^"]+)"[^>]*title="([^"]+)"[^>]*>.*?<img[^>]+(?:src|data-src)="([^"]+)"',
+            re.DOTALL | re.IGNORECASE
+        )
         duration_pattern = r'<span\s+class="media-item__info-item\s+media-item__info-item-length">\s*([\d:]+)\s*</span>'
         item_blocks = re.findall(item_pattern, html_content, re.DOTALL)
         
@@ -254,15 +256,16 @@ class AshemaletubeWebsite(BaseWebsite):
         base_url = f"{urllib.parse.urlparse(current_url).scheme}://{urllib.parse.urlparse(current_url).netloc}"
         
         for block in item_blocks:
-            video_match = re.search(video_pattern, block, re.DOTALL)
+            video_match = video_pattern.search(block)
             duration_match = re.search(duration_pattern, block, re.DOTALL)
             if video_match:
-                video_url, thumb, name = video_match.groups()
+                video_url, name, thumb = video_match.groups()
                 duration = duration_match.group(1).strip() if duration_match else ""
                 display_name = f"{html.unescape(name)} [COLOR yellow]({duration})[/COLOR]" if duration else html.unescape(name)
                 self.add_link(display_name, urllib.parse.urljoin(base_url, video_url), 4, urllib.parse.urljoin(base_url, thumb), self.fanart, context_menu)
 
     def process_categories(self, url):
+        if isinstance(url, bytes): url = url.decode('utf-8')
         json_url = f"{self.config['base_url']}/tags/?response_format=json"
         content = self.make_request(json_url, is_json=True)
         base_url = f"{urllib.parse.urlparse(url).scheme}://{urllib.parse.urlparse(url).netloc}"
@@ -323,6 +326,7 @@ class AshemaletubeWebsite(BaseWebsite):
             self.add_dir('[COLOR blue]Next Page >>>>[/COLOR]', final_url, 2, self.icons['default'], self.fanart)
 
     def play_video(self, url):
+        if isinstance(url, bytes): url = url.decode('utf-8')
         content = self.make_request(url)
         if not content: return self.notify_error("Failed to load video page")
 

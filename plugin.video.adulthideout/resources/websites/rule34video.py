@@ -236,7 +236,9 @@ class Rule34video(BaseWebsite):
                 candidates.append(m)
         
         if candidates:
-            video_url = candidates[0]
+            # Sort by length to grab the URL with the ?v-acctoken parameter
+            candidates.sort(key=len, reverse=True)
+            video_url = candidates[0].replace('&amp;', '&')
         elif mp4_matches:
             video_url = mp4_matches[0]
 
@@ -244,9 +246,37 @@ class Rule34video(BaseWebsite):
             video_url = video_url.replace(r'\/', '/')
             self.logger.info(f"[{self.name}] Found video URL: {video_url}")
             
-            li = xbmcgui.ListItem(path=video_url)
-            li.setProperty('IsPlayable', 'true')
-            xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+            try:
+                from resources.lib.proxy_utils import ProxyController, PlaybackGuard
+                
+                upstream_headers = {
+                    'User-Agent': self._scraper_ua,
+                    'Referer': 'https://rule34video.com/',
+                    'Accept-Encoding': 'identity',
+                }
+                
+                ctrl = ProxyController(
+                    upstream_url=video_url,
+                    upstream_headers=upstream_headers,
+                    use_urllib=True,
+                )
+                local_url = ctrl.start()
+                
+                li = xbmcgui.ListItem(path=local_url)
+                li.setProperty('IsPlayable', 'true')
+                li.setMimeType('video/mp4')
+                xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+                
+                player = xbmc.Player()
+                monitor = xbmc.Monitor()
+                guard = PlaybackGuard(player, monitor, local_url, ctrl)
+                guard.start()
+            except Exception as e:
+                self.logger.error(f"[{self.name}] Proxy failed ({e}), falling back to direct")
+                fallback_url = f"{video_url}|User-Agent={urllib.parse.quote_plus(self._scraper_ua)}&Referer=https://rule34video.com/"
+                li = xbmcgui.ListItem(path=fallback_url)
+                li.setProperty('IsPlayable', 'true')
+                xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
         else:
             self.logger.error(f"[{self.name}] No video URL found in source.")
             self.notify_error("Video extraction failed")
