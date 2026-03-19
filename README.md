@@ -4,7 +4,7 @@
 
 ## 1.0.7 "Lucky 7" - 10th Anniversary Release
 
-Nearly 10 years ago, AdultHideout came to life in **January 2016** as version **0.1 "Besa first try"**.
+Nearly 10 years ago, AdultHideout came to life in **January 2016** as version **0.1 "beta first try"**.
 
 It was never meant to become a big mainstream project. It started for one very specific reason: I wanted to play a single website in Kodi.
 
