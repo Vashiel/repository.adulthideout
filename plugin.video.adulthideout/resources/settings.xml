@@ -3,7 +3,7 @@
   <category label="30001"> <setting id="dummy_category" type="bool" default="false" visible="false" />
     <setting id="fix_mouse_scroll" type="action" label="30010" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/fix_mouse_scroll.py)" />
     <setting id="max_retry_attempts" type="enum" label="30011" values="1|2|3|4|5|6|7|8|9|10" default="2" />
-    <!-- 1.0.7: Improved persistent Wall/List handling across pagination and after playback -->
+    <!-- Improved persistent Wall/List handling across pagination and after playback -->
     <setting id="viewtype" type="enum" label="30012" values="List|Poster|Wall|Fanart" default="2" />
     <setting id="clear_cache" type="action" label="30013" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/clear_cache.py)" />
     <setting id="reset_settings" type="action" label="30014" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/reset_settings.py)" />
@@ -101,8 +101,6 @@
     <setting id="show_punishbang" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]PunishWorld[/B]" />
     <setting id="show_punishworld" type="bool" label="30003" default="true" />
-    <setting type="lsep" label="[B]RealCuckoldSex[/B]" />
-    <setting id="show_realcuckoldsex" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Redtube[/B]" />
     <setting id="show_redtube" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Rule34video[/B]" />
@@ -117,8 +115,6 @@
     <setting id="show_thepornbang" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]TNAFlix[/B]" />
     <setting id="show_tnaflix" type="bool" label="30003" default="true" />
-    <setting type="lsep" label="[B]TubeDupe[/B]" />
-    <setting id="show_tubedupe" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]XXXFiles[/B]" />
     <setting id="show_xxxfiles" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]TubePornClassic[/B]" />
@@ -207,9 +203,7 @@
     <setting id="show_zbporn" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Tubev[/B]" />
     <setting id="show_tubev" type="bool" label="30003" default="true" />
-    <setting type="lsep" label="[B]OK.xxx[/B]" />
-    <setting id="show_okxxx" type="bool" label="30003" default="true" />
-    <!-- 1.0.7: PerfectGirls -->
+    <!-- PerfectGirls -->
     <setting type="lsep" label="[B]PerfectGirls[/B]" />
     <setting id="show_perfectgirls" type="bool" label="30003" default="true" />
   </category>
@@ -266,7 +260,7 @@
     <setting id="tubev_sort_by" type="enum" label="30004" values="Popular|New" default="0" />
     <setting id="thepornbang_sort_by" type="enum" label="30004" values="Latest|Best" default="0" />
     <setting id="bravoporn_sort_by" type="enum" label="30004" values="Latest|Popular" default="0" />
-    <!-- 1.0.7: PerfectGirls Sort By -->
+    <!-- PerfectGirls Sort By -->
     <setting id="perfectgirls_sort_by" type="enum" label="30004" values="Latest|Popular|Trending" default="0" />
   </category>
   <category label="30120"> <setting type="lsep" label="30120" />

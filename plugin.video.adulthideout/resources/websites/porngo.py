@@ -82,9 +82,9 @@ class PornGoWebsite(BaseWebsite):
             display_title = f"{html.unescape(title.strip())} [COLOR yellow]({duration.strip()})[/COLOR]"
             self.add_link(display_title, video_url, 4, thumb, self.fanart)
 
-        next_page_match = re.search(r'<div class="pagination__item"><a class="pagination__link" href="([^"]+)">Next</a></div>', content)
+        next_page_match = re.search(r'<a class="pagination__link" href="([^"]+)">Next</a>', content)
         if next_page_match:
-            next_url = next_page_match.group(1)
+            next_url = urllib.parse.urljoin(self.base_url, next_page_match.group(1))
             self.add_dir('[COLOR blue]Next Page >>>>[/COLOR]', next_url, 2, self.icons['default'], self.fanart)
 
         self.end_directory()

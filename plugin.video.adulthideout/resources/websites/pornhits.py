@@ -415,6 +415,29 @@ class PornHits(BaseWebsite):
         except:
             return n.split("\0")[0]
 
+    def _load_first_json_value(self, raw_text):
+        decoder = json.JSONDecoder()
+        raw_text = (raw_text or '').strip()
+        if not raw_text:
+            return None
+
+        try:
+            obj, _ = decoder.raw_decode(raw_text)
+            return obj
+        except Exception:
+            pass
+
+        for opener in ('[', '{'):
+            idx = raw_text.find(opener)
+            if idx == -1:
+                continue
+            try:
+                obj, _ = decoder.raw_decode(raw_text[idx:])
+                return obj
+            except Exception:
+                continue
+        return None
+
     def play_video(self, url):
         self.logger.info(f"Resolving PornHits: {url}")
         
@@ -458,7 +481,9 @@ class PornHits(BaseWebsite):
         try:
             payload = payload_match.group(1)
             decoded_payload = self.base164_decode(payload)
-            data = json.loads(decoded_payload)
+            data = self._load_first_json_value(decoded_payload)
+            if data is None:
+                raise ValueError("Could not extract JSON payload")
             
             # Format could be list of streams or single stream object
             streams = data if isinstance(data, list) else [data]

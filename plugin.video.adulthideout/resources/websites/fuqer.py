@@ -19,6 +19,7 @@ except Exception:
     pass
 
 import cloudscraper
+from resources.lib.resilient_http import fetch_text
 
 class Fuqer(BaseWebsite):
     NAME = "fuqer"
@@ -39,15 +40,21 @@ class Fuqer(BaseWebsite):
         }
 
     def get_html(self, url):
+        headers = self.get_headers(url)
         try:
-            headers = self.get_headers(url)
-            r = self.scraper.get(url, headers=headers, timeout=60)
-            r.raise_for_status()
-            return r.text
+            html = fetch_text(
+                url,
+                headers=headers,
+                scraper=self.scraper,
+                logger=None,
+                timeout=30,
+            )
+            if html:
+                return html
         except Exception as e:
             import xbmc
             xbmc.log(f"[Fuqer] Error fetching {url}: {e}", xbmc.LOGERROR)
-            return None
+        return None
 
     def process_content(self, url):
         """Route to appropriate listing method based on URL.
@@ -90,11 +97,14 @@ class Fuqer(BaseWebsite):
         blocks = html.split('class="item"')
         count = 0
         for block in blocks[1:]:
-            link_match = re.search(r'href="(https://www\.fuqer\.com/channels/[^"]+)"[^>]*>', block)
+            link_match = re.search(
+                r'href="((?:https://www\.fuqer\.com)?/channels/[^"]+)"[^>]*>',
+                block,
+            )
             if not link_match:
                 continue
             
-            cat_url = link_match.group(1)
+            cat_url = urllib.parse.urljoin(self.BASE_URL, link_match.group(1))
             
             title_match = re.search(r'<p class="title">([^<]+)</p>', block)
             if not title_match:

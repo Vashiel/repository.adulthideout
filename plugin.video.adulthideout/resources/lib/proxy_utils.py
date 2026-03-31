@@ -684,12 +684,14 @@ class ProxyController:
     def stop(self, timeout=1.0):
         try:
             if self.httpd:
-                # Close the socket first to break any active do_GET loops
+                try:
+                    self.httpd.shutdown()
+                except:
+                    pass
                 try:
                     self.httpd.server_close()
                 except:
                     pass
-                self.httpd.shutdown()
                 xbmc.log("[AHProxy] Stopped", xbmc.LOGINFO)
         except Exception as e:
             xbmc.log(f"[AHProxy] Error during stop: {e}", xbmc.LOGDEBUG)

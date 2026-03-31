@@ -123,7 +123,11 @@ class HeavyFetish(BaseWebsite):
             next_url = next_match.group(1)
             if not next_url.startswith('http'):
                 next_url = urllib.parse.urljoin(self.BASE_URL, next_url)
-            self.add_dir("[COLOR green]Next Page >>[/COLOR]", next_url, 2, self.icons['default'])
+            next_html = self.make_request(next_url)
+            if next_html and self.RE_VIDEO.search(next_html):
+                self.add_dir("[COLOR green]Next Page >>[/COLOR]", next_url, 2, self.icons['default'])
+            else:
+                self.logger.warning("Skipping invalid next page for HeavyFetish: %s", next_url)
         
         self.end_directory()
 

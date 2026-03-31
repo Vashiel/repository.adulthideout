@@ -102,6 +102,17 @@ class Thumbzilla(BaseWebsite):
             ),
         ]
 
+    def _thumb_with_headers(self, thumb_url):
+        if not thumb_url or "|" in thumb_url or not thumb_url.startswith("http"):
+            return thumb_url
+        return (
+            thumb_url
+            + "|User-Agent="
+            + urllib.parse.quote(self.ua)
+            + "&Referer="
+            + urllib.parse.quote(self.base_url + "/")
+        )
+
     def _add_main_dirs(self, context_menu):
         self.add_dir("Search", "", 5, self.icons.get("search", self.icon), context_menu=context_menu)
         self.add_dir(
@@ -162,7 +173,7 @@ class Thumbzilla(BaseWebsite):
         if not content:
             return self.end_directory("videos")
 
-        blocks = re.split(r'<div class="video-box[^"]*"', content)[1:]
+        blocks = re.findall(r'<article[^>]+class="[^"]*video-box[^"]*".*?</article>', content, re.IGNORECASE | re.DOTALL)
         seen = set()
 
         for block in blocks:
@@ -182,9 +193,9 @@ class Thumbzilla(BaseWebsite):
                 continue
             seen.add(video_url)
 
-            thumb_match = re.search(r'data-src="([^"]+)"', block, re.IGNORECASE)
+            thumb_match = re.search(r'data-poster="([^"]+)"', block, re.IGNORECASE)
             if not thumb_match:
-                thumb_match = re.search(r'data-poster="([^"]+)"', block, re.IGNORECASE)
+                thumb_match = re.search(r'data-src="([^"]+)"', block, re.IGNORECASE)
             duration_match = re.search(
                 r'<div class="video-duration[^"]*">\s*<span>\s*([^<]+)\s*</span>',
                 block,
@@ -192,11 +203,12 @@ class Thumbzilla(BaseWebsite):
             )
 
             title = html.unescape(title_match.group(1).strip())
-            thumb = thumb_match.group(1).strip() if thumb_match else ""
+            thumb = html.unescape(thumb_match.group(1).strip()) if thumb_match else ""
             if thumb.startswith("//"):
                 thumb = "https:" + thumb
             elif thumb.startswith("/"):
                 thumb = urllib.parse.urljoin(self.base_url, thumb)
+            thumb = self._thumb_with_headers(thumb)
 
             info = {"title": title, "plot": title}
             duration = duration_match.group(1).strip() if duration_match else ""
@@ -232,7 +244,7 @@ class Thumbzilla(BaseWebsite):
 
         seen = set()
         for path, title in re.findall(
-            r'<a class="menu_elem_text" href="(/(?:gay/)?category/[^"]+/)">\s*<span>([^<]+)</span>',
+            r'<a[^>]+class="menu_elem_text"[^>]+href="(/(?:gay/)?category/[^"]+/)"[^>]*>\s*<span>([^<]+)</span>',
             content,
             re.IGNORECASE | re.DOTALL,
         ):
@@ -240,7 +252,12 @@ class Thumbzilla(BaseWebsite):
             if full_url in seen:
                 continue
             seen.add(full_url)
-            self.add_dir(html.unescape(title.strip()), full_url, 2, self.icons.get("categories", self.icon))
+            self.add_dir(
+                html.unescape(title.strip()),
+                full_url,
+                2,
+                self._thumb_with_headers(self.icons.get("categories", self.icon)),
+            )
 
         self.end_directory("videos")
 

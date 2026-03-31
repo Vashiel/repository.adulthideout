@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.7" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.8" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.requests" version="2.25.1"/>
@@ -10,14 +10,12 @@
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
-v. 1.0.7 "10th Anniversary Release" - 2026-03-06
-- **50 New Sites**: PornDoe, PornOne, PornHat, PornTrex, CumLouder, PornMZ, AnySex, PornDig, Tube8, xCafe, LetMeJerk, Upornia, FullPorner, XXXFiles, 3Movs, PornHD3X, XMoviesForYou, Porn300, OK.xxx, PerfectGirls, SuperPorn, XBabe, Veporn, Porn7, Porn00, Tubev, HClips, ThePornBang, BravoPorn, PornSlash, Pornheed, HDZog, ZBPorn, TrendyPorn, Nudez, Pornwhite, Pornflip, PornTry, BananaMovies, SaintPorn, WatchPorn, BigAssPorn, FPO, TheyAreHuge, BigTitsLust, BlackPorn24, MilfPorn8, MaturePorn.Tube, Blowjobs.pro, LesbianPorn8.
-- **Improved and Fixed**: Ashemaletube, Hanime, Vikiporn, Spankbang, Rule34video, Pornhub, Redtube, PornHits, PerfectGirls, SuperPorn.
-- **Hanime**: Reworked playback for the current nhplayer flow, added updated challenge/PoW handling and improved playback fallback for Android/Fire TV.
-- **PerfectGirls**: Fixed pagination and stabilized playback.
-- **SuperPorn**: Added Select Content (Straight/Gay) and improved playback behavior.
-- **View Handling**: Improved persistent Wall/List view behavior across pagination and when returning from playback.
-- **Core Engine &amp; Networking**: Smart WebP caching, parallel preloading, Native PoW Bypass for Hanime, Local Proxy Controller.
+v. 1.0.8 "Jubilee Year Update" - 2026-03-31
+- **Improved &amp; Fixed**: AnySex, Ashemaletube, AVJoy, Beeg, Fuqer, Hanime, HQPorner, LetMeJerk, LuxureTV, Nudez, OK.xxx, PornHits, PornZog, Rule34Video, SaintPorn, Shameless, Shemalez, SunPorno, SxyPrn, Thumbzilla, Tube8, UFlash, Upornia, Veporn, VikiPorn, VJav, xCafe, XMoviesForYou, YouJizz, YouPorn.
+- **Playback &amp; Performance**: Improved startup time or stream selection for Nudez, SunPorno, xCafe and YouJizz; added a platform-specific Nudez playback path for Windows and Android.
+- **Removed**: RealCuckoldSex (domain for sale), TubeDupe (site currently only serves fixed 6-minute clips).
+- **Validation**: Expanded KVAT full-site regression coverage and completed a broad post-1.0.7 repair pass across the addon.
+- **10th Anniversary Year**: 2026 continues as AdultHideout's anniversary year, with follow-up stability updates after the 1.0.7 release.
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>

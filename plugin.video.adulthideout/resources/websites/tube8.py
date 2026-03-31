@@ -3,6 +3,7 @@ import re
 import sys
 import json
 import html
+import base64
 import urllib.parse
 import xbmc
 import xbmcgui
@@ -34,6 +35,14 @@ class ThumbProxyHandler(BaseHTTPRequestHandler):
         query = urllib.parse.urlparse(self.path).query
         params = urllib.parse.parse_qs(query)
         url = params.get('url', [None])[0]
+        encoded = params.get('b64', [None])[0]
+
+        if not url and encoded:
+            padded = encoded + ('=' * (-len(encoded) % 4))
+            try:
+                url = base64.urlsafe_b64decode(padded.encode('ascii')).decode('utf-8')
+            except Exception:
+                url = None
         
         if not url:
             self.send_error(400, "Missing URL parameter")
@@ -126,7 +135,8 @@ class Tube8(BaseWebsite):
             if any(url.startswith(p) for p in ['special://', 'C:', '/', 'special/']):
                 return url
             url = urllib.parse.urljoin(self.BASE_URL, url)
-        return f"http://127.0.0.1:{self.proxy_port}/?url={urllib.parse.quote(url)}"
+        encoded = base64.urlsafe_b64encode(url.encode('utf-8')).decode('ascii').rstrip('=')
+        return f"http://127.0.0.1:{self.proxy_port}/thumb.jpg?b64={encoded}"
 
     def _initialize_scraper(self):
         if _HAS_CF:
@@ -223,79 +233,76 @@ class Tube8(BaseWebsite):
             return
 
         html_content = r.text
-        
-        # Scope video area if possible
-        video_area = re.search(r'class="[^"]*tm_video_list[^"]*">(.*?)<div[^>]*class="[^"]*tm_pagination', html_content, re.DOTALL)
-        if video_area:
-            snippets_html = video_area.group(1)
-        else:
-            snippets_html = html_content
 
-        snippets = re.split(r'<div[^>]*class="[^"]*\bjs_video-box\b', snippets_html)[1:]
+        article_pattern = r'(<article class="video-box[^"]*.*?</article>)'
+        snippets = re.findall(article_pattern, html_content, re.DOTALL | re.IGNORECASE)
         for item in snippets:
             try:
-                m_url = re.search(r'href="([^"]+)"', item)
-                if not m_url: continue
-                video_url = urllib.parse.urljoin(self.BASE_URL, m_url.group(1))
-                
+                m_url = re.search(
+                    r'<a href="([^"]+)"[^>]*class="[^"]*(?:tm_video_link|video-title-text)[^"]*"',
+                    item,
+                    re.DOTALL | re.IGNORECASE,
+                )
+                if not m_url:
+                    continue
+                video_url = urllib.parse.urljoin(self.BASE_URL, html.unescape(m_url.group(1)))
+
                 title = ""
-                m_title = re.search(r'tm_video_title[^>]*>(.*?)</a>', item, re.DOTALL)
+                m_title = re.search(
+                    r'class="[^"]*video-title-text[^"]*"[^>]*>\s*(?:<span>)?(.*?)(?:</span>)?\s*</a>',
+                    item,
+                    re.DOTALL | re.IGNORECASE,
+                )
                 if m_title:
                     title = re.sub(r'<[^>]+>', '', m_title.group(1)).strip()
-                
+
                 if not title:
-                    m_alt = re.search(r'alt="([^"]+)"', item)
+                    m_alt = re.search(r'alt="([^"]+)"', item, re.IGNORECASE)
                     if m_alt:
                         title = m_alt.group(1).strip()
-                
-                if not title: title = "Unknown Video"
-                title = html.unescape(title)
 
-                m_thumb = re.search(r'data-src="([^"]+)"', item)
-                if not m_thumb:
-                    m_thumb = re.search(r'src="([^"]+)"', item)
-                
-                thumb = m_thumb.group(1) if m_thumb else ""
-                if thumb:
-                    thumb = html.unescape(thumb)
-                    if not thumb.startswith('http'):
-                        thumb = urllib.parse.urljoin(self.BASE_URL, thumb)
-                    
-                    # Ensure high-res if available (Tube8 often has low-res previews)
-                    # Example: https://ea.t8cdn.com/.../cat_teens.jpg
-                    pass
-                
-                m_dur = re.search(r'tm_video_duration[^>]*>(.*?)</div>', item, re.DOTALL)
+                if not title:
+                    title = "Unknown Video"
+                title = html.unescape(re.sub(r'\s+', ' ', title))
+
+                thumb = ""
+                for thumb_pattern in (
+                    r'data-poster="([^"]+)"',
+                    r'data-src="([^"]+)"',
+                    r'poster="([^"]+)"',
+                    r'src="([^"]+)"',
+                ):
+                    m_thumb = re.search(thumb_pattern, item, re.IGNORECASE)
+                    if not m_thumb:
+                        continue
+                    candidate = html.unescape(m_thumb.group(1))
+                    if candidate.startswith('data:image'):
+                        continue
+                    thumb = candidate
+                    break
+
+                if thumb and not thumb.startswith('http'):
+                    thumb = urllib.parse.urljoin(self.BASE_URL, thumb)
+
                 duration = ""
+                m_dur = re.search(r'class="[^"]*tm_video_duration[^"]*"[^>]*>\s*<span>(.*?)</span>', item, re.DOTALL | re.IGNORECASE)
                 if m_dur:
                     duration = re.sub(r'<[^>]+>', '', m_dur.group(1)).strip()
                     duration = re.sub(r'\s+', ' ', duration)
-                
+
                 label = f"[{duration}] {title}" if duration else title
                 self.add_link(label, video_url, 4, thumb, self.fanart)
-            except: pass
+            except Exception:
+                pass
 
-        # Pagination
-        current_page = 1
-        m_curr = re.search(r'page=(\d+)', url)
-        if m_curr: current_page = int(m_curr.group(1))
-        
-        # Very robust next page
         next_url = None
-        # Try finding "Next" link explicitly
-        m_next = re.search(r'href="([^"]+)"[^>]*>Next</a>', html_content)
+        m_next = re.search(r'<link rel="next" href="([^"]+)"', html_content, re.IGNORECASE)
         if not m_next:
-            m_next = re.search(r'href="([^"]+)"[^>]*class="[^"]*next[^"]*"', html_content)
-        
+            m_next = re.search(r'href="([^"]+)"[^>]*class="[^"]*next[^"]*"', html_content, re.IGNORECASE)
+        if not m_next:
+            m_next = re.search(r'<a[^>]+href="([^"]+)"[^>]*>\s*Next\s*</a>', html_content, re.IGNORECASE)
         if m_next:
-            next_url = urllib.parse.urljoin(self.BASE_URL, m_next.group(1))
-        elif f'page={current_page + 1}' in html_content:
-            next_url = url + ("&" if "?" in url else "?") + f"page={current_page + 1}"
-            if 'page=' in url:
-                next_url = re.sub(r'page=\d+', f'page={current_page + 1}', url)
-        elif f'/page/{current_page + 1}/' in html_content:
-            # Handle /page/2/ format
-            next_url = urllib.parse.urljoin(self.BASE_URL, f"{url.rstrip('/')}/page/{current_page + 1}/")
+            next_url = urllib.parse.urljoin(self.BASE_URL, html.unescape(m_next.group(1)))
 
         if next_url:
             self.add_dir("[COLOR green]Next Page >>[/COLOR]", next_url, 2, self.icons['default'])

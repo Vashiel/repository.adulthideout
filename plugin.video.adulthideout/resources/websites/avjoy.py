@@ -22,6 +22,7 @@ import xbmcplugin
 import requests
 from resources.lib.base_website import BaseWebsite
 from resources.lib.proxy_utils import ProxyController, PlaybackGuard
+from resources.lib.resilient_http import fetch_text
 
 
 try:
@@ -51,6 +52,8 @@ class AvjoyWebsite(BaseWebsite):
         self.timeout = 20
         self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'
         self.session = self._init_session()
+        self.raw_session = requests.Session()
+        self.raw_session.headers.update({'User-Agent': self.user_agent})
 
     def _init_session(self):
         """Initialisiert eine Session, vorzugsweise mit Cloudscraper."""
@@ -61,17 +64,29 @@ class AvjoyWebsite(BaseWebsite):
             s.headers.update({'User-Agent': self.user_agent})
             return s
 
-    def make_request(self, url):
+    def make_request(self, url, referer=None):
+        self.logger.info(f"Fetching: {url}")
+        headers = {
+            'User-Agent': self.user_agent,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Referer': referer or (self.base_url + '/'),
+        }
         try:
-            url = urllib.parse.quote(url, safe=':/?=&%')
-            self.logger.info(f"Fetching: {url}")
-            
-            resp = self.session.get(url, timeout=self.timeout)
-            resp.raise_for_status()
-            return resp.text
-        except Exception as e:
-            self.logger.error(f"Request failed: {e}")
-            return None
+            response = self.raw_session.get(url, headers=headers, timeout=max(self.timeout, 30))
+            if response.status_code == 200 and response.text:
+                return response.text
+            self.logger.warning(f"Direct request returned HTTP {response.status_code} for {url}")
+        except Exception as exc:
+            self.logger.warning(f"Direct request failed: {exc}")
+
+        return fetch_text(
+            url,
+            headers=headers,
+            scraper=self.session,
+            logger=self.logger,
+            timeout=max(self.timeout, 30),
+            use_windows_curl_fallback=True,
+        )
 
     def get_start_url_and_label(self):
         try:
@@ -92,7 +107,7 @@ class AvjoyWebsite(BaseWebsite):
         if not url or url == "BOOTSTRAP":
             url, _ = self.get_start_url_and_label()
             
-        content = self.make_request(url)
+        content = self.make_request(url, referer=self.base_url + '/')
         if not content:
             self.notify_error("Failed to load content")
             self.end_directory()
@@ -166,9 +181,11 @@ class AvjoyWebsite(BaseWebsite):
             self.notify_error("Failed to load video page")
             return
 
-        match = re.search(r'<source src="([^"]+)" type=[\'"]video/mp4[\'"]', content)
+        match = re.search(r'<source[^>]+src=[\'"]([^\'"]+)[\'"][^>]*type=[\'"]video/mp4[\'"]', content, re.IGNORECASE)
+        if not match:
+            match = re.search(r'<source[^>]+src=[\'"]([^\'"]+\.mp4[^\'"]*)[\'"]', content, re.IGNORECASE)
         if match:
-            video_url = match.group(1)
+            video_url = html.unescape(match.group(1))
             
             stream_session = requests.Session()
             stream_session.headers.update({
@@ -204,12 +221,12 @@ class AvjoyWebsite(BaseWebsite):
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
 
     def process_categories(self, url):
-        content = self.make_request(url)
+        content = self.make_request(url, referer=self.base_url + '/')
         if not content:
             self.end_directory()
             return
-            
-        pattern = r'<div class="[^"]*col-[^"]*">.*?<a href="([^"]+)">.*?<div class="thumb-overlay">.*?<img src="([^"]+)" title="([^"]+)"'
+
+        pattern = r'<a href="(/videos/[^"]+)">\s*<div class="thumb-overlay">\s*<img src="([^"]+)" title="([^"]+)"'
         matches = re.findall(pattern, content, re.DOTALL | re.IGNORECASE)
         
         encoded_url = urllib.parse.quote_plus(url)

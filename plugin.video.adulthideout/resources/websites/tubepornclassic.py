@@ -181,7 +181,16 @@ class TubepornclassicWebsite(BaseWebsite):
             ])
 
         if page < pages:
-            next_url = url.rstrip('/') + f"/{page+1}/"
+            if 'search' in path:
+                params = dict(q)
+                params['page'] = [str(page + 1)]
+                next_url = urllib_parse.urlunparse(
+                    (p.scheme, p.netloc, p.path, '', urllib_parse.urlencode({k: v[0] for k, v in params.items()}), '')
+                )
+            elif path.startswith('categories/'):
+                next_url = f"{self.base_url}categories/{category}/{page+1}/"
+            else:
+                next_url = f"{self.base_url}{sort}/{page+1}/"
             self.add_dir(f"Next Page ({page+1})", next_url, 2)
 
         self.end_directory()

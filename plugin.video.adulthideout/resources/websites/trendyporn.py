@@ -79,9 +79,14 @@ class Trendyporn(BaseWebsite):
             re.IGNORECASE | re.DOTALL,
         )
         if not menu_match:
-            return []
+            return [
+                ("Most Recent", urllib.parse.urljoin(current_url, "/most-recent/")),
+                ("Top Rated", urllib.parse.urljoin(current_url, "/top-rated/")),
+                ("Most Viewed", urllib.parse.urljoin(current_url, "/most-viewed/")),
+                ("Longest", urllib.parse.urljoin(current_url, "/longest/")),
+            ]
 
-        for href, label in re.findall(r"<a href='([^']+)'>([^<]+)</a>", menu_match.group(1), re.IGNORECASE):
+        for href, label in re.findall(r"<a href=['\"]([^'\"]+)['\"]>([^<]+)</a>", menu_match.group(1), re.IGNORECASE):
             clean_label = html.unescape(" ".join(label.split()))
             option_url = urllib.parse.urljoin(current_url, html.unescape(href.strip()))
             if not any(clean_label == item[0] for item in options):
@@ -89,24 +94,29 @@ class Trendyporn(BaseWebsite):
         return options
 
     def select_sort_order(self, original_url=None):
-        target_url = original_url or self.base_url + "/"
+        target_url = urllib.parse.unquote_plus(original_url) if original_url else self.base_url + "/"
         html_content = self.make_request(target_url)
         if not html_content:
             return
 
         sort_options = self._extract_sort_options(html_content, target_url)
         if not sort_options:
-            xbmcgui.Dialog().notification(
-                "AdultHideout",
-                "No sort options found.",
-                xbmcgui.NOTIFICATION_INFO,
-            )
-            return
+            sort_options = [
+                ("Most Recent", self.base_url + "/most-recent/"),
+                ("Top Rated", self.base_url + "/top-rated/"),
+                ("Most Viewed", self.base_url + "/most-viewed/"),
+                ("Longest", self.base_url + "/longest/"),
+            ]
 
         labels = [label for label, _ in sort_options]
         idx = xbmcgui.Dialog().select("Sort by...", labels)
         if idx == -1:
             return
+
+        try:
+            self.addon.setSetting("trendyporn_sort_by", str(idx))
+        except Exception:
+            pass
 
         xbmc.executebuiltin(
             "Container.Update({}?mode=2&website={}&url={},replace)".format(

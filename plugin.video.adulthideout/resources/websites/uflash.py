@@ -2,6 +2,7 @@
 
 import re
 import json
+import html
 import urllib.parse as urllib_parse
 import urllib.request as urllib_request
 from http.cookiejar import CookieJar
@@ -16,7 +17,7 @@ class UflashWebsite(BaseWebsite):
     config = {
         "name": "uflash",
         "base_url": "http://www.uflash.tv/",
-        "search_url": "http://www.uflash.tv/search?q={}"
+        "search_url": "http://www.uflash.tv/search?search_type=videos&q={}"
     }
 
     def __init__(self, addon_handle):
@@ -165,12 +166,17 @@ class UflashWebsite(BaseWebsite):
             return
 
         categories_dict = {}
-        html_pattern = r'<a\s+href="(/category/[^"]+)"[^>]*>.*?<img[^>]+src="([^"]+)"[^>]*>.*?<span[^>]+class="category-name">([^<]+)</span>'
-        html_categories = re.findall(html_pattern, content, re.DOTALL)
-        for cat_url, thumbnail, name in html_categories:
-            name = re.sub(r'<[^>]+>', '', name).strip()
-            cat_url = urllib_parse.urljoin(self.base_url, cat_url)
-            categories_dict[cat_url] = (name, thumbnail)
+        block_pattern = re.compile(
+            r'<div class="category_box">.*?<div class="btopl"><h2>([^<]+)</h2></div>.*?'
+            r'<div class="btopr"><a href="([^"]+)">View More\.\.\.</a></div>.*?'
+            r'<div id="category_videos_\d+">.*?<img src="([^"]+)"',
+            re.DOTALL | re.IGNORECASE,
+        )
+        for name, cat_url, thumbnail in block_pattern.findall(content):
+            clean_name = re.sub(r'<[^>]+>', '', html.unescape(name)).strip()
+            full_url = urllib_parse.urljoin(self.base_url, html.unescape(cat_url))
+            full_thumb = urllib_parse.urljoin(self.base_url, html.unescape(thumbnail))
+            categories_dict[full_url] = (clean_name, full_thumb)
 
         if not categories_dict:
             self.logger.error(f"No categories found for URL: {url}")
@@ -179,7 +185,7 @@ class UflashWebsite(BaseWebsite):
             return
 
         for cat_url, (name, thumbnail) in sorted(categories_dict.items()):
-            self.add_dir(name, cat_url, 2, self.icons['categories'], self.fanart)
+            self.add_dir(name, cat_url, 2, thumbnail or self.icons['categories'], self.fanart)
         self.end_directory()
 
     def play_video(self, url):

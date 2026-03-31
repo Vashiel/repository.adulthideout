@@ -224,68 +224,29 @@ class SunpornoWebsite(BaseWebsite):
         
         xbmc.log(f"[Sunporno] Final video URL: {video_url[:150]}...", xbmc.LOGINFO)
 
-        try:
-            from resources.lib.proxy_utils import ProxyController, PlaybackGuard
-            
-            upstream_headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Accept": "video/webm,video/ogg,video/*;q=0.9,application/ogg;q=0.7,audio/*;q=0.6,*/*;q=0.5",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Accept-Encoding": "identity",
-                "Connection": "keep-alive",
-                "Referer": embed_url if embed_url else url,
-                "Origin": "https://www.sunporno.com",
-            }
-            
-            controller = ProxyController(
-                video_url, 
-                upstream_headers=upstream_headers,
-                cookies=cookies_dict
-            )
-            local_url = controller.start()
-            
-            monitor = xbmc.Monitor()
-            player = xbmc.Player()
-            guard = PlaybackGuard(player, monitor, local_url, controller)
-            guard.start()
-            
-            li = xbmcgui.ListItem(path=local_url)
-            li.setMimeType('video/mp4')
-            li.setProperty('IsPlayable', 'true')
-            li.setContentLookup(False)
-            
-            xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
-            guard.join()
-            
-        except ImportError:
-            xbmc.log("[Sunporno] ProxyController not available, using direct playback", xbmc.LOGWARNING)
-            
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Referer': embed_url if embed_url else url,
-                'Origin': 'https://www.sunporno.com',
-                'Accept': 'video/webm,video/ogg,video/*;q=0.9,application/ogg;q=0.7,audio/*;q=0.6,*/*;q=0.5',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Accept-Encoding': 'identity',
-                'Connection': 'keep-alive',
-            }
-            
-            headers_str = '&'.join([f'{k}={urllib.parse.quote(str(v))}' for k, v in headers.items()])
-            
-            if cookies_dict:
-                cookie_str = "; ".join([f"{k}={v}" for k, v in cookies_dict.items()])
-                headers_str += f"&Cookie={urllib.parse.quote(cookie_str)}"
-            
-            final_url = f"{video_url}|{headers_str}"
-            
-            xbmc.log(f"[Sunporno] Direct playback URL: {final_url[:200]}...", xbmc.LOGINFO)
-            
-            li = xbmcgui.ListItem(path=final_url)
-            li.setMimeType('video/mp4')
-            li.setProperty('IsPlayable', 'true')
-            li.setContentLookup(False)
-            
-            xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': embed_url if embed_url else url,
+            'Origin': 'https://www.sunporno.com',
+            'Accept': 'video/webm,video/ogg,video/*;q=0.9,application/ogg;q=0.7,audio/*;q=0.6,*/*;q=0.5',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'identity',
+            'Connection': 'keep-alive',
+        }
+
+        headers_str = '&'.join([f'{k}={urllib.parse.quote(str(v))}' for k, v in headers.items()])
+        if cookies_dict:
+            cookie_str = "; ".join([f"{k}={v}" for k, v in cookies_dict.items()])
+            headers_str += f"&Cookie={urllib.parse.quote(cookie_str)}"
+
+        final_url = f"{video_url}|{headers_str}"
+        xbmc.log(f"[Sunporno] Direct playback URL: {final_url[:200]}...", xbmc.LOGINFO)
+
+        li = xbmcgui.ListItem(path=final_url)
+        li.setMimeType('video/mp4')
+        li.setProperty('IsPlayable', 'true')
+        li.setContentLookup(False)
+        xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
 
     def _extract_embed_url(self, content):
         meta_embed = re.search(r'<meta[^>]+property=["\']og:video:secure_url["\'][^>]+content=["\']([^"\']+)["\']', content)

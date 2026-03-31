@@ -184,7 +184,7 @@ class Hanime(BaseWebsite):
             return video_items
 
         patterns = [
-            r'<a href="([^"]+)".*?<figure class="main-figure">.*?<img[^>]+src="([^"]+)"[^>]*>.*?</figure>.*?<h2[^>]+>([^<]+)</h2>',
+            r'<a href="([^"]+)">\s*<figure class="main-figure">.*?<img[^>]+src="([^"]+)"[^>]*>.*?</figure>\s*<h2[^>]+>([^<]+)</h2>\s*</a>',
             r'<article[^>]+class="[^"]*post[^"]*"[^>]*>.*?<a href="([^"]+)"[^>]*>.*?<img[^>]+src="([^"]+)"[^>]*>.*?<h2[^>]*>([^<]+)</h2>',
             r'<div[^>]+class="video-thumb">.*?<a href="([^"]+)".*?title="([^"]+)".*?src="([^"]+)"',
         ]

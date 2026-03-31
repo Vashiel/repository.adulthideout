@@ -246,10 +246,9 @@ class XcafeWebsite(BaseWebsite):
             self.add_dir('[COLOR blue]Next Page (2) >>[/COLOR]', next_url, 2, self.icons.get('default'))
             return
 
-        # Case 3: /videos/ base (Recommended sort, first page) → use ?page=2
-        if re.search(r'/videos/\s*$', url.rstrip('/')):
-            next_url = f"{self.BASE_URL}/videos/?page=2"
-            self.add_dir('[COLOR blue]Next Page (2) >>[/COLOR]', next_url, 2, self.icons.get('default'))
+        # Case 3: /videos/ base (Recommended sort, first page)
+        # xCafe does not expose a reliable next-page link for this view.
+        if url.rstrip('/') == f"{self.BASE_URL}/videos":
             return
 
         # Case 4: path-based pagination — URL already ends with /N/
@@ -280,42 +279,56 @@ class XcafeWebsite(BaseWebsite):
             self.notify_error("Failed to load xCafe video page")
             return
 
+        def score_source(source_url):
+            source_url = source_url.lower()
+            for quality in (2160, 1440, 1080, 720, 480, 360, 240):
+                if str(quality) in source_url:
+                    return quality
+            if "_n.mp4" in source_url:
+                return 720
+            if source_url.endswith(".m3u8") or ".m3u8?" in source_url:
+                return 100
+            return 0
+
+        candidates = []
+        patterns = [
+            r'"sources"\s*:\s*\[(.*?)\]',
+            r'["\']?file["\']?\s*:\s*["\']([^"\']+\.(?:mp4|m3u8)[^"\']*)["\']',
+            r'https?://[^\s"\'<>]+\.(?:mp4|m3u8)[^\s"\'<>]*',
+        ]
+
+        for pattern in patterns:
+            for match in re.findall(pattern, content, re.DOTALL):
+                if pattern == patterns[0]:
+                    nested = re.findall(r'"file"\s*:\s*"([^"]+\.(?:mp4|m3u8)[^"]*)"', match)
+                    candidates.extend(nested)
+                else:
+                    candidates.append(match)
+
+        unique_candidates = []
+        seen = set()
+        for candidate in candidates:
+            candidate = candidate.replace('\\/', '/')
+            lowered = candidate.lower()
+            if (
+                candidate in seen
+                or "preview" in lowered
+                or "/videos_screenshots/" in lowered
+                or lowered.endswith(".jpg")
+            ):
+                continue
+            seen.add(candidate)
+            unique_candidates.append(candidate)
+
         video_url = None
-
-        # Pattern 1: "sources":[{"file":"https://...mp4"}]
-        sources_match = re.search(
-            r'"sources"\s*:\s*\[.*?"file"\s*:\s*"([^"]+\.mp4[^"]*)"',
-            content, re.DOTALL
-        )
-        if sources_match:
-            video_url = sources_match.group(1)
-
-        # Pattern 2: file: "https://...mp4"
-        if not video_url:
-            file_match = re.search(
-                r'["\']?file["\']?\s*:\s*["\']([^"\']+\.mp4[^"\']*)["\']',
-                content
-            )
-            if file_match:
-                video_url = file_match.group(1)
-
-        # Pattern 3: direct mp4 URLs
-        if not video_url:
-            mp4_matches = re.findall(r'https?://[^\s"\'<>]+\.mp4[^\s"\'<>]*', content)
-            if mp4_matches:
-                video_url = mp4_matches[0]
-
-        # Pattern 4: m3u8 stream
-        if not video_url:
-            m3u8_match = re.search(r'https?://[^\s"\'<>]+\.m3u8[^\s"\'<>]*', content)
-            if m3u8_match:
-                video_url = m3u8_match.group(0)
+        if unique_candidates:
+            video_url = max(unique_candidates, key=score_source)
 
         if not video_url:
             self.notify_error("No video source found on xCafe")
             return
 
-        video_url = video_url.replace('\\/', '/')
+        is_hls = video_url.endswith('.m3u8') or '.m3u8?' in video_url
 
         try:
             from resources.lib.proxy_utils import ProxyController, PlaybackGuard
@@ -329,7 +342,7 @@ class XcafeWebsite(BaseWebsite):
             guard = PlaybackGuard(player, monitor, local_url, controller)
             guard.start()
             li = xbmcgui.ListItem(path=local_url)
-            li.setMimeType('video/mp4')
+            li.setMimeType('application/vnd.apple.mpegurl' if is_hls else 'video/mp4')
             li.setProperty('IsPlayable', 'true')
             li.setContentLookup(False)
             xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
@@ -340,6 +353,6 @@ class XcafeWebsite(BaseWebsite):
                 urllib.parse.quote(url)
             )
             li = xbmcgui.ListItem(path=video_url + '|' + headers_str)
-            li.setMimeType('video/mp4')
+            li.setMimeType('application/vnd.apple.mpegurl' if is_hls else 'video/mp4')
             li.setProperty('IsPlayable', 'true')
             xbmcplugin.setResolvedUrl(self.addon_handle, True, li)

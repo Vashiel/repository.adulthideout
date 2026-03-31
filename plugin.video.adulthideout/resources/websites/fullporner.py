@@ -67,6 +67,31 @@ class FullPorner(BaseWebsite):
             ("Threesome", "threesome"),
             ("Teen", "teen")
         ]
+
+    def _normalize_thumb(self, thumb):
+        if not thumb:
+            return self.icons.get('default', self.icon)
+
+        thumb = html.unescape(thumb.strip())
+        if thumb.startswith('//'):
+            thumb = 'https:' + thumb
+        elif thumb.startswith('/'):
+            thumb = self.base_url + thumb
+        elif thumb.startswith('aoshenke.net/'):
+            thumb = 'https://' + thumb
+        elif thumb.startswith('imgs.xiaoshenke.net/'):
+            thumb = 'https://' + thumb
+
+        thumb = re.sub(
+            r'^https?://aoshenke\.net/thumb/(\d+)\.jpg$',
+            r'https://imgs.xiaoshenke.net/thumb/\1.jpg',
+            thumb,
+            flags=re.IGNORECASE,
+        )
+
+        if thumb.startswith('http'):
+            thumb += "|User-Agent=Mozilla%2F5.0&Referer=https%3A%2F%2Ffullporner.com%2F"
+        return thumb
     
     def _get_sort_param(self):
         saved = self.addon.getSetting(f"{self.name}_sort_by")
@@ -122,13 +147,12 @@ class FullPorner(BaseWebsite):
             
             if href.startswith('/'): 
                 href = self.base_url + href
-            if thumb and thumb.startswith('/'): 
-                thumb = self.base_url + thumb
+            thumb = self._normalize_thumb(thumb)
             
             videos.append({
                 'title': html.unescape(title).strip(),
                 'url': href,
-                'thumb': thumb or self.icons.get('default', self.icon)
+                'thumb': thumb
             })
             
         # Pagination

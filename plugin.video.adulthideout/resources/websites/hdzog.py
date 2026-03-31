@@ -213,10 +213,15 @@ class Hdzog(BaseWebsite):
                 context_menu=context_menu,
             )
 
-        current_page = int(data.get("params", {}).get("page", 1))
+        current_page = int(page)
         total_pages = int(data.get("pages", 1))
         if current_page < total_pages:
-            next_page_url = urllib.parse.urljoin(self.base_url, f"{path_for_paging}/{current_page + 1}")
+            next_path_parts = list(path_parts)
+            next_path_parts.append(str(current_page + 1))
+            next_path = "/".join(next_path_parts)
+            if not next_path:
+                next_path = f"{sort_order}/{current_page + 1}"
+            next_page_url = urllib.parse.urljoin(self.base_url, f"{next_path}/")
             self.add_dir(
                 name="[COLOR cyan]>> Next Page[/COLOR]",
                 url=next_page_url,

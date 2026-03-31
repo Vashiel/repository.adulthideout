@@ -208,7 +208,10 @@ class TxxxWebsite(BaseWebsite):
             
             self.add_link(name=title, url=play_data, mode=4, icon=thumbnail, fanart=self.fanart, context_menu=context_menu, info_labels=info_labels)
 
-        current_page = int(data.get('params', {}).get('page', 1))
+        try:
+            current_page = int(page)
+        except (TypeError, ValueError):
+            current_page = int(data.get('params', {}).get('page', 1))
         total_pages = int(data.get('pages', 1))
         if current_page < total_pages:
             next_page_path = f"{path_for_paging}/{current_page + 1}"

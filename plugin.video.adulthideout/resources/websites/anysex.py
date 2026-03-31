@@ -39,6 +39,7 @@ class AnySex(BaseWebsite):
             "Best": "/videos/best/"
         }
         self.scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'desktop': True})
+        self._video_page_check_cache = {}
         
         # Logo path
         self.logo = os.path.join(self.addon.getAddonInfo('path'), 'resources', 'logos', 'anysex.png')
@@ -122,6 +123,25 @@ class AnySex(BaseWebsite):
             self.logger.error(f"Request error: {e}")
             return None
 
+    def _video_page_exists(self, url):
+        cached = self._video_page_check_cache.get(url)
+        if cached is not None:
+            return cached
+        try:
+            response = self.scraper.get(
+                url,
+                allow_redirects=True,
+                timeout=10,
+                headers={"User-Agent": "Mozilla/5.0"},
+            )
+            ok = response.status_code == 200 and "<title>404 Not Found</title>" not in response.text
+            self._video_page_check_cache[url] = ok
+            return ok
+        except Exception as e:
+            self.logger.warning(f"Video page probe failed for {url}: {e}")
+            self._video_page_check_cache[url] = False
+            return False
+
     def get_listing(self, url):
         html_content = self.make_request(url)
         if not html_content: return []
@@ -141,7 +161,13 @@ class AnySex(BaseWebsite):
         pattern = r'<a href="(https://anysex\.com/video/[^"]+)".*?<img[^>]+src="([^"]+)"[^>]*alt="([^"]+)"'
         items = re.findall(pattern, html_content, re.DOTALL)
 
-        for link, thumb, title in items:
+        for idx, (link, thumb, title) in enumerate(items):
+            # The current feed occasionally exposes a dead newest item (404).
+            # Probe only the first few candidates to keep the listing fast while
+            # avoiding a broken first click in Kodi and KVAT.
+            if idx < 6 and not self._video_page_exists(link):
+                self.logger.info(f"Skipping dead video listing entry: {link}")
+                continue
             videos_raw.append({"title": html.unescape(title.strip()), "url": link, "thumb": thumb})
             thumb_urls.append(thumb)
 

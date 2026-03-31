@@ -90,13 +90,35 @@ class ShamelessWebsite(BaseWebsite):
 
             self.add_link(title.strip(), full_url, 4, thumb, self.fanart)
 
+    def _extract_first_video_url(self, content):
+        match = re.search(r'<a[^>]+href="([^"]+/videos/[^"]+)"[^>]*title="([^"]+)"', content)
+        if not match:
+            return None
+        video_url = match.group(1)
+        if not video_url.startswith('http'):
+            return urllib.parse.urljoin(self.base_url, video_url)
+        return video_url
+
     def add_next_button(self, content, current_url):
-        match = re.search(r'<a[^>]+href="([^"]+)"[^>]*>(?:Next|&gt;|&raquo;)[^<]*</a>', content, re.IGNORECASE)
-        if match:
-             next_url = match.group(1)
-             if not next_url.startswith('http'):
-                 next_url = urllib.parse.urljoin(self.base_url, next_url)
-             self.add_dir('[COLOR blue]Next Page >>>>[/COLOR]', next_url, 2, self.icons['default'], self.fanart)
+        parsed = urllib.parse.urlparse(current_url)
+        path_parts = [part for part in parsed.path.strip('/').split('/') if part]
+        current_page = 1
+        if path_parts and path_parts[-1].isdigit():
+            current_page = int(path_parts.pop())
+
+        base_path = '/' + '/'.join(path_parts) + '/'
+        next_url = urllib.parse.urljoin(self.base_url, f"{base_path}{current_page + 1}/")
+
+        next_content = self.make_request(next_url)
+        if not next_content:
+            return
+
+        current_first = self._extract_first_video_url(content)
+        next_first = self._extract_first_video_url(next_content)
+        if not next_first or next_first == current_first:
+            return
+
+        self.add_dir('[COLOR blue]Next Page >>>>[/COLOR]', next_url, 2, self.icons['default'], self.fanart)
 
     def play_video(self, url):
         content = self.make_request(url)

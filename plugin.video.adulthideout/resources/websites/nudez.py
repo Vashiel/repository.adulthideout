@@ -307,6 +307,12 @@ class Nudez(BaseWebsite):
             )
         return stream_url + "|" + "&".join(parts)
 
+    def _is_android(self):
+        try:
+            return bool(xbmc.getCondVisibility("system.platform.android"))
+        except Exception:
+            return False
+
     def _start_process_guard(self, process, target_path):
         class _ProcessGuard(threading.Thread):
             def __init__(self, kodi_player, monitor, proxy_process, expected_target):
@@ -340,6 +346,9 @@ class Nudez(BaseWebsite):
 
         local_url = None
         if os.name == "nt":
+            # Let the external helper resolve the final stream itself.
+            # Passing the first decoded get_file URL often causes an immediate
+            # 403 probe, then the helper has to fall back to the page anyway.
             proxy_process, local_url = self._start_external_proxy("", url, cookie_dict)
             if proxy_process and local_url:
                 self._start_process_guard(proxy_process, local_url)
@@ -373,17 +382,52 @@ class Nudez(BaseWebsite):
                 "Accept-Language": "en-US,en;q=0.9",
                 "Connection": "keep-alive",
             }
+            if cookie_dict:
+                headers["Cookie"] = "; ".join(
+                    "{}={}".format(str(key), str(value)) for key, value in cookie_dict.items()
+                )
+
             from resources.lib.proxy_utils import PlaybackGuard, ProxyController
 
-            controller = ProxyController(
-                stream_url,
-                upstream_headers=headers,
-                cookies=cookie_dict,
-                session=self.session,
-                skip_resolve=True,
-            )
-            local_url = controller.start()
-            PlaybackGuard(xbmc.Player(), xbmc.Monitor(), local_url, controller).start()
+            if self._is_android():
+                try:
+                    controller = ProxyController(
+                        stream_url,
+                        upstream_headers=headers,
+                        cookies=cookie_dict,
+                        session=self.session,
+                        skip_resolve=True,
+                    )
+                    local_url = controller.start()
+                    PlaybackGuard(xbmc.Player(), xbmc.Monitor(), local_url, controller).start()
+                except Exception as exc:
+                    self.logger.warning("[Nudez] Android session proxy failed, trying urllib proxy: %s", exc)
+                    try:
+                        controller = ProxyController(
+                            stream_url,
+                            upstream_headers=headers,
+                            cookies=cookie_dict,
+                            use_urllib=True,
+                            skip_resolve=True,
+                        )
+                        local_url = controller.start()
+                        PlaybackGuard(xbmc.Player(), xbmc.Monitor(), local_url, controller).start()
+                    except Exception as inner_exc:
+                        self.logger.warning(
+                            "[Nudez] Android urllib proxy failed, falling back to direct playback: %s",
+                            inner_exc,
+                        )
+                        local_url = self._build_header_url(stream_url, headers)
+            else:
+                controller = ProxyController(
+                    stream_url,
+                    upstream_headers=headers,
+                    cookies=cookie_dict,
+                    session=self.session,
+                    skip_resolve=True,
+                )
+                local_url = controller.start()
+                PlaybackGuard(xbmc.Player(), xbmc.Monitor(), local_url, controller).start()
 
         list_item = xbmcgui.ListItem(path=local_url)
         list_item.setProperty("IsPlayable", "true")

@@ -121,10 +121,17 @@ class OKXXX(BaseWebsite):
         # Pagination: <div class="pagination">...<ul>...<li><a href="LINK">Next</a></li>
         next_m = re.search(r'<li[^>]+pagination-next[^>]*>\s*<a[^>]+href=["\']([^"\']+)["\']', html, re.IGNORECASE)
         if next_m:
-            next_url = urllib.parse.urljoin(self.base_url, next_m.group(1))
+            next_url = self._normalize_next_url(next_m.group(1))
             self.add_dir('Next Page >>', next_url, 2 if '/channels/' not in next_url else 8, self.icons.get('default', self.icon), name_param=self.name)
             
         self.end_directory(content_type="movies")
+
+    def _normalize_next_url(self, next_href):
+        next_href = next_href.strip()
+        index_match = re.match(r'^/index-(\d+)\.php$', next_href, re.IGNORECASE)
+        if index_match:
+            return urllib.parse.urljoin(self.base_url, f"/{index_match.group(1)}/")
+        return urllib.parse.urljoin(self.base_url, next_href)
 
 
     def process_categories(self, url):

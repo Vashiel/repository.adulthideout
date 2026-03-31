@@ -190,7 +190,11 @@ class HQPorner(BaseWebsite):
             self._save_debug_html(hqporner_html, f"debug_hqporner_{url[-10:]}.html")
             self.logger.debug(f"HQPorner: Main video page HTML (first 500 chars): {hqporner_html[:500]}")
 
-        mydaddy_match = re.search(r'(?:src|nativeplayer\.php\?i=|altplayer\.php\?i=|player\.php\?i=)[\'"]?\s*([^\'"]*mydaddy\.cc/video/[a-f0-9]+/?(?:&alt)?)', hqporner_html, re.IGNORECASE | re.DOTALL)
+        mydaddy_match = re.search(
+            r'(?:nativeplayer|altplayer|player)\.php\?i=(//mydaddy\.cc/video/[a-f0-9]+/?(?:&alt)?)',
+            hqporner_html,
+            re.IGNORECASE | re.DOTALL,
+        )
         if not mydaddy_match:
             self.logger.error(f"HQPorner: No mydaddy match found in HTML: {hqporner_html[:1000]}")
             self.notify_error("Could not find the embedded video URL.")
@@ -213,48 +217,37 @@ class HQPorner(BaseWebsite):
         self._save_debug_html(mydaddy_html, f"debug_mydaddy_{url[-10:]}.html")
         self.logger.debug(f"HQPorner: Mydaddy HTML (first 500 chars): {mydaddy_html[:500]}")
 
-        source_matches = re.findall(r'<source\s+src=[\'"]([^\'"]+\.(?:bigcdn\.cc|othercdn\.com)/pubs/[a-f0-9.]+/(\d+)\.mp4)[\'"]', mydaddy_html, re.IGNORECASE | re.DOTALL)
-        if source_matches:
-            sources = {}
-            for full_url, qual_num in source_matches:
-                if full_url.startswith('//'):
-                    full_url = 'https:' + full_url
-                sources[int(qual_num)] = full_url
-            self.logger.info(f"HQPorner: Parsed sources from <source> tags: {sources}")
-            selected_quality_num = max(sources.keys())
-            final_url = sources[selected_quality_num]
-            self.logger.info(f"HQPorner: Selected quality: {selected_quality_num}p, URL: {final_url}")
-        else:
-            self.logger.warning("HQPorner: Could not find <source> tags. Falling back to old method.")
-            comment_match = re.search(r'pu://s(\d+)\.(?:bigcdn\.cc|othercdn\.com)/pubs/([a-f0-9.]+?)/', mydaddy_html)
-            if comment_match:
-                cdn_num, pub_id = comment_match.groups()
-                self.logger.info("HQPorner: Extracted from comment.")
-            else:
-                fallback_match = re.search(r'(?:href|src)=[\'"](//s(\d+)\.(?:bigcdn\.cc|othercdn\.com)/pubs/([a-f0-9.]+?)/\d+\.mp4)', mydaddy_html)
-                if fallback_match:
-                    cdn_num, pub_id = fallback_match.groups()[1:3]
-                    self.logger.info("HQPorner: Extracted from fallback href/src.")
-                else:
-                    self.logger.error(f"HQPorner: No video path match found in comment or fallback. HTML: {mydaddy_html[:1000]}")
-                    self.notify_error("Could not find the video base path.")
-                    xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
-                    return
-            
-            video_base_path = f'https://s{cdn_num}.bigcdn.cc/pubs/{pub_id}/'
-            quality_matches = re.findall(r'(\d+)\.mp4', mydaddy_html)
-            qualities = sorted([q for q in set(quality_matches) if q.isdigit()], key=int, reverse=True)
-            for quality in qualities:
-                final_url = f"{video_base_path}{quality}.mp4"
-                if self._check_url(final_url, mydaddy_url):
-                    self.logger.info(f"HQPorner: Valid quality found: {quality}p, URL: {final_url}")
-                    break
-            else:
-                self.notify_error("No valid video qualities found (fallback).")
-                xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
-                return
+        source_matches = re.findall(
+            r'(//(?:s\d+\.)?(?:bigcdn\.cc|othercdn\.com)/pubs/[a-f0-9.]+/(\d+)\.mp4)',
+            mydaddy_html,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if not source_matches:
+            self.logger.error(f"HQPorner: No video path match found in mydaddy HTML: {mydaddy_html[:1000]}")
+            self.notify_error("Could not find the video base path.")
+            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
+            return
 
-        playback_url = f"{final_url}|Referer={mydaddy_url}"
+        sources = {}
+        for full_url, qual_num in source_matches:
+            normalized = full_url.rstrip("\\")
+            if normalized.startswith('//'):
+                normalized = 'https:' + normalized
+            try:
+                sources[int(qual_num)] = normalized
+            except Exception:
+                continue
+
+        if not sources:
+            self.notify_error("No valid video qualities found.")
+            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
+            return
+
+        selected_quality_num = max(sources.keys())
+        final_url = sources[selected_quality_num]
+        self.logger.info(f"HQPorner: Selected quality: {selected_quality_num}p, URL: {final_url}")
+
+        playback_url = f"{final_url}|Referer={urllib.parse.quote_plus(mydaddy_url)}&User-Agent={urllib.parse.quote_plus(self.opener.addheaders[0][1])}"
         self.logger.info(f"HQPorner: Playback URL: {playback_url}")
         
         list_item = xbmcgui.ListItem(path=playback_url)

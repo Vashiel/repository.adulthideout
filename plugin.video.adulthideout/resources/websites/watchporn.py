@@ -189,7 +189,7 @@ class WatchPorn(BaseWebsite):
         )
 
     def process_content(self, url):
-        if not url or url == "BOOTSTRAP":
+        if not url or url == "BOOTSTRAP" or url.rstrip("/") == self.base_url.rstrip("/"):
             url = self._get_start_url()
 
         video_context = self._get_video_context_menu(url)
@@ -218,10 +218,10 @@ class WatchPorn(BaseWebsite):
             return self.end_directory("videos")
 
         item_pattern = re.compile(
-            r'<div class="item\s*[^"]*">\s*'
+            r'<div class="thumb item\s*[^"]*">\s*'
             r'<a href="(https://watchporn\.to/video/[^"]+/)" title="([^"]+)".*?'
             r'<img[^>]+class="thumb[^"]*"[^>]+(?:data-original|src)="([^"]+)"[^>]+alt="([^"]+)".*?'
-            r'<div class="duration">([^<]+)</div>',
+            r'<span class="thumb__info-item">([^<]+)</span>',
             re.IGNORECASE | re.DOTALL,
         )
 
@@ -270,26 +270,32 @@ class WatchPorn(BaseWebsite):
         if not html_content:
             return self.end_directory("videos")
 
-        item_pattern = re.compile(
-            r'<a class="item" href="(https://watchporn\.to/categories/[^"]+/)" title="([^"]+)">\s*'
-            r'<div class="img">\s*<img[^>]+class="thumb"[^>]+src="([^"]+)"[^>]*>.*?'
-            r'<strong class="title">([^<]+)</strong>.*?'
-            r'<div class="videos">([^<]+)</div>',
+        seen = set()
+        blocks = re.findall(
+            r'(<a class="item thumb" href="https://watchporn\.to/categories/[^"]+/".*?</a>)',
+            html_content,
             re.IGNORECASE | re.DOTALL,
         )
-
-        seen = set()
-        for cat_url, title_attr, thumb, title_text, count in item_pattern.findall(html_content):
+        for block in blocks:
+            match = re.search(r'href="(https://watchporn\.to/categories/[^"]+/)" title="([^"]+)"', block, re.IGNORECASE)
+            if not match:
+                continue
+            cat_url, title_attr = match.groups()
             if cat_url in seen:
                 continue
             seen.add(cat_url)
-            title = html.unescape((title_text or title_attr).strip())
+            thumb_match = re.search(r'<img[^>]+src="([^"]+)"', block, re.IGNORECASE)
+            title_match = re.search(r'<div class="thumb__title">([^<]+)</div>', block, re.IGNORECASE)
+            count_match = re.search(r'<div class="thumb__info-item">\s*(?:<svg.*?</svg>)?\s*([^<]+)\s*</div>', block, re.IGNORECASE | re.DOTALL)
+            title = html.unescape((title_match.group(1) if title_match else title_attr).strip())
+            thumb = thumb_match.group(1).strip() if thumb_match else self.icons.get("categories", self.icon)
+            count = re.sub(r"\s+", " ", count_match.group(1)).strip() if count_match else ""
             label = "{} ({})".format(title, count.strip()) if count else title
             self.add_dir(
                 label,
                 cat_url,
                 2,
-                thumb.strip() if thumb else self.icons.get("categories", self.icon),
+                thumb,
             )
 
         self.end_directory("videos")
@@ -308,26 +314,32 @@ class WatchPorn(BaseWebsite):
             return self.end_directory("videos")
 
         context_menu = self._get_pornstar_context_menu(url)
-        item_pattern = re.compile(
-            r'<a class="item" href="(https://watchporn\.to/models/[^"]+/)" title="([^"]+)">\s*'
-            r'<div class="img">\s*<img[^>]+class="thumb"[^>]+src="([^"]+)"[^>]*>.*?'
-            r'<strong class="title">([^<]+)</strong>.*?'
-            r'<div class="videos">([^<]+)</div>',
+        seen = set()
+        blocks = re.findall(
+            r'(<a class="item thumb thumb--model" href="https://watchporn\.to/models/[^"]+/".*?</a>)',
+            html_content,
             re.IGNORECASE | re.DOTALL,
         )
-
-        seen = set()
-        for star_url, title_attr, thumb, title_text, count in item_pattern.findall(html_content):
+        for block in blocks:
+            match = re.search(r'href="(https://watchporn\.to/models/[^"]+/)" title="([^"]+)"', block, re.IGNORECASE)
+            if not match:
+                continue
+            star_url, title_attr = match.groups()
             if star_url in seen:
                 continue
             seen.add(star_url)
-            title = html.unescape((title_text or title_attr).strip())
+            thumb_match = re.search(r'<img[^>]+src="([^"]+)"', block, re.IGNORECASE)
+            title_match = re.search(r'<div class="thumb__title">([^<]+)</div>', block, re.IGNORECASE)
+            count_match = re.search(r'(\d+\s+videos?)', block, re.IGNORECASE)
+            title = html.unescape((title_match.group(1) if title_match else title_attr).strip())
+            thumb = thumb_match.group(1).strip() if thumb_match else self.icons.get("pornstars", self.icon)
+            count = count_match.group(1).strip() if count_match else ""
             label = "{} ({})".format(title, count.strip()) if count else title
             self.add_dir(
                 label,
                 star_url,
                 2,
-                thumb.strip() if thumb else self.icons.get("pornstars", self.icon),
+                thumb,
                 self.fanart,
                 context_menu=context_menu,
             )

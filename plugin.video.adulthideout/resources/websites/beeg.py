@@ -30,6 +30,50 @@ class BeegWebsite(BaseWebsite):
             return r.text if r.status_code == 200 else None
         except: return None
 
+    def _fetch_api_json(self, url):
+        try:
+            headers = self.scraper.headers.copy()
+            headers.update({'Accept': 'application/json, text/plain, */*', 'Sec-Fetch-Dest': 'empty', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Site': 'cross-site'})
+            r = self.scraper.get(url, headers=headers, timeout=20)
+            if r.status_code == 200:
+                return r.json()
+        except:
+            pass
+        return None
+
+    def _collect_recent_tags(self, max_pages=5):
+        people = {}
+        other = {}
+
+        for page_idx in range(max_pages):
+            offset = page_idx * 24
+            data = self._fetch_api_json(f"https://store.externulls.com/facts/tag?id=27173&limit=24&offset={offset}")
+            if not isinstance(data, list):
+                continue
+
+            for video in data:
+                for tag in video.get('tags', []):
+                    slug = tag.get('tg_slug')
+                    name = tag.get('tg_name')
+                    if not slug or not name:
+                        continue
+
+                    icon = self.icons.get('default')
+                    if tag.get('thumbs') and tag['thumbs'][0].get('crops'):
+                        icon = f"https://thumbs.externulls.com/photos/{tag['thumbs'][0]['id']}/to.webp?crop_id={tag['thumbs'][0]['crops'][0]['id']}&size_new=300x300"
+
+                    bucket = people if tag.get('is_person') else other
+                    bucket[slug] = {
+                        'name': name,
+                        'slug': slug,
+                        'icon': icon,
+                    }
+
+        return {
+            'human': sorted(people.values(), key=lambda item: item['name'].lower()),
+            'other': sorted(other.values(), key=lambda item: item['name'].lower()),
+        }
+
     def process_content(self, url):
         final_url = url
         if url == "BOOTSTRAP" or url == self.base_url or url == self.base_url + "/":
@@ -37,11 +81,7 @@ class BeegWebsite(BaseWebsite):
         elif "/tag/" in url:
             final_url = f"https://store.externulls.com/facts/tag?slug={url.split('/tag/')[-1].strip('/')}&limit=24&offset=0"
         elif url == "TAGS_MENU":
-            self.add_dir('Pornstars', 'CAT_TYPE:human', 2, self.icons.get('categories'))
-            self.add_dir('Productions', 'CAT_TYPE:productions', 2, self.icons.get('categories'))
-            self.add_dir('Categories', 'CAT_TYPE:other', 2, self.icons.get('categories'))
-            self.end_directory()
-            return
+            return self.process_categories('all')
         elif url.startswith("CAT_TYPE:"):
              return self.process_categories(url.split(":")[1])
 
@@ -49,13 +89,9 @@ class BeegWebsite(BaseWebsite):
             self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons.get('search'))
             self.add_dir('[COLOR yellow]Categories[/COLOR]', 'TAGS_MENU', 2, self.icons.get('categories'))
 
-        try:
-            headers = self.scraper.headers.copy()
-            headers.update({'Accept': 'application/json, text/plain, */*', 'Sec-Fetch-Dest': 'empty', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Site': 'cross-site'})
-            r = self.scraper.get(final_url, headers=headers, timeout=20)
-            if r.status_code != 200: raise Exception()
-            data = r.json()
-        except: return self.notify_error("API Error") or self.end_directory()
+        data = self._fetch_api_json(final_url)
+        if data is None:
+            return self.notify_error("API Error") or self.end_directory()
 
         count = 0
         if isinstance(data, list):
@@ -85,45 +121,64 @@ class BeegWebsite(BaseWebsite):
         self.end_directory()
 
     def process_categories(self, cat_key):
-        try:
-            r = self.scraper.get("https://store.externulls.com/tag/facts/tags?get_original=true&slug=index", headers=self.scraper.headers, timeout=20)
-            data = r.json()
-            tags = data[cat_key] if cat_key in data else [t for s in data.values() if isinstance(s, list) for t in s]
-            tags.sort(key=lambda x: x.get('tg_name', '').lower())
-            
-            for t in tags:
-                if not t.get('tg_name') or not t.get('tg_slug'): continue
-                icon = self.icons.get('default')
-                if t.get('pt_photo'):
-                     icon = f"https://img.externulls.com/photos/v/{t['pt_photo']}.jpg"
-                elif t.get('thumbs') and t['thumbs'][0].get('crops'):
-                    icon = f"https://thumbs.externulls.com/photos/{t['thumbs'][0]['id']}/to.webp?crop_id={t['thumbs'][0]['crops'][0]['id']}&size_new=300x300"
-                
-                self.add_dir(t['tg_name'].title(), f"https://store.externulls.com/facts/tag?slug={t['tg_slug']}&limit=24&offset=0", 2, icon)
-        except: pass
+        collected = self._collect_recent_tags()
+        if cat_key == 'all':
+            tags = collected.get('other', []) + collected.get('human', [])
+        else:
+            tags = collected.get(cat_key, [])
+        for tag in tags:
+            self.add_dir(tag['name'].title(), f"https://store.externulls.com/facts/tag?slug={tag['slug']}&limit=24&offset=0", 2, tag['icon'])
         self.end_directory()
 
     def search(self, query):
         if not query: return
-        try:
-            r = self.scraper.get("https://store.externulls.com/tag/facts/tags?get_original=true&slug=index", headers=self.scraper.headers, timeout=20)
-            tags = [t for s in r.json().values() if isinstance(s, list) for t in s]
-            matches = [t for t in tags if query.lower() in t.get('tg_name', '').lower()]
-            
-            if not matches: return self.notify_error(f"No results for: {query}")
-            if len(matches) == 1:
-                self.process_content(f"https://store.externulls.com/facts/tag?slug={matches[0]['tg_slug']}&limit=24&offset=0")
+        query_lower = query.lower()
+        collected = self._collect_recent_tags()
+        matches = [tag for group in collected.values() for tag in group if query_lower in tag['name'].lower()]
+
+        if len(matches) == 1:
+            self.process_content(f"https://store.externulls.com/facts/tag?slug={matches[0]['slug']}&limit=24&offset=0")
+            return
+
+        if matches:
+            for tag in matches:
+                self.add_dir(f"{tag['name'].title()} [Tag]", f"https://store.externulls.com/facts/tag?slug={tag['slug']}&limit=24&offset=0", 2, tag['icon'])
+            self.end_directory()
+            return
+
+        # Fallback: search recent feed titles when the tag index has no direct match.
+        for page_idx in range(5):
+            offset = page_idx * 24
+            data = self._fetch_api_json(f"https://store.externulls.com/facts/tag?id=27173&limit=24&offset={offset}")
+            if not isinstance(data, list):
+                continue
+
+            found = False
+            for v in data:
+                try:
+                    vid = str(v.get('file', {}).get('id', ''))
+                    if not vid:
+                        continue
+                    title = f"Video {vid}"
+                    for d in v.get('file', {}).get('data', []):
+                        if d.get('cd_column') == 'sf_name':
+                            title = d.get('cd_value', title)
+                            break
+                    if query_lower not in title.lower():
+                        continue
+                    thumb = self.icons.get('default')
+                    if v.get('fc_facts') and v['fc_facts'][0].get('fc_thumbs'):
+                        thumb = f"https://thumbs.externulls.com/videos/{vid}/{v['fc_facts'][0]['fc_thumbs'][0]}.webp?size=1280x720"
+                    self.add_link(title, f"{self.base_url}/{vid}", 4, thumb, self.fanart)
+                    found = True
+                except:
+                    pass
+
+            if found:
+                self.end_directory()
                 return
 
-            for t in matches:
-                icon = self.icons.get('default')
-                if t.get('pt_photo'):
-                     icon = f"https://img.externulls.com/photos/v/{t['pt_photo']}.jpg"
-                elif t.get('thumbs') and t['thumbs'][0].get('crops'):
-                    icon = f"https://thumbs.externulls.com/photos/{t['thumbs'][0]['id']}/to.webp?crop_id={t['thumbs'][0]['crops'][0]['id']}&size_new=300x300"
-                self.add_dir(f"{t['tg_name'].title()} [Tag]", f"https://store.externulls.com/facts/tag?slug={t['tg_slug']}&limit=24&offset=0", 2, icon)
-            self.end_directory()
-        except: self.notify_error("Search Error")
+        self.notify_error(f"No results for: {query}")
 
     def play_video(self, url):
         vid = url.split('/')[-1]

@@ -244,36 +244,63 @@ class YoujizzWebsite(BaseWebsite):
             
         self.end_directory()
 
-    def play_video(self, url):
-        content = self.make_request(url)
-        if not content:
-            self.notify_error('Failed to load video page')
-            return
+    def _normalize_stream_url(self, stream_url):
+        if not stream_url:
+            return None
+        stream_url = stream_url.replace('\\/', '/')
+        if stream_url.startswith('//'):
+            stream_url = 'https:' + stream_url
+        elif not stream_url.startswith('http'):
+            stream_url = urllib.parse.urljoin(self.config['base_url'], stream_url)
+        return stream_url
 
+    def _stream_score(self, stream_url):
+        score = 0
+        dim_match = re.search(r'-(\d+)-(\d+)-(\d+)-h264\.mp4', stream_url)
+        if dim_match:
+            try:
+                width = int(dim_match.group(1))
+                height = int(dim_match.group(2))
+                bitrate = int(dim_match.group(3))
+                score += width * 1000000
+                score += height * 1000
+                score += bitrate
+            except Exception:
+                pass
+        elif stream_url.endswith('.mp4'):
+            score += 1
+        return score
+
+    def _extract_best_stream(self, content):
+        candidates = []
         patterns = [
             r'["\']filename["\']\s*:\s*["\']([^"\']+\.mp4[^"\']*)["\']',
             r'<source[^>]+src=["\']([^"\']+\.mp4[^"\']*)["\']',
             r'data-video-url=["\']([^"\']+)["\']',
             r'videoSrc\s*=\s*["\']([^"\']+)["\']'
         ]
-        
-        stream_url = None
+
         for pat in patterns:
-            match = re.search(pat, content)
-            if match:
-                stream_url = match.group(1)
-                stream_url = stream_url.replace('\\/', '/')
-                break
-        
+            for match in re.findall(pat, content):
+                stream_url = self._normalize_stream_url(match)
+                if stream_url and stream_url not in candidates and ".mp4" in stream_url:
+                    candidates.append(stream_url)
+
+        if not candidates:
+            return None
+
+        return max(candidates, key=self._stream_score)
+
+    def play_video(self, url):
+        content = self.make_request(url)
+        if not content:
+            self.notify_error('Failed to load video page')
+            return
+
+        stream_url = self._extract_best_stream(content)
         if not stream_url:
             self.notify_error('No playable stream found')
             return
-
-        if not stream_url.startswith('http'):
-            if stream_url.startswith('//'):
-                stream_url = 'https:' + stream_url
-            else:
-                stream_url = urllib.parse.urljoin(self.config['base_url'], stream_url)
         
         li = xbmcgui.ListItem(path=stream_url)
         li.setMimeType('video/mp4')

@@ -379,22 +379,49 @@ class YouPornWebsite(BaseWebsite):
         else:
             content_block = content_block_m.group(1)
 
-        for m in re.finditer(r'<div class=\'porn-star-list\'>.*?<a href="([^"]+)" class="tm_pornstar_thumb">.*?<img[^>]+(?:data-src|src)="([^"]+)"[^>]*alt="([^"]+)".*?<span>Rank: (\d+)</span>.*?<span class="video-count">(\d+)</span>', content_block, re.DOTALL | re.I):
-            
+        count = 0
+
+        for m in re.finditer(
+            r'<a\s+href="([^"]+)"\s+class="performer-link">[\s\S]*?'
+            r'<img[^>]+(?:data-src|src)="([^"]+)"[^>]*alt="([^"]+)"[\s\S]*?'
+            r'<span\s+class="tm_pornstar_name">([^<]+)</span>',
+            content_block,
+            re.DOTALL | re.I,
+        ):
             actress_url = html.unescape(m.group(1))
             thumb = html.unescape(m.group(2))
-            name = html.unescape(m.group(3)).strip()
-            rank = m.group(4)
-            videos = m.group(5)
-            
+            alt_name = html.unescape(m.group(3)).strip()
+            display_name = html.unescape(m.group(4)).strip()
+            name = display_name or alt_name
+
             if not thumb.startswith('http'):
                 thumb = urllib.parse.urljoin(self.base_url, thumb)
-            
+
             full_url = urllib.parse.urljoin(self.base_url, actress_url)
-            
-            label = f"{name} [COLOR gray](Rank: {rank} / Videos: {videos})[/COLOR]"
-            
-            self.add_dir(label, full_url, 2, thumb, self.fanart)
+            self.add_dir(name, full_url, 2, thumb, self.fanart)
+            count += 1
+
+        if count == 0:
+            for m in re.finditer(
+                r'<div class=\'porn-star-list\'>.*?<a href="([^"]+)" class="tm_pornstar_thumb">.*?'
+                r'<img[^>]+(?:data-src|src)="([^"]+)"[^>]*alt="([^"]+)".*?'
+                r'<span>Rank: (\d+)</span>.*?<span class="video-count">(\d+)</span>',
+                content_block,
+                re.DOTALL | re.I,
+            ):
+                actress_url = html.unescape(m.group(1))
+                thumb = html.unescape(m.group(2))
+                name = html.unescape(m.group(3)).strip()
+                rank = m.group(4)
+                videos = m.group(5)
+
+                if not thumb.startswith('http'):
+                    thumb = urllib.parse.urljoin(self.base_url, thumb)
+
+                full_url = urllib.parse.urljoin(self.base_url, actress_url)
+                label = f"{name} [COLOR gray](Rank: {rank} / Videos: {videos})[/COLOR]"
+                self.add_dir(label, full_url, 2, thumb, self.fanart)
+                count += 1
 
         next_url = self._extract_next_page(html_text, url)
         if next_url:

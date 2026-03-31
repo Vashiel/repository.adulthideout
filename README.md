@@ -2,7 +2,7 @@
 
 ![Adulthideout 10th Anniversary](repository.adulthideout/resources/fanart.jpg)
 
-## 1.0.7 "Lucky 7" - 10th Anniversary Release
+## 1.0.8 "Jubilee Year Update" - 10th Anniversary Year
 
 Nearly 10 years ago, AdultHideout came to life in **January 2016** as version **0.1 "beta first try"**.
 
@@ -16,13 +16,25 @@ And now, somehow, we have had 10 years together.
 
 Even after all this time, AdultHideout is still a niche addon, and that is a good thing. A lot of the sites inside it are niche. The reason this addon exists in the first place was niche. It started with one very specific need, and that spirit never really disappeared.
 
-So even if this birthday is being celebrated a little later, version **1.0.7 "Lucky 7"** is our **10th Anniversary release** — and a fitting one, with an incredible **50 new sites** added for the occasion.
+So even if this birthday is being celebrated a little later, **2026** is still AdultHideout's **10th Anniversary Year**.
+
+Version **1.0.7 "Lucky 7"** was our big anniversary release, with an incredible **50 new sites** added for the occasion.
+
+Version **1.0.8 "Jubilee Year Update"** follows right after it and keeps the celebration going with what the addon needed next: repairs, cleanup, validation, playback work and stability fixes across the expanded site list.
 
 ### Highlights
-- **50 new sites** added for the 1.0.7 release
-- A special anniversary release built around the roots of the addon
-- Major repair wave across existing providers, playback, pagination, sorting, thumbnails, and Kodi view behavior
+- **10th Anniversary Year** continues through 2026
+- **1.0.7** delivered **50 new sites**
+- **1.0.8** focuses on fixes, cleanup, validation and playback stability after that expansion
 - Expanded niche coverage while staying true to what AdultHideout has always been
+
+### 1.0.8 Highlights
+- Broad repair pass across site adapters, playback paths, pagination, thumbnails and navigation
+- Expanded KVAT validation coverage across the addon
+- Cleanup after the 1.0.7 expansion
+- Improved playback and startup behavior on multiple providers
+- Removed `RealCuckoldSex` after the domain became a sale/parking page
+- Removed `TubeDupe` because the site currently only serves fixed 6-minute clips
 
 ### 1.0.7 New Sites
 PornDoe, PornOne, PornHat, PornTrex, CumLouder, PornMZ, AnySex, PornDig, Tube8, xCafe, LetMeJerk, Upornia, FullPorner, XXXFiles, 3Movs, PornHD3X, XMoviesForYou, Porn300, OK.xxx, PerfectGirls, SuperPorn, XBabe, Veporn, Porn7, Porn00, Tubev, HClips, ThePornBang, BravoPorn, PornSlash, Pornheed, HDZog, ZBPorn, TrendyPorn, Nudez, Pornwhite, Pornflip, PornTry, BananaMovies, SaintPorn, WatchPorn, BigAssPorn, FPO, TheyAreHuge, BigTitsLust, BlackPorn24, MilfPorn8, MaturePorn.Tube, Blowjobs.pro, LesbianPorn8.

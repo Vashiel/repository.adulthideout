@@ -110,6 +110,12 @@ class SxyPrnWebsite(BaseWebsite):
                  
         self.end_directory()
 
+    def _extract_first_post_url(self, content):
+        match = re.search(r"<a class='tdn post_time' href='(/post/[^']+)'", content)
+        if not match:
+            return None
+        return urllib.parse.urljoin(self.base_url, match.group(1))
+
     def add_next_page(self, url, page):
         next_page = page + 1
         if url == self.base_url or url == self.base_url + '/':
@@ -118,6 +124,16 @@ class SxyPrnWebsite(BaseWebsite):
              next_url = re.sub(r'(\d+)\.html$', f'{next_page}.html', url)
         else:
              next_url = f"{url.rstrip('/')}/{next_page}.html"
+
+        current_content = self.make_request(url)
+        next_content = self.make_request(next_url)
+        if not next_content:
+            return
+
+        current_first = self._extract_first_post_url(current_content or '')
+        next_first = self._extract_first_post_url(next_content)
+        if not next_first or next_first == current_first:
+            return
 
         self.add_dir(f"[COLOR blue]Next Page ({next_page}) >>[/COLOR]", next_url, 2, self.icons.get('default'))
 

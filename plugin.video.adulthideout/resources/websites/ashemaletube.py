@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import re
 import urllib.parse
 import urllib.request
@@ -9,8 +10,8 @@ import sys
 import xbmc
 import xbmcgui
 import xbmcplugin
-from http.cookiejar import CookieJar
 from resources.lib.base_website import BaseWebsite
+from resources.lib.resilient_http import fetch_text
 
 class AshemaletubeWebsite(BaseWebsite):
     config = {
@@ -26,6 +27,26 @@ class AshemaletubeWebsite(BaseWebsite):
             search_url=self.config["search_url"],
             addon_handle=addon_handle
         )
+
+        try:
+            import xbmcaddon
+
+            addon_path = xbmcaddon.Addon().getAddonInfo("path")
+            vendor_path = os.path.join(addon_path, "resources", "lib", "vendor")
+            if vendor_path not in sys.path:
+                sys.path.insert(0, vendor_path)
+        except Exception:
+            pass
+
+        self._scraper = None
+        try:
+            import cloudscraper
+
+            self._scraper = cloudscraper.create_scraper(
+                browser={"browser": "chrome", "platform": "windows", "mobile": False}
+            )
+        except Exception:
+            self._scraper = None
         
         self.sort_options = ["Trending", "Date Added", "Most Popular", "Top Rated", "Longest"]
         self.sort_paths = {
@@ -99,16 +120,20 @@ class AshemaletubeWebsite(BaseWebsite):
         url = urllib.parse.quote(url, safe=':/?=&%')
         if not headers:
             headers = self.get_headers(url, is_json=is_json)
-            
+
         for attempt in range(max_retries):
-            try:
-                cookie_jar = CookieJar()
-                opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
-                request = urllib.request.Request(url, headers=headers)
-                with opener.open(request, timeout=10) as response:
-                    return response.read().decode('utf-8', errors='ignore')
-            except Exception as e:
-                if attempt < max_retries - 1: xbmc.sleep(retry_wait)
+            content = fetch_text(
+                url=url,
+                headers=headers,
+                scraper=self._scraper,
+                logger=self.logger,
+                timeout=20,
+                use_windows_curl_fallback=True,
+            )
+            if content and "Just a moment" not in content and "cf-browser-verification" not in content:
+                return content
+            if attempt < max_retries - 1:
+                xbmc.sleep(retry_wait)
         xbmcgui.Dialog().notification('AdultHideout Error', f"Failed to fetch: {url}", xbmcgui.NOTIFICATION_ERROR)
         return ""
 
@@ -328,7 +353,48 @@ class AshemaletubeWebsite(BaseWebsite):
     def play_video(self, url):
         if isinstance(url, bytes): url = url.decode('utf-8')
         content = self.make_request(url)
-        if not content: return self.notify_error("Failed to load video page")
+        if not content:
+            # The watch page is behind a stricter Cloudflare path than listings.
+            # Fall back to the curl-backed fetch path without cloudscraper so playback
+            # does not depend on the weaker scraper branch succeeding first.
+            content = fetch_text(
+                url=url,
+                headers=self.get_headers(referer=self.base_url),
+                scraper=None,
+                logger=self.logger,
+                timeout=20,
+                use_windows_curl_fallback=True,
+            )
+        if not content:
+            return self.notify_error("Failed to load video page")
+
+        hls_match = re.search(r'"hlsAuto"\s*:\s*"([^"]+)"', content)
+        if hls_match:
+            media_url = html.unescape(hls_match.group(1)).replace('\\/', '/')
+            if not media_url.startswith('http'):
+                media_url = urllib.parse.urljoin(url, media_url)
+
+            li = xbmcgui.ListItem(path=media_url)
+            li.setProperty('IsPlayable', 'true')
+            li.setProperty('inputstream', 'inputstream.adaptive')
+            li.setProperty('inputstream.adaptive.manifest_type', 'hls')
+            li.setMimeType('application/vnd.apple.mpegurl')
+            xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+            return
+
+        dash_match = re.search(r'"dashAuto"\s*:\s*"([^"]+)"', content)
+        if dash_match:
+            media_url = html.unescape(dash_match.group(1)).replace('\\/', '/')
+            if not media_url.startswith('http'):
+                media_url = urllib.parse.urljoin(url, media_url)
+
+            li = xbmcgui.ListItem(path=media_url)
+            li.setProperty('IsPlayable', 'true')
+            li.setProperty('inputstream', 'inputstream.adaptive')
+            li.setProperty('inputstream.adaptive.manifest_type', 'mpd')
+            li.setMimeType('application/dash+xml')
+            xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+            return
 
         match = re.search(r'var\s+sources\s*=\s*(\[.*?\]);', content, re.DOTALL)
         if match:

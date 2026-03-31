@@ -24,6 +24,7 @@ import base64
 import xbmcgui
 import xbmcplugin
 import logging
+from resources.lib.resilient_http import fetch_text
 
 try:
     import cloudscraper
@@ -158,7 +159,7 @@ class Pornzog(BaseWebsite):
                  headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8'
             if referer: headers['Referer'] = referer
             
-            resp = scraper.get(url, headers=headers, timeout=20, allow_redirects=True) 
+            resp = scraper.get(url, headers=headers, timeout=40, allow_redirects=True) 
             
             if resp.status_code == 404:
                 self.logger.error(f"Request failed for {url}: 404 Not Found (Link ist tot)")
@@ -174,6 +175,16 @@ class Pornzog(BaseWebsite):
                  return None
             return content
         except Exception as e:
+            if not is_api:
+                fallback = fetch_text(
+                    url,
+                    headers=headers,
+                    scraper=scraper,
+                    logger=self.logger,
+                    timeout=40,
+                )
+                if fallback:
+                    return fallback
             if "404 Client Error" in str(e):
                 self.logger.error(f"Request failed (404): {url} -> {e}")
                 self.notify_error("This link appears to be broken (404).")

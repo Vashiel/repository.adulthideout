@@ -68,8 +68,10 @@ class LuxuretvWebsite(BaseWebsite):
             self.logger.error(f"Failed to fetch cookies from {url}: {e}")
             return ""
 
-    def make_request(self, url, headers=None, post_data=None, max_retries=3, retry_wait=5000):
+    def make_request(self, url, headers=None, post_data=None, referer=None, max_retries=3, retry_wait=5000):
         headers = headers or self.get_headers(url)
+        if referer:
+            headers["Referer"] = referer
         cookie_jar = CookieJar()
         handler = urllib.request.HTTPCookieProcessor(cookie_jar)
         opener = urllib.request.build_opener(handler)
@@ -194,11 +196,12 @@ class LuxuretvWebsite(BaseWebsite):
         xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
 
     def search(self, query):
-        if not query: return
-        post_data = {'q': query, 'type': 'videos'}
+        if not query:
+            return
+
+        search_url = self.config['search_url'].format(urllib.parse.quote_plus(query))
         content, final_url = self.make_request(
-            self.config['search_url'], 
-            post_data=post_data, 
+            search_url,
             referer=self.config['base_url']
         )
         

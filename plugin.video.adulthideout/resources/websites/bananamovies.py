@@ -67,7 +67,11 @@ class BananaMovies(BaseWebsite):
             re.IGNORECASE | re.DOTALL,
         )
         if not block_match:
-            return []
+            return [
+                ("Latest", self.base_url + "/"),
+                ("Most Popular", self.base_url + "/?r_sortby=highest_rated&r_orderby=desc"),
+                ("Most Views", self.base_url + "/?v_sortby=views&v_orderby=desc"),
+            ]
 
         options = []
         for href, label in re.findall(r'<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>', block_match.group(1), re.IGNORECASE | re.DOTALL):
@@ -80,25 +84,28 @@ class BananaMovies(BaseWebsite):
         return options
 
     def select_sort_order(self, original_url=None):
-        target_url = original_url or (self.base_url + "/")
+        target_url = urllib.parse.unquote_plus(original_url) if original_url else (self.base_url + "/")
         html_content = self.make_request(target_url)
         if not html_content:
             return
 
         sort_options = self._extract_sort_options(html_content, target_url)
         if not sort_options:
-            xbmcgui.Dialog().notification(
-                "AdultHideout",
-                "No sort options found.",
-                xbmcgui.NOTIFICATION_INFO,
-                2500,
-            )
-            return
+            sort_options = [
+                ("Latest", self.base_url + "/"),
+                ("Most Popular", self.base_url + "/?r_sortby=highest_rated&r_orderby=desc"),
+                ("Most Views", self.base_url + "/?v_sortby=views&v_orderby=desc"),
+            ]
 
         labels = [label for label, _ in sort_options]
         idx = xbmcgui.Dialog().select("Sort by...", labels)
         if idx == -1:
             return
+
+        try:
+            self.addon.setSetting("bananamovies_sort_by", str(idx))
+        except Exception:
+            pass
 
         xbmc.executebuiltin(
             "Container.Update({}?mode=2&website={}&url={},replace)".format(

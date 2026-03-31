@@ -1,12 +1,23 @@
 import re
 import os
 import base64
+import sys
 import urllib.parse
 import urllib.request
 import xbmc
 import xbmcgui
 import xbmcplugin
 from resources.lib.base_website import BaseWebsite
+from resources.lib.resilient_http import fetch_text
+
+try:
+    import xbmcaddon
+    addon_path = xbmcaddon.Addon().getAddonInfo('path')
+    vendor_path = os.path.join(addon_path, 'resources', 'lib', 'vendor')
+    if vendor_path not in sys.path:
+        sys.path.insert(0, vendor_path)
+except Exception:
+    pass
 
 try:
     import cloudscraper
@@ -58,15 +69,25 @@ class LetmejerkWebsite(BaseWebsite):
             if headers:
                 req_headers.update(headers)
 
-            if self.session:
+            if method != 'POST':
+                html = fetch_text(
+                    url,
+                    headers=req_headers,
+                    scraper=self.session,
+                    logger=None,
+                    timeout=20,
+                )
+                if html:
+                    return html
+            elif self.session:
                 self.session.headers.update(req_headers)
-                if method == 'POST':
+                try:
                     r = self.session.post(url, data=data, timeout=20)
-                else:
-                    r = self.session.get(url, timeout=20)
-                if r.status_code == 200:
-                    return r.text
-            else:
+                    if r.status_code == 200:
+                        return r.text
+                except Exception as post_exc:
+                    xbmc.log(f"[letmejerk] session POST failed, falling back to urllib: {post_exc}", xbmc.LOGWARNING)
+
                 if data:
                     data_bytes = urllib.parse.urlencode(data).encode('utf-8')
                     req = urllib.request.Request(url, data=data_bytes, headers=req_headers)
@@ -284,20 +305,13 @@ class LetmejerkWebsite(BaseWebsite):
             return
 
         # 3. Extract video source
-        # Look for const videoUrl = "..."
-        # It often contains .b-cdn.net with a leading dot that we must remove
         final_url = None
-        
-        vurl_match = re.search(r'const videoUrl\s*=\s*["\']([^"\']+)["\']', api_response)
+        is_hls = False
+
+        vurl_match = re.search(r'const\s+videoUrl\s*=\s*["\']([^"\']+)["\']', api_response)
         if vurl_match:
-            # First unescape the URL (remove backslashes)
-            clean_url = vurl_match.group(1).replace(r'\/', '/')
-            
-            # Then fix malformed BunnyCDN URL: https://.b-cdn.net -> https://b-cdn.net
-            if '://.b-cdn.net' in clean_url:
-                final_url = clean_url.replace('://.b-cdn.net', '://b-cdn.net')
-            else:
-                final_url = clean_url
+            final_url = vurl_match.group(1).replace(r'\/', '/')
+            is_hls = final_url.lower().endswith('.m3u8') or '.m3u8?' in final_url.lower()
         
         # Fallback: direct src in video tag
         if not final_url:
@@ -322,7 +336,7 @@ class LetmejerkWebsite(BaseWebsite):
         play_url = final_url + '|User-Agent=' + urllib.parse.quote(self.ua) + '&Referer=' + urllib.parse.quote(self.BASE_URL + "/")
         
         li = xbmcgui.ListItem(path=play_url)
-        if '.m3u8' in final_url:
+        if is_hls or '.m3u8' in final_url:
             li.setMimeType('application/x-mpegURL')
             li.setProperty('inputstream', 'inputstream.adaptive')
             li.setProperty('inputstream.adaptive.manifest_type', 'hls')
