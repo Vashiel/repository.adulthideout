@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://vashiel.github.io/repository.adulthideout/sitemap.xml
+Sitemap: https://vashiel.github.io/repository.adulthideout/sitemap.txt
