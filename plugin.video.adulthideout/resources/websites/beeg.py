@@ -41,6 +41,28 @@ class BeegWebsite(BaseWebsite):
             pass
         return None
 
+    def _build_video_url(self, resource):
+        if not resource:
+            return None
+
+        resource = str(resource).strip()
+        if not resource:
+            return None
+
+        if resource.startswith('//'):
+            vurl = 'https:' + resource
+        elif resource.startswith('http://') or resource.startswith('https://'):
+            vurl = resource
+        elif resource.startswith('/'):
+            vurl = 'https://video.externulls.com' + resource
+        else:
+            vurl = 'https://video.externulls.com/' + resource
+
+        if not urllib.parse.urlsplit(vurl).path.endswith('.m3u8'):
+            vurl += '.m3u8'
+
+        return vurl
+
     def _collect_recent_tags(self, max_pages=5):
         people = {}
         other = {}
@@ -189,10 +211,12 @@ class BeegWebsite(BaseWebsite):
                 hls = d.get('file', {}).get('hls_resources') or d.get('fc_facts', [{}])[0].get('hls_resources')
                 vurl = None
                 if hls:
-                    vurl = f"https://video.externulls.com/{hls.get('fl_cdn_multi')}.m3u8" if hls.get('fl_cdn_multi') else None
+                    vurl = self._build_video_url(hls.get('fl_cdn_multi'))
                     if not vurl:
                         for q in ['fl_cdn_1080', 'fl_cdn_720', 'fl_cdn_480', 'fl_cdn_360']:
-                            if hls.get(q): vurl = f"https://video.externulls.com/{hls[q]}.m3u8"; break
+                            vurl = self._build_video_url(hls.get(q))
+                            if vurl:
+                                break
                 
                 if vurl:
                     li = xbmcgui.ListItem(path=vurl)

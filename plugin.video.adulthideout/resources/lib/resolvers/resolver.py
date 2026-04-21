@@ -9,6 +9,8 @@ from resources.lib.resolvers import voesx_resolver
 from resources.lib.resolvers import bigwarp_resolver
 from resources.lib.resolvers import streamtape_resolver
 from resources.lib.resolvers import mixdrop_resolver
+from resources.lib.resolvers import vtube_resolver
+from resources.lib.resolvers import vidello_resolver
 
 def resolve(url, referer="", headers=None):
     xbmc.log("[AdultHideout][resolver] Input: {}".format(url), xbmc.LOGINFO)
@@ -33,6 +35,13 @@ def resolve(url, referer="", headers=None):
         "stape": streamtape_resolver,
         "mixdrop": mixdrop_resolver,
         "m1xdrop": mixdrop_resolver,
+        "vtube.to": vtube_resolver,
+        "vtplay.net": vtube_resolver,
+        "vtbe.net": vtube_resolver,
+        "vtbe.to": vtube_resolver,
+        "vtube.network": vtube_resolver,
+        "vidello.net": vidello_resolver,
+        "playmogo.com": vidello_resolver,
     }
 
     selected_module = None

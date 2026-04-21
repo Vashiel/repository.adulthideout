@@ -2,42 +2,26 @@
 
 ![Adulthideout 10th Anniversary](repository.adulthideout/resources/fanart.jpg)
 
-## 1.0.8 "Jubilee Year Update" - 10th Anniversary Year
+## 1.0.9 "Cloud Nine" - 10th Anniversary Year Expansion
 
-Nearly 10 years ago, AdultHideout came to life in **January 2016** as version **0.1 "beta first try"**.
+AdultHideout started in **January 2016** as a tiny personal addon for a single site: Motherless. One site became a few, a few became dozens, and somehow 10 years went by.
 
-It was never meant to become a big mainstream project. It started for one very specific reason: I wanted to play a single website in Kodi.
+**2026** is AdultHideout's **10th Anniversary Year**. Version **1.0.7 "Lucky 7"** kicked it off with 50 new sites, **1.0.8 "Jubilee Year Update"** stabilized the expansion, and **1.0.9 "Cloud Nine"** continues the celebration with **10 new sites**, new resolver work, API-based providers, Cloudflare-hardening, and several difficult playback fixes.
 
-That website was Motherless.
+### 1.0.9 New Sites
+ArchiveBate, CamCaps, Chaturbate, HentaiDude, HentaiOcean, Ikisoda, JAVHDPorn, Perverzija, PMVHaven, XOpenload.
 
-What began as one small personal addon for one site slowly turned into something much bigger. One site became a few. A few became dozens. Fixes turned into rewrites. Quick experiments turned into something people actually kept using.
+### 1.0.9 Highlights
 
-And now, somehow, we have had 10 years together.
+**Chaturbate returns**, paired with **ArchiveBate** - the addon now covers both sides: live rooms and archived cam recordings. Chaturbate includes categories, search, pagination, right-click filters and a dedicated live-room playback path. ArchiveBate adds gender filters, sorting and a local proxy-cache for CDN-protected thumbnails.
 
-Even after all this time, AdultHideout is still a niche addon, and that is a good thing. A lot of the sites inside it are niche. The reason this addon exists in the first place was niche. It started with one very specific need, and that spirit never really disappeared.
+**CamCaps** was trickier than it looked - many entries route through external hosters (mostly Lulu), so the addon filters and resolves them carefully with hardened playback paths.
 
-So even if this birthday is being celebrated a little later, **2026** is still AdultHideout's **10th Anniversary Year**.
+**JAVHDPorn** was the hardest one. It sits behind Cloudflare-style protection and mixes several hoster/player layers, so it needed Cloudflare-aware fetching, a StreamTape/HugStream resolver, and playback fixes so it behaves in Kodi the same way it does in a browser.
 
-Version **1.0.7 "Lucky 7"** was our big anniversary release, with an incredible **50 new sites** added for the occasion.
+**Perverzija, HentaiOcean, Ikisoda and XOpenload** brought more resolver and API work: Cloudflare-hardened listings with XtremeStream HLS, API/RSS-based flows with direct MP4, KVS-style playback, and full-length movie support via small vendored hoster ports.
 
-Version **1.0.8 "Jubilee Year Update"** follows right after it and keeps the celebration going with what the addon needed next: repairs, cleanup, validation, playback work and stability fixes across the expanded site list.
-
-### Highlights
-- **10th Anniversary Year** continues through 2026
-- **1.0.7** delivered **50 new sites**
-- **1.0.8** focuses on fixes, cleanup, validation and playback stability after that expansion
-- Expanded niche coverage while staying true to what AdultHideout has always been
-
-### 1.0.8 Highlights
-- Broad repair pass across site adapters, playback paths, pagination, thumbnails and navigation
-- Expanded KVAT validation coverage across the addon
-- Cleanup after the 1.0.7 expansion
-- Improved playback and startup behavior on multiple providers
-- Removed `RealCuckoldSex` after the domain became a sale/parking page
-- Removed `TubeDupe` because the site currently only serves fixed 6-minute clips
-
-### 1.0.7 New Sites
-PornDoe, PornOne, PornHat, PornTrex, CumLouder, PornMZ, AnySex, PornDig, Tube8, xCafe, LetMeJerk, Upornia, FullPorner, XXXFiles, 3Movs, PornHD3X, XMoviesForYou, Porn300, OK.xxx, PerfectGirls, SuperPorn, XBabe, Veporn, Porn7, Porn00, Tubev, HClips, ThePornBang, BravoPorn, PornSlash, Pornheed, HDZog, ZBPorn, TrendyPorn, Nudez, Pornwhite, Pornflip, PornTry, BananaMovies, SaintPorn, WatchPorn, BigAssPorn, FPO, TheyAreHuge, BigTitsLust, BlackPorn24, MilfPorn8, MaturePorn.Tube, Blowjobs.pro, LesbianPorn8.
+**Stability:** AVJoy now has page/session/stream caching, curl-based fetch paths, pre-resolving and a seek-aware local proxy for slow CDN streams. WatchPorn dropped its fragile local proxy in favor of stable direct header-based playback.
 
 ---
 
@@ -48,7 +32,7 @@ You can install the **AdultHideout Repository** using one of the methods below. 
 ### Method 1: File Manager Source
 1. Open Kodi and select the **Gear Icon**.
 2. Go to **File manager** -> **Add source**.
-3. Click on `<None>` and enter: `https://vashiel.github.io/repository.adulthideout/`
+3. Click `<None>` and enter: `https://vashiel.github.io/repository.adulthideout/`
 4. Name the source `AdultHideout` and click **OK**.
 5. Return to Kodi and open **Add-ons**.
 6. Click the **Package Icon**.
@@ -79,16 +63,35 @@ You can install the **AdultHideout Repository** using one of the methods below. 
 
 ---
 
+## Disclaimer
+
+AdultHideout is a Kodi video addon repository. It does not host third-party videos on its own servers and is not affiliated with the websites supported by the addon.
+
+Content, streams and metadata are provided by third-party websites. The operators of those sites are responsible for their own content.
+
+For repository issues, use GitHub Issues. For copyright complaints regarding content hosted on GitHub, GitHub's standard DMCA/copyright process applies.
+
+---
+
 ## Release Archive
 
 <details>
 <summary>Older release notes</summary>
 
+### 1.0.8 "Jubilee Year Update" - 2026-03-31
+- Broad repair pass across site adapters, playback paths, pagination, thumbnails and navigation
+- Expanded KVAT validation coverage
+- Cleanup after the 1.0.7 expansion
+- Removed `RealCuckoldSex` (domain became a sale/parking page) and `TubeDupe` (site only serves fixed 6-minute clips)
+
+### 1.0.7 "Lucky 7" - 2026-03-06
+**50 New Sites**: PornDoe, PornOne, PornHat, PornTrex, CumLouder, PornMZ, AnySex, PornDig, Tube8, xCafe, LetMeJerk, Upornia, FullPorner, XXXFiles, 3Movs, PornHD3X, XMoviesForYou, Porn300, OK.xxx, PerfectGirls, SuperPorn, XBabe, Veporn, Porn7, Porn00, Tubev, HClips, ThePornBang, BravoPorn, PornSlash, Pornheed, HDZog, ZBPorn, TrendyPorn, Nudez, Pornwhite, Pornflip, PornTry, BananaMovies, SaintPorn, WatchPorn, BigAssPorn, FPO, TheyAreHuge, BigTitsLust, BlackPorn24, MilfPorn8, MaturePorn.Tube, Blowjobs.pro, LesbianPorn8.
+
 ### 1.0.6 "Nautilus" - 2026-02-09
 - Added 9 new sites
 - Unified sorting across major providers
 - Major updates for Redtube, Spankbang, Xhamster, XVideos, and YouPorn
-- Added stronger support for channels, collections, and pornstar navigation
+- Stronger support for channels, collections, and pornstar navigation
 
 ### 1.0.5 "Massive Expansion" - 2026-01-13
 - Added 14 new sites

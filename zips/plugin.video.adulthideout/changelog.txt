@@ -1,3 +1,17 @@
+v. 1.0.9 "Cloud Nine" - 2026-04-20
+- **10 New Sites**: ArchiveBate, CamCaps, Chaturbate, HentaiDude, HentaiOcean, Ikisoda, JAVHDPorn, Perverzija, PMVHaven (by user request), XOpenload.
+- **Improved & Fixed**: AVJoy, WatchPorn.
+- **ArchiveBate**: Right-click filters (Gender, Sort), local thumbnail proxy-cache for CDN bypass, Livewire routing fixes.
+- **AVJoy**: Page/session/stream caching, curl.exe/curl_cffi fetch paths, pre-resolving for visible videos, seek-aware local curl proxy for slow CDN streams.
+- **CamCaps & Chaturbate**: Search, categories, Sort By, pagination, and hardened playback (Lulu HLS proxy, Clicknplay fast-start, Chaturbate room proxy).
+- **Hentai/JAV**: HentaiDude (subtitles, pagination, dashboard fallback), HentaiOcean (API/RSS, direct MP4), Ikisoda (KVS direct MP4), JAVHDPorn (Cloudflare-aware, StreamTape/HugStream resolver).
+- **PMVHaven & Perverzija**: API pagination, search, categories, Sort By; Perverzija adds Cloudflare-hardened listings and XtremeStream HLS.
+- **XOpenload**: Full-length movie support with multi-hoster resolver (MixDrop, StreamTape, DoodStream, Voe).
+- **WatchPorn**: Removed fragile local proxy path, fixed seek stability via direct header-based playback.
+- **Removed**: MaturePorn.Tube (404 only).
+- **Core Engine**: Updated vendored cloudscraper stack, added small resolver ports, kept networking pure-Python for Android/Fire TV.
+- **10th Anniversary Year**: 1.0.9 continues the next expansion wave of AdultHideout's anniversary year.
+
 v. 1.0.8 "Jubilee Year Update" - 2026-03-31
 - **Improved & Fixed**: AnySex, Ashemaletube, AVJoy, Beeg, Fuqer, Hanime, HQPorner, LetMeJerk, LuxureTV, Nudez, OK.xxx, PornHits, PornZog, Rule34Video, SaintPorn, Shameless, Shemalez, SunPorno, SxyPrn, Thumbzilla, Tube8, UFlash, Upornia, Veporn, VikiPorn, VJav, xCafe, XMoviesForYou, YouJizz, YouPorn.
 - **Playback & Performance**: Improved startup time or stream selection for Nudez, SunPorno, xCafe and YouJizz; added a platform-specific Nudez playback path for Windows and Android.
@@ -6,7 +20,7 @@ v. 1.0.8 "Jubilee Year Update" - 2026-03-31
 - **10th Anniversary Year**: 2026 continues as AdultHideout's anniversary year, with follow-up stability updates after the 1.0.7 release.
 
 v. 1.0.7 "Lucky 7" - 2026-03-06
-- **50 New Sites**: PornDoe, PornOne, PornHat, PornTrex, CumLouder, PornMZ, AnySex, PornDig, Tube8, xCafe, LetMeJerk, Upornia, FullPorner, XXXFiles, 3Movs, PornHD3X, XMoviesForYou, Porn300, OK.xxx, PerfectGirls, SuperPorn, XBabe, Veporn, Porn7, Porn00, Tubev, HClips, ThePornBang, BravoPorn, PornSlash, Pornheed, HDZog, ZBPorn, TrendyPorn, Nudez, Pornwhite, Pornflip, PornTry, BananaMovies, SaintPorn, WatchPorn, BigAssPorn, FPO, TheyAreHuge, BigTitsLust, BlackPorn24, MilfPorn8, MaturePorn.Tube, Blowjobs.pro, LesbianPorn8.
+- **50 New Sites**: PornDoe, PornOne, PornHat, PornTrex, CumLouder, PornMZ, AnySex, PornDig, Tube8, xCafe, LetMeJerk, Upornia, FullPorner, XXXFiles, 3Movs, PornHD3X, XMoviesForYou, Porn300, OK.xxx, PerfectGirls, SuperPorn, XBabe, Veporn, Porn7, Porn00, Tubev, HClips, ThePornBang, BravoPorn, PornSlash, Pornheed, HDZog, ZBPorn, TrendyPorn, Nudez, Pornwhite, Pornflip, PornTry, BananaMovies, SaintPorn, WatchPorn, BigAssPorn, FPO, TheyAreHuge, BigTitsLust, BlackPorn24, MilfPorn8, Blowjobs.pro, LesbianPorn8.
 - **Improved & Fixed**: Ashemaletube, Hanime, Vikiporn, Spankbang, Rule34video, Pornhub, Redtube, PornHits, PerfectGirls, SuperPorn.
 - **Hanime**: Reworked playback for the current nhplayer flow, added new challenge/PoW handling and improved playback fallback for Android/Fire TV.
 - **PerfectGirls**: Fixed pagination and stabilized playback.

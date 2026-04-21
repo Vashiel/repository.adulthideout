@@ -1,7 +1,9 @@
 import re
 import os
 import base64
+import json
 import sys
+import time
 import urllib.parse
 import urllib.request
 import xbmc
@@ -163,8 +165,20 @@ class LetmejerkWebsite(BaseWebsite):
         if not matches:
              simple = re.compile(
                 r'<a href="(/[A-Za-z0-9]+/[^"]+)"[^>]*class="th-image"[^>]*title="([^"]+)"'
-            )
+             )
              matches = [(path, title, '') for path, title in simple.findall(content)]
+
+        if not matches:
+            modern = re.compile(
+                r'<div\s+class="thumb">\s*'
+                r'<a\s+href="(/[A-Za-z0-9]+/[^"]+)"[^>]*>.*?'
+                r'<img[^>]+(?:data-src|src)="([^"]+)"[^>]+alt="([^"]+)"',
+                re.DOTALL | re.IGNORECASE
+            )
+            matches = [(path, title, '') for path, _thumb, title in modern.findall(content)]
+            search_thumb_map.update({
+                path: thumb for path, thumb, title in modern.findall(content)
+            })
 
         seen = set()
         count = 0
@@ -177,7 +191,7 @@ class LetmejerkWebsite(BaseWebsite):
                 continue
             seen.add(video_url)
 
-            thumb = thumb_map.get(img_id) or search_thumb_map.get(img_id) or self.icons.get('default', '')
+            thumb = thumb_map.get(img_id) or search_thumb_map.get(img_id) or search_thumb_map.get(path) or self.icons.get('default', '')
             
             self.add_link(title, video_url, 4, thumb, self.fanart)
             count += 1
@@ -257,11 +271,114 @@ class LetmejerkWebsite(BaseWebsite):
 
     # ─── PLAYBACK ─────────────────────────────────────────────────────────────
 
+    def _normalize_stream_url(self, stream_url):
+        return (stream_url or "").strip().replace(r"\/", "/").replace("&amp;", "&")
+
+    def _extract_cached_hls(self, content):
+        cached_match = re.search(r'var\s+cached\s*=\s*["\']([^"\']*)["\']', content)
+        if not cached_match:
+            return None
+        stream_url = self._normalize_stream_url(cached_match.group(1))
+        if stream_url.startswith("http") and ".m3u8" in stream_url:
+            return stream_url
+        return None
+
+    def _extract_video_id(self, content, url):
+        vid_match = re.search(r'var\s+vid\s*=\s*["\']([^"\']+)["\']', content)
+        if vid_match:
+            return vid_match.group(1).strip()
+
+        path_parts = urllib.parse.urlparse(url).path.strip("/").split("/")
+        if path_parts and re.match(r"^[A-Za-z0-9]+$", path_parts[0]):
+            return path_parts[0]
+        return None
+
+    def _is_expired_hls(self, stream_url, margin_seconds=90):
+        expiry_match = re.search(r",(\d{10})/", stream_url or "")
+        if not expiry_match:
+            return False
+        try:
+            return int(expiry_match.group(1)) <= int(time.time()) + margin_seconds
+        except ValueError:
+            return False
+
+    def _refresh_hls(self, video_id, referer):
+        if not video_id:
+            return None
+
+        api_url = "{}{}{}".format(
+            self.BASE_URL,
+            "/api/refresh-hls?id=",
+            urllib.parse.quote(video_id, safe=""),
+        )
+        response = self.make_request(
+            api_url,
+            headers={
+                "Accept": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+                "Referer": referer,
+            },
+        )
+        if not response:
+            return None
+
+        try:
+            payload = json.loads(response)
+        except Exception as exc:
+            xbmc.log(f"[letmejerk] refresh-hls JSON error for {video_id}: {exc}", xbmc.LOGWARNING)
+            return None
+
+        if payload.get("removed"):
+            xbmc.log(f"[letmejerk] refresh-hls reports removed video: {video_id}", xbmc.LOGWARNING)
+            return None
+
+        stream_url = self._normalize_stream_url(payload.get("url"))
+        if stream_url.startswith("http") and ".m3u8" in stream_url:
+            return stream_url
+
+        xbmc.log(f"[letmejerk] refresh-hls did not return a playable URL for {video_id}: {payload}", xbmc.LOGWARNING)
+        return None
+
+    def _play_stream(self, final_url, referer, is_hls=True):
+        headers = {
+            "User-Agent": self.ua,
+            "Referer": referer or (self.BASE_URL + "/"),
+        }
+        header_string = "&".join(
+            "{}={}".format(
+                urllib.parse.quote(str(key), safe=""),
+                urllib.parse.quote(str(value), safe=""),
+            )
+            for key, value in headers.items()
+        )
+        play_url = final_url + "|" + header_string
+
+        li = xbmcgui.ListItem(path=play_url)
+        if is_hls or ".m3u8" in final_url:
+            li.setMimeType("application/x-mpegURL")
+            li.setProperty("inputstream", "inputstream.adaptive")
+            li.setProperty("inputstream.adaptive.manifest_type", "hls")
+        else:
+            li.setMimeType("video/mp4")
+        li.setProperty("IsPlayable", "true")
+        xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+
     def play_video(self, url):
         # 1. Fetch video page to get ID
         content = self.make_request(url)
         if not content:
             self.notify_error("Failed to load video page")
+            return
+
+        video_id = self._extract_video_id(content, url)
+        final_url = self._extract_cached_hls(content)
+        if (not final_url or self._is_expired_hls(final_url)) and video_id:
+            refreshed_url = self._refresh_hls(video_id, url)
+            if refreshed_url:
+                final_url = refreshed_url
+
+        if final_url and not self._is_expired_hls(final_url):
+            self._play_stream(final_url, url, True)
             return
 
         # Find img ID or loadLetMeJerkVideoPlayer call
@@ -308,19 +425,24 @@ class LetmejerkWebsite(BaseWebsite):
         final_url = None
         is_hls = False
 
-        vurl_match = re.search(r'const\s+videoUrl\s*=\s*["\']([^"\']+)["\']', api_response)
-        if vurl_match:
-            final_url = vurl_match.group(1).replace(r'\/', '/')
+        cached_url = self._extract_cached_hls(content)
+        if cached_url and not self._is_expired_hls(cached_url):
+            final_url = cached_url
+            is_hls = True
+
+        vurl_match = re.search(r'const\s+videoUrl\s*=\s*["\']([^"\']+)["\']', api_response) if api_response else None
+        if not final_url and vurl_match:
+            final_url = self._normalize_stream_url(vurl_match.group(1))
             is_hls = final_url.lower().endswith('.m3u8') or '.m3u8?' in final_url.lower()
         
         # Fallback: direct src in video tag
-        if not final_url:
+        if not final_url and api_response:
             src_match = re.search(r'<video[^>]+src="([^"]+)"', api_response)
             if src_match:
                 final_url = src_match.group(1)
 
         # Fallback: source tag
-        if not final_url:
+        if not final_url and api_response:
              src_match = re.search(r'<source[^>]+src="([^"]+)"', api_response)
              if src_match:
                  final_url = src_match.group(1)
@@ -331,17 +453,4 @@ class LetmejerkWebsite(BaseWebsite):
 
         xbmc.log(f"[letmejerk] Playing: {final_url}", xbmc.LOGDEBUG)
 
-        # Play it
-        import urllib.parse
-        play_url = final_url + '|User-Agent=' + urllib.parse.quote(self.ua) + '&Referer=' + urllib.parse.quote(self.BASE_URL + "/")
-        
-        li = xbmcgui.ListItem(path=play_url)
-        if is_hls or '.m3u8' in final_url:
-            li.setMimeType('application/x-mpegURL')
-            li.setProperty('inputstream', 'inputstream.adaptive')
-            li.setProperty('inputstream.adaptive.manifest_type', 'hls')
-        else:
-            li.setMimeType('video/mp4')
-            
-        li.setProperty('IsPlayable', 'true')
-        xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+        self._play_stream(final_url, url, is_hls)

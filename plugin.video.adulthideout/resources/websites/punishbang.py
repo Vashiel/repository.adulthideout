@@ -88,6 +88,14 @@ class PunishbangWebsite(BaseWebsite):
             pattern = re.compile(r'<a href="([^"]+)".+?data-src="([^"]+)".+?alt="([^"]+)"', re.DOTALL)
             matches = pattern.findall(content)
 
+        if not matches:
+            pattern = re.compile(
+                r'<a\s+href="([^"]+)"\s+class="card[^"]*"[^>]*>.*?'
+                r'<img[^>]+(?:data-src|src)="([^"]+)"[^>]+alt="([^"]+)"',
+                re.DOTALL | re.IGNORECASE
+            )
+            matches = pattern.findall(content)
+
         for video_url, thumb, name in matches:
             name = html.unescape(name)
             if not video_url.startswith('http'):

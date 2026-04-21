@@ -90,6 +90,19 @@ class HQPorner(BaseWebsite):
         except (ValueError, TypeError): return 0
         return seconds
 
+    def _build_thumbnail_url(self, thumb_url):
+        thumb_url = (thumb_url or '').strip()
+        if thumb_url.startswith('//'):
+            thumb_url = 'https:' + thumb_url
+        elif thumb_url.startswith('/'):
+            thumb_url = urllib.parse.urljoin(self.base_url, thumb_url)
+
+        headers = {
+            'Referer': self.base_url + '/',
+            'User-Agent': self.opener.addheaders[0][1],
+        }
+        return thumb_url + '|' + urllib.parse.urlencode(headers)
+
     def process_content(self, url):
         self.add_dir('[COLOR blue]Search...[/COLOR]', self.base_url, 5, icon=self.icons['search'], fanart=self.fanart)
         self.add_dir('[COLOR blue]Categories...[/COLOR]', self.base_url, 8, icon=self.icons['categories'], fanart=self.fanart)
@@ -111,7 +124,7 @@ class HQPorner(BaseWebsite):
 
             for video_path, thumb_url, title, duration_str in matches:
                 video_url = urllib.parse.urljoin(self.base_url, video_path)
-                thumbnail = f"https:{thumb_url}"
+                thumbnail = self._build_thumbnail_url(thumb_url)
                 duration = self._parse_duration(duration_str)
                 info_labels = {'title': title, 'duration': duration, 'plot': title}
                 

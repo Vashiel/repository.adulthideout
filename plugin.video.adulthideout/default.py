@@ -70,6 +70,10 @@ def build_main_menu_fast():
             ('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={module_raw_name})'),
             ('Change Content...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_content_type&website={module_raw_name})')
         ]
+        if module_raw_name == 'chaturbate':
+            context_menu.append(
+                ('Filter...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_filter&website={module_raw_name})')
+            )
 
         url_params = f"?mode=2&website={module_raw_name}&url=BOOTSTRAP"
         url = f"{sys.argv[0]}{url_params}"

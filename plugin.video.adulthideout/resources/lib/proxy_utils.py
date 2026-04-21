@@ -66,7 +66,7 @@ class _UrllibUpstream:
     - HEAD-Request beim Init für Content-Length (nötig für Kodi-Seeking)
     """
     
-    def __init__(self, url, headers=None, cookies=None):
+    def __init__(self, url, headers=None, cookies=None, probe_size=True):
         self.original_url = url
         self.resolved_url = None
         self.headers = {
@@ -101,7 +101,10 @@ class _UrllibUpstream:
         xbmc.log(f"[AHProxy-urllib] Upstream URL: {url[:200]}", xbmc.LOGINFO)
         
         # HEAD-Request um Dateigröße zu ermitteln (Kodi braucht das für Seeks)
-        self._probe_size()
+        if probe_size:
+            self._probe_size()
+        else:
+            xbmc.log("[AHProxy-urllib] Skipping startup size probe", xbmc.LOGINFO)
 
     def _probe_size(self):
         """HEAD-Request um Content-Length zu ermitteln."""
@@ -554,27 +557,223 @@ class _ProxyHandler(BaseHTTPRequestHandler):
             xbmc.log(f"[AHProxy] HEAD error: {e}", xbmc.LOGERROR)
             self.send_error(502, f"Upstream error: {e}")
 
+    def _upstream_get_async(self, extra, result_holder):
+        """
+        Ruft make_get() in einem Background-Thread auf und legt das Ergebnis
+        in result_holder ab. So können wir parallel dazu Keep-Alive-Chunks
+        an Kodi schicken während das CDN trödelt.
+        """
+        try:
+            result_holder["response"] = self.upstream.make_get(extra=extra, stream=True)
+        except Exception as e:
+            result_holder["error"] = e
+
+    def _write_chunked(self, data):
+        """Schreibt einen HTTP/1.1 chunked-transfer Chunk."""
+        if not data:
+            return
+        self.wfile.write(f"{len(data):X}\\r\\n".encode("ascii"))
+        self.wfile.write(data)
+        self.wfile.write(b"\\r\\n")
+        self.wfile.flush()
+
+    def _write_chunked_terminator(self):
+        """Schreibt das Ende eines chunked-transfer Streams."""
+        try:
+            self.wfile.write(b"0\\r\\n\\r\\n")
+            self.wfile.flush()
+        except Exception:
+            pass
+
     def do_GET(self):
+        """
+        GET-Handler der libcurl's 20-Sekunden Low-Speed-Timeout umgeht.
+
+        Problem: Manche CDNs brauchen 20+ Sekunden bis zur ersten Antwort.
+        Kodi's CCurlFile hat ein hardcoded Low-Speed-Timeout von 20s — wenn
+        in dieser Zeit NULL Bytes fließen, wirft es `Timeout was reached(28)`.
+
+        libcurl ignoriert leider sowohl:
+        - Pre-Header Padding (wirft `Unsupported Protocol(1)`)
+        - 1xx Informational Responses (zählt nicht als Body-Aktivität)
+
+        LÖSUNG: Wir committen SOFORT zu echten HTTP-Response-Headern mit
+        `Transfer-Encoding: chunked`. Während wir auf das CDN warten, schicken
+        wir alle 2s einen 1-Byte-Chunk (HTTP-konform). Sobald das CDN antwortet,
+        streamen wir den Body als normale Chunks. Am Ende: chunked terminator.
+
+        Das funktioniert weil:
+        - Header sind echtes HTTP/1.1 200/206 → libcurl akzeptiert sie
+        - Chunks sind Body-Bytes → triggern den Low-Speed-Timer
+        - Chunked-Encoding braucht kein Content-Length → funktioniert ohne
+          zu wissen wie groß die Datei ist
+
+        NACHTEIL: Das erste Byte jedes Chunks wird Teil der abgespielten
+        Datei. Bei MP4 fällt das nicht auf (Kodi ignoriert Bytes vor der
+        ersten Box), aber um 100%ig sauber zu sein, schicken wir die
+        Keep-Alive-Chunks NUR bevor der erste echte Body-Byte fließt, und
+        zwar als "Padding" das der MP4-Parser überspringt (Null-Bytes vor
+        der ersten ftyp-Box werden toleriert).
+
+        Tatsächlich nutzen wir hier aber einen noch saubereren Trick:
+        Wir nutzen keine Dummy-Chunks für die Payload. Stattdessen nutzen wir
+        leere Chunks der Größe 1 mit einem ASCII-Null-Byte (\\x00). Das wird
+        von MP4-Parsern an der Datei-Anfang problemlos toleriert, ist aber
+        technisch Body-Content und triggert den Timer.
+
+        ALTERNATIV: Wir können auch einfach den *Header-Block* in mehreren
+        send_header()-Aufrufen zeitverzögert schicken. Jede Header-Zeile ist
+        ein TCP-write und resettet curl's Timer. Das ist die sauberste Lösung
+        — keine Body-Verunreinigung. Wir probieren das hier.
+        """
         extra = self._extra_browser_headers()
         rng = self._extract_range()
-        
+
         if rng:
             extra["Range"] = rng
             xbmc.log(f"[AHProxy] Kodi requested Range: {rng}", xbmc.LOGINFO)
-        
+
+        rsp = None
+        client_disconnected = False
+        headers_committed = False
+        use_chunked = False
+
         try:
-            rsp = self.upstream.make_get(extra=extra, stream=True)
-            self._write_head_from_upstream(rsp)
-            self.end_headers()
+            # --- Schritt 1: Upstream-GET asynchron starten ---
+            result_holder = {}
+            upstream_thread = threading.Thread(
+                target=self._upstream_get_async,
+                args=(extra, result_holder),
+                name="AHProxyUpstreamGET",
+                daemon=True,
+            )
+            upstream_thread.start()
+
+            # --- Schritt 2: Kurze Wartezeit für "schnelles" CDN ---
+            # Die meisten CDNs antworten in < 5s. Nur wenn das CDN langsamer ist,
+            # kommen wir in den Keep-Alive-Modus mit Chunked-Encoding.
+            FAST_WAIT = 8.0
+            upstream_thread.join(timeout=FAST_WAIT)
+
+            if not upstream_thread.is_alive():
+                # CDN hat schnell genug geantwortet — normaler Pfad ohne Chunked
+                if "error" in result_holder:
+                    raise result_holder["error"]
+                rsp = result_holder.get("response")
+                if rsp is None:
+                    raise RuntimeError("Upstream thread returned no response")
+
+                self._write_head_from_upstream(rsp)
+                self.end_headers()
+                headers_committed = True
+                use_chunked = False
+                xbmc.log(f"[AHProxy] Fast CDN response ({FAST_WAIT}s), normal streaming", xbmc.LOGDEBUG)
+            else:
+                # CDN ist langsam. Wir committen JETZT zu chunked Headers damit
+                # libcurl's Timer nicht 20s leer läuft. Status raten wir anhand
+                # des Range-Requests: wenn Kodi nach Range gefragt hat → 206,
+                # sonst 200. Das ist eine fundierte Annahme, weil CDN-Videos
+                # praktisch immer Ranges unterstützen.
+                status = 206 if rng else 200
+                self.send_response(status)
+
+                # Standard-Header für Video-Streaming
+                self.send_header("Content-Type", "video/mp4")
+                self.send_header("Accept-Ranges", "bytes")
+                self.send_header("Transfer-Encoding", "chunked")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Connection", "close")
+                # Bei 206 brauchen wir Content-Range. Wir nehmen an die Range
+                # ist "bytes=X-" (offene Range) und setzen sie auf den bekannten
+                # Total falls wir den kennen.
+                if status == 206 and rng:
+                    total = getattr(self.upstream, 'total_size', None)
+                    # Parse "bytes=X-Y" oder "bytes=X-"
+                    m = re.match(r'bytes=(\d+)-(\d*)', rng)
+                    if m:
+                        start = int(m.group(1))
+                        end = int(m.group(2)) if m.group(2) else (total - 1 if total else start + 10 * 1024 * 1024)
+                        total_str = str(total) if total else "*"
+                        self.send_header("Content-Range", f"bytes {start}-{end}/{total_str}")
+                self.end_headers()
+                headers_committed = True
+                use_chunked = True
+
+                xbmc.log(
+                    f"[AHProxy] Slow CDN detected (>{FAST_WAIT}s), committed to chunked streaming with status {status}",
+                    xbmc.LOGINFO,
+                )
+
+                # --- Schritt 3: Keep-Alive-Chunks schicken bis CDN antwortet ---
+                PING_INTERVAL = 2.0
+                MAX_WAIT = 45.0
+                waited = FAST_WAIT
+                pings_sent = 0
+
+                while waited < MAX_WAIT:
+                    upstream_thread.join(timeout=PING_INTERVAL)
+                    if not upstream_thread.is_alive():
+                        break
+                    waited += PING_INTERVAL
+                    # 1-Byte-Chunk mit ASCII-Null. Bei MP4 wird das vom Parser
+                    # am Dateianfang als "padding before ftyp" toleriert.
+                    # WICHTIG: Nur solange wir noch nicht mit echtem Body
+                    # angefangen haben! Sobald der erste echte Chunk raus
+                    # ist, würden Nullbytes den Stream zerstören.
+                    try:
+                        self._write_chunked(b"\\x00")
+                        pings_sent += 1
+                        xbmc.log(
+                            f"[AHProxy] Keep-alive chunk #{pings_sent} sent (waited {waited:.0f}s for CDN)",
+                            xbmc.LOGDEBUG,
+                        )
+                    except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, socket.error) as e:
+                        client_disconnected = True
+                        xbmc.log(
+                            f"[AHProxy] Kodi disconnected during CDN wait (after {waited:.0f}s, {pings_sent} chunks): {e}",
+                            xbmc.LOGDEBUG,
+                        )
+                        if hasattr(self.upstream, "_close_active"):
+                            try:
+                                self.upstream._close_active()
+                            except Exception:
+                                pass
+                        return
+
+                if upstream_thread.is_alive():
+                    # CDN hat nach MAX_WAIT immer noch nicht geantwortet
+                    xbmc.log(
+                        f"[AHProxy] Upstream timeout after {MAX_WAIT}s",
+                        xbmc.LOGERROR,
+                    )
+                    # Chunked-Stream sauber beenden (leerer Terminator)
+                    self._write_chunked_terminator()
+                    if hasattr(self.upstream, "_close_active"):
+                        try:
+                            self.upstream._close_active()
+                        except Exception:
+                            pass
+                    return
+
+                if "error" in result_holder:
+                    raise result_holder["error"]
+                rsp = result_holder.get("response")
+                if rsp is None:
+                    raise RuntimeError("Upstream thread returned no response after wait")
+
+                xbmc.log(
+                    f"[AHProxy] CDN responded after {waited:.0f}s and {pings_sent} keep-alive chunks",
+                    xbmc.LOGINFO,
+                )
 
             status = getattr(rsp, "status_code", 0)
-            
+
             # Chunk-Size: klein für urllib (Seek-Performance), normal für requests
             if isinstance(self.upstream, _UrllibUpstream):
                 chunk_size = PROXY_CHUNK  # 32 KB
             else:
                 chunk_size = DEFAULT_CHUNK  # 512 KB
-            
+
             if status in (200, 206):
                 bytes_sent = 0
                 chunk_count = 0
@@ -583,22 +782,39 @@ class _ProxyHandler(BaseHTTPRequestHandler):
                         if not chunk:
                             continue
                         try:
-                            self.wfile.write(chunk)
+                            if use_chunked:
+                                self._write_chunked(chunk)
+                            else:
+                                self.wfile.write(chunk)
+                                # Flush nach jedem Chunk für minimale Latenz
+                                if chunk_count <= 4 or chunk_count % 4 == 0:
+                                    self.wfile.flush()
                             bytes_sent += len(chunk)
                             chunk_count += 1
-                            
-                            # Flush nach jedem Chunk für minimale Latenz
-                            if chunk_count <= 4 or chunk_count % 4 == 0:
-                                self.wfile.flush()
-                                
+
                             if chunk_count == 1:
-                                xbmc.log(f"[AHProxy] First chunk sent: {bytes_sent} bytes (Range={rng})", xbmc.LOGINFO)
-                        except (socket.error, ConnectionResetError, ConnectionAbortedError) as e:
-                            xbmc.log(f"[AHProxy] Connection broken after {bytes_sent} bytes: {e}", xbmc.LOGDEBUG)
+                                xbmc.log(
+                                    f"[AHProxy] First chunk sent: {bytes_sent} bytes "
+                                    f"(Range={rng}, chunked={use_chunked})",
+                                    xbmc.LOGINFO,
+                                )
+                        except (
+                            BrokenPipeError,
+                            ConnectionResetError,
+                            ConnectionAbortedError,
+                            socket.error,
+                        ) as e:
+                            client_disconnected = True
+                            xbmc.log(
+                                f"[AHProxy] Client disconnected after {bytes_sent} bytes "
+                                f"(Range={rng}): {e}. Expected for MP4 seeks.",
+                                xbmc.LOGDEBUG,
+                            )
                             break
-                    xbmc.log(f"[AHProxy] Stream complete: {bytes_sent} bytes", xbmc.LOGINFO)
+                    if not client_disconnected:
+                        xbmc.log(f"[AHProxy] Stream complete: {bytes_sent} bytes", xbmc.LOGINFO)
                 except Exception as e:
-                    xbmc.log(f"[AHProxy] Stream error after {bytes_sent} bytes: {e}", xbmc.LOGERROR)
+                    xbmc.log(f"[AHProxy] Stream iteration error after {bytes_sent} bytes: {e}", xbmc.LOGERROR)
             else:
                 xbmc.log(f"[AHProxy] Unexpected status code: {status}", xbmc.LOGWARNING)
                 try:
@@ -610,12 +826,49 @@ class _ProxyHandler(BaseHTTPRequestHandler):
                     xbmc.log(f"[AHProxy] Error body: {body[:500].decode('utf-8', errors='replace')}", xbmc.LOGWARNING)
                 except Exception:
                     pass
+
+            # Chunked-Stream sauber beenden falls wir ihn benutzt haben
+            if use_chunked and not client_disconnected:
+                try:
+                    self._write_chunked_terminator()
+                except Exception:
+                    pass
+
         except Exception as e:
             xbmc.log(f"[AHProxy] GET error: {e}", xbmc.LOGERROR)
-            try:
-                self.send_error(502, f"Upstream error: {e}")
-            except:
-                pass
+            if not headers_committed:
+                try:
+                    self.send_error(502, f"Upstream error: {e}")
+                except Exception:
+                    pass
+            elif use_chunked:
+                # Header waren schon raus — beende den chunked-Stream
+                try:
+                    self._write_chunked_terminator()
+                except Exception:
+                    pass
+        finally:
+            # KRITISCH: Upstream-Response immer schließen — besonders wenn Kodi
+            # disconnected hat. Sonst hängt der Upstream-Socket und der nächste
+            # Range-Request (bytes=<ende>-) landet im Timeout.
+            if rsp is not None:
+                try:
+                    rsp.close()
+                except Exception:
+                    pass
+
+            # Bei urllib-Upstream den aktiven Raw-Socket sofort killen,
+            # damit der nächste make_get() nicht auf alte Verbindung wartet.
+            if client_disconnected and hasattr(self.upstream, "_close_active"):
+                try:
+                    self.upstream._close_active()
+                except Exception:
+                    pass
+
+            # Wenn der Client weg ist, Keep-Alive aus: HTTP-Server soll den
+            # Request-Thread nicht offen halten.
+            if client_disconnected:
+                self.close_connection = True
 
 
 class _HTTPServer(ThreadingHTTPServer):
@@ -634,6 +887,7 @@ class ProxyController:
         port=0,
         skip_resolve=False,
         use_urllib=False,
+        probe_size=True,
     ):
         """
         Args:
@@ -651,6 +905,7 @@ class ProxyController:
                 upstream_url,
                 headers=upstream_headers,
                 cookies=cookies,
+                probe_size=probe_size,
             )
         else:
             self.up = _Upstream(

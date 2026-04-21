@@ -1,5 +1,5 @@
-﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.8" provider-name="Vashiel">
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.9" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.requests" version="2.25.1"/>
@@ -10,12 +10,19 @@
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
-v. 1.0.8 "Jubilee Year Update" - 2026-03-31
-- **Improved &amp; Fixed**: AnySex, Ashemaletube, AVJoy, Beeg, Fuqer, Hanime, HQPorner, LetMeJerk, LuxureTV, Nudez, OK.xxx, PornHits, PornZog, Rule34Video, SaintPorn, Shameless, Shemalez, SunPorno, SxyPrn, Thumbzilla, Tube8, UFlash, Upornia, Veporn, VikiPorn, VJav, xCafe, XMoviesForYou, YouJizz, YouPorn.
-- **Playback &amp; Performance**: Improved startup time or stream selection for Nudez, SunPorno, xCafe and YouJizz; added a platform-specific Nudez playback path for Windows and Android.
-- **Removed**: RealCuckoldSex (domain for sale), TubeDupe (site currently only serves fixed 6-minute clips).
-- **Validation**: Expanded KVAT full-site regression coverage and completed a broad post-1.0.7 repair pass across the addon.
-- **10th Anniversary Year**: 2026 continues as AdultHideout's anniversary year, with follow-up stability updates after the 1.0.7 release.
+v. 1.0.9 "Cloud Nine" - 2026-04-20
+- **10 New Sites**: ArchiveBate, CamCaps, Chaturbate, HentaiDude, HentaiOcean, Ikisoda, JAVHDPorn, Perverzija, PMVHaven (by user request), XOpenload.
+- **Improved and Fixed**: AVJoy, WatchPorn.
+- **ArchiveBate**: Right-click filters (Gender, Sort), local thumbnail proxy-cache for CDN bypass, Livewire routing fixes.
+- **AVJoy**: Page/session/stream caching, curl.exe/curl_cffi fetch paths, pre-resolving for visible videos, seek-aware local curl proxy for slow CDN streams.
+- **CamCaps and Chaturbate**: Search, categories, Sort By, pagination, and hardened playback (Lulu HLS proxy, Clicknplay fast-start, Chaturbate room proxy).
+- **Hentai/JAV**: HentaiDude (subtitles, pagination, dashboard fallback), HentaiOcean (API/RSS, direct MP4), Ikisoda (KVS direct MP4), JAVHDPorn (Cloudflare-aware, StreamTape/HugStream resolver).
+- **PMVHaven and Perverzija**: API pagination, search, categories, Sort By; Perverzija adds Cloudflare-hardened listings and XtremeStream HLS.
+- **XOpenload**: Full-length movie support with multi-hoster resolver (MixDrop, StreamTape, DoodStream, Voe).
+- **WatchPorn**: Removed fragile local proxy path, fixed seek stability via direct header-based playback.
+- **Removed**: MaturePorn.Tube (404 only).
+- **Core Engine**: Updated vendored cloudscraper stack, added small resolver ports, kept networking pure-Python for Android/Fire TV.
+- **10th Anniversary Year**: 1.0.9 continues the next expansion wave of AdultHideout's anniversary year.
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>
@@ -23,11 +30,14 @@ Internet [COLOR red]XXX Porn Video[COLOR white] Streams.
 
 [COLOR red][B]WARNING:[/B][COLOR red]Only for adults[/COLOR]    
 
+[COLOR white]AdultHideout does not host third-party videos on its own servers and is not affiliated with the websites supported by the addon.
+Content, streams and metadata are provided by third-party websites.[/COLOR]
+
 [COLOR white]Github:
 https://github.com/Vashiel/repository.adulthideout
 [/COLOR]    
         </description>
-        <disclaimer></disclaimer>    
+        <disclaimer>AdultHideout does not host third-party videos on its own servers and is not affiliated with the websites supported by the addon. Content, streams and metadata are provided by third-party websites.</disclaimer>    
         <platform>all</platform>
         <license>http://www.gnu.org/licenses/</license>
         <forum></forum>

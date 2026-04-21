@@ -12,6 +12,7 @@
     <setting id="show_ashemaletube" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]AnySex[/B]" />
     <setting id="show_anysex" type="bool" label="30003" default="true" />
+    <!-- 1.0.9 Repair: AVJoy curl.exe/curl_cffi playback path -->
     <setting type="lsep" label="[B]AVJOY[/B]" />
     <setting id="show_avjoy" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Beeg[/B]" />
@@ -20,6 +21,11 @@
     <setting id="show_bravoporn" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]BananaMovies[/B]" />
     <setting id="show_bananamovies" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]ArchiveBate[/B]" />
+    <setting id="show_archivebate" type="bool" label="30003" default="true" />
+    <!-- 1.0.9 Expansion: CamCaps, PMVHaven, Chaturbate, Ikisoda, JAVHDPorn, Perverzija, XOpenload, plus AVJoy repair -->
+    <setting type="lsep" label="[B]CamCaps[/B]" />
+    <setting id="show_camcaps" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]CrazyShit[/B]" />
     <setting id="show_crazyshit" type="bool" label="30003" default="false" />
     <setting id="crazyshit_disclaimer_accepted" type="bool" default="false" visible="false" />
@@ -41,6 +47,10 @@
     <setting id="show_fullxcinema" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Hanime[/B]" />
     <setting id="show_hanime" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]HentaiDude[/B]" />
+    <setting id="show_hentaidude" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]HentaiOcean[/B]" />
+    <setting id="show_hentaiocean" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]HClips[/B]" />
     <setting id="show_hclips" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]HDZog[/B]" />
@@ -53,6 +63,10 @@
     <setting id="show_hqporner" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Hypnotube[/B]" />
     <setting id="show_hypnotube" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]Ikisoda[/B]" />
+    <setting id="show_ikisoda" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]JAVHDPorn[/B]" />
+    <setting id="show_javhdporn" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]LuxureTV[/B]" />
     <setting id="show_luxuretv" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]MissAV[/B]" />
@@ -65,6 +79,8 @@
     <setting id="show_okxxx" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]ParadiseHill[/B]" />
     <setting id="show_paradisehill" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]PMVHaven[/B]" />
+    <setting id="show_pmvhaven" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]PornDig[/B]" />
     <setting id="show_porndig" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]PornDoe[/B]" />
@@ -97,6 +113,8 @@
     <setting id="show_pornhd3x" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Tube8[/B]" />
     <setting id="show_tube8" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]Perverzija[/B]" />
+    <setting id="show_perverzija" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]PunishBang[/B]" />
     <setting id="show_punishbang" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]PunishWorld[/B]" />
@@ -161,6 +179,8 @@
     <setting id="show_3movs" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]XMoviesForYou[/B]" />
     <setting id="show_xmoviesforyou" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]XOpenload[/B]" />
+    <setting id="show_xopenload" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Porn300[/B]" />
     <setting id="show_porn300" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Porn7[/B]" />
@@ -191,10 +211,10 @@
     <setting id="show_bigtitslust" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]BlackPorn24[/B]" />
     <setting id="show_blackporn24" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]Chaturbate[/B]" />
+    <setting id="show_chaturbate" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]MilfPorn8[/B]" />
     <setting id="show_milfporn8" type="bool" label="30003" default="true" />
-    <setting type="lsep" label="[B]MaturePorn.Tube[/B]" />
-    <setting id="show_matureporntube" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Blowjobs.pro[/B]" />
     <setting id="show_blowjobspro" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]LesbianPorn8[/B]" />
@@ -221,6 +241,8 @@
   <category label="30110"> <setting type="lsep" label="30110" />
     <setting id="bdsmstreak_sort_by" type="enum" label="30004" values="Newest|Popular" default="0" />
     <setting id="beeg_sort_by" type="enum" label="30004" values="Newest|Popular|Top Rated" default="0" />
+    <setting id="camcaps_sort_by" type="enum" label="30004" values="Most Recent|Featured|Most Viewed|Top Rated|Top Favorites|Being Watched" default="0" />
+    <setting id="chaturbate_sort_by" type="enum" label="30004" values="Most Relevant|Most Viewers|Random" default="0" />
     <setting id="erome_sort_by" type="enum" label="   Sort by" values="Hot|New" default="1" enable="eq(-1,true)" />
     <setting id="erome_content_type" type="enum" label="   Content" values="All|Straight|Gay|Trans|Hentai" default="0" enable="eq(-2,true)" />
     <setting id="thisvid_sort_by" type="enum" label="30004" values="Newest|Most Viewed|Top Rated" default="0" />
@@ -253,9 +275,12 @@
     <setting id="bigtitslust_sort_by" type="enum" label="30004" values="Latest|Most Popular" default="0" />
     <setting id="blackporn24_sort_by" type="enum" label="30004" values="Newest|Hottest|Most Viewed|Top Rated" default="0" />
     <setting id="milfporn8_sort_by" type="enum" label="30004" values="Latest|Most Popular|Top Rated" default="0" />
-    <setting id="matureporntube_sort_by" type="enum" label="30004" values="Newest|Hottest|Most Viewed|Top Rated" default="0" />
     <setting id="blowjobspro_sort_by" type="enum" label="30004" values="Newest|Hottest|Most Viewed|Top Rated" default="0" />
     <setting id="lesbianporn8_sort_by" type="enum" label="30004" values="Newest|Hottest|Most Viewed|Top Rated" default="0" />
+    <!-- 1.0.9 Expansion: CamCaps, PMVHaven, Chaturbate, Ikisoda, JAVHDPorn, Perverzija, XOpenload, plus AVJoy repair -->
+    <!-- PMVHaven -->
+    <setting id="pmvhaven_sort_by" type="enum" label="30004" values="Newest|Most Popular|Trending" default="0" />
+    <setting id="ikisoda_sort_by" type="enum" label="30004" values="Recently Added|Latest Releases|Most Viewed|Best Rated" default="0" />
     <setting id="zbporn_sort_by" type="enum" label="30004" values="Latest|Popular|Top Rated|Longest" default="0" />
     <setting id="tubev_sort_by" type="enum" label="30004" values="Popular|New" default="0" />
     <setting id="thepornbang_sort_by" type="enum" label="30004" values="Latest|Best" default="0" />
@@ -344,6 +369,17 @@
     <setting id="avjoy_sort_by" type="number" default="0" visible="false" />
     <setting id="darknessporn_sort_by" type="number" default="0" visible="false" />
     <setting id="fullxcinema_sort_by" type="number" default="0" visible="false" />
+    <setting id="archivebate_filter_gender" type="number" default="0" visible="false" />
+    <setting id="archivebate_filter_sort" type="number" default="0" visible="false" />
+    <setting id="xopenload_sort_by" type="number" default="0" visible="false" />
+    <setting id="chaturbate_filter_gender" type="number" default="0" visible="false" />
+    <setting id="chaturbate_filter_keywords" type="text" default="" visible="false" />
+    <setting id="chaturbate_filter_special" type="number" default="0" visible="false" />
+    <setting id="chaturbate_filter_region" type="number" default="0" visible="false" />
+    <setting id="chaturbate_filter_age" type="number" default="0" visible="false" />
+    <setting id="chaturbate_filter_room_size" type="number" default="0" visible="false" />
+    <setting id="chaturbate_filter_private_price" type="number" default="0" visible="false" />
+    <setting id="chaturbate_filter_spy_price" type="number" default="0" visible="false" />
     <setting id="heavy-r_sort_by" type="number" default="0" visible="false" />
     <setting id="hqporner_sort_by" type="number" default="0" visible="false" />
     <setting id="missav_sort_by" type="number" default="0" visible="false" />

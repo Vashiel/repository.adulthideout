@@ -5,13 +5,11 @@ import sys
 import urllib.parse
 
 import requests
-import xbmc
 import xbmcgui
 import xbmcplugin
 
 from resources.lib.base_website import BaseWebsite
 from resources.lib.decoders.kvs_decoder import kvs_decode_url
-from resources.lib.proxy_utils import PlaybackGuard, ProxyController
 
 
 class WatchPorn(BaseWebsite):
@@ -437,7 +435,7 @@ class WatchPorn(BaseWebsite):
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
 
-        proxy_headers = {
+        direct_headers = {
             "User-Agent": self.ua,
             "Referer": url,
             "Origin": self.base_url,
@@ -447,22 +445,16 @@ class WatchPorn(BaseWebsite):
             "Connection": "keep-alive",
         }
 
-        try:
-            controller = ProxyController(
-                upstream_url=video_url,
-                upstream_headers=proxy_headers,
-                cookies=None,
-                use_urllib=True,
+        playback_url = video_url + "|" + "&".join(
+            "{}={}".format(
+                urllib.parse.quote(str(key), safe=""),
+                urllib.parse.quote(str(value), safe=""),
             )
-            local_url = controller.start()
+            for key, value in direct_headers.items()
+        )
 
-            list_item = xbmcgui.ListItem(path=local_url)
-            list_item.setProperty("IsPlayable", "true")
-            list_item.setMimeType("video/mp4")
-            list_item.setContentLookup(False)
-            xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
-
-            PlaybackGuard(xbmc.Player(), xbmc.Monitor(), local_url, controller).start()
-        except Exception as exc:
-            self.logger.error("[WatchPorn] Proxy playback failed for %s: %s", video_url, exc)
-            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
+        list_item = xbmcgui.ListItem(path=playback_url)
+        list_item.setProperty("IsPlayable", "true")
+        list_item.setMimeType("video/mp4")
+        list_item.setContentLookup(False)
+        xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)

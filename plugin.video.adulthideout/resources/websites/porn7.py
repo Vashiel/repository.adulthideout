@@ -2,7 +2,9 @@
 import html
 import os
 import re
+import subprocess
 import sys
+import tempfile
 import urllib.parse
 
 import xbmc
@@ -55,8 +57,16 @@ class Porn7(BaseWebsite):
         self.logger.info(f"[Porn7] GET {url}")
         headers = {
             "Referer": referer or (self.base_url + "/"),
-            "User-Agent": "Mozilla/5.0",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         }
+
+        # Porn7 is very slow through Python's urllib/SSL stack on Windows, while
+        # curl.exe returns the same pages quickly. Use it first where available.
+        if os.name == "nt":
+            curl_html = self._make_curl_request(url, headers)
+            if curl_html:
+                return curl_html
+
         return fetch_text(
             url=url,
             headers=headers,
@@ -65,6 +75,67 @@ class Porn7(BaseWebsite):
             timeout=20,
             use_windows_curl_fallback=True,
         )
+
+    def _make_curl_request(self, url, headers):
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp_file:
+                tmp_path = tmp_file.name
+
+            command = [
+                "curl.exe",
+                "-L",
+                "--silent",
+                "--show-error",
+                "--connect-timeout",
+                "8",
+                "--max-time",
+                "15",
+                "--user-agent",
+                headers.get("User-Agent", "Mozilla/5.0"),
+                "--referer",
+                headers.get("Referer", self.base_url + "/"),
+                "-H",
+                "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "-H",
+                "Accept-Language: en-US,en;q=0.9",
+                "-o",
+                tmp_path,
+                url,
+            ]
+
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = 0
+
+            completed = subprocess.run(
+                command,
+                capture_output=True,
+                timeout=20,
+                check=False,
+                startupinfo=startupinfo,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+
+            if completed.returncode == 0 and tmp_path and os.path.exists(tmp_path):
+                with open(tmp_path, "rb") as fh:
+                    data = fh.read()
+                if data:
+                    return data.decode("utf-8", errors="ignore")
+
+            stderr = completed.stderr.decode("utf-8", errors="ignore").strip()
+            if stderr:
+                self.logger.warning(f"[Porn7] curl.exe failed rc={completed.returncode}: {stderr[:200]}")
+        except Exception as exc:
+            self.logger.warning(f"[Porn7] curl.exe request failed: {exc}")
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except Exception:
+                    pass
+
+        return None
 
     def _get_sort_index(self):
         try:
@@ -223,24 +294,23 @@ class Porn7(BaseWebsite):
         self.end_directory("videos")
 
     def play_video(self, url):
-        html_content = self.make_request(url)
-        if not html_content:
-            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
-            return
-
-        embed_match = re.search(r'"embedUrl":\s*"([^"]+)"', html_content, re.IGNORECASE)
-        if not embed_match:
-            embed_match = re.search(r'https://www\.porn7\.xxx/embed/\d+/?', html_content, re.IGNORECASE)
-
         embed_url = None
-        if embed_match:
-            embed_url = embed_match.group(1) if embed_match.lastindex else embed_match.group(0)
-            embed_url = html.unescape(embed_url)
+        page_id_match = re.search(r"/v/(?:old-archive/)?(\d+)/", url)
+        if page_id_match:
+            embed_url = f"{self.base_url}/embed/{page_id_match.group(1)}/"
+        else:
+            html_content = self.make_request(url)
+            if not html_content:
+                xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
+                return
 
-        if not embed_url:
-            page_id_match = re.search(r'/v/(?:old-archive/)?(\d+)/', url)
-            if page_id_match:
-                embed_url = f"{self.base_url}/embed/{page_id_match.group(1)}/"
+            embed_match = re.search(r'"embedUrl":\s*"([^"]+)"', html_content, re.IGNORECASE)
+            if not embed_match:
+                embed_match = re.search(r"https://www\.porn7\.xxx/embed/\d+/?", html_content, re.IGNORECASE)
+
+            if embed_match:
+                embed_url = embed_match.group(1) if embed_match.lastindex else embed_match.group(0)
+                embed_url = html.unescape(embed_url)
 
         if not embed_url:
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
@@ -279,6 +349,7 @@ class Porn7(BaseWebsite):
                 upstream_headers=proxy_headers,
                 cookies=None,
                 use_urllib=True,
+                probe_size=False,
             )
             local_url = controller.start()
 

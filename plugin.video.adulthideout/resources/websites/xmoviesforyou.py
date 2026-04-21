@@ -93,13 +93,40 @@ class XMoviesForYou(BaseWebsite):
         if not page_html:
             return self.end_directory()
 
-        # Isolate exactly the articles
-        # We look for <article> tags that are actual video items (usually have class article-item or similar)
-        # But even generic <article> works as long as we validate them inside.
-        articles = re.findall(r'<article.*?</article>', page_html, re.DOTALL | re.IGNORECASE)
-        self.logger.info(f"[XMoviesForYou] Total <article> tags found: {len(articles)}")
+        # Current layout renders real videos as Tailwind cards, while <article>
+        # blocks are mostly ads. Keep the old parser as fallback below.
+        card_pattern = re.compile(
+            r'<a\s+href="([^"]+)"\s+class="[^"]*\bgroup\b[^"]*">\s*'
+            r'<div[^>]*>.*?'
+            r'<img\s+src="([^"]+)"\s+alt="([^"]+)"',
+            re.DOTALL | re.IGNORECASE,
+        )
 
         items_added = 0
+        seen = set()
+        for video_path, thumb, title in card_pattern.findall(page_html):
+            if video_path.startswith('http'):
+                video_url = video_path
+            else:
+                video_url = urllib.parse.urljoin(self.base_url, video_path)
+
+            if video_url in seen:
+                continue
+            seen.add(video_url)
+
+            if not thumb.startswith('http'):
+                thumb = urllib.parse.urljoin(self.base_url, thumb)
+
+            title = html.unescape(re.sub(r'\s+', ' ', title).strip())
+            if not title:
+                continue
+
+            self.add_link(title, video_url, 4, thumb, self.fanart,
+                          info_labels={'title': title, 'plot': title})
+            items_added += 1
+
+        articles = re.findall(r'<article.*?</article>', page_html, re.DOTALL | re.IGNORECASE)
+        self.logger.info(f"[XMoviesForYou] Total <article> tags found: {len(articles)}")
         for i, block in enumerate(articles):
             # Title
             title = ""
@@ -128,6 +155,9 @@ class XMoviesForYou(BaseWebsite):
             video_url = link_match.group(1)
             if not video_url.startswith('http'):
                 video_url = urllib.parse.urljoin(self.base_url, video_url)
+            if video_url in seen:
+                continue
+            seen.add(video_url)
 
             # Thumbnail
             img_match = re.search(r'<img[^>]+src="(https?://[^"]+\.(jpg|jpeg|png|webp|gif)[^"]*)"', block, re.IGNORECASE)
