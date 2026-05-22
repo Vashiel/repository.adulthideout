@@ -198,12 +198,19 @@ class JavhdpornWebsite(BaseWebsite):
         return items
 
     def _extract_next_page(self, html_content):
+        # 1. Look for an 'a' tag with "Next" or "&raquo;" text
+        match = re.search(r'<a[^>]+href="([^"]+)"[^>]*>\s*(?:Next|Next\s*&raquo;|Next\s*»|&raquo;|»)\s*</a>', html_content, re.IGNORECASE)
+        if match:
+            return self._absolute(match.group(1))
+
+        # 2. Look for an 'a' tag with class containing "next" (any attribute order)
         match = re.search(r'<a[^>]+class="[^"]*next[^"]*"[^>]+href="([^"]+)"', html_content, re.IGNORECASE)
         if match:
             return self._absolute(match.group(1))
-        match = re.search(r'<link rel="next" href="([^"]+)"', html_content, re.IGNORECASE)
+        match = re.search(r'<a[^>]+href="([^"]+)"[^>]+class="[^"]*next[^"]*"', html_content, re.IGNORECASE)
         if match:
             return self._absolute(match.group(1))
+
         return None
 
     def process_content(self, url):
@@ -250,12 +257,49 @@ class JavhdpornWebsite(BaseWebsite):
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
 
-        header_string = urllib.parse.urlencode(headers)
-        list_item = xbmcgui.ListItem(path=stream_url + "|" + header_string)
+        proxy_ctrl = None
+        local_m3u8_path = None
+
+        # If it's a streamhls.click stream, it might use TikTok .image chunks
+        if stream_url and "m3u8" in stream_url and "streamhls.click" in stream_url:
+            try:
+                self.logger.info("JavHDPorn: Processing streamhls.click playlist...")
+                from resources.lib.resolvers.javhdporn_resolver import rewrite_playlist, TiktokImageProxy
+
+                proxy_ctrl = TiktokImageProxy()
+                proxy_base_url = proxy_ctrl.start()
+
+                local_m3u8_path = rewrite_playlist(stream_url, headers, proxy_base_url)
+                if local_m3u8_path:
+                    stream_url = local_m3u8_path
+            except Exception as e:
+                self.logger.error("JavHDPorn: Failed to rewrite playlist: %s", e)
+                import traceback
+                self.logger.error(traceback.format_exc())
+
+        if local_m3u8_path:
+            list_item = xbmcgui.ListItem(path=local_m3u8_path)
+        else:
+            header_string = urllib.parse.urlencode(headers)
+            list_item = xbmcgui.ListItem(path=stream_url + "|" + header_string)
+
         list_item.setProperty("IsPlayable", "true")
-        if ".m3u8" in stream_url:
+        if ".m3u8" in stream_url or (local_m3u8_path and ".m3u8" in local_m3u8_path):
             list_item.setMimeType("application/vnd.apple.mpegurl")
             list_item.setContentLookup(False)
         else:
             list_item.setMimeType("video/mp4")
+
         xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
+
+        if proxy_ctrl and local_m3u8_path:
+            from resources.lib.proxy_utils import PlaybackGuard
+            try:
+                import xbmc
+                player = xbmc.Player()
+                monitor = xbmc.Monitor()
+                guard = PlaybackGuard(player, monitor, local_m3u8_path, proxy_ctrl, idle_timeout=60 * 60)
+                guard.start()
+                self.logger.info("JavHDPorn: PlaybackGuard started for TiktokImageProxy.")
+            except Exception:
+                pass

@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
+import glob
 import html
 import json
+import os
 import re
+import subprocess
+import sys
 import urllib.parse
 
 import requests
@@ -225,6 +229,7 @@ class PmvhavenWebsite(BaseWebsite):
             "Referer": referer,
             "Origin": self.base_url,
             "Accept": "*/*",
+            "Accept-Encoding": "identity",
         }
         return stream_url + "|" + "&".join(
             "{}={}".format(
@@ -233,6 +238,77 @@ class PmvhavenWebsite(BaseWebsite):
             )
             for key, value in headers.items()
         )
+
+    def _find_system_python(self):
+        local_app_data = os.environ.get("LOCALAPPDATA", "")
+        pattern = os.path.join(local_app_data, "Programs", "Python", "Python*", "python.exe")
+        for candidate in sorted(glob.glob(pattern), reverse=True):
+            if os.path.isfile(candidate):
+                return candidate
+        return sys.executable or "python"
+
+    def _start_external_proxy(self, stream_url, referer):
+        helper_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "lib", "system_stream_proxy.py"))
+        if not os.path.isfile(helper_path):
+            return None
+
+        cookie_string = "; ".join(
+            "{}={}".format(str(key), str(value))
+            for key, value in self.session.cookies.get_dict().items()
+        )
+        command = [
+            self._find_system_python(),
+            "-u",
+            helper_path,
+            "--url",
+            stream_url,
+            "--referer",
+            referer,
+            "--origin",
+            self.base_url,
+            "--user-agent",
+            self.ua,
+            "--cookie",
+            cookie_string,
+            "--idle-timeout",
+            "120",
+        ]
+
+        startupinfo = None
+        creationflags = 0
+        if os.name == "nt":
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = 0
+            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+        try:
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                stdin=subprocess.DEVNULL,
+                text=True,
+                bufsize=1,
+                startupinfo=startupinfo,
+                creationflags=creationflags,
+            )
+        except Exception as exc:
+            self.logger.warning("[PMVHaven] External proxy could not start: %s", exc)
+            return None
+
+        try:
+            local_url = process.stdout.readline().strip()
+        except Exception:
+            local_url = ""
+
+        if not local_url:
+            try:
+                process.terminate()
+            except Exception:
+                pass
+            return None
+        return local_url
 
     def play_video(self, url):
         candidates = []
@@ -268,7 +344,12 @@ class PmvhavenWebsite(BaseWebsite):
 
         stream_url = max(candidates, key=self._score_stream)
         referer = self.base_url + "/" if url.startswith(self.PLAYBACK_PREFIX) else url
-        playback_url = self._build_header_url(stream_url, referer)
+        if ".mp4" in stream_url.lower():
+            playback_url = self._start_external_proxy(stream_url, referer)
+            if not playback_url:
+                playback_url = self._build_header_url(stream_url, referer)
+        else:
+            playback_url = self._build_header_url(stream_url, referer)
 
         list_item = xbmcgui.ListItem(path=playback_url)
         list_item.setProperty("IsPlayable", "true")

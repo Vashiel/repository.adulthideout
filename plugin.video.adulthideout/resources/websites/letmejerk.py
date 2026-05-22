@@ -29,7 +29,7 @@ except ImportError:
 
 
 class LetmejerkWebsite(BaseWebsite):
-    BASE_URL = "https://www.letmejerk.com"
+    BASE_URL = "https://www.letmejizz.com"
 
     def __init__(self, addon_handle, addon=None):
         super().__init__(
@@ -57,7 +57,10 @@ class LetmejerkWebsite(BaseWebsite):
 
     def get_start_url_and_label(self):
         sort_id = f"{self.name}_sort_by"
-        sort_index = int(self.addon.getSetting(sort_id) or '0')
+        setting_val = self.addon.getSetting(sort_id)
+        if not setting_val:
+            setting_val = '0'
+        sort_index = int(setting_val)
         path = self.sort_paths.get(sort_index, "/?sort=pop")
         label = f"LetMeJerk - {self.sort_options[sort_index]}"
         return f"{self.BASE_URL}{path}", label
@@ -95,7 +98,7 @@ class LetmejerkWebsite(BaseWebsite):
                     req = urllib.request.Request(url, data=data_bytes, headers=req_headers)
                 else:
                     req = urllib.request.Request(url, headers=req_headers)
-                
+
                 with urllib.request.urlopen(req, timeout=20) as resp:
                     return resp.read().decode('utf-8')
         except Exception as e:
@@ -147,52 +150,33 @@ class LetmejerkWebsite(BaseWebsite):
             self.end_directory()
             return
 
-        thumb_map = self._decode_preview_data(content)
-        
-        # Search thumbnails fallback map
-        search_thumb_map = {
-            m[0]: m[1] for m in re.findall(r'<img id="search_(\d+)"[^>]*src="([^"]+)"', content)
-        }
-        
-        # Parse video cards: <a href...> <img id="...">
-        card_pattern = re.compile(
-            r'<a href="(/[A-Za-z0-9]+/[^"]+)"[^>]*class="th-image"[^>]*title="([^"]+)"[^>]*>\s*'
-            r'<img id="(?:search_)?(\d+)"',
-            re.DOTALL
+        modern_blocks = re.findall(
+            r'<a[^>]+href="(/[^"]*(?:video|short)s?/[^"]+)"[^>]*>\s*<div\s+class="vc-thumb">\s*<img([^>]+)>',
+            content, re.DOTALL | re.IGNORECASE
         )
-        matches = card_pattern.findall(content)
 
-        if not matches:
-             simple = re.compile(
-                r'<a href="(/[A-Za-z0-9]+/[^"]+)"[^>]*class="th-image"[^>]*title="([^"]+)"'
-             )
-             matches = [(path, title, '') for path, title in simple.findall(content)]
+        matches = []
+        for path, img_attrs in modern_blocks:
+            src_match = re.search(r'data-src="([^"]+)"', img_attrs)
+            if not src_match:
+                 src_match = re.search(r'src="([^"]+)"', img_attrs)
+            thumb = src_match.group(1) if src_match else self.icons.get('default', '')
 
-        if not matches:
-            modern = re.compile(
-                r'<div\s+class="thumb">\s*'
-                r'<a\s+href="(/[A-Za-z0-9]+/[^"]+)"[^>]*>.*?'
-                r'<img[^>]+(?:data-src|src)="([^"]+)"[^>]+alt="([^"]+)"',
-                re.DOTALL | re.IGNORECASE
-            )
-            matches = [(path, title, '') for path, _thumb, title in modern.findall(content)]
-            search_thumb_map.update({
-                path: thumb for path, thumb, title in modern.findall(content)
-            })
+            alt_match = re.search(r'alt="([^"]*)"', img_attrs)
+            title = alt_match.group(1) if alt_match else ''
+            matches.append((path, title, thumb))
 
         seen = set()
         count = 0
-        
-        for path, title, img_id in matches:
+
+        for path, title, thumb in matches:
             title = title.replace('&#039;', "'").replace('&amp;', '&')
             video_url = f"{self.BASE_URL}{path}" if not path.startswith('http') else path
-            
+
             if video_url in seen:
                 continue
             seen.add(video_url)
 
-            thumb = thumb_map.get(img_id) or search_thumb_map.get(img_id) or search_thumb_map.get(path) or self.icons.get('default', '')
-            
             self.add_link(title, video_url, 4, thumb, self.fanart)
             count += 1
 
@@ -230,18 +214,18 @@ class LetmejerkWebsite(BaseWebsite):
         if not content:
             self.end_directory()
             return
-        
+
         seen = set()
         # <a href="/category/voyeur/" title="Voyeur Porn">Voyeur</a>
         cat_pattern = re.compile(
-            r'href="(/category/[^/\"]+/)"[^>]*(?:title="([^"]*)")?[^>]*>([^<]+)</a>',
-            re.DOTALL
+            r'<a[^>]+href="(/[^"]*(?:tag|category)/[^"]+)"[^>]*>([^<]+)</a>',
+            re.DOTALL | re.IGNORECASE
         )
-        for path, title_attr, title_text in cat_pattern.findall(content):
+        for path, title_text in cat_pattern.findall(content):
             cat_url = f"{self.BASE_URL}{path}"
             if cat_url in seen: continue
             seen.add(cat_url)
-            title = (title_text or title_attr).strip().replace(' Porn', '')
+            title = title_text.strip().replace(' Porn', '')
             if title:
                 self.add_dir(title, cat_url, 2, self.icons.get('categories', self.icon))
         self.end_directory()
@@ -251,7 +235,7 @@ class LetmejerkWebsite(BaseWebsite):
         if not content:
             self.end_directory()
             return
-        
+
         seen = set()
         az_links = re.findall(r'<a href="(/az-pornstars/[a-z0-9])">([^<]+)</a>', content)
         if az_links and url.rstrip('/').endswith('/az-pornstars'):
@@ -261,12 +245,20 @@ class LetmejerkWebsite(BaseWebsite):
                     seen.add(ps_url)
                     self.add_dir(name.strip(), ps_url, 8, self.icon)
         else:
-            # Models on LetMeJerk are formatted as <li><a href="/category/model-name/">Model Name</a></li>
-            for path, name in re.findall(r'<li>\s*<a href="(/category/[^"]+/)">([^<]+)</a>\s*</li>', content):
-                ps_url = f"{self.BASE_URL}{path}"
-                if ps_url not in seen:
-                    seen.add(ps_url)
-                    self.add_dir(name.strip(), ps_url, 2, self.icons.get('categories', self.icon))
+            # Modern letmejizz layout
+            modern_stars = re.findall(r'<a[^>]+href="(/[^"]*star/[^"]+)"[^>]*>([^<]+)</a>', content, re.IGNORECASE)
+            if modern_stars:
+                for path, name in modern_stars:
+                    ps_url = f"{self.BASE_URL}{path}"
+                    if ps_url not in seen:
+                        seen.add(ps_url)
+                        self.add_dir(name.strip(), ps_url, 2, self.icons.get('categories', self.icon))
+            else:
+                for path, name in re.findall(r'<li>\s*<a href="(/category/[^"]+/)">([^<]+)</a>\s*</li>', content):
+                    ps_url = f"{self.BASE_URL}{path}"
+                    if ps_url not in seen:
+                        seen.add(ps_url)
+                        self.add_dir(name.strip(), ps_url, 2, self.icons.get('categories', self.icon))
         self.end_directory()
 
     # ─── PLAYBACK ─────────────────────────────────────────────────────────────
@@ -275,11 +267,11 @@ class LetmejerkWebsite(BaseWebsite):
         return (stream_url or "").strip().replace(r"\/", "/").replace("&amp;", "&")
 
     def _extract_cached_hls(self, content):
-        cached_match = re.search(r'var\s+cached\s*=\s*["\']([^"\']*)["\']', content)
+        cached_match = re.search(r'cached\s*=\s*["\']([^"\']+)["\']', content)
         if not cached_match:
             return None
         stream_url = self._normalize_stream_url(cached_match.group(1))
-        if stream_url.startswith("http") and ".m3u8" in stream_url:
+        if stream_url.startswith("http"):
             return stream_url
         return None
 
@@ -308,7 +300,7 @@ class LetmejerkWebsite(BaseWebsite):
 
         api_url = "{}{}{}".format(
             self.BASE_URL,
-            "/api/refresh-hls?id=",
+            "/api/refresh-hls.php?id=",
             urllib.parse.quote(video_id, safe=""),
         )
         response = self.make_request(
@@ -333,7 +325,7 @@ class LetmejerkWebsite(BaseWebsite):
             return None
 
         stream_url = self._normalize_stream_url(payload.get("url"))
-        if stream_url.startswith("http") and ".m3u8" in stream_url:
+        if stream_url.startswith("http"):
             return stream_url
 
         xbmc.log(f"[letmejerk] refresh-hls did not return a playable URL for {video_id}: {payload}", xbmc.LOGWARNING)
@@ -371,20 +363,27 @@ class LetmejerkWebsite(BaseWebsite):
             return
 
         video_id = self._extract_video_id(content, url)
-        final_url = self._extract_cached_hls(content)
-        if (not final_url or self._is_expired_hls(final_url)) and video_id:
+
+        # 2. Always try refresh-hls.php first – the cached URL in the HTML
+        #    is almost always expired (CDN returns 410).
+        if video_id:
             refreshed_url = self._refresh_hls(video_id, url)
             if refreshed_url:
-                final_url = refreshed_url
+                xbmc.log(f"[letmejerk] Playing (refresh-hls): {refreshed_url}", xbmc.LOGDEBUG)
+                self._play_stream(refreshed_url, url, True)
+                return
 
+        # 3. Fallback: try the cached HLS URL from the page HTML
+        final_url = self._extract_cached_hls(content)
         if final_url and not self._is_expired_hls(final_url):
+            xbmc.log(f"[letmejerk] Playing (cached): {final_url}", xbmc.LOGDEBUG)
             self._play_stream(final_url, url, True)
             return
 
-        # Find img ID or loadLetMeJerkVideoPlayer call
+        # 4. Legacy fallback: loadLetMeJerkVideoPlayer obfuscation
         msg_id = None
         path_id = None
-        
+
         # New LetMeJerk obfuscation stores parameters in a pipe-delimited string array
         # Format usually looks like: loadLetMeJerkVideoPlayer|120539|...|120539|eHZAIWh0...
         match = re.search(r'loadLetMeJerkVideoPlayer.*?\|(\d{5,8})\|.*?\|(eH[A-Za-z0-9+/=]{50,})\|', content)
@@ -409,7 +408,7 @@ class LetmejerkWebsite(BaseWebsite):
                     self.notify_error("Video ID not found")
                     return
 
-        # 2. Call API: POST /load/video3/{path_id}/ data={id: msg_id}
+        # 5. Call API: POST /load/video3/{path_id}/ data={id: msg_id}
         api_url = f"{self.BASE_URL}/load/video3/{path_id}/"
         api_headers = {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -421,36 +420,30 @@ class LetmejerkWebsite(BaseWebsite):
             self.notify_error("API request failed")
             return
 
-        # 3. Extract video source
+        # 6. Extract video source from API response
         final_url = None
         is_hls = False
 
-        cached_url = self._extract_cached_hls(content)
-        if cached_url and not self._is_expired_hls(cached_url):
-            final_url = cached_url
-            is_hls = True
-
-        vurl_match = re.search(r'const\s+videoUrl\s*=\s*["\']([^"\']+)["\']', api_response) if api_response else None
-        if not final_url and vurl_match:
+        vurl_match = re.search(r'const\s+videoUrl\s*=\s*["\']([^"\']+)["\']', api_response)
+        if vurl_match:
             final_url = self._normalize_stream_url(vurl_match.group(1))
             is_hls = final_url.lower().endswith('.m3u8') or '.m3u8?' in final_url.lower()
-        
+
         # Fallback: direct src in video tag
-        if not final_url and api_response:
+        if not final_url:
             src_match = re.search(r'<video[^>]+src="([^"]+)"', api_response)
             if src_match:
                 final_url = src_match.group(1)
 
         # Fallback: source tag
-        if not final_url and api_response:
-             src_match = re.search(r'<source[^>]+src="([^"]+)"', api_response)
-             if src_match:
-                 final_url = src_match.group(1)
+        if not final_url:
+            src_match = re.search(r'<source[^>]+src="([^"]+)"', api_response)
+            if src_match:
+                final_url = src_match.group(1)
 
         if not final_url:
             self.notify_error("No video URL found in API response")
             return
 
         xbmc.log(f"[letmejerk] Playing: {final_url}", xbmc.LOGDEBUG)
-
         self._play_stream(final_url, url, is_hls)

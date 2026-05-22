@@ -105,6 +105,36 @@ class Rule34video(BaseWebsite):
             self.logger.error(f"Request failed for {url}: {e}")
             return None
 
+    def _build_next_url(self, current_url, html_content):
+        next_match = re.search(
+            r'<div\s+class=["\']item\s+pager\s+next["\'][^>]*>\s*'
+            r'<a[^>]+href=["\'](?P<href>[^"\']+)["\'][^>]*data-parameters=["\'][^"\']*from:(?P<page>\d+)',
+            html_content,
+            re.DOTALL | re.IGNORECASE
+        )
+        if not next_match:
+            return None
+
+        page = next_match.group('page').lstrip('0') or '1'
+        parsed_current = urllib.parse.urlparse(current_url)
+        if not parsed_current.netloc:
+            parsed_current = urllib.parse.urlparse(urllib.parse.urljoin(self.base_url, current_url))
+
+        path = parsed_current.path or '/'
+        path = re.sub(r'/\d+/?$', '/', path)
+        if not path.endswith('/'):
+            path += '/'
+        path = f"{path}{page}/"
+
+        return urllib.parse.urlunparse((
+            parsed_current.scheme or 'https',
+            parsed_current.netloc or urllib.parse.urlparse(self.base_url).netloc,
+            path,
+            '',
+            parsed_current.query,
+            ''
+        ))
+
     def _get_start_url(self):
         try:
             sort_idx = int(self.addon.getSetting(self.setting_id_sort))
@@ -159,10 +189,10 @@ class Rule34video(BaseWebsite):
         self.add_dir('[COLOR blue]Categories[/COLOR]', urllib.parse.urljoin(self.base_url, '/categories/'), 8, self.icons['categories'])
 
         video_pattern = re.compile(
-            r'<div class="item thumb[^"]*">.*?'
-            r'<a class="th[^"]*" href="(?P<url>[^"]+)"[^>]*title="(?P<title>[^"]+)".*?'
-            r'<img[^>]+data-original="(?P<thumb>[^"]+)".*?'
-            r'<div class="time">(?P<duration>[^<]+)</div>',
+            r'<div\s+class=["\']item\s+thumb[^"\']*["\']\s*>.*?'
+            r'<a[^>]+class=["\'][^"\']*\bth\b[^"\']*["\'][^>]+href=["\'](?P<url>[^"\']+)["\'][^>]*title=["\'](?P<title>[^"\']+)["\'].*?'
+            r'<img[^>]+data-original=["\'](?P<thumb>https?://[^"\']+)["\'].*?'
+            r'<div\s+class=["\']time["\']\s*>(?P<duration>[^<]+)</div>',
             re.DOTALL | re.IGNORECASE
         )
 
@@ -187,9 +217,8 @@ class Rule34video(BaseWebsite):
         if not found:
             self.logger.warning(f"[{self.name}] No videos found on {url}")
 
-        next_match = re.search(r'<div class="item pager next">\s*<a href="(?P<next>[^"]+)"', html_content)
-        if next_match:
-            next_link = urllib.parse.urljoin(self.base_url, next_match.group('next'))
+        next_link = self._build_next_url(url, html_content)
+        if next_link:
             self.add_dir('[COLOR yellow]Next Page >>[/COLOR]', next_link, 2, self.icons['default'])
 
         self.end_directory()

@@ -12,6 +12,7 @@ except Exception:
 
 import re
 import html
+import json
 import urllib.parse
 import time
 import xbmc
@@ -197,18 +198,21 @@ class freeomovie(BaseWebsite):
 
         def sort_hosters(link):
             link = link.lower()
+            if 'lulu' in link: return 7
+            if 'vidhide' in link: return 6
+            if 'streamtape' in link: return 5
             if 'voe.sx' in link or 'voe.sa' in link: return 4
-            if 'lulustream' in link: return 3 
             if 'bigwarp' in link: return 3
-            if 'mixdrop' in link: return 2
-            if 'dood' in link: return 1 
+            if 'mixdrop' in link or 'mxdrop' in link: return 2
+            if 'dood' in link or 'myvidplay' in link or 'playmogo' in link: return 1
             return 0
             
         iframe_urls.sort(key=sort_hosters, reverse=True)
 
         try:
-            autoplay = self.addon.getSetting('freeomovie_autoplay_hoster') == 'true'
-        except: autoplay = True 
+            autoplay = self.addon.getSetting('freeomovie_autoplay_hoster') != 'false'
+        except:
+            autoplay = True
 
         stream_url = None
         headers = {}
@@ -241,8 +245,12 @@ class freeomovie(BaseWebsite):
                              break
                          else:
                              xbmc.log(f"[freeomovie] Host {host_name} resolved but stream unreachable.", xbmc.LOGWARNING)
+                             stream_url = None
+                             headers = {}
                  except Exception as e:
                      xbmc.log(f"[freeomovie] Resolve failed for {link}: {e}", xbmc.LOGWARNING)
+                     stream_url = None
+                     headers = {}
                      continue 
         
         else:
@@ -316,13 +324,41 @@ class freeomovie(BaseWebsite):
 
     def _extract_iframes(self, html_text):
         links = []
-        links.extend(re.findall(r'<iframe[^>]+src="([^"]+)"', html_text, re.IGNORECASE))
-        links.extend(re.findall(r'data-src="([^"]+)"', html_text, re.IGNORECASE))
-        links.extend(re.findall(r'class="url-a-btn"[^>]+href="([^"]+)"', html_text, re.IGNORECASE))
+        links.extend(re.findall(r'<iframe[^>]+src=(["\'])(.*?)\1', html_text, re.IGNORECASE))
+        links.extend(re.findall(r'data-src=(["\'])(.*?)\1', html_text, re.IGNORECASE))
+        links.extend(re.findall(r'class=["\']url-a-btn["\'][^>]+href=(["\'])(.*?)\1', html_text, re.IGNORECASE))
+        tabs_match = re.search(r'var\s+TABS\s*=\s*(\[.*?\]);', html_text, re.DOTALL | re.IGNORECASE)
+        if tabs_match:
+            try:
+                for tab in json.loads(tabs_match.group(1)):
+                    if isinstance(tab, dict) and tab.get("url"):
+                        links.append(tab["url"])
+            except Exception:
+                pass
+        links.extend(re.findall(r'<p>\s*(https?://(?:myvidplay|playmogo|dood[^/\s"\']*|voe\.sx|mxdrop\.sx|mxdrop\.to|mixdrop\.[^/\s"\']+|streamtape\.com|vidhide(?:pre)?\.com|lulu(?:stream|vid)\.com)/[^\s"\'<>]+)\s*</p>', html_text, re.IGNORECASE))
         
         clean_links = []
+        allowed_hosts = (
+            "myvidplay", "playmogo", "dood", "voe.sx", "mxdrop.", "mixdrop.",
+            "streamtape.com", "vidhide.com", "vidhidepre.com", "lulustream.com",
+            "luluvid.com", "luluvdo.com", "bigwarp",
+        )
         for l in links:
+            if isinstance(l, tuple):
+                l = l[-1]
+            l = html.unescape(l).replace('\\/', '/').strip()
+            l = l.rstrip('.,);')
             if l.startswith("//"): l = "https:" + l
+            if not any(host in l.lower() for host in allowed_hosts):
+                continue
+            if "mxdrop.sx/f/" in l or "mxdrop.to/f/" in l:
+                l = l.replace("mxdrop.sx/f/", "mxdrop.to/e/").replace("mxdrop.to/f/", "mxdrop.to/e/")
+            if "streamtape.com/v/" in l:
+                l = l.replace("streamtape.com/v/", "streamtape.com/e/")
+            if "vidhide.com/" in l and "/embed/" not in l:
+                l = l.replace("vidhide.com/", "vidhide.com/embed/")
+            if "vidhidepre.com/" in l and "/embed/" not in l:
+                l = l.replace("vidhidepre.com/", "vidhidepre.com/embed/")
             if "facebook" in l or "twitter" in l: continue
             if any(ext in l.lower() for ext in ['.jpg', '.png', '.gif', 'favicon']): continue
             if l not in clean_links:

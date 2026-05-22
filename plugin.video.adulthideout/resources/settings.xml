@@ -119,6 +119,8 @@
     <setting id="show_punishbang" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]PunishWorld[/B]" />
     <setting id="show_punishworld" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]Rapelust[/B]" />
+    <setting id="show_rapelust" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Redtube[/B]" />
     <setting id="show_redtube" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Rule34video[/B]" />
@@ -127,6 +129,8 @@
     <setting id="show_shemalez" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Spankbang[/B]" />
     <setting id="show_spankbang" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]SpeedPorn[/B]" />
+    <setting id="show_speedporn" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]SuperPorn[/B]" />
     <setting id="show_superporn" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]ThePornBang[/B]" />
@@ -161,6 +165,8 @@
     <setting id="show_youporn" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]YouJizz[/B]" />
     <setting id="show_youjizz" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]YourLesbians[/B]" />
+    <setting id="show_yourlesbians" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]ThisVid[/B]" />
     <setting id="show_thisvid" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Erome[/B]" />
@@ -173,8 +179,6 @@
     <setting id="show_xcafe" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]FullPorner[/B]" />
     <setting id="show_fullporner" type="bool" label="30003" default="true" />
-    <setting type="lsep" label="[B]PornHits[/B]" />
-    <setting id="show_pornhits" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]3Movs[/B]" />
     <setting id="show_3movs" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]XMoviesForYou[/B]" />
@@ -277,6 +281,7 @@
     <setting id="milfporn8_sort_by" type="enum" label="30004" values="Latest|Most Popular|Top Rated" default="0" />
     <setting id="blowjobspro_sort_by" type="enum" label="30004" values="Newest|Hottest|Most Viewed|Top Rated" default="0" />
     <setting id="lesbianporn8_sort_by" type="enum" label="30004" values="Newest|Hottest|Most Viewed|Top Rated" default="0" />
+    <setting id="yourlesbians_sort_by" type="enum" label="30004" values="Newest|Most Viewed|Top Rated" default="0" />
     <!-- 1.0.9 Expansion: CamCaps, PMVHaven, Chaturbate, Ikisoda, JAVHDPorn, Perverzija, XOpenload, plus AVJoy repair -->
     <!-- PMVHaven -->
     <setting id="pmvhaven_sort_by" type="enum" label="30004" values="Newest|Most Popular|Trending" default="0" />
@@ -408,10 +413,10 @@
     <setting id="letmejerk_sort_by_internal" type="number" default="0" visible="false" />
     <setting id="upornia_sort_by_internal" type="number" default="0" visible="false" />
     <setting id="xcafe_sort_by_internal" type="number" default="0" visible="false" />
-    <setting id="pornhits_sort_by" type="number" default="0" visible="false" />
-    <setting id="pornhits_pornstar_sort_by" type="number" default="0" visible="false" />
+    <setting id="pornhoarder_sort_by" type="number" default="0" visible="false" />
     <setting id="porndoe_sort_by" type="number" default="0" visible="false" />
     <setting id="porndoe_content_type" type="number" default="0" visible="false" />
+    <setting id="Rapelust_sort_by" type="number" default="0" visible="false" />
     
     <setting id="automated_test" type="bool" default="false" visible="false" />
     <setting id="show_eroasm" type="bool" default="true" visible="false" />

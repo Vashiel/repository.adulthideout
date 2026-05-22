@@ -5,8 +5,10 @@ import re
 import sys
 import json
 import html
+import time
 import urllib.parse
 import urllib.request
+import urllib.error
 from http.cookiejar import CookieJar
 
 import xbmc
@@ -30,7 +32,7 @@ class PornhubWebsite(BaseWebsite):
             search_url="",
             addon_handle=addon_handle
         )
-        
+
         self.label = 'Pornhub'
         self.cookie_jar = CookieJar()
         self.opener = urllib.request.build_opener(
@@ -45,13 +47,13 @@ class PornhubWebsite(BaseWebsite):
             "Most Viewed": "mostviewed",
             "Top Rated": "rating"
         }
-        
+
         self.period_options = ["All Time", "This Month", "This Week"]
         self.period_paths = {"All Time": "alltime", "This Month": "monthly", "This Week": "weekly"}
-        
+
         self.pornstar_sort_options = ["Most Popular", "Most Viewed", "Top Trending", "Most Subscribed", "Alphabetical", "No. Of Videos", "Random"]
         self.pornstar_sort_paths = {
-            "Most Popular": "", "Most Viewed": "mv", "Top Trending": "t", 
+            "Most Popular": "", "Most Viewed": "mv", "Top Trending": "t",
             "Most Subscribed": "ms", "Alphabetical": "a", "No. Of Videos": "nv", "Random": "r"
         }
 
@@ -64,14 +66,79 @@ class PornhubWebsite(BaseWebsite):
         return start_url, label
 
     def _set_age_cookie(self):
+        for name, value in (
+            ('age_verified', '1'),
+            ('accessAgeDisclaimerPH', '1'),
+            ('accessAgeDisclaimerUK', '1'),
+            ('accessPH', '1'),
+            ('platform', 'pc'),
+        ):
+            self.cookie_jar.set_cookie(self._create_cookie(name, value, '.pornhub.com'))
+
+    def _extract_flashvars(self, content):
+        """Extract Pornhub's flashvars object with brace balancing."""
+        for marker in (r'var\s+flashvars_\d+\s*=', r'var\s+flashvars\s*=', r'flashvars\s*='):
+            for match in re.finditer(marker, content, re.DOTALL):
+                start = content.find('{', match.end())
+                if start == -1:
+                    continue
+
+                depth = 0
+                quote = None
+                escape = False
+                for idx in range(start, len(content)):
+                    ch = content[idx]
+                    if escape:
+                        escape = False
+                        continue
+                    if ch == '\\':
+                        escape = True
+                        continue
+                    if quote:
+                        if ch == quote:
+                            quote = None
+                        continue
+                    if ch in ('"', "'"):
+                        quote = ch
+                        continue
+                    if ch == '{':
+                        depth += 1
+                    elif ch == '}':
+                        depth -= 1
+                        if depth == 0:
+                            raw = content[start:idx + 1]
+                            try:
+                                data = json.loads(raw)
+                                if data and data.get('mediaDefinitions'):
+                                    self.logger.info(f"Pornhub: Successfully extracted flashvars with marker: {marker}")
+                                    return data
+                            except Exception as exc:
+                                self.logger.warning(f"Pornhub: flashvars JSON parse failed: {exc}")
+                            break
+        return None
+
+    def _warmup_session(self, referer=None):
+        try:
+            self._set_age_cookie()
+            req = urllib.request.Request(
+                f"{self.base_url}/video?o=newest",
+                headers=self.get_headers(referer or self.base_url)
+            )
+            with self.opener.open(req, timeout=8) as resp:
+                resp.read(2048)
+            return True
+        except Exception as exc:
+            self.logger.warning(f"Pornhub: session warmup failed: {exc}")
+            return False
+
+    def _create_cookie(self, name, value, domain):
         from http.cookiejar import Cookie
-        age_cookie = Cookie(
-            version=0, name='age_verified', value='1', port=None, port_specified=False,
-            domain='.pornhub.com', domain_specified=True, domain_initial_dot=True,
+        return Cookie(
+            version=0, name=name, value=value, port=None, port_specified=False,
+            domain=domain, domain_specified=True, domain_initial_dot=domain.startswith('.'),
             path='/', path_specified=True, secure=False, expires=None, discard=True,
-            comment=None, comment_url=None, rest={}
+            comment=None, comment_url=None, rest={'HttpOnly': None}, rfc2109=False
         )
-        self.cookie_jar.set_cookie(age_cookie)
 
     def get_headers(self, referer=None):
         headers = {
@@ -83,19 +150,37 @@ class PornhubWebsite(BaseWebsite):
         return headers
 
     def make_request(self, url, referer=None, is_api=False):
-        try:
-            headers = self.get_headers(referer)
-            if is_api:
-                headers['Accept'] = 'application/json, text/plain, */*'
-                headers['X-Requested-With'] = 'XMLHttpRequest'
-            
-            req = urllib.request.Request(url, headers=headers)
-            with self.opener.open(req, timeout=15) as resp:
-                return resp.read().decode('utf-8', errors='ignore')
-        except Exception as e:
-            if hasattr(self, 'notify_error'): self.notify_error("Failed to load data.")
-            return None
-    
+        last_error = None
+        for attempt in range(3):
+            try:
+                if attempt:
+                    time.sleep(0.8 * attempt)
+                    self._set_age_cookie()
+
+                headers = self.get_headers(referer)
+                if is_api:
+                    headers['Accept'] = 'application/json, text/plain, */*'
+                    headers['X-Requested-With'] = 'XMLHttpRequest'
+
+                req = urllib.request.Request(url, headers=headers)
+                with self.opener.open(req, timeout=15) as resp:
+                    return resp.read().decode('utf-8', errors='ignore')
+            except urllib.error.HTTPError as e:
+                last_error = e
+                self.logger.warning(f"Pornhub request failed for {url} on attempt {attempt + 1}: HTTP {e.code}")
+                if e.code not in (403, 429, 503):
+                    break
+            except Exception as e:
+                last_error = e
+                self.logger.warning(f"Pornhub request failed for {url} on attempt {attempt + 1}: {e}")
+                break
+
+        if last_error:
+            self.logger.warning(f"Pornhub request exhausted for {url}: {last_error}")
+        if hasattr(self, 'notify_error'):
+            self.notify_error("Failed to load data.")
+        return None
+
     def process_content(self, url):
         if not url or url == "BOOTSTRAP": url = self.base_url
 
@@ -112,18 +197,18 @@ class PornhubWebsite(BaseWebsite):
             if hasattr(self, 'add_dir'):
                 self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], name_param=self.name)
                 self.add_dir('Categories', f"{self.base_url}/categories", 2, self.icons['categories'])
-                
+
                 pornstars_url = f"{self.base_url}/pornstars"
                 self.add_dir(
-                    'Pornstars', 
-                    pornstars_url, 
-                    2, 
-                    self.icons['pornstars'], 
+                    'Pornstars',
+                    pornstars_url,
+                    2,
+                    self.icons['pornstars'],
                     context_menu=[
                         ('Sort by', f'RunPlugin({sys.argv[0]}?mode=7&action=select_pornstar_sort&website={self.name}&original_url={urllib.parse.quote_plus(pornstars_url)})')
                     ]
                 )
-            
+
             self.process_video_list(url)
 
         if hasattr(self, 'end_directory'):
@@ -133,7 +218,7 @@ class PornhubWebsite(BaseWebsite):
         parsed = urllib.parse.urlparse(current_url)
         params = urllib.parse.parse_qs(parsed.query)
         api_params = {'page': params.get('page', ['1'])[0]}
-        
+
         if '/pornstar/' in parsed.path:
             pornstar_name = parsed.path.split('/pornstar/')[-1].split('/')[0]
             api_params['search'] = pornstar_name.replace('-', ' ')
@@ -144,12 +229,12 @@ class PornhubWebsite(BaseWebsite):
             api_params['search'] = params['search'][0]
         elif 'category_slug' in params:
             api_params['category'] = params['category_slug'][0]
-        
+
         api_params['ordering'] = params.get('o', [self.sorting_paths['Newest']])[0]
-        
+
         if api_params['ordering'] in ['mostviewed', 'rating']:
             api_params['period'] = params.get('p', ['alltime'])[0]
-        
+
         api_url = f"{self.config['api_base']}/search?{urllib.parse.urlencode(api_params, doseq=True)}"
         content = self.make_request(api_url, referer=current_url, is_api=True)
         if not content: return
@@ -158,12 +243,12 @@ class PornhubWebsite(BaseWebsite):
         except json.JSONDecodeError: return
 
         videos = data.get('videos', [])
-        
+
         context_menu = [
             ('Sort by', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={urllib.parse.quote_plus(current_url)})'),
             ('Select Period', f'RunPlugin({sys.argv[0]}?mode=7&action=select_period&website={self.name}&original_url={urllib.parse.quote_plus(current_url)})')
         ]
-        
+
         for vid in videos:
             title = html.unescape(vid.get('title', ''))
             vid_id, thumb, duration = vid.get('video_id'), vid.get('default_thumb'), vid.get('duration')
@@ -172,7 +257,7 @@ class PornhubWebsite(BaseWebsite):
                     thumb = thumb.replace("&amp;", "&")
                     if "|" not in thumb:
                         thumb += "|User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0.0.0&Referer=https://www.pornhub.com/"
-                
+
                 label = f"{title} [COLOR lime]({duration})[/COLOR]"
                 self.add_link(label, f"{self.base_url}/view_video.php?viewkey={vid_id}", 4, thumb, self.fanart, context_menu)
 
@@ -187,7 +272,7 @@ class PornhubWebsite(BaseWebsite):
         api_url = f"{self.config['api_base']}/categories"
         content = self.make_request(api_url, referer=self.config['base_url'], is_api=True)
         if not content: return
-        
+
         try:
             data = json.loads(content)
             for cat in data.get('categories', []):
@@ -220,13 +305,13 @@ class PornhubWebsite(BaseWebsite):
                         thumb = thumb.replace("&amp;", "&")
                         if "|" not in thumb:
                             thumb += "|User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0.0.0&Referer=https://www.pornhub.com/"
-                            
+
                     name = html.unescape(img_block.split('alt="')[1].split('"')[0])
                     if hasattr(self, 'add_dir'):
                         self.add_dir(name, full_url, 2, thumb, self.fanart, context_menu=pornstar_context_menu)
                 except IndexError:
                     continue
-            
+
             if '<li class="page_next">' in content and hasattr(self, 'add_dir'):
                 next_page_url_part = content.split('<li class="page_next">')[1].split('href="')[1].split('"')[0]
                 next_page_url = urllib.parse.urljoin(self.base_url, html.unescape(next_page_url_part))
@@ -236,53 +321,43 @@ class PornhubWebsite(BaseWebsite):
 
     def play_video(self, url):
         self.logger.info(f"Pornhub: play_video for {url}")
-        
-        # Ensure age disclaimer cookies are present
-        self.cookie_jar.set_cookie(self._create_cookie('accessAgeDisclaimerPH', '1', '.pornhub.com'))
-        self.cookie_jar.set_cookie(self._create_cookie('accessAgeDisclaimerUK', '1', '.pornhub.com'))
-        
-        content = self.make_request(url, referer=url)
-        if not content: return
 
-        # Try multiple flashvars regex patterns for robustness
-        patterns = [
-            r'var\s+flashvars_\d+\s*=\s*({.*?});', 
-            r'var\s+flashvars\s*=\s*({.*?});',
-            r'flashvars\s*=\s*({.*?});'
-        ]
-        
+        # Ensure age disclaimer cookies are present
         data = None
-        for pattern in patterns:
-            match = re.search(pattern, content, re.DOTALL)
-            if match:
-                try:
-                    data = json.loads(match.group(1))
-                    if data and data.get('mediaDefinitions'): 
-                        self.logger.info(f"Pornhub: Successfully matched flashvars with pattern: {pattern}")
-                        break
-                except: continue
-        
+        self._set_age_cookie()
+        self._warmup_session(referer=self.base_url)
+
+        for attempt in range(2):
+            content = self.make_request(url, referer=self.base_url if attempt == 0 else url)
+            if content:
+                data = self._extract_flashvars(content)
+                if data:
+                    break
+            if attempt == 0:
+                self.logger.warning("Pornhub: first video-page request had no playable flashvars; retrying after warmup.")
+                self._warmup_session(referer=url)
+
         if data:
             media = data.get('mediaDefinitions', [])
             # Try HLS first
             streams = [s for s in media if s.get('format') == 'hls' and s.get('videoUrl')]
-            
+
             # Fallback to MP4 if no HLS found
             if not streams:
                 self.logger.info("Pornhub: No HLS found, checking for mp4 streams")
                 streams = [s for s in media if s.get('format') == 'mp4' and s.get('videoUrl')]
-            
+
             if streams:
                 # Find best stream by quality
                 try:
                     best_stream = max(streams, key=lambda x: int(str(x.get('quality', '0'))) if str(x.get('quality', '0')).isdigit() else 0)
                 except:
                     best_stream = streams[0]
-                
+
                 if best_stream:
                     stream_url = html.unescape(best_stream['videoUrl']).replace('\\/', '/')
                     ua = self.get_headers()['User-Agent']
-                    
+
                     # Prepare headers for segments and manifest
                     headers = {
                         'User-Agent': ua,
@@ -290,19 +365,19 @@ class PornhubWebsite(BaseWebsite):
                         'Origin': self.base_url.rstrip('/'),
                         'Cookie': "; ".join([f"{c.name}={c.value}" for c in self.cookie_jar])
                     }
-                    
+
                     header_str = urllib.parse.urlencode(headers)
-                    
+
                     # Construct Kodi player URL
                     kodi_url = stream_url
                     if "|" not in kodi_url:
                         kodi_url += "|" + header_str
-                        
+
                     self.logger.info(f"Pornhub: Playback resolved to: {kodi_url[:120]}...")
-                    
+
                     li = xbmcgui.ListItem(path=kodi_url)
                     li.setProperty('IsPlayable', 'true')
-                    
+
                     if best_stream.get('format') == 'hls':
                         li.setProperty('inputstream', 'inputstream.adaptive')
                         li.setProperty('inputstream.adaptive.manifest_type', 'hls')
@@ -312,21 +387,13 @@ class PornhubWebsite(BaseWebsite):
                         li.setMimeType('application/vnd.apple.mpegurl')
                     else:
                         li.setMimeType('video/mp4')
-                        
+
                     xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
                     return
-        
+
         self.logger.error(f"Pornhub: No playable streams found in flashvars for {url}")
         if hasattr(self, 'notify_error'): self.notify_error("No playable stream found.")
-
-    def _create_cookie(self, name, value, domain):
-        from http.cookiejar import Cookie
-        return Cookie(
-            version=0, name=name, value=value, port=None, port_specified=False,
-            domain=domain, domain_specified=True, domain_initial_dot=False,
-            path='/', path_specified=True, secure=False, expires=None,
-            discard=True, comment=None, comment_url=None, rest={'HttpOnly': None}, rfc2109=False
-        )
+        xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
 
     def search(self, query):
         if not query: return
@@ -340,18 +407,18 @@ class PornhubWebsite(BaseWebsite):
 
         sort_key = self.sorting_options[idx]
         sort_val = self.sorting_paths[sort_key]
-        
+
         addon = xbmcaddon.Addon()
         addon.setSetting('pornhub_sort_by', sort_key)
-        
+
         parsed_url = urllib.parse.urlparse(original_url)
         params = urllib.parse.parse_qs(parsed_url.query)
         params['o'] = [sort_val]
         params.pop('page', None)
-        
+
         new_query = urllib.parse.urlencode(params, doseq=True)
         new_url = parsed_url._replace(query=new_query).geturl()
-        
+
         xbmc.executebuiltin(f"Container.Update({sys.argv[0]}?mode=2&website={self.name}&url={urllib.parse.quote_plus(new_url)})")
 
     def select_period(self, original_url):

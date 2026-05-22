@@ -855,6 +855,15 @@ class ChaturbateWebsite(BaseWebsite):
             return normalized.encode("utf-8")
 
         class _Handler(BaseHTTPRequestHandler):
+            def _send_hls_headers(self, payload_length=None):
+                self.send_header("Content-Type", "application/vnd.apple.mpegurl")
+                self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+                self.send_header("Pragma", "no-cache")
+                self.send_header("Expires", "0")
+                self.send_header("Connection", "close")
+                if payload_length is not None:
+                    self.send_header("Content-Length", str(payload_length))
+
             def do_GET(self):
                 if self.path.startswith("/chunklist"):
                     parsed = urllib.parse.urlparse(self.path)
@@ -865,13 +874,12 @@ class ChaturbateWebsite(BaseWebsite):
                         data = fetch_chunklist_bytes(kind)
                     except Exception as exc:
                         self.send_response(200)
-                        self.send_header("Content-Type", "application/vnd.apple.mpegurl")
-                        endlist = b"#EXTM3U\n#EXT-X-ENDLIST\n"
-                        self.send_header("Content-Length", str(len(endlist)))
+                        retry_playlist = b"#EXTM3U\n#EXT-X-VERSION:6\n#EXT-X-TARGETDURATION:6\n#EXT-X-MEDIA-SEQUENCE:0\n"
+                        self._send_hls_headers(len(retry_playlist))
                         self.end_headers()
-                        self.wfile.write(endlist)
+                        self.wfile.write(retry_playlist)
                         self.server.website.logger.warning(
-                            "[Chaturbate] %s chunklist failed for %s: %s",
+                            "[Chaturbate] %s chunklist failed for %s, keeping live playlist open: %s",
                             kind,
                             username,
                             exc,
@@ -879,22 +887,20 @@ class ChaturbateWebsite(BaseWebsite):
                         return
 
                     self.send_response(200)
-                    self.send_header("Content-Type", "application/vnd.apple.mpegurl")
-                    self.send_header("Content-Length", str(len(data)))
+                    self._send_hls_headers(len(data))
                     self.end_headers()
                     self.wfile.write(data)
                     return
 
                 payload = self.server.website._build_proxy_master_payload(state["variant_data"], port).encode("utf-8")
                 self.send_response(200)
-                self.send_header("Content-Type", "application/vnd.apple.mpegurl")
-                self.send_header("Content-Length", str(len(payload)))
+                self._send_hls_headers(len(payload))
                 self.end_headers()
                 self.wfile.write(payload)
 
             def do_HEAD(self):
                 self.send_response(200)
-                self.send_header("Content-Type", "application/vnd.apple.mpegurl")
+                self._send_hls_headers()
                 self.end_headers()
 
             def log_message(self, _format, *args):

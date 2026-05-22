@@ -1,3 +1,10 @@
+v. 1.0.10 "Afterglow" - 2026-05-22
+- **New Sites**: PornHoarder, SpeedPorn, YourLesbians.
+- **Improved and Fixed**: Ashemaletube, Chaturbate, FreeOMovie, Ikisoda, JavHDPorn, LetMeJerk, NoodleMagazine, PMVHaven, Porn7, PornDoe, Pornhub, Rapelust, Rule34Video.
+- **Playback and Resolvers**: Improved DoodStream, Lulu/LuluVDO, DirtyVideo/Netu and HLS/MP4 proxy handling for better startup, seeking and clearer failed-hoster reporting.
+- **Android and Kodi Stability**: Added safer live-HLS behavior, better CDN/proxy paths, session warmups, thumbnail fixes and more robust pagination/list parsing.
+- **Removed**: PornHits, because the domain no longer serves its own site and now redirects to Pornhub/Brazzers.
+
 v. 1.0.9 "Cloud Nine" - 2026-04-20
 - **10 New Sites**: ArchiveBate, CamCaps, Chaturbate, HentaiDude, HentaiOcean, Ikisoda, JAVHDPorn, Perverzija, PMVHaven (by user request), XOpenload.
 - **Improved & Fixed**: AVJoy, WatchPorn.

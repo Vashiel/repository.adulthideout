@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+import glob
 import html
+import os
 import re
+import subprocess
+import sys
 import urllib.parse
 
 import requests
@@ -221,10 +225,79 @@ class IkisodaWebsite(BaseWebsite):
         clean_query = urllib.parse.quote_plus(query.strip()).replace("+", "-")
         self.process_content(self.search_url.format(clean_query))
 
+    def _find_system_python(self):
+        local_app_data = os.environ.get("LOCALAPPDATA", "")
+        pattern = os.path.join(local_app_data, "Programs", "Python", "Python*", "python.exe")
+        for candidate in sorted(glob.glob(pattern), reverse=True):
+            if os.path.isfile(candidate):
+                return candidate
+        return sys.executable or "python"
+
+    def _start_external_proxy(self, stream_url, page_url, cookie_dict):
+        helper_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "lib", "system_stream_proxy.py"))
+        if not os.path.isfile(helper_path):
+            return None
+
+        cookie_string = "; ".join("{}={}".format(str(k), str(v)) for k, v in (cookie_dict or {}).items())
+        command = [
+            self._find_system_python(),
+            "-u",
+            helper_path,
+            "--url",
+            stream_url,
+            "--page-url",
+            page_url,
+            "--referer",
+            page_url,
+            "--origin",
+            self.base_url.rstrip("/"),
+            "--user-agent",
+            self.ua,
+            "--cookie",
+            cookie_string,
+            "--idle-timeout",
+            "120",
+        ]
+
+        startupinfo = None
+        creationflags = 0
+        if os.name == "nt":
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = 0
+            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdin=subprocess.DEVNULL,
+            text=True,
+            bufsize=1,
+            startupinfo=startupinfo,
+            creationflags=creationflags,
+        )
+
+        try:
+            local_url = process.stdout.readline().strip()
+        except Exception:
+            local_url = ""
+
+        if not local_url:
+            try:
+                process.terminate()
+            except Exception:
+                pass
+            return None
+        return local_url
+
     def _extract_streams(self, html_content):
         license_match = re.search(r"license_code\s*:\s*'([^']+)'", html_content or "", re.IGNORECASE)
         license_code = license_match.group(1).strip() if license_match else ""
-        priority = {"video_alt_url3": 0, "video_alt_url2": 1, "video_alt_url": 2, "video_url": 3}
+        # Ikisoda often exposes huge 1080p files first; Kodi can show a
+        # still frame while buffering those multi-GB MP4s. Prefer the stable
+        # default/360p URLs, then fall back upward only if needed.
+        priority = {"video_alt_url": 0, "video_url": 1, "video_alt_url2": 2, "video_alt_url3": 3}
         streams = []
         for key, value in re.findall(r"(video(?:_alt_url\d*|_url)?)\s*:\s*'([^']+)'", html_content or "", re.IGNORECASE):
             stream_url = html.unescape(value.strip())
@@ -253,12 +326,17 @@ class IkisodaWebsite(BaseWebsite):
             "Origin": self.base_url.rstrip("/"),
             "Accept": "*/*",
             "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "identity",
         }
         cookies = self.session.cookies.get_dict()
         if cookies:
             headers["Cookie"] = "; ".join("{}={}".format(key, value) for key, value in cookies.items())
 
-        list_item = xbmcgui.ListItem(path=streams[0] + "|" + urllib.parse.urlencode(headers))
+        local_url = self._start_external_proxy(streams[0], url, cookies)
+        play_url = local_url or (streams[0] + "|" + urllib.parse.urlencode(headers))
+
+        list_item = xbmcgui.ListItem(path=play_url)
         list_item.setProperty("IsPlayable", "true")
         list_item.setMimeType("video/mp4")
+        list_item.setContentLookup(False)
         xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)

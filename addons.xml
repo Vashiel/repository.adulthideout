@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.9" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.10" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.requests" version="2.25.1"/>
@@ -11,19 +11,12 @@
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
-v. 1.0.9 "Cloud Nine" - 2026-04-20
-- **10 New Sites**: ArchiveBate, CamCaps, Chaturbate, HentaiDude, HentaiOcean, Ikisoda, JAVHDPorn, Perverzija, PMVHaven (by user request), XOpenload.
-- **Improved and Fixed**: AVJoy, WatchPorn.
-- **ArchiveBate**: Right-click filters (Gender, Sort), local thumbnail proxy-cache for CDN bypass, Livewire routing fixes.
-- **AVJoy**: Page/session/stream caching, curl.exe/curl_cffi fetch paths, pre-resolving for visible videos, seek-aware local curl proxy for slow CDN streams.
-- **CamCaps and Chaturbate**: Search, categories, Sort By, pagination, and hardened playback (Lulu HLS proxy, Clicknplay fast-start, Chaturbate room proxy).
-- **Hentai/JAV**: HentaiDude (subtitles, pagination, dashboard fallback), HentaiOcean (API/RSS, direct MP4), Ikisoda (KVS direct MP4), JAVHDPorn (Cloudflare-aware, StreamTape/HugStream resolver).
-- **PMVHaven and Perverzija**: API pagination, search, categories, Sort By; Perverzija adds Cloudflare-hardened listings and XtremeStream HLS.
-- **XOpenload**: Full-length movie support with multi-hoster resolver (MixDrop, StreamTape, DoodStream, Voe).
-- **WatchPorn**: Removed fragile local proxy path, fixed seek stability via direct header-based playback.
-- **Removed**: MaturePorn.Tube (404 only).
-- **Core Engine**: Updated vendored cloudscraper stack, added small resolver ports, kept networking pure-Python for Android/Fire TV.
-- **10th Anniversary Year**: 1.0.9 continues the next expansion wave of AdultHideout's anniversary year.
+v. 1.0.10 "Afterglow" - 2026-05-22
+- **New Sites**: PornHoarder, SpeedPorn, YourLesbians.
+- **Improved and Fixed**: Ashemaletube, Chaturbate, FreeOMovie, Ikisoda, JavHDPorn, LetMeJerk, NoodleMagazine, PMVHaven, Porn7, PornDoe, Pornhub, Rapelust, Rule34Video.
+- **Playback and Resolvers**: Improved DoodStream, Lulu/LuluVDO, DirtyVideo/Netu and HLS/MP4 proxy handling for better startup, seeking and clearer failed-hoster reporting.
+- **Android and Kodi Stability**: Added safer live-HLS behavior, better CDN/proxy paths, session warmups, thumbnail fixes and more robust pagination/list parsing.
+- **Removed**: PornHits, because the domain no longer serves its own site and now redirects to Pornhub/Brazzers.
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>

@@ -268,26 +268,31 @@ class AshemaletubeWebsite(BaseWebsite):
         self.end_directory()
 
     def parse_video_list(self, html_content, current_url):
-        item_pattern = r'(<li class="js-pop media-item.*?</li>)'
+        item_pattern = r'(<li\b[^>]*class="[^"]*(?:js-pop|media-item|mtile-x7)[^"]*"[\s\S]*?</li>)'
         video_pattern = re.compile(
-            r'<a[^>]*href="(/videos/[^"]+)"[^>]*title="([^"]+)"[^>]*>.*?<img[^>]+(?:src|data-src)="([^"]+)"',
+            r'<a[^>]*href="(/videos/[^"]+)"[^>]*title="([^"]+)"[^>]*>[\s\S]*?<img[^>]+(?:src|data-src|data-original)="([^"]+)"',
             re.DOTALL | re.IGNORECASE
         )
-        duration_pattern = r'<span\s+class="media-item__info-item\s+media-item__info-item-length">\s*([\d:]+)\s*</span>'
+        duration_pattern = r'<span\s+class="[^"]*(?:media-item__info-item-length|mtile-x7__info-item-length|duration|length)[^"]*">\s*([\d:]+)\s*</span>'
         item_blocks = re.findall(item_pattern, html_content, re.DOTALL)
         
         encoded_url = urllib.parse.quote_plus(current_url)
         context_menu = [('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={encoded_url})')]
         base_url = f"{urllib.parse.urlparse(current_url).scheme}://{urllib.parse.urlparse(current_url).netloc}"
+        seen = set()
         
         for block in item_blocks:
             video_match = video_pattern.search(block)
             duration_match = re.search(duration_pattern, block, re.DOTALL)
             if video_match:
                 video_url, name, thumb = video_match.groups()
+                absolute_video_url = urllib.parse.urljoin(base_url, video_url)
+                if absolute_video_url in seen:
+                    continue
+                seen.add(absolute_video_url)
                 duration = duration_match.group(1).strip() if duration_match else ""
                 display_name = f"{html.unescape(name)} [COLOR yellow]({duration})[/COLOR]" if duration else html.unescape(name)
-                self.add_link(display_name, urllib.parse.urljoin(base_url, video_url), 4, urllib.parse.urljoin(base_url, thumb), self.fanart, context_menu)
+                self.add_link(display_name, absolute_video_url, 4, urllib.parse.urljoin(base_url, thumb), self.fanart, context_menu)
 
     def process_categories(self, url):
         if isinstance(url, bytes): url = url.decode('utf-8')
@@ -318,11 +323,20 @@ class AshemaletubeWebsite(BaseWebsite):
         context_menu.append(('[COLOR yellow]Reset Filters[/COLOR]', f'RunPlugin({sys.argv[0]}?mode=7&website={self.name}&action=reset_pornstar_filters)'))
 
         base_url = f"{urllib.parse.urlparse(url).scheme}://{urllib.parse.urlparse(url).netloc}"
-        pattern = r'<div class="media-item model-item.*?<a class="media-item__inner" href="([^"]+)" title="([^"]+)".*?<img[^>]+src="([^"]+)".*?</div>'
-        matches = re.findall(pattern, content, re.DOTALL)
+        pattern = (
+            r'<div\b[^>]*class="[^"]*model-item[^"]*"[\s\S]*?'
+            r'<a[^>]+href="([^"]*/pornstars/[^"]+)"[^>]+title="([^"]+)"[\s\S]*?'
+            r'<img[^>]+(?:src|data-src|data-original)="([^"]+)"'
+        )
+        matches = re.findall(pattern, content, re.DOTALL | re.IGNORECASE)
+        seen = set()
 
         for pornstar_url, name, thumb in matches:
-            self.add_dir(html.unescape(name), urllib.parse.urljoin(base_url, pornstar_url), 2, urllib.parse.urljoin(base_url, thumb), self.fanart, context_menu=context_menu)
+            absolute_url = urllib.parse.urljoin(base_url, pornstar_url)
+            if absolute_url in seen:
+                continue
+            seen.add(absolute_url)
+            self.add_dir(html.unescape(name), absolute_url, 2, urllib.parse.urljoin(base_url, thumb), self.fanart, context_menu=context_menu)
         self.add_next_button(content, url)
 
     def add_next_button(self, content, current_url):

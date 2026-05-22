@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# DoodStream / DsvPlay / MyVidPlay resolver
+# DoodStream / DsvPlay / MyVidPlay / Playmogo resolver
 # Reverse-engineered from current DoodStream JS (Feb 2026)
 #
 # Flow:
@@ -40,7 +40,16 @@ USER_AGENTS = [
 KNOWN_DOMAINS = ['doodstream', 'dsvplay', 'myvidplay', 'dood.to', 'dood.pm',
                  'dood.watch', 'dood.so', 'dood.wf', 'dood.re', 'dood.cx',
                  'dood.la', 'dood.ws', 'dood.sh', 'dood.yt', 'ds2play',
-                 'doods.pro', 'd0o0d', 'd0000d', 'do0od', 'd000d']
+                 'doods.pro', 'd0o0d', 'd0000d', 'do0od', 'd000d',
+                 'playmogo']
+
+CHALLENGE_MARKERS = (
+    "challenges.cloudflare.com",
+    "cf-turnstile",
+    "turnstile",
+    "captcha-player",
+    "verify you are human",
+)
 
 
 def _make_play(token):
@@ -49,6 +58,11 @@ def _make_play(token):
     random_str = ''.join(random.choice(chars) for _ in range(10))
     expiry = int(time.time() * 1000)
     return f"{random_str}?token={token}&expiry={expiry}"
+
+
+def _is_challenge_page(html):
+    lower = (html or "").lower()
+    return any(marker in lower for marker in CHALLENGE_MARKERS)
 
 
 def resolve(url, referer=None, headers=None):
@@ -76,7 +90,13 @@ def resolve(url, referer=None, headers=None):
     try:
         response = scraper.get(url, headers=base_headers, allow_redirects=True)
         if response.status_code != 200:
-            xbmc.log(f"[AdultHideout][doodstream] Page returned HTTP {response.status_code}", xbmc.LOGERROR)
+            if _is_challenge_page(response.text):
+                xbmc.log(
+                    f"[AdultHideout][doodstream] Page returned HTTP {response.status_code} with Cloudflare/Turnstile challenge",
+                    xbmc.LOGWARNING,
+                )
+            else:
+                xbmc.log(f"[AdultHideout][doodstream] Page returned HTTP {response.status_code}", xbmc.LOGERROR)
             return None, {}
         html = response.text
         final_url = response.url
@@ -102,6 +122,9 @@ def resolve(url, referer=None, headers=None):
             pass_md5_path = lit_match.group(1)
 
     if not pass_md5_path:
+        if _is_challenge_page(html):
+            xbmc.log("[AdultHideout][doodstream] Cloudflare/Turnstile challenge page, cannot resolve without browser token", xbmc.LOGWARNING)
+            return None, {}
         xbmc.log("[AdultHideout][doodstream] No /pass_md5/ pattern found in HTML", xbmc.LOGERROR)
         xbmc.log(f"[AdultHideout][doodstream] HTML (first 2000 chars): {html[:2000]}", xbmc.LOGINFO)
         return None, {}
@@ -128,17 +151,24 @@ def resolve(url, referer=None, headers=None):
     pass_md5_url = f"https://{host}{pass_md5_path}"
     pass_headers = base_headers.copy()
     pass_headers["Referer"] = final_url
+    pass_headers["X-Requested-With"] = "XMLHttpRequest"
 
-    try:
-        data_response = scraper.get(pass_md5_url, headers=pass_headers)
-        if data_response.status_code != 200:
-            xbmc.log(f"[AdultHideout][doodstream] pass_md5 returned HTTP {data_response.status_code}", xbmc.LOGERROR)
+    base_stream_url = ""
+    for attempt in range(3):
+        try:
+            data_response = scraper.get(pass_md5_url, headers=pass_headers)
+            if data_response.status_code != 200:
+                xbmc.log(f"[AdultHideout][doodstream] pass_md5 returned HTTP {data_response.status_code}", xbmc.LOGERROR)
+                return None, {}
+            base_stream_url = data_response.text.strip()
+            xbmc.log(f"[AdultHideout][doodstream] Base stream URL: {base_stream_url[:80]}", xbmc.LOGINFO)
+            if base_stream_url != "RELOAD":
+                break
+            xbmc.log(f"[AdultHideout][doodstream] Server returned RELOAD, retry {attempt + 1}/3", xbmc.LOGWARNING)
+            time.sleep(1.0)
+        except Exception as e:
+            xbmc.log(f"[AdultHideout][doodstream] Failed to fetch pass_md5: {e}", xbmc.LOGERROR)
             return None, {}
-        base_stream_url = data_response.text.strip()
-        xbmc.log(f"[AdultHideout][doodstream] Base stream URL: {base_stream_url[:80]}", xbmc.LOGINFO)
-    except Exception as e:
-        xbmc.log(f"[AdultHideout][doodstream] Failed to fetch pass_md5: {e}", xbmc.LOGERROR)
-        return None, {}
 
     if not base_stream_url or not base_stream_url.startswith("http"):
         if base_stream_url == "RELOAD":

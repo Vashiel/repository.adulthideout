@@ -10,6 +10,7 @@ import xbmcgui
 import xbmcplugin
 import xbmcaddon
 from resources.lib.base_website import BaseWebsite
+from resources.lib.proxy_utils import PlaybackGuard, ProxyController
 
 try:
     addon_path = xbmcaddon.Addon().getAddonInfo('path')
@@ -47,6 +48,26 @@ class Rapelust(BaseWebsite):
             "Referer": self.BASE_URL,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         }
+
+    def _stream_headers(self):
+        headers = self.get_headers()
+        return {
+            "User-Agent": headers["User-Agent"],
+            "Referer": self.BASE_URL,
+            "Origin": self.BASE_URL.rstrip("/"),
+            "Accept": "*/*",
+            "Accept-Encoding": "identity",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Connection": "keep-alive",
+        }
+
+    def _build_header_url(self, video_url):
+        return video_url + "|" + urllib.parse.urlencode({
+            "User-Agent": self.get_headers()["User-Agent"],
+            "Referer": self.BASE_URL,
+            "Origin": self.BASE_URL.rstrip("/"),
+            "Accept": "*/*",
+        })
     
     def make_request(self, url, method='GET', data=None, headers=None):
         xbmc.log(f"Rapelust: make_request url={url}", xbmc.LOGINFO)
@@ -140,17 +161,39 @@ class Rapelust(BaseWebsite):
                 xbmc.log(f"Rapelust: Found raw MP4: {video_url}", xbmc.LOGINFO)
 
         if video_url:
-             headers = self.get_headers()
-             return f"{video_url}|User-Agent={urllib.parse.quote(headers['User-Agent'])}&Referer={urllib.parse.quote(self.BASE_URL)}"
+             return video_url
              
         return None
 
     def play_video(self, url):
         video_url = self.resolve(url)
         if video_url:
-            li = xbmcgui.ListItem(path=video_url)
+            playback_controller = None
+            final_url = video_url
+            if "|" in final_url:
+                final_url = final_url.split("|", 1)[0]
+
+            try:
+                playback_controller = ProxyController(
+                    upstream_url=final_url,
+                    upstream_headers=self._stream_headers(),
+                    use_urllib=True,
+                    probe_size=True,
+                )
+                final_url = playback_controller.start()
+                xbmc.log(f"Rapelust: Using internal Range proxy for {video_url}", xbmc.LOGINFO)
+            except Exception as e:
+                xbmc.log(f"Rapelust: internal proxy failed, falling back direct: {e}", xbmc.LOGWARNING)
+                playback_controller = None
+                final_url = self._build_header_url(video_url)
+
+            li = xbmcgui.ListItem(path=final_url)
             li.setProperty('IsPlayable', 'true')
+            li.setMimeType("video/mp4")
+            li.setContentLookup(False)
             xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+            if playback_controller:
+                PlaybackGuard(xbmc.Player(), xbmc.Monitor(), final_url, playback_controller).start()
         else:
             self.notify_error("Video resolution failed")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())

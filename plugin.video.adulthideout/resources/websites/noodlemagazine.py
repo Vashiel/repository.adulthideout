@@ -401,13 +401,22 @@ class NoodleMagazine(BaseWebsite):
             self.notify_error(str(e))
 
     def _extract_video_url(self, html_content, page_url):
-        patterns = [r'https?://cdn(?:-pr)?\.pvvstream\.pro/videos/[^"\'<>\s]+\.mp4\?[^"\'<>\s]*secure=[^"\'<>\s]+']
+        patterns = [r'https?://[a-z0-9-]+\.pvvstream\.pro/videos/[^"\'\s<>]+\.mp4\?[^"\'\s<>]*(?:secure|url)=[^"\'\s<>]+']
         for p in patterns:
             matches = re.findall(p, html_content, re.IGNORECASE)
+            # Filter out preview/trailer thumbnails, keep actual video files
+            valid = []
             for match in matches:
                 url = match if isinstance(match, str) else match[0]
-                if 'preview' not in url.lower() and 'secure=' in url and '.mp4' in url:
-                    return url
+                if 'preview' not in url.lower() and 'tr_240p' not in url and '.mp4' in url:
+                    valid.append(url)
+            if valid:
+                # Prefer highest quality: sort by resolution (1080 > 720 > 480 > ...)
+                def quality_key(u):
+                    m = re.search(r'/videos/(\d+)/', u)
+                    return int(m.group(1)) if m else 0
+                valid.sort(key=quality_key, reverse=True)
+                return valid[0]
         return None
 
     def search(self, query):

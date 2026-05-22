@@ -3,6 +3,8 @@ import re
 import json
 import sys
 import os
+import subprocess
+import tempfile
 
 try:
     import xbmcaddon
@@ -14,6 +16,8 @@ except Exception:
     pass
 
 import cloudscraper
+import xbmc
+from resources.lib.proxy_utils import PlaybackGuard, ProxyController
 
 class PornDoe(BaseWebsite):
     def __init__(self, addon_handle, addon=None):
@@ -60,6 +64,71 @@ class PornDoe(BaseWebsite):
         except Exception:
             pass
 
+    def _make_curl_request(self, url, headers):
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.txt') as tmp_file:
+                tmp_path = tmp_file.name
+
+            command = [
+                'curl.exe',
+                '-L',
+                '--silent',
+                '--show-error',
+                '--connect-timeout',
+                '8',
+                '--max-time',
+                '18',
+                '--user-agent',
+                headers.get('User-Agent', 'Mozilla/5.0'),
+                '--referer',
+                headers.get('Referer', self.base_url + '/'),
+                '-H',
+                'Accept: {}'.format(headers.get('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8')),
+                '-H',
+                'Accept-Language: {}'.format(headers.get('Accept-Language', 'en-US,en;q=0.9')),
+            ]
+
+            cookie_header = self._cookie_header()
+            if cookie_header:
+                command.extend(['-H', 'Cookie: {}'.format(cookie_header)])
+            if headers.get('X-Requested-With'):
+                command.extend(['-H', 'X-Requested-With: {}'.format(headers.get('X-Requested-With'))])
+
+            command.extend(['-o', tmp_path, url])
+
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = 0
+
+            completed = subprocess.run(
+                command,
+                capture_output=True,
+                timeout=22,
+                check=False,
+                startupinfo=startupinfo,
+                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+            )
+
+            if completed.returncode == 0 and tmp_path and os.path.exists(tmp_path):
+                with open(tmp_path, 'rb') as fh:
+                    data = fh.read()
+                if data:
+                    return data.decode('utf-8', errors='ignore')
+
+            stderr = completed.stderr.decode('utf-8', errors='ignore').strip()
+            if stderr:
+                self.logger.warning(f"PornDoe curl.exe failed rc={completed.returncode}: {stderr[:200]}")
+        except Exception as exc:
+            self.logger.warning(f"PornDoe curl.exe request failed: {exc}")
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except Exception:
+                    pass
+        return None
+
     def _ensure_utm_session(self, hdr):
         """Ensure the UTM bypass cookie _aVrU is set. Only makes HTTP requests if missing."""
         if self.scraper.cookies.get('_aVrU', domain='porndoe.com'):
@@ -76,6 +145,13 @@ class PornDoe(BaseWebsite):
         default_headers = {'User-Agent': 'Mozilla/5.0'}
         if headers:
             default_headers.update(headers)
+
+        if os.name == 'nt':
+            curl_text = self._make_curl_request(url, default_headers)
+            if curl_text:
+                if return_headers:
+                    return curl_text, {}
+                return curl_text
         
         try:
             response = scraper.get(url, headers=default_headers, timeout=15)
@@ -84,10 +160,10 @@ class PornDoe(BaseWebsite):
                     return response.text, response.headers
                 return response.text
             self.logger.error(f"PornDoe make_request failed with status: {response.status_code} for URL: {url}")
-            return None, None if return_headers else None
+            return (None, None) if return_headers else None
         except Exception as e:
             self.logger.error(f"PornDoe make_request error: {e} for URL: {url}")
-            return None, None if return_headers else None
+            return (None, None) if return_headers else None
 
     def get_start_url_and_label(self):
         """Returns the starting URL, respecting the saved content type and sort settings."""
@@ -339,6 +415,12 @@ class PornDoe(BaseWebsite):
 
         self.end_directory()
 
+    def _cookie_header(self):
+        try:
+            return "; ".join("{}={}".format(cookie.name, cookie.value) for cookie in self.scraper.cookies)
+        except Exception:
+            return ""
+
     def play_video(self, url):
         # Extract alphanumeric hash directly from URL
         # e.g., https://porndoe.com/watch/pd4u5g7x4x9o -> pd4u5g7x4x9o
@@ -394,23 +476,23 @@ class PornDoe(BaseWebsite):
                     best = sorted(free, key=lambda x: x.get('height', 0), reverse=True)
                     return best[0].get('link')
 
-                # Prefer HLS (best free quality)
-                hls_link = get_best_link(sources.get('hls', []))
-                if hls_link:
-                    play_url = hls_link
-                    is_hls = True
+                # PornDoe's HLS CDN currently returns 403 to Kodi/inputstream.
+                # The signed MP4 URLs from the same API are playable, so prefer
+                # them and only keep HLS as a last-resort fallback.
+                mp4_link = get_best_link(sources.get('mp4', []))
+                if mp4_link:
+                    play_url = mp4_link
 
-                # Fallback: mp4 array
-                if not play_url:
-                    mp4_link = get_best_link(sources.get('mp4', []))
-                    if mp4_link:
-                        play_url = mp4_link
-
-                # Fallback: deo array
                 if not play_url:
                     deo_link = get_best_link(sources.get('deo', []))
                     if deo_link:
                         play_url = deo_link
+
+                if not play_url:
+                    hls_link = get_best_link(sources.get('hls', []))
+                    if hls_link:
+                        play_url = hls_link
+                        is_hls = True
 
             if not play_url and 'age_gate' in payload:
                 self.notify_error("PornDoe: Age Gate still active. Please try again.")
@@ -423,8 +505,42 @@ class PornDoe(BaseWebsite):
 
         if play_url:
             dl_ua = hdr['User-Agent']
-            encoded_headers = f"|User-Agent={urllib.parse.quote(dl_ua)}&Referer={urllib.parse.quote(self.base_url)}/"
-            final_play_url = play_url + encoded_headers
+            playback_controller = None
+            if is_hls:
+                encoded_headers = "|" + urllib.parse.urlencode({
+                    "User-Agent": dl_ua,
+                    "Referer": self.base_url + "/",
+                    "Origin": self.base_url,
+                    "Accept": "*/*",
+                })
+                final_play_url = play_url + encoded_headers
+            else:
+                try:
+                    playback_controller = ProxyController(
+                        upstream_url=play_url,
+                        upstream_headers={
+                            "User-Agent": dl_ua,
+                            "Referer": self.base_url + "/",
+                            "Origin": self.base_url,
+                            "Accept": "*/*",
+                            "Accept-Encoding": "identity",
+                            "Accept-Language": "en-US,en;q=0.9",
+                            "Connection": "keep-alive",
+                        },
+                        cookies=self._cookie_header(),
+                        use_urllib=True,
+                        probe_size=True,
+                    )
+                    final_play_url = playback_controller.start()
+                except Exception as exc:
+                    self.logger.warning(f"PornDoe: internal proxy failed, falling back direct: {exc}")
+                    encoded_headers = "|" + urllib.parse.urlencode({
+                        "User-Agent": dl_ua,
+                        "Referer": self.base_url + "/",
+                        "Origin": self.base_url,
+                        "Accept": "*/*",
+                    })
+                    final_play_url = play_url + encoded_headers
 
             li = xbmcgui.ListItem(path=final_play_url)
             li.setProperty("IsPlayable", "true")
@@ -435,15 +551,22 @@ class PornDoe(BaseWebsite):
                     li.setProperty("inputstream", "inputstream.adaptive")
                     li.setProperty("inputstream.adaptive.manifest_type", "hls")
                     li.setProperty("inputstream.adaptive.stream_headers",
-                                   f"User-Agent={urllib.parse.quote(dl_ua)}&Referer={urllib.parse.quote(self.base_url)}/")
+                                   urllib.parse.urlencode({
+                                       "User-Agent": dl_ua,
+                                       "Referer": self.base_url + "/",
+                                       "Origin": self.base_url,
+                                       "Accept": "*/*",
+                                   }))
                 except Exception:
                     pass
             else:
                 li.setMimeType("video/mp4")
 
             li.setContentLookup(False)
-            self.logger.error(f"PornDoe Resolved URL: {play_url}")
+            self.logger.info(f"PornDoe Resolved URL: {play_url}")
             xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+            if playback_controller:
+                PlaybackGuard(xbmc.Player(), xbmc.Monitor(), final_play_url, playback_controller).start()
         else:
             self.logger.error(f"PornDoe: No Stream URL Found for {url}.")
             self.notify_error("PornDoe: No Stream URL Found.")

@@ -8,6 +8,14 @@ import sys
 import urllib.parse
 
 import requests
+import threading
+import tempfile
+import socketserver
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+class ThreadingHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
+    daemon_threads = True
+
 
 try:
     import xbmc
@@ -177,3 +185,118 @@ def resolve(url, referer=None, headers=None):
     }
     _log("Resolved {} via {}".format(url, urllib.parse.urlparse(stream_url).netloc))
     return stream_url, stream_headers
+
+class ImageStripHandler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        pass
+
+    def do_GET(self):
+        qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        if 'url' not in qs:
+            self.send_response(400)
+            self.end_headers()
+            return
+
+        target_url = base64.b64decode(qs['url'][0]).decode('utf-8')
+        headers = {
+            'User-Agent': UA,
+            'Referer': 'https://streamhls.click/'
+        }
+
+        try:
+            resp = requests.get(target_url, headers=headers, stream=True, timeout=15)
+            self.send_response(200)
+            self.send_header('Content-Type', 'video/mp2t')
+            self.send_header('Connection', 'close')
+            self.end_headers()
+
+            first_chunk = resp.raw.read(1024)
+            ts_start = -1
+            for i in range(len(first_chunk) - 188):
+                if first_chunk[i] == 0x47 and first_chunk[i+188] == 0x47:
+                    ts_start = i
+                    break
+
+            if ts_start != -1:
+                self.wfile.write(first_chunk[ts_start:])
+            else:
+                self.wfile.write(first_chunk)
+
+            while True:
+                chunk = resp.raw.read(32768)
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+
+        except Exception as e:
+            _log("Proxy error: {}".format(e))
+
+class TiktokImageProxy:
+    def __init__(self, port=0):
+        self.host = '127.0.0.1'
+        self.port = port
+        self.httpd = None
+        self.thread = None
+
+    def start(self):
+        self.httpd = ThreadingHTTPServer((self.host, self.port), ImageStripHandler)
+        self.port = self.httpd.server_port
+        self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
+        self.thread.start()
+        return "http://{}:{}".format(self.host, self.port)
+
+    def stop(self):
+        if self.httpd:
+            try:
+                self.httpd.shutdown()
+                self.httpd.server_close()
+            except:
+                pass
+
+def rewrite_playlist(master_url, headers, proxy_base_url):
+    scraper = _make_scraper()
+    resp = scraper.get(master_url, headers=headers, timeout=15)
+    resp.raise_for_status()
+
+    lines = resp.text.splitlines()
+    best_index_url = None
+    best_bw = -1
+    for i, line in enumerate(lines):
+        if line.startswith("#EXT-X-STREAM-INF"):
+            m = re.search(r'BANDWIDTH=(\d+)', line)
+            bw = int(m.group(1)) if m else 0
+            if bw > best_bw and i + 1 < len(lines):
+                best_bw = bw
+                idx = lines[i+1].strip()
+                if not idx.startswith("http"):
+                    idx = urllib.parse.urljoin(master_url, idx)
+                best_index_url = idx
+
+    if not best_index_url:
+        best_index_url = master_url
+
+    resp_idx = scraper.get(best_index_url, headers=headers, timeout=15)
+    resp_idx.raise_for_status()
+
+    new_lines = []
+    for line in resp_idx.text.splitlines():
+        if line.startswith("#") or not line.strip():
+            new_lines.append(line)
+        else:
+            seg_url = line.strip()
+            if not seg_url.startswith("http"):
+                seg_url = urllib.parse.urljoin(best_index_url, seg_url)
+
+            b64_url = base64.b64encode(seg_url.encode('utf-8')).decode('utf-8')
+            new_lines.append("{}/?url={}".format(proxy_base_url, b64_url))
+
+    try:
+        temp_dir = xbmc.translatePath('special://temp')
+    except:
+        temp_dir = tempfile.gettempdir()
+
+    local_m3u8 = os.path.join(temp_dir, "javhdporn_rewritten.m3u8")
+    with open(local_m3u8, "w") as f:
+        f.write("\n".join(new_lines))
+
+    return local_m3u8

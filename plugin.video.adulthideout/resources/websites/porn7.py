@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import hashlib
 import html
 import os
 import re
@@ -6,10 +7,13 @@ import subprocess
 import sys
 import tempfile
 import urllib.parse
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import xbmc
 import xbmcgui
 import xbmcplugin
+import xbmcvfs
 
 from resources.lib.base_website import BaseWebsite
 from resources.lib.proxy_utils import PlaybackGuard, ProxyController
@@ -37,6 +41,7 @@ class Porn7(BaseWebsite):
             pass
 
         self._scraper = None
+        self.ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
         try:
             import cloudscraper
@@ -52,12 +57,13 @@ class Porn7(BaseWebsite):
             "Popular": "/videos",
             "New": "/videos?s=n",
         }
+        self._thumb_cache_dir = self._init_thumb_cache()
 
     def make_request(self, url, referer=None):
         self.logger.info(f"[Porn7] GET {url}")
         headers = {
             "Referer": referer or (self.base_url + "/"),
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "User-Agent": self.ua,
         }
 
         # Porn7 is very slow through Python's urllib/SSL stack on Windows, while
@@ -137,6 +143,91 @@ class Porn7(BaseWebsite):
 
         return None
 
+    def _init_thumb_cache(self):
+        try:
+            addon_profile = xbmcvfs.translatePath(self.addon.getAddonInfo("profile"))
+            thumb_dir = os.path.join(addon_profile, "thumbs", self.name)
+            if not xbmcvfs.exists(thumb_dir):
+                xbmcvfs.mkdirs(thumb_dir)
+            return thumb_dir
+        except Exception:
+            return tempfile.gettempdir()
+
+    def _detect_image_ext(self, data, fallback_url):
+        if data.startswith(b"\xFF\xD8\xFF"):
+            return ".jpg"
+        if data.startswith(b"\x89PNG\r\n\x1a\n"):
+            return ".png"
+        if data.startswith((b"GIF89a", b"GIF87a")):
+            return ".gif"
+        if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+            return ".webp"
+        ext = os.path.splitext(urllib.parse.urlparse(fallback_url).path)[1].lower()
+        return ext if ext in (".jpg", ".jpeg", ".png", ".gif", ".webp") else ".jpg"
+
+    def _download_thumb(self, url):
+        if not url or not url.startswith("http"):
+            return None
+
+        try:
+            hashed = hashlib.md5(url.encode("utf-8")).hexdigest()
+            for ext in (".jpg", ".jpeg", ".png", ".gif", ".webp"):
+                cached = os.path.join(self._thumb_cache_dir, hashed + ext)
+                if xbmcvfs.exists(cached):
+                    return cached
+
+            headers = {
+                "User-Agent": self.ua,
+                "Referer": self.base_url + "/",
+                "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+            }
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=12) as response:
+                data = response.read()
+
+            if not data:
+                return None
+
+            ext = self._detect_image_ext(data, url)
+            local_path = os.path.join(self._thumb_cache_dir, hashed + ext)
+            with xbmcvfs.File(local_path, "wb") as fh:
+                fh.write(data)
+            return local_path
+        except Exception as exc:
+            self.logger.warning(f"[Porn7] Thumbnail cache failed for {url}: {exc}")
+            return None
+
+    def _batch_download_thumbs(self, urls):
+        unique = list({url for url in urls if url and url.startswith("http")})
+        if not unique:
+            return {}
+
+        results = {}
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            future_map = {pool.submit(self._download_thumb, url): url for url in unique}
+            for future in as_completed(future_map):
+                original = future_map[future]
+                try:
+                    results[original] = future.result()
+                except Exception:
+                    results[original] = None
+        return results
+
+    def _extract_thumb(self, block):
+        for attr in ("data-src", "data-original", "data-lazy-src", "data-thumb", "poster", "src"):
+            match = re.search(r'\s%s="([^"]+)"' % attr, block, re.IGNORECASE)
+            if not match:
+                continue
+            value = html.unescape(match.group(1).strip())
+            if not value or value.startswith("data:") or "zero.png" in value:
+                continue
+            if value.startswith("//"):
+                value = "https:" + value
+            elif value.startswith("/"):
+                value = urllib.parse.urljoin(self.base_url, value)
+            return value
+        return ""
+
     def _get_sort_index(self):
         try:
             idx = int(self.addon.getSetting("porn7_sort_by"))
@@ -192,14 +283,11 @@ class Porn7(BaseWebsite):
             return self.end_directory("videos")
 
         seen = set()
+        items = []
+        thumb_urls = []
         for block in html_content.split('<div class="b-item">')[1:]:
             link_match = re.search(
                 r'<a[^>]+class="blk"[^>]+href="(https://www\.porn7\.xxx/v/[^"]+)"[^>]+title="([^"]+)"',
-                block,
-                re.IGNORECASE,
-            )
-            thumb_match = re.search(
-                r'<img[^>]+(?:data-src|src)="([^"]+)"',
                 block,
                 re.IGNORECASE,
             )
@@ -214,7 +302,7 @@ class Porn7(BaseWebsite):
 
             video_url = link_match.group(1)
             title = link_match.group(2)
-            thumb = thumb_match.group(1) if thumb_match else ""
+            thumb = self._extract_thumb(block)
             duration = duration_match.group(1) if duration_match else ""
 
             if video_url in seen:
@@ -222,22 +310,24 @@ class Porn7(BaseWebsite):
             seen.add(video_url)
 
             title = html.unescape(title.strip())
-            thumb = thumb.strip()
-            if thumb.startswith("//"):
-                thumb = "https:" + thumb
-            elif thumb.startswith("/"):
-                thumb = urllib.parse.urljoin(self.base_url, thumb)
 
             info = {"title": title, "plot": title}
             duration_seconds = self.convert_duration(duration.strip())
             if duration_seconds:
                 info["duration"] = duration_seconds
 
+            items.append((title, video_url, thumb, info))
+            if thumb:
+                thumb_urls.append(thumb)
+
+        thumb_map = self._batch_download_thumbs(thumb_urls)
+        for title, video_url, thumb, info in items:
+            cached_thumb = thumb_map.get(thumb) or self.icons.get("default", self.icon)
             self.add_link(
                 title,
                 video_url,
                 4,
-                thumb,
+                cached_thumb,
                 self.fanart,
                 info_labels=info,
                 context_menu=context_menu,
