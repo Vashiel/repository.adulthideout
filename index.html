@@ -1,13 +1,290 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-    <title>AdultHideout Repository</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AdultHideout Kodi Addon Repository</title>
+  <meta name="description" content="Official AdultHideout Kodi addon repository with installation source, repository ZIP download, addon manifest, changelog, and source code links.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="rating" content="adult">
+  <meta name="RATING" content="RTA-5042-1996-1400-1577-RTA">
+  <link rel="canonical" href="https://vashiel.github.io/repository.adulthideout/">
+  <link rel="sitemap" type="application/xml" href="https://vashiel.github.io/repository.adulthideout/sitemap.xml">
+  <link rel="icon" href="repository.adulthideout/resources/icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="AdultHideout Repository">
+  <meta property="og:title" content="AdultHideout Kodi Addon Repository">
+  <meta property="og:description" content="Install and update the AdultHideout Kodi video addon from the official repository source.">
+  <meta property="og:url" content="https://vashiel.github.io/repository.adulthideout/">
+  <meta property="og:image" content="https://vashiel.github.io/repository.adulthideout/repository.adulthideout/resources/fanart.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101014;
+      --panel: #191a20;
+      --text: #f4f4f5;
+      --muted: #b9bbc6;
+      --line: #30323b;
+      --accent: #e33d3d;
+      --accent-strong: #ff5a5a;
+      --code: #232530;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a {
+      color: var(--accent-strong);
+    }
+
+    .hero {
+      min-height: 68vh;
+      display: grid;
+      align-items: end;
+      background:
+        linear-gradient(180deg, rgba(16, 16, 20, 0.18), rgba(16, 16, 20, 0.88)),
+        url("repository.adulthideout/resources/fanart.jpg") center / cover no-repeat;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .wrap {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .hero .wrap {
+      padding: 96px 0 44px;
+    }
+
+    .age {
+      display: inline-block;
+      margin-bottom: 16px;
+      padding: 5px 9px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.38);
+      color: #fff;
+      font-size: 0.88rem;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 860px;
+      font-size: clamp(2.35rem, 7vw, 5.1rem);
+      line-height: 0.95;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 760px;
+      margin: 20px 0 0;
+      color: #f1f1f3;
+      font-size: 1.15rem;
+    }
+
+    main {
+      padding: 36px 0 60px;
+    }
+
+    section {
+      padding: 28px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-child {
+      border-bottom: 0;
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 1.55rem;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 16px;
+      color: var(--muted);
+    }
+
+    .actions,
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 10px 16px;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .button.secondary {
+      background: transparent;
+      color: var(--accent-strong);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .item {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .item h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      letter-spacing: 0;
+    }
+
+    .item p {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+
+    ol,
+    ul {
+      margin: 0;
+      padding-left: 22px;
+      color: var(--muted);
+    }
+
+    li + li {
+      margin-top: 8px;
+    }
+
+    code {
+      display: inline-block;
+      max-width: 100%;
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: var(--code);
+      color: var(--text);
+      overflow-wrap: anywhere;
+    }
+
+    footer {
+      padding: 28px 0 40px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 760px) {
+      .hero {
+        min-height: 62vh;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "AdultHideout",
+    "applicationCategory": "MultimediaApplication",
+    "operatingSystem": "Kodi",
+    "softwareVersion": "1.0.6",
+    "isAccessibleForFree": true,
+    "isFamilyFriendly": false,
+    "url": "https://vashiel.github.io/repository.adulthideout/",
+    "downloadUrl": "https://vashiel.github.io/repository.adulthideout/repository.adulthideout-1.0.4.zip",
+    "codeRepository": "https://github.com/Vashiel/repository.adulthideout",
+    "description": "AdultHideout is an adult-oriented Kodi video addon distributed through the official AdultHideout repository."
+  }
+  </script>
 </head>
 <body>
-    <h1>AdultHideout Repository</h1>
-    <hr>
-    <!-- Da die ZIP jetzt im selben Ordner wie die index.html liegt, reicht der einfache Name: -->
-    <a href="repository.adulthideout-1.0.4.zip">repository.adulthideout-1.0.4.zip</a>
-    <hr>
+  <header class="hero">
+    <div class="wrap">
+      <span class="age">Adults only 18+</span>
+      <h1>AdultHideout Kodi Addon Repository</h1>
+      <p class="lead">Official installation source for the AdultHideout Kodi video addon, including the repository ZIP, addon manifest, update files, changelog, and source code.</p>
+      <nav class="actions" aria-label="Primary links">
+        <a class="button" href="repository.adulthideout-1.0.4.zip">Download repository ZIP</a>
+        <a class="button secondary" href="https://github.com/Vashiel/repository.adulthideout">View source code</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section aria-labelledby="install-title">
+      <h2 id="install-title">Install In Kodi</h2>
+      <ol>
+        <li>Open Kodi and go to <strong>Settings</strong>, then <strong>File manager</strong>.</li>
+        <li>Select <strong>Add source</strong> and enter <code>https://vashiel.github.io/repository.adulthideout/</code>.</li>
+        <li>Name the source <strong>AdultHideout</strong>.</li>
+        <li>Open <strong>Add-ons</strong>, choose <strong>Install from zip file</strong>, then select <code>repository.adulthideout-1.0.4.zip</code>.</li>
+        <li>Use <strong>Install from repository</strong> to install or update the AdultHideout video addon.</li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="about-title">
+      <h2 id="about-title">About This Repository</h2>
+      <p>AdultHideout is an adult-oriented Kodi addon project for users who want a maintained video addon repository with direct update metadata. The repository package currently installs the AdultHideout repository, and the addon manifest publishes AdultHideout version 1.0.6.</p>
+      <p>This page is the canonical public homepage for the repository source. It is intended for adults only and does not replace the Kodi installation workflow.</p>
+      <div class="grid">
+        <div class="item">
+          <h3>Repository package</h3>
+          <p><a href="repository.adulthideout-1.0.4.zip">repository.adulthideout-1.0.4.zip</a></p>
+        </div>
+        <div class="item">
+          <h3>Addon manifest</h3>
+          <p><a href="addons.xml">addons.xml</a> and <a href="addons.xml.md5">addons.xml.md5</a></p>
+        </div>
+        <div class="item">
+          <h3>Current addon release</h3>
+          <p>AdultHideout 1.0.6 "Nautilus"</p>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="release-title">
+      <h2 id="release-title">Release Highlights</h2>
+      <ul>
+        <li>AdultHideout 1.0.6 adds nine new site adapters.</li>
+        <li>Major updates for Redtube, Spankbang, Xhamster, XVideos, and YouPorn.</li>
+        <li>Unified sorting, channel navigation, collection navigation, and metadata improvements.</li>
+        <li>Repository metadata supports Kodi 20 and Kodi 21 update paths.</li>
+      </ul>
+      <div class="links" aria-label="Project links">
+        <a class="button secondary" href="zips/plugin.video.adulthideout/changelog-1.0.6.txt">Read changelog</a>
+        <a class="button secondary" href="https://github.com/Vashiel/repository.adulthideout/issues">Report an issue</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    <p>AdultHideout is intended for adults only. The official repository source is <code>https://vashiel.github.io/repository.adulthideout/</code>.</p>
+  </footer>
 </body>
 </html>
