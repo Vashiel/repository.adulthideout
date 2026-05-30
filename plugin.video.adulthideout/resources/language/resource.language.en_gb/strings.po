@@ -202,3 +202,92 @@ msgstr ""
 msgctxt "#30510"
 msgid "Debut Year"
 msgstr ""
+
+# Official source warning
+msgctxt "#30600"
+msgid "The official repository add-on '{}' is not installed."
+msgstr ""
+
+msgctxt "#30601"
+msgid "The installed repository add-on does not have a readable addon.xml."
+msgstr ""
+
+msgctxt "#30602"
+msgid "The installed repository has an unexpected add-on ID."
+msgstr ""
+
+msgctxt "#30603"
+msgid "The repository URLs do not fully point to the official GitHub repository."
+msgstr ""
+
+msgctxt "#30604"
+msgid "The official online metadata could not be checked: {}"
+msgstr ""
+
+msgctxt "#30605"
+msgid "The official addons.xml does not match its MD5 file."
+msgstr ""
+
+msgctxt "#30606"
+msgid "This add-on was not found in the official addons.xml."
+msgstr ""
+
+msgctxt "#30607"
+msgid "Installed version {} does not match official version {}."
+msgstr ""
+
+msgctxt "#30608"
+msgid "The official metadata has an unexpected provider."
+msgstr ""
+
+msgctxt "#30609"
+msgid "The official metadata does not contain the expected GitHub source."
+msgstr ""
+
+msgctxt "#30610"
+msgid "The official file hash list could not be read."
+msgstr ""
+
+msgctxt "#30611"
+msgid "The official file hash list is empty or invalid."
+msgstr ""
+
+msgctxt "#30612"
+msgid "Hash check: file is missing or empty: {}"
+msgstr ""
+
+msgctxt "#30613"
+msgid "Hash check failed: {}"
+msgstr ""
+
+msgctxt "#30614"
+msgid "No files from the official hash list could be checked."
+msgstr ""
+
+msgctxt "#30615"
+msgid "...and {} more notices."
+msgstr ""
+
+msgctxt "#30616"
+msgid "AdultHideout could not confirm the official installation."
+msgstr ""
+
+msgctxt "#30617"
+msgid "Official repository:"
+msgstr ""
+
+msgctxt "#30618"
+msgid "Official source code:"
+msgstr ""
+
+msgctxt "#30619"
+msgid "If you installed AdultHideout from another repository, it may be modified or outdated."
+msgstr ""
+
+msgctxt "#30620"
+msgid "AdultHideout: unofficial installation?"
+msgstr ""
+
+msgctxt "#30621"
+msgid "Official installation could not be confirmed."
+msgstr ""

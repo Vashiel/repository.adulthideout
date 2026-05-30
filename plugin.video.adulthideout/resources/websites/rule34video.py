@@ -11,6 +11,15 @@ import xbmcplugin
 import xbmcaddon
 import os
 import json
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+try:
+    from http.server import ThreadingHTTPServer
+except ImportError:
+    import socketserver
+
+    class ThreadingHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
+        daemon_threads = True
 
 try:
     addon_path = xbmcaddon.Addon().getAddonInfo('path')
@@ -28,9 +37,94 @@ except Exception as e:
     _HAS_CF = False
 
 from resources.lib.base_website import BaseWebsite
+from resources.lib.lookup_info import choose_and_open, extract_html_items
 
 _SESSION_CACHE = None
 _SESSION_LOCK = threading.Lock()
+_ACTIVE_PROXIES = []
+
+
+class _Rule34VideoRangeProxy:
+    def __init__(self, session, upstream_url, headers, host="127.0.0.1", port=0):
+        self.session = session
+        self.upstream_url = upstream_url
+        self.headers = dict(headers or {})
+        self.host = host
+        self.port = port
+        self.httpd = None
+        self.thread = None
+        self.local_url = None
+
+    def start(self):
+        controller = self
+
+        class Handler(BaseHTTPRequestHandler):
+            server_version = "AHRule34VideoRange/1.0"
+
+            def log_message(self, fmt, *args):
+                return
+
+            def do_GET(self):
+                controller._handle(self)
+
+            def do_HEAD(self):
+                controller._handle(self, head_only=True)
+
+        self.httpd = ThreadingHTTPServer((self.host, self.port), Handler)
+        self.port = self.httpd.server_port
+        self.local_url = "http://{}:{}/stream?u={}".format(
+            self.host,
+            self.port,
+            urllib.parse.quote(self.upstream_url, safe=""),
+        )
+        self.thread = threading.Thread(target=self.httpd.serve_forever, name="Rule34VideoRangeProxy", daemon=True)
+        self.thread.start()
+        xbmc.log("[Rule34video] Range proxy started: {}".format(self.local_url), xbmc.LOGINFO)
+        return self.local_url
+
+    def _handle(self, handler, head_only=False):
+        parsed = urllib.parse.urlparse(handler.path)
+        upstream_url = urllib.parse.parse_qs(parsed.query).get("u", [self.upstream_url])[0]
+        headers = dict(self.headers)
+        range_header = handler.headers.get("Range")
+        if range_header:
+            headers["Range"] = range_header
+
+        response = None
+        try:
+            response = self.session.get(
+                upstream_url,
+                headers=headers,
+                timeout=30,
+                allow_redirects=True,
+                stream=True,
+            )
+            handler.send_response(response.status_code)
+            for key in ("Content-Type", "Content-Length", "Content-Range", "Accept-Ranges"):
+                value = response.headers.get(key)
+                if value:
+                    handler.send_header(key, value)
+            if not response.headers.get("Accept-Ranges"):
+                handler.send_header("Accept-Ranges", "bytes")
+            handler.send_header("Cache-Control", "no-store")
+            handler.end_headers()
+
+            if head_only:
+                return
+
+            for chunk in response.iter_content(chunk_size=65536):
+                if chunk:
+                    handler.wfile.write(chunk)
+        except Exception as exc:
+            xbmc.log("[Rule34video] Range proxy error: {}".format(exc), xbmc.LOGERROR)
+            try:
+                handler.send_response(502)
+                handler.end_headers()
+            except Exception:
+                pass
+        finally:
+            if response is not None:
+                response.close()
 
 class Rule34video(BaseWebsite):
     def __init__(self, addon_handle, addon=None):
@@ -105,36 +199,6 @@ class Rule34video(BaseWebsite):
             self.logger.error(f"Request failed for {url}: {e}")
             return None
 
-    def _build_next_url(self, current_url, html_content):
-        next_match = re.search(
-            r'<div\s+class=["\']item\s+pager\s+next["\'][^>]*>\s*'
-            r'<a[^>]+href=["\'](?P<href>[^"\']+)["\'][^>]*data-parameters=["\'][^"\']*from:(?P<page>\d+)',
-            html_content,
-            re.DOTALL | re.IGNORECASE
-        )
-        if not next_match:
-            return None
-
-        page = next_match.group('page').lstrip('0') or '1'
-        parsed_current = urllib.parse.urlparse(current_url)
-        if not parsed_current.netloc:
-            parsed_current = urllib.parse.urlparse(urllib.parse.urljoin(self.base_url, current_url))
-
-        path = parsed_current.path or '/'
-        path = re.sub(r'/\d+/?$', '/', path)
-        if not path.endswith('/'):
-            path += '/'
-        path = f"{path}{page}/"
-
-        return urllib.parse.urlunparse((
-            parsed_current.scheme or 'https',
-            parsed_current.netloc or urllib.parse.urlparse(self.base_url).netloc,
-            path,
-            '',
-            parsed_current.query,
-            ''
-        ))
-
     def _get_start_url(self):
         try:
             sort_idx = int(self.addon.getSetting(self.setting_id_sort))
@@ -189,10 +253,10 @@ class Rule34video(BaseWebsite):
         self.add_dir('[COLOR blue]Categories[/COLOR]', urllib.parse.urljoin(self.base_url, '/categories/'), 8, self.icons['categories'])
 
         video_pattern = re.compile(
-            r'<div\s+class=["\']item\s+thumb[^"\']*["\']\s*>.*?'
-            r'<a[^>]+class=["\'][^"\']*\bth\b[^"\']*["\'][^>]+href=["\'](?P<url>[^"\']+)["\'][^>]*title=["\'](?P<title>[^"\']+)["\'].*?'
-            r'<img[^>]+data-original=["\'](?P<thumb>https?://[^"\']+)["\'].*?'
-            r'<div\s+class=["\']time["\']\s*>(?P<duration>[^<]+)</div>',
+            r'<div\s+class="item\s+thumb[^"]*"[^>]*>.*?'
+            r'<a\s+class="[^"]*\bth\b[^"]*"[^>]+href="(?P<url>[^"]+)"[^>]*title="(?P<title>[^"]+)".*?'
+            r'<img[^>]+(?:data-original|data-src|src)="(?P<thumb>[^"]+)".*?'
+            r'<div\s+class="time">\s*(?P<duration>[^<]+)\s*</div>',
             re.DOTALL | re.IGNORECASE
         )
 
@@ -207,6 +271,7 @@ class Rule34video(BaseWebsite):
             full_url = urllib.parse.urljoin(self.base_url, v_url)
             
             cm = [
+                ('Explore similar', f'RunPlugin({sys.argv[0]}?mode=7&action=explore_similar&website={self.name}&original_url={urllib.parse.quote_plus(full_url)})'),
                 ('Select Content...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_content_type&website={self.name})'),
                 ('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort_order&website={self.name})')
             ]
@@ -217,11 +282,18 @@ class Rule34video(BaseWebsite):
         if not found:
             self.logger.warning(f"[{self.name}] No videos found on {url}")
 
-        next_link = self._build_next_url(url, html_content)
-        if next_link:
+        next_match = re.search(r'<div\s+class="item\s+pager\s+next">\s*<a\s+href="(?P<next>[^"]+)"', html_content, re.IGNORECASE)
+        if next_match:
+            next_link = self._normalize_next_url(next_match.group('next'))
             self.add_dir('[COLOR yellow]Next Page >>[/COLOR]', next_link, 2, self.icons['default'])
 
         self.end_directory()
+
+    def _normalize_next_url(self, next_url):
+        next_link = urllib.parse.urljoin(self.base_url, html.unescape(next_url or ""))
+        parsed = urllib.parse.urlparse(next_link)
+        path = re.sub(r'/(latest-updates)/\1/', r'/\1/', parsed.path)
+        return urllib.parse.urlunparse((parsed.scheme, parsed.netloc, path, parsed.params, parsed.query, parsed.fragment))
 
     def process_categories(self, url):
         html_content = self.make_request(url)
@@ -265,51 +337,83 @@ class Rule34video(BaseWebsite):
                 candidates.append(m)
         
         if candidates:
-            # Sort by length to grab the URL with the ?v-acctoken parameter
-            candidates.sort(key=len, reverse=True)
-            video_url = candidates[0].replace('&amp;', '&')
+            video_url = self._select_best_stream(candidates)
         elif mp4_matches:
-            video_url = mp4_matches[0]
+            video_url = self._select_best_stream(mp4_matches)
 
         if video_url:
             video_url = video_url.replace(r'\/', '/')
             self.logger.info(f"[{self.name}] Found video URL: {video_url}")
-            
-            try:
-                from resources.lib.proxy_utils import ProxyController, PlaybackGuard
-                
-                upstream_headers = {
-                    'User-Agent': self._scraper_ua,
-                    'Referer': 'https://rule34video.com/',
-                    'Accept-Encoding': 'identity',
-                }
-                
-                ctrl = ProxyController(
-                    upstream_url=video_url,
-                    upstream_headers=upstream_headers,
-                    use_urllib=True,
-                )
-                local_url = ctrl.start()
-                
-                li = xbmcgui.ListItem(path=local_url)
-                li.setProperty('IsPlayable', 'true')
-                li.setMimeType('video/mp4')
-                xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
-                
-                player = xbmc.Player()
-                monitor = xbmc.Monitor()
-                guard = PlaybackGuard(player, monitor, local_url, ctrl)
-                guard.start()
-            except Exception as e:
-                self.logger.error(f"[{self.name}] Proxy failed ({e}), falling back to direct")
-                fallback_url = f"{video_url}|User-Agent={urllib.parse.quote_plus(self._scraper_ua)}&Referer=https://rule34video.com/"
-                li = xbmcgui.ListItem(path=fallback_url)
-                li.setProperty('IsPlayable', 'true')
-                xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+
+            scraper = self.get_session()
+            headers = {
+                "User-Agent": self._scraper_ua,
+                "Referer": url,
+                "Accept": "*/*",
+                "Connection": "close",
+            }
+            cookie_header = "; ".join(
+                "{}={}".format(cookie.name, cookie.value) for cookie in getattr(scraper, "cookies", [])
+            )
+            if cookie_header:
+                headers["Cookie"] = cookie_header
+            proxy = _Rule34VideoRangeProxy(scraper, video_url, headers)
+            play_url = proxy.start()
+            _ACTIVE_PROXIES.append(proxy)
+            del _ACTIVE_PROXIES[:-4]
+
+            li = xbmcgui.ListItem(path=play_url)
+            li.setProperty('IsPlayable', 'true')
+            li.setMimeType('video/mp4')
+            li.setContentLookup(False)
+            xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
         else:
             self.logger.error(f"[{self.name}] No video URL found in source.")
             self.notify_error("Video extraction failed")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
+
+    def _select_best_stream(self, urls):
+        unique = []
+        for stream_url in urls:
+            stream_url = stream_url.replace(r'\/', '/')
+            if stream_url not in unique:
+                unique.append(stream_url)
+
+        def score(stream_url):
+            quality_score = 0
+            quality_match = re.search(r'_(\d{3,4})p?\.mp4', stream_url)
+            if quality_match:
+                try:
+                    quality_score = int(quality_match.group(1))
+                except Exception:
+                    quality_score = 0
+            token_score = 10000 if 'v-acctoken=' in stream_url else 0
+            download_penalty = -5000 if 'download=true' in stream_url else 0
+            return token_score + quality_score + download_penalty
+
+        if not unique:
+            return None
+        return sorted(unique, key=score, reverse=True)[0]
+
+    def explore_similar(self, original_url=None):
+        if not original_url:
+            self.notify_info("No video URL available")
+            return
+
+        html_content = self.make_request(original_url)
+        if not html_content:
+            self.notify_error("Could not load video info")
+            return
+
+        patterns = [
+            ("Artist", r'video_meta_pill"\s+href="(?:https://rule34video\.com)?(/models/[^"]+)">.+?alt="([^"]+)"', 2),
+            ("Category", r'video_meta_pill"\s+href="(?:https://rule34video\.com)?(/categories/[^"]+)">.+?alt="([^"]+)"', 2),
+            ("Uploader", r'video_meta_pill"\s+href="(?:https://rule34video\.com)?(/members/[^"]+)">.+?alt="([^"]+)"', 2),
+            ("Tag", r'class="tag_item"\s+href="(?:https://rule34video\.com)?(/tags/[^"]+)">([^<]+)<', 2),
+        ]
+        items = extract_html_items(html_content, self.base_url, patterns)
+        if not choose_and_open(items, self.name, "Explore similar"):
+            self.logger.info("[rule34video] No lookup target selected for {}".format(original_url))
 
     def _duration_to_seconds(self, duration_str):
         try:

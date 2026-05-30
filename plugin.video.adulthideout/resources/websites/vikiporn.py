@@ -32,8 +32,8 @@ class VikipornWebsite(BaseWebsite):
     }
 
     # Max parallel thumbnail downloads
-    THUMB_WORKERS = 10
-    THUMB_TIMEOUT = 10
+    THUMB_WORKERS = 6
+    THUMB_TIMEOUT = 5
 
     def __init__(self, addon_handle):
         super().__init__(
@@ -155,7 +155,7 @@ class VikipornWebsite(BaseWebsite):
             headers['Referer'] = referer
         return headers
 
-    def make_request(self, url, headers=None, max_retries=3, retry_wait=5000):
+    def make_request(self, url, headers=None, max_retries=2, retry_wait=1000):
         headers = headers or self.get_extended_headers(url)
         cookie_jar = CookieJar()
         handler = urllib.request.HTTPCookieProcessor(cookie_jar)
@@ -163,7 +163,7 @@ class VikipornWebsite(BaseWebsite):
         for attempt in range(max_retries):
             try:
                 request = urllib.request.Request(url, headers=headers)
-                with opener.open(request, timeout=60) as response:
+                with opener.open(request, timeout=20) as response:
                     return response.read().decode('utf-8', errors='ignore')
             except (urllib.error.HTTPError, urllib.error.URLError) as e:
                 self.logger.warning(f"Request attempt {attempt+1} failed for {url}: {e}")
@@ -312,8 +312,32 @@ class VikipornWebsite(BaseWebsite):
                          self.icons['default'], self.fanart)
 
     # ------------------------------------------------------------------
-    # Playback – ProxyController for seek/range support
+    # Playback
     # ------------------------------------------------------------------
+    def _is_android(self):
+        try:
+            return bool(xbmc.getCondVisibility('System.Platform.Android'))
+        except Exception:
+            return False
+
+    def _stream_headers(self, referer):
+        return {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                          'AppleWebKit/537.36 (KHTML, like Gecko) '
+                          'Chrome/129.0.0.0 Safari/537.36',
+            'Referer': referer,
+            'Accept': '*/*',
+            'Accept-Encoding': 'identity',
+        }
+
+    def _play_direct(self, media_url, headers):
+        stream_url = media_url + '|' + urllib.parse.urlencode(headers)
+        li = xbmcgui.ListItem(path=stream_url)
+        li.setProperty('IsPlayable', 'true')
+        li.setMimeType('video/mp4')
+        li.setContentLookup(False)
+        xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+
     def play_video(self, url):
         content = self.make_request(url)
         if not content:
@@ -357,21 +381,17 @@ class VikipornWebsite(BaseWebsite):
         if not media_url.startswith('http'):
             media_url = urllib.parse.urljoin(self.config['base_url'], media_url)
 
-        # Use ProxyController for proper Range/Seek support
+        headers = self._stream_headers(url)
+        if self._is_android():
+            self._play_direct(media_url, headers)
+            return
+
         try:
             from resources.lib.proxy_utils import ProxyController, PlaybackGuard
 
-            upstream_headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                              'AppleWebKit/537.36 (KHTML, like Gecko) '
-                              'Chrome/129.0.0.0 Safari/537.36',
-                'Referer': url,
-                'Accept-Encoding': 'identity',
-            }
-
             ctrl = ProxyController(
                 upstream_url=media_url,
-                upstream_headers=upstream_headers,
+                upstream_headers=headers,
                 use_urllib=True,
             )
             local_url = ctrl.start()
@@ -379,17 +399,11 @@ class VikipornWebsite(BaseWebsite):
             li = xbmcgui.ListItem(path=local_url)
             li.setProperty('IsPlayable', 'true')
             li.setMimeType('video/mp4')
+            li.setContentLookup(False)
             xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
 
-            # Guard thread stops proxy when playback ends
-            player = xbmc.Player()
-            monitor = xbmc.Monitor()
-            guard = PlaybackGuard(player, monitor, local_url, ctrl)
+            guard = PlaybackGuard(xbmc.Player(), xbmc.Monitor(), local_url, ctrl)
             guard.start()
-
-        except Exception as e:
-            self.logger.error(f"Proxy failed ({e}), falling back to direct")
-            li = xbmcgui.ListItem(path=media_url)
-            li.setProperty('IsPlayable', 'true')
-            li.setMimeType('video/mp4')
-            xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+        except Exception as exc:
+            self.logger.error(f"Proxy failed ({exc}), falling back to direct")
+            self._play_direct(media_url, headers)

@@ -1,8 +1,23 @@
+v. 1.0.11 "Night Shift" - 2026-05-28
+- **New Sites**: 85po.com, HStream, PremiumPorn, XXXTube, WhereIsMyPorn.
+- **85po.com**: Added listings, search, tag categories, pagination, Explore Similar and seek-safe KVS playback.
+- **HStream**: Added listings, search, tag categories, pagination, Sort By and seek-safe 720p MP4 playback.
+- **PremiumPorn**: Added listings, search, categories, pagination, Sort By and Byse HLS playback.
+- **XXXTube**: Added listings, search, categories, models, pagination, Sort By and KVS MP4 playback.
+- **WhereIsMyPorn**: Added listings, search, categories, pagination and shared hoster playback.
+- **Zero-Dependency Crypto**: Added bundled pure-Python SECP256R1/ECDSA, PBKDF2-SHA512 and AES helpers for Byse/AES flows; PremiumPorn and ThePornBang no longer require external compiled crypto modules.
+- **Explore Similar**: Expanded related lookup/context-menu support for Rule34Video, XVideos, XNXX, SpankBang, Pornhub, HQPorner and 85po.
+- **Pornhub**: Fixed related-video thumbnails and playback startup regressions.
+- **XVideos**: Fixed pagination after Sort By and filtered unavailable entries.
+- **Playback/Stability**: Improved KVS, MP4, HLS, local Range proxy and Android/Kodi compatibility paths across the changed sites.
+- **Official Source Check**: Added localized install/source warnings in English, German, Spanish and French.
+- **Maintenance**: Updated settings, logos, release metadata and official file hashes.
+
 v. 1.0.10 "Afterglow" - 2026-05-22
 - **New Sites**: PornHoarder, SpeedPorn, YourLesbians.
 - **Improved and Fixed**: Ashemaletube, Chaturbate, FreeOMovie, Ikisoda, JavHDPorn, LetMeJerk, NoodleMagazine, PMVHaven, Porn7, PornDoe, Pornhub, Rapelust, Rule34Video.
 - **Playback and Resolvers**: Improved DoodStream, Lulu/LuluVDO, DirtyVideo/Netu and HLS/MP4 proxy handling for better startup, seeking and clearer failed-hoster reporting.
-- **Android and Kodi Stability**: Added safer live-HLS behavior, better CDN/proxy paths, session warmups, thumbnail fixes and more robust pagination/list parsing.
+- **Android and Kodi Stability**: Added safer live-HLS behavior, Android-safe in-process proxy paths, session warmups, thumbnail fixes and more robust pagination/list parsing.
 - **Removed**: PornHits, because the domain no longer serves its own site and now redirects to Pornhub/Brazzers.
 
 v. 1.0.9 "Cloud Nine" - 2026-04-20

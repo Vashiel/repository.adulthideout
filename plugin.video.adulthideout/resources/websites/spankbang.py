@@ -10,6 +10,7 @@ import xbmcgui
 import xbmcplugin
 import html
 from resources.lib.base_website import BaseWebsite
+from resources.lib.lookup_info import choose_and_open, extract_html_items
 
 class Spankbang(BaseWebsite):
     def __init__(self, addon_handle):
@@ -186,6 +187,13 @@ class Spankbang(BaseWebsite):
         xbmc.executebuiltin(f"Container.Update({sys.argv[0]}?mode=2&url={urllib.parse.quote_plus(new_url)}&website={self.name},replace)")
 
     def process_content(self, url):
+        params = {}
+        if len(sys.argv) > 2 and sys.argv[2]:
+            params = dict(urllib.parse.parse_qsl(sys.argv[2][1:]))
+        action = params.get('action')
+        if action == "show_related":
+            self.process_related_videos(url)
+            return
         self.list_videos(url)
 
     def list_videos(self, url):
@@ -283,7 +291,11 @@ class Spankbang(BaseWebsite):
                 if duration_str:
                     info_labels['duration'] = duration_str.replace('m', '') + ':00'
 
-                self.add_link(title, video_url, 4, img, self.fanart, info_labels=info_labels, context_menu=context_menu_items)
+                video_context_menu = [
+                    ('Explore similar', f'RunPlugin({sys.argv[0]}?mode=7&action=explore_similar&website={self.name}&original_url={urllib.parse.quote_plus(video_url)})'),
+                ] + context_menu_items
+
+                self.add_link(title, video_url, 4, img, self.fanart, info_labels=info_labels, context_menu=video_context_menu)
             except Exception as e:
                 self.logger.warning(f"Error parsing a video item: {e}")
 
@@ -469,3 +481,114 @@ class Spankbang(BaseWebsite):
             
             new_url = urllib.parse.urljoin(self.base_url, sort_path)
             xbmc.executebuiltin(f'Container.Update({sys.argv[0]}?mode=9&url={urllib.parse.quote_plus(new_url)}&website={self.name})')
+
+    def process_related_videos(self, url):
+        self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons.get('search'), context_menu=[])
+        html_content = self._get_html(url)
+        if not html_content:
+            self.notify_error("Could not load page content.")
+            self.end_directory()
+            return
+
+        video_chunks = re.split(r'<div[^>]+class="[^"]*video-item[^"]*"[^>]*>', html_content)
+        if len(video_chunks) < 2:
+            video_chunks = html_content.split('data-testid="video-item"')
+        if len(video_chunks) < 2:
+            video_chunks = re.split(r'<a[^>]+class="[^"]*thumb[^"]*"[^>]+href="[^"]+/video/', html_content)
+            
+        if len(video_chunks) < 2:
+            self.notify_info("No related videos found.")
+            self.end_directory()
+            return
+
+        context_menu_items = [
+            ('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={urllib.parse.quote_plus(url)})'),
+            ('Select Orientation...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_orientation&website={self.name}&original_url={urllib.parse.quote_plus(url)})'),
+            ('Select Quality...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_quality&website={self.name}&original_url={urllib.parse.quote_plus(url)})'),
+            ('Select Duration...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_duration&website={self.name}&original_url={urllib.parse.quote_plus(url)})')
+        ]
+
+        for chunk in video_chunks[1:]:
+            try:
+                href_match = re.search(r'href="([^"]+/video/[^"]+)"', chunk) or \
+                             re.search(r'href="(/[^"]+)"[^>]*class="[^"]*thumb', chunk)
+                if not href_match: continue
+                video_url = urllib.parse.urljoin(self.base_url, href_match.group(1))
+                
+                title_match = re.search(r'alt="([^"]+)"', chunk) or \
+                              re.search(r'title="([^"]+)"', chunk) or \
+                              re.search(r'<h\d[^>]*>([^<]+)</h\d>', chunk)
+                title = html.unescape(title_match.group(1).strip()) if title_match else 'Untitled Video'
+                
+                img_match = re.search(r'<img[^>]+src="(https?://tbi\.sb-cd\.com[^"]+)"', chunk) or \
+                            re.search(r'<img[^>]+src="(https?://[^"]+\.(?:jpg|webp|png))"', chunk) or \
+                            re.search(r'data-src="(https?://tbi\.sb-cd\.com[^"]+)"', chunk) or \
+                            re.search(r'data-src="([^"]+\.(?:jpg|webp|png))"', chunk)
+                
+                if img_match:
+                    img = img_match.group(1)
+                    if img.startswith('//'):
+                        img = 'https:' + img
+                else:
+                    img = self.icon
+
+                duration_match = re.search(r'data-testid="video-item-length"[^>]*>\s*([^<]+)\s*<', chunk) or \
+                                 re.search(r'class="[^"]*length[^"]*"[^>]*>\s*([^<]+)\s*<', chunk) or \
+                                 re.search(r'<span[^>]*>\s*(\d+:\d+)\s*</span>', chunk)
+                duration_str = duration_match.group(1).strip() if duration_match else ''
+                
+                info_labels = {'title': title, 'mediatype': 'video'}
+                if duration_str:
+                    info_labels['duration'] = duration_str.replace('m', '') + ':00'
+
+                video_context_menu = [
+                    ('Explore similar', f'RunPlugin({sys.argv[0]}?mode=7&action=explore_similar&website={self.name}&original_url={urllib.parse.quote_plus(video_url)})'),
+                ] + context_menu_items
+
+                self.add_link(title, video_url, 4, img, self.fanart, info_labels=info_labels, context_menu=video_context_menu)
+            except Exception as e:
+                self.logger.warning(f"Error parsing a related video item: {e}")
+
+        self.end_directory()
+
+    def explore_similar(self, original_url=None):
+        if not original_url:
+            self.notify_info("No video URL available")
+            return
+
+        html_content = self._get_html(original_url)
+        if not html_content:
+            self.notify_error("Could not load video info")
+            return
+
+        patterns = [
+            ("Pornstar", r'href="(/[^"]*/pornstar/[^"]+/)"[^>]*>([^<]+)', 2),
+            ("Channel", r'href="(/[^"]*/channel/[^"]+/)"[^>]*>([^<]+)', 2),
+            ("Tag", r'href="(/s/[^"]+/)"[^>]*>([^<]+)', 2),
+        ]
+        items = extract_html_items(html_content, self.base_url, patterns)
+        
+        if items:
+            lang = xbmc.getLanguage(0).lower()
+            if "german" in lang or "deutsch" in lang:
+                group = "Wiedergabe"
+                label = "[COLOR lime]>>> Ähnliche Videos anzeigen <<<[/COLOR]"
+            elif "spanish" in lang or "español" in lang or "espanol" in lang:
+                group = "Reproducción"
+                label = "[COLOR lime]>>> Mostrar videos similares <<<[/COLOR]"
+            elif "french" in lang or "français" in lang or "francais" in lang:
+                group = "Lecture"
+                label = "[COLOR lime]>>> Afficher les vidéos similaires <<<[/COLOR]"
+            else:
+                group = "Playback"
+                label = "[COLOR lime]>>> Show Similar Videos <<<[/COLOR]"
+            items.insert(0, {
+                "group": group,
+                "label": label,
+                "url": original_url,
+                "mode": 2,
+                "action": "show_related"
+            })
+            
+        if not choose_and_open(items, self.name, "Explore similar"):
+            self.logger.info("[spankbang] No lookup target selected for {}".format(original_url))

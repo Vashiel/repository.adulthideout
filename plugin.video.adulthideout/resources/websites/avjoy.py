@@ -3,25 +3,24 @@
 """
 AVJoy website adapter for AdultHideout.
 
-Architektur-Entscheidungen (Stand April 2026):
+Architektur-Entscheidungen:
 
-1. Page-Fetches laufen primär über curl.exe (Windows) oder curl_cffi (Cross-Platform),
-   weil AVJoy's Cloudflare requests+urllib beide blockt.
+1. Page-Fetches nutzen eine Kaskade aus lokal verfügbarem curl, curl_cffi,
+   cloudscraper und requests/urllib. Auf Android darf kein Playback-Pfad von
+   Subprocesses abhängen.
 
-2. Video-Playback läuft über einen lokalen curl.exe-basierten Proxy. Das umgeht
-   Kodi's hardcoded 20s Low-Speed-Timeout, weil curl.exe selbst aggressiver
-   connected und früh Body-Bytes liefert (innerhalb von ~1.6s statt 22s).
+2. Video-Playback läuft über den internen Python-Proxy aus proxy_utils.py. Der
+   Pfad ist damit für Kodi unter Android, Linux, Windows und macOS nutzbar.
 
-3. Stream-URLs werden 20min gecached (AVJoy-Tokens haben ~30min TTL, wir gehen
-   konservativ vor). Cache wird sowohl per Zeit als auch per URL-expires-Param
-   invalidiert.
+3. Stream-URLs werden nicht persistent gecached, weil AVJoy kurzlebige Token im
+   Pfad nutzt. Vor Playback werden alle gefundenen MP4-Quellen kurz geprüft.
 
 4. Page-Cache nach URL-Typ differenziert:
-   - Video-Detail-Seiten: 30min (stabil)
+   - Video-Detail-Seiten: aus, weil sie kurzlebige Stream-URLs enthalten
    - Sort-Listings, Search: 5min (ändert sich häufiger)
 
-5. Precache läuft parallel (4 Threads) UND non-blocking — der User sieht die
-   Liste sofort, während im Hintergrund die Stream-URLs aufgelöst werden.
+5. Precache ist aus, damit keine ablaufenden Stream-URLs vorab gespeichert
+   werden und Kodi erst beim Start des Videos echte Quellen prüft.
 """
 
 import sys
@@ -45,10 +44,13 @@ except Exception:
 
 import re
 import urllib.parse
+import urllib.request
+import urllib.error
 import html
 import json
 import time
 import hashlib
+import ssl
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import xbmc
 import xbmcgui
@@ -461,13 +463,13 @@ class AvjoyWebsite(BaseWebsite):
         })
 
         # Cache-TTLs (Sekunden)
-        self.cache_ttl_video = 30 * 60   # Video-Detail-Seiten: 30min
+        self.cache_ttl_video = 0         # Video pages contain short-lived stream URLs
         self.cache_ttl_listing = 5 * 60  # Sort-Listings, Search: 5min
         self.cookie_ttl = 6 * 60 * 60
-        self.stream_ttl = 20 * 60
+        self.stream_ttl = 0
 
         # Precache-Konfiguration
-        self.pre_resolve_count = 4
+        self.pre_resolve_count = 0
         self.precache_workers = 4
 
         # Cache-Pfade
@@ -800,6 +802,15 @@ class AvjoyWebsite(BaseWebsite):
         """Prüft ob die URL selbst einen expires= Parameter hat der abgelaufen ist."""
         if not stream_url:
             return True
+        path_expiry = re.search(r'/video/[^/]+/(\d{10})/[^/]+\.mp4', stream_url)
+        if path_expiry:
+            try:
+                expires_ts = int(path_expiry.group(1))
+                if time.time() + 60 > expires_ts:
+                    return True
+            except Exception:
+                pass
+
         for param in ('expires', 'expire', 'e'):
             m = re.search(rf'[?&]{param}=(\d+)', stream_url, re.IGNORECASE)
             if m:
@@ -848,7 +859,7 @@ class AvjoyWebsite(BaseWebsite):
     # Stream URL extraction and resolution
     # -------------------------------------------------------------------------
 
-    def _extract_stream_url(self, content):
+    def _extract_stream_urls(self, content):
         sources = []
         for source_match in re.finditer(r'<source\b[^>]+>', content or '', re.IGNORECASE):
             tag = source_match.group(0)
@@ -866,20 +877,89 @@ class AvjoyWebsite(BaseWebsite):
             sources.append((quality_num, urllib.parse.urljoin(self.base_url, src)))
 
         if not sources:
-            return None
-        # Höchste Qualität zuerst
+            return []
+        # Höchste Qualität zuerst, Duplikate entfernen.
         sources.sort(key=lambda item: item[0], reverse=True)
-        return sources[0][1]
+        result = []
+        seen = set()
+        for _, source_url in sources:
+            if source_url in seen:
+                continue
+            seen.add(source_url)
+            result.append(source_url)
+        return result
 
-    def _resolve_stream_url(self, video_url):
+    def _extract_stream_url(self, content):
+        sources = self._extract_stream_urls(content)
+        return sources[0] if sources else None
+
+    def _resolve_stream_urls(self, video_url):
         cached = self._get_cached_stream(video_url)
         if cached:
-            return cached
+            return [cached]
         content = self.make_request(video_url, referer=self.base_url + '/')
-        stream_url = self._extract_stream_url(content)
-        if stream_url:
-            self._set_cached_stream(video_url, stream_url)
-        return stream_url
+        stream_urls = [
+            stream_url for stream_url in self._extract_stream_urls(content)
+            if not self._stream_url_expired(stream_url)
+        ]
+        if stream_urls:
+            self._set_cached_stream(video_url, stream_urls[0])
+        return stream_urls
+
+    def _resolve_stream_url(self, video_url):
+        stream_urls = self._resolve_stream_urls(video_url)
+        return stream_urls[0] if stream_urls else None
+
+    def _probe_stream_url(self, stream_url, headers=None, cookies=None, timeout=6):
+        """
+        Prüft kurz, ob der MP4-CDN-Host echte Bytes liefern kann.
+
+        Kodi hängt sonst bis zu seinem internen Timeout im Player. Diese Probe
+        nutzt nur die Standardbibliothek und bleibt damit auf Android, Linux,
+        Windows und macOS lauffähig.
+        """
+        request_headers = dict(headers or {})
+        request_headers['Range'] = 'bytes=0-1'
+        request_headers['Accept-Encoding'] = 'identity'
+        request_headers['Connection'] = 'close'
+        if cookies and 'Cookie' not in request_headers:
+            request_headers['Cookie'] = '; '.join(f'{k}={v}' for k, v in cookies.items())
+
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        try:
+            req = urllib.request.Request(stream_url, headers=request_headers)
+            with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
+                if resp.status not in (200, 206):
+                    return False, f"HTTP {resp.status}"
+                chunk = resp.read(2)
+                if chunk:
+                    return True, f"HTTP {resp.status}"
+                return False, "no data"
+        except urllib.error.HTTPError as exc:
+            return False, f"HTTP {exc.code}"
+        except Exception as exc:
+            return False, str(exc)
+
+    def _select_reachable_stream(self, stream_urls, headers=None, cookies=None):
+        if not stream_urls:
+            return None
+
+        last_error = None
+        for index, stream_url in enumerate(stream_urls, start=1):
+            ok, detail = self._probe_stream_url(stream_url, headers=headers, cookies=cookies)
+            if ok:
+                if index > 1:
+                    self.logger.info(f"AVJoy selected fallback stream #{index}: {detail}")
+                return stream_url
+            last_error = detail
+            self.logger.warning(
+                f"AVJoy stream candidate #{index}/{len(stream_urls)} unreachable: {detail}"
+            )
+
+        self.logger.error(f"AVJoy CDN unreachable for all stream candidates. Last error: {last_error}")
+        return None
 
     # -------------------------------------------------------------------------
     # Parallel + non-blocking precache
@@ -1060,16 +1140,14 @@ class AvjoyWebsite(BaseWebsite):
     def play_video(self, url):
         self.logger.info(f"Resolving video: {url}")
         resolve_start = time.time()
-        video_url = self._resolve_stream_url(url)
+        stream_urls = self._resolve_stream_urls(url)
         resolve_time = time.time() - resolve_start
 
-        if not video_url:
+        if not stream_urls:
             self.logger.error("No playable stream found")
             self.notify_error("No playable stream found")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
-
-        self.logger.info(f"AVJoy stream resolved in {resolve_time:.2f}s: {video_url[:100]}")
 
         headers = {
             'User-Agent': self.user_agent,
@@ -1084,30 +1162,33 @@ class AvjoyWebsite(BaseWebsite):
         if not cookies:
             cookies = self._get_cookie_dict(self.session)
 
+        video_url = self._select_reachable_stream(stream_urls, headers=headers, cookies=cookies)
+        if not video_url:
+            self.notify_error("AVJoy CDN unreachable")
+            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
+            return
+
+        self.logger.info(
+            f"AVJoy stream resolved in {resolve_time:.2f}s "
+            f"({len(stream_urls)} candidate(s)): {video_url[:100]}"
+        )
+
         try:
             proxy_start = time.time()
-            if _can_use_curl_subprocess():
-                # Schneller curl-basierter Proxy (Windows, oder Linux mit curl-Binary)
-                proxy = _AvjoyCurlProxyController(
-                    upstream_url=video_url,
-                    upstream_headers=headers,
-                    cookies=cookies,
-                    logger=self.logger,
-                )
-            else:
-                # Python-basierter Fallback (Android, eingeschränkte Umgebungen)
-                proxy_session = self._init_session(prefer_curl=True)
-                proxy_session.headers.update(headers)
-                if cookies:
-                    proxy_session.cookies.update(cookies)
+            proxy_session = self._init_session(prefer_curl=True)
+            proxy_session.headers.update(headers)
+            if cookies:
+                proxy_session.cookies.update(cookies)
 
-                proxy = ProxyController(
-                    upstream_url=video_url,
-                    upstream_headers=headers,
-                    cookies=cookies,
-                    session=proxy_session,
-                    skip_resolve=True,
-                )
+            proxy = ProxyController(
+                upstream_url=video_url,
+                upstream_headers=headers,
+                cookies=cookies,
+                session=proxy_session,
+                skip_resolve=True,
+                use_urllib=True,
+                probe_size=False,
+            )
             local_url = proxy.start()
             proxy_time = time.time() - proxy_start
             self.logger.info(

@@ -98,7 +98,7 @@ class LetmejerkWebsite(BaseWebsite):
                     req = urllib.request.Request(url, data=data_bytes, headers=req_headers)
                 else:
                     req = urllib.request.Request(url, headers=req_headers)
-
+                
                 with urllib.request.urlopen(req, timeout=20) as resp:
                     return resp.read().decode('utf-8')
         except Exception as e:
@@ -154,25 +154,25 @@ class LetmejerkWebsite(BaseWebsite):
             r'<a[^>]+href="(/[^"]*(?:video|short)s?/[^"]+)"[^>]*>\s*<div\s+class="vc-thumb">\s*<img([^>]+)>',
             content, re.DOTALL | re.IGNORECASE
         )
-
+        
         matches = []
         for path, img_attrs in modern_blocks:
             src_match = re.search(r'data-src="([^"]+)"', img_attrs)
             if not src_match:
                  src_match = re.search(r'src="([^"]+)"', img_attrs)
             thumb = src_match.group(1) if src_match else self.icons.get('default', '')
-
+            
             alt_match = re.search(r'alt="([^"]*)"', img_attrs)
             title = alt_match.group(1) if alt_match else ''
             matches.append((path, title, thumb))
 
         seen = set()
         count = 0
-
+        
         for path, title, thumb in matches:
             title = title.replace('&#039;', "'").replace('&amp;', '&')
             video_url = f"{self.BASE_URL}{path}" if not path.startswith('http') else path
-
+            
             if video_url in seen:
                 continue
             seen.add(video_url)
@@ -214,7 +214,7 @@ class LetmejerkWebsite(BaseWebsite):
         if not content:
             self.end_directory()
             return
-
+        
         seen = set()
         # <a href="/category/voyeur/" title="Voyeur Porn">Voyeur</a>
         cat_pattern = re.compile(
@@ -235,7 +235,7 @@ class LetmejerkWebsite(BaseWebsite):
         if not content:
             self.end_directory()
             return
-
+        
         seen = set()
         az_links = re.findall(r'<a href="(/az-pornstars/[a-z0-9])">([^<]+)</a>', content)
         if az_links and url.rstrip('/').endswith('/az-pornstars'):

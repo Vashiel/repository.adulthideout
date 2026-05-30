@@ -1,16 +1,17 @@
-
 import re
 import sys
 import urllib.request
 import urllib.parse
 import urllib.error
 import http.cookiejar
+import xbmc
 import xbmcgui
 import xbmcplugin
 import xbmcvfs
 import os
 
 from resources.lib.base_website import BaseWebsite
+from resources.lib.lookup_info import choose_and_open, extract_html_items
 
 class HQPorner(BaseWebsite):
     def __init__(self, addon_handle):
@@ -104,6 +105,14 @@ class HQPorner(BaseWebsite):
         return thumb_url + '|' + urllib.parse.urlencode(headers)
 
     def process_content(self, url):
+        params = {}
+        if len(sys.argv) > 2 and sys.argv[2]:
+            params = dict(urllib.parse.parse_qsl(sys.argv[2][1:]))
+        action = params.get('action')
+        if action == "show_related":
+            self.process_related_videos(url)
+            return
+
         self.add_dir('[COLOR blue]Search...[/COLOR]', self.base_url, 5, icon=self.icons['search'], fanart=self.fanart)
         self.add_dir('[COLOR blue]Categories...[/COLOR]', self.base_url, 8, icon=self.icons['categories'], fanart=self.fanart)
 
@@ -128,7 +137,10 @@ class HQPorner(BaseWebsite):
                 duration = self._parse_duration(duration_str)
                 info_labels = {'title': title, 'duration': duration, 'plot': title}
                 
-                self.add_link(name=title, url=video_url, mode=4, icon=thumbnail, fanart=self.fanart, info_labels=info_labels)
+                context_menu = [
+                    ('Explore similar', f'RunPlugin({sys.argv[0]}?mode=7&action=explore_similar&website={self.name}&original_url={urllib.parse.quote_plus(video_url)})')
+                ]
+                self.add_link(name=title, url=video_url, mode=4, icon=thumbnail, fanart=self.fanart, info_labels=info_labels, context_menu=context_menu)
 
             next_page_match = re.search(r'<li><a href="([^"]+)" class="button[^"]*?pagi-btn">Next</a></li>', html_content)
             if not next_page_match:
@@ -265,3 +277,80 @@ class HQPorner(BaseWebsite):
         
         list_item = xbmcgui.ListItem(path=playback_url)
         xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
+
+    def process_related_videos(self, url):
+        self.add_dir('[COLOR blue]Search...[/COLOR]', self.base_url, 5, icon=self.icons['search'], fanart=self.fanart)
+        self.add_dir('[COLOR blue]Categories...[/COLOR]', self.base_url, 8, icon=self.icons['categories'], fanart=self.fanart)
+
+        html_content = self._get_html(url)
+        if not html_content:
+            self.notify_error("Failed to load page content.")
+            self.end_directory()
+            return
+
+        try:
+            video_pattern = re.compile(
+                r'<a href="(/hdporn/[^"]+)".*?<img.*?src="([^"]+)".*?alt="([^"]+)".*?<span class="icon fa-clock-o meta-data">([^<]+)</span>',
+                re.DOTALL
+            )
+            matches = video_pattern.findall(html_content)
+
+            if not matches:
+                self.logger.warning("HQPorner: no related videos found.")
+
+            for video_path, thumb_url, title, duration_str in matches:
+                video_url = urllib.parse.urljoin(self.base_url, video_path)
+                thumbnail = self._build_thumbnail_url(thumb_url)
+                duration = self._parse_duration(duration_str)
+                info_labels = {'title': title, 'duration': duration, 'plot': title}
+                
+                context_menu = [
+                    ('Explore similar', f'RunPlugin({sys.argv[0]}?mode=7&action=explore_similar&website={self.name}&original_url={urllib.parse.quote_plus(video_url)})')
+                ]
+                self.add_link(name=title, url=video_url, mode=4, icon=thumbnail, fanart=self.fanart, info_labels=info_labels, context_menu=context_menu)
+
+        except Exception as e:
+            self.logger.error(f"HQPorner: Error parsing related content: {e}")
+
+        self.end_directory()
+
+    def explore_similar(self, original_url=None):
+        if not original_url:
+            self.notify_info("No video URL available")
+            return
+
+        html_content = self._get_html(original_url)
+        if not html_content:
+            self.notify_error("Could not load video info")
+            return
+
+        patterns = [
+            ("Actress", r'href="(/actress/[^"]+)"[^>]*>([^<]+)', 2),
+            ("Category", r'href="(/category/[^"]+)"[^>]*>([^<]+)', 2),
+        ]
+        items = extract_html_items(html_content, self.base_url, patterns)
+        
+        if items:
+            lang = xbmc.getLanguage(0).lower()
+            if "german" in lang or "deutsch" in lang:
+                group = "Wiedergabe"
+                label = "[COLOR lime]>>> Ähnliche Videos anzeigen <<<[/COLOR]"
+            elif "spanish" in lang or "español" in lang or "espanol" in lang:
+                group = "Reproducción"
+                label = "[COLOR lime]>>> Mostrar videos similares <<<[/COLOR]"
+            elif "french" in lang or "français" in lang or "francais" in lang:
+                group = "Lecture"
+                label = "[COLOR lime]>>> Afficher les vidéos similaires <<<[/COLOR]"
+            else:
+                group = "Playback"
+                label = "[COLOR lime]>>> Show Similar Videos <<<[/COLOR]"
+            items.insert(0, {
+                "group": group,
+                "label": label,
+                "url": original_url,
+                "mode": 2,
+                "action": "show_related"
+            })
+            
+        if not choose_and_open(items, self.name, "Explore similar"):
+            self.logger.info("[hqporner] No lookup target selected for {}".format(original_url))

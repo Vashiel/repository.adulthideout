@@ -1,0 +1,33 @@
+{
+  "addon_id": "plugin.video.adulthideout",
+  "generated_utc": "2026-05-30",
+  "hash_algorithm": "sha256",
+  "hashes": {
+    "addon.xml": "10b4afe61c4d4f0f27ec97aa371ea09e1a12a2386343569fbd778815838463c9",
+    "changelog.txt": "49eec6318c51925100fd0c87017463c2adc5bdfcddae8ec5d7f67a71ce6aeba8",
+    "default.py": "306f9da3082f9165a60f408c491528e75198872e49e5a69913ebc4e682dba650",
+    "resources/lib/base_website.py": "2b41869cd8cca41c8b40d5f24286c22361aef508f3dae1e843afd019d6f48c09",
+    "resources/lib/official_source.py": "b41f61250789cc25982212780d2b82d3e591a54a0a8272e11609da869f7ec90c",
+    "resources/lib/proxy_utils.py": "f1c12bc7887d66f97ac2d199659cbf514a8e36fb6b0879c1e870ed70eae094e8",
+    "resources/lib/resilient_http.py": "7d34104416c9a9fd8379fd71f95fa800cdf5e09490f46943048b5bbc927d96b0",
+    "resources/settings.xml": "f199efabf5853a22d69c5d05ae89d39ea8a0aab71f94da69ad3d78a1071d8648",
+    "resources/websites/avjoy.py": "43fa5a6875e6c371f7b5fdc58654ac1d201195ecc576e5f50e605e8b2c8a791f",
+    "resources/logos/hstream.png": "1f5212e6ede956afac6a563a87454276fa0cfee71ca5a28a8357b3befbcf63c2",
+    "resources/websites/hstream.py": "a69750bd16b57bbed3adc6524f09f632a9d91b2c6d4cfedcf45a2cad647d02b3",
+    "resources/websites/ikisoda.py": "dbee4e91856d44c2bedd2b96e94c4fb5705b5d6eb8e1eb0d8e2ae0d295c75cd8",
+    "resources/websites/pornhub.py": "48326a12fbb2e79595ab20bbd262a990b7dcb72114c53b6588f24cd0ea39f7a0",
+    "resources/logos/premiumporn.png": "0d4232dc01ee3295399c4620709e328f11b6e540d6418f19b8e0794d6580c91f",
+    "resources/websites/premiumporn.py": "ccc59285e8b3d7bd6704f2c407019e306e4f315fa8af94582a8af2c40e2b4c90",
+    "resources/websites/vikiporn.py": "9b1f1e0c988e3ca0f4561e9227616480fc7a6c467573f14e2f361a5d52789b57",
+    "resources/websites/xvideos.py": "bf1c1ce9e8fcecf9e4a365a9a21a07d148f4a8ccb31d622ad497248f2ef31a83",
+    "resources/websites/xxxtube.py": "1130a0be822309838dd07e1778415a6cad8d18c286bac678a87af3a40b44848e",
+    "resources/lib/lookup_info.py": "8cfcdb1fbf70f32c8bc475ddc516ee99e419511bd915879e02ba548dd6cba335",
+    "resources/websites/rule34video.py": "de33de672c25d398339d112bd11d93b5808ffbd97a5591cbf27efbcad32cd4d9",
+    "resources/websites/whereismyporn.py": "713cbb6c14a42677166f7bd90b696de05100c2f3e4252cc6ff329bffabbd3684",
+    "resources/websites/85po.py": "42cee96b1a702109d8af0827deb40d4cfef2df41e8a63efc14193ea0d3b02a0d"
+  },
+  "official_repository": "https://vashiel.github.io/repository.adulthideout/",
+  "official_repository_id": "repository.adulthideout",
+  "official_source": "https://github.com/Vashiel/repository.adulthideout",
+  "schema": 1
+}

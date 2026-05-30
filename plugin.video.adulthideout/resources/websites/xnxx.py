@@ -4,13 +4,16 @@ import re
 import sys
 import urllib.parse
 import urllib.request
+from http.cookiejar import CookieJar
+from io import BytesIO
+import gzip
 import traceback
 import html
-import io
 import xbmc
 import xbmcgui
 import xbmcplugin
 from resources.lib.base_website import BaseWebsite
+from resources.lib.lookup_info import choose_and_open, extract_html_items
 
 class Xnxx(BaseWebsite):
     def __init__(self, addon_handle, addon=None):
@@ -45,11 +48,6 @@ class Xnxx(BaseWebsite):
                 "Today's selection": '/shemale/todays-selection',
                 'Hits': '/trans-hits'
             }
-        }
-        
-        self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept-Encoding': 'gzip, deflate'
         }
 
     def get_current_content_key(self):
@@ -125,29 +123,64 @@ class Xnxx(BaseWebsite):
             xbmc.sleep(250)
             xbmc.executebuiltin(update_command)
 
-    def make_request(self, url):
-        try:
-            req = urllib.request.Request(url, headers=self.headers)
-            with urllib.request.urlopen(req, timeout=20) as response:
-                if response.getcode() != 200:
-                    self.notify_error(f"HTTP Error: {response.getcode()}")
-                    return None
-                encoding = response.info().get('Content-Encoding')
-                if encoding == 'gzip':
-                    import gzip
-                    buf = response.read()
-                    html_content_bytes = gzip.GzipFile(fileobj=io.BytesIO(buf)).read()
-                else:
-                    html_content_bytes = response.read()
-                return html_content_bytes.decode('utf-8', errors='ignore')
-        except Exception as e:
-            self.notify_error(f"Download fehlgeschlagen: {e}")
-            self.logger.error(traceback.format_exc())
-            return None
+    def get_headers(self, referer=None):
+        headers = {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/*,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'Sec-Ch-Ua': '"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
+            'Sec-Ch-Ua-Mobile': '?0',
+            'Sec-Ch-Ua-Platform': '"Windows"',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Upgrade-Insecure-Requests': '1',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36'
+        }
+        if referer:
+            headers['Referer'] = referer
+        return headers
+
+    def make_request(self, url, max_retries=3, retry_wait=5000):
+        headers = self.get_headers(url)
+        cookie_jar = CookieJar()
+        handler = urllib.request.HTTPCookieProcessor(cookie_jar)
+        opener = urllib.request.build_opener(handler)
+
+        for attempt in range(max_retries):
+            try:
+                request = urllib.request.Request(url, headers=headers)
+                with opener.open(request, timeout=20) as response:
+                    encoding = response.info().get('Content-Encoding')
+                    raw_data = response.read()
+                    if encoding == 'gzip':
+                        data = gzip.GzipFile(fileobj=BytesIO(raw_data)).read()
+                    else:
+                        data = raw_data
+                    content = data.decode('utf-8', errors='ignore')
+                    return content
+            except (urllib.error.HTTPError, urllib.error.URLError) as e:
+                self.logger.warning(f"[{self.name}] make_request attempt {attempt+1} failed: {e}")
+                if attempt < max_retries - 1:
+                    xbmc.sleep(retry_wait)
+
+        self.notify_error(f"Failed to fetch URL: {url}")
+        return ""
 
     def process_content(self, url):
         if not url:
             url = self._get_start_url()
+
+        # Check action for Related Videos view
+        params = {}
+        if len(sys.argv) > 2 and sys.argv[2]:
+            params = dict(urllib.parse.parse_qsl(sys.argv[2][1:]))
+        action = params.get('action')
+        if action == "show_related":
+            self.process_related_videos(url)
+            return
 
         self.add_dir('[COLOR blue]Search[/COLOR]', url='', mode=5)
 
@@ -168,11 +201,6 @@ class Xnxx(BaseWebsite):
         if not video_list and "search" not in url:
             self.notify_info("Keine Videos gefunden.")
             return self.end_directory()
-        
-        context_menu = [
-            ('Content Type...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_content_type&website={self.name})'),
-            ('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort_order&website={self.name})')
-        ]
 
         for data in video_list:
             page_url = urllib.parse.urljoin(self.base_url, data['url'])
@@ -181,6 +209,11 @@ class Xnxx(BaseWebsite):
             thumbnail = data.get('thumb', '')
             large_thumb = thumbnail.replace('/thumbs169xnxxll/', '/thumbslll/').replace('/thumbs169lll/', '/thumbslll/')
             
+            context_menu = [
+                ('Explore similar', f'RunPlugin({sys.argv[0]}?mode=7&action=explore_similar&website={self.name}&original_url={urllib.parse.quote_plus(page_url)})'),
+                ('Content Type...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_content_type&website={self.name})'),
+                ('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort_order&website={self.name})')
+            ]
             self.add_link(name=display_title, url=page_url, mode=4, icon=large_thumb, fanart=self.fanart, context_menu=context_menu)
 
         next_page_match = re.search(r'<a[^>]+href="([^"]+)"[^>]*class="[^"]*(?:next|pagination-button)[^"]*"', html_content)
@@ -218,3 +251,89 @@ class Xnxx(BaseWebsite):
             xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
         else:
             self.notify_error("Konnte keinen abspielbaren Stream finden.")
+
+    def process_related_videos(self, url):
+        self.add_dir('[COLOR blue]Search[/COLOR]', url='', mode=5)
+        content = self.make_request(url)
+        if not content:
+            self.notify_error("Failed to load video page")
+            self.end_directory()
+            return
+            
+        match = re.search(r'var\s+video_related\s*=\s*(\[.*?\])\s*;', content, re.DOTALL)
+        if not match:
+            self.notify_info("Keine ähnlichen Videos gefunden.")
+            self.end_directory()
+            return
+            
+        try:
+            import json
+            data = json.loads(match.group(1))
+            base_url = urllib.parse.urlparse(url).scheme + "://" + urllib.parse.urlparse(url).netloc
+            for item in data:
+                rel_url = item.get("u", "")
+                if not rel_url:
+                    continue
+                video_url = urllib.parse.urljoin(base_url, rel_url)
+                title = html.unescape(item.get("tf", item.get("t", "Related Video"))).replace('`', "'")
+                duration = item.get("d", "")
+                thumb = item.get("i", "")
+                large_thumb = thumb.replace('/thumbs169xnxxll/', '/thumbslll/').replace('/thumbs169lll/', '/thumbslll/')
+                
+                context_menu = [
+                    ('Explore similar', f'RunPlugin({sys.argv[0]}?mode=7&action=explore_similar&website={self.name}&original_url={urllib.parse.quote_plus(video_url)})'),
+                    ('Content Type...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_content_type&website={self.name})'),
+                    ('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort_order&website={self.name})')
+                ]
+                display_title = f"{title} [COLOR yellow]({duration})[/COLOR]"
+                self.add_link(name=display_title, url=video_url, mode=4, icon=large_thumb, fanart=self.fanart, context_menu=context_menu)
+        except Exception as e:
+            self.notify_error("Failed to parse related videos")
+            
+        self.end_directory()
+
+    def explore_similar(self, original_url=None):
+        if not original_url:
+            self.notify_info("No video URL available")
+            return
+
+        html_content = self.make_request(original_url)
+        if not html_content:
+            self.notify_error("Could not load video info")
+            return
+
+        patterns = [
+            ("Pornstar", r'href="(/pornstars/[^"]+)"[^>]*>(?:<span[^>]*>)?([^<]+)', 2),
+            ("Tag", r'href="(/search/[^"]+)"[^>]*>(?:<span[^>]*>)?([^<]+)', 2),
+            ("Tag", r'href="(/tags/[^"]+)"[^>]*>(?:<span[^>]*>)?([^<]+)', 2),
+            ("Category", r'href="(/c/[^"]+)"[^>]*>(?:<span[^>]*>)?([^<]+)', 2),
+            ("Maker", r'href="(/porn-maker/[^"]+)"[^>]*>(?:<span[^>]*>)?([^<]+)', 2),
+            ("Profile", r'href="(/profiles/[^"]+)"[^>]*>(?:<span[^>]*>)?([^<]+)', 2),
+            ("Channel", r'href="(/channels/[^"]+)"[^>]*>(?:<span[^>]*>)?([^<]+)', 2),
+        ]
+        items = extract_html_items(html_content, self.base_url, patterns)
+        
+        if items:
+            lang = xbmc.getLanguage(0).lower()
+            if "german" in lang or "deutsch" in lang:
+                group = "Wiedergabe"
+                label = "[COLOR lime]>>> Ähnliche Videos anzeigen <<<[/COLOR]"
+            elif "spanish" in lang or "español" in lang or "espanol" in lang:
+                group = "Reproducción"
+                label = "[COLOR lime]>>> Mostrar videos similares <<<[/COLOR]"
+            elif "french" in lang or "français" in lang or "francais" in lang:
+                group = "Lecture"
+                label = "[COLOR lime]>>> Afficher les vidéos similaires <<<[/COLOR]"
+            else:
+                group = "Playback"
+                label = "[COLOR lime]>>> Show Similar Videos <<<[/COLOR]"
+            items.insert(0, {
+                "group": group,
+                "label": label,
+                "url": original_url,
+                "mode": 2,
+                "action": "show_related"
+            })
+            
+        if not choose_and_open(items, self.name, "Explore similar"):
+            self.logger.info("[xnxx] No lookup target selected for {}".format(original_url))

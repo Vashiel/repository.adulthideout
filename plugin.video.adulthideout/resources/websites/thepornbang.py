@@ -9,10 +9,7 @@ import urllib.parse
 
 import xbmcgui
 import xbmcplugin
-from Cryptodome.Cipher import AES
-from Cryptodome.Hash import SHA512
-from Cryptodome.Protocol.KDF import PBKDF2
-from Cryptodome.Util.Padding import unpad
+from resources.lib.vendor import byse_crypto
 
 from resources.lib.base_website import BaseWebsite
 
@@ -238,9 +235,9 @@ class Thepornbang(BaseWebsite):
         iv = bytes.fromhex(payload["iv"])
         ciphertext = base64.b64decode(payload["ciphertext"])
         iterations = int(payload.get("iterations", 999))
-        key = PBKDF2(password.encode("utf-8"), salt, dkLen=32, count=iterations, hmac_hash_module=SHA512)
-        plain = AES.new(key, AES.MODE_CBC, iv).decrypt(ciphertext)
-        return unpad(plain, AES.block_size).decode("utf-8")
+        key = byse_crypto.pbkdf2_sha512(password.encode("utf-8"), salt, 32, iterations)
+        plain = byse_crypto.cbc_decrypt(key, iv, ciphertext)
+        return byse_crypto.pkcs7_unpad(plain, 16).decode("utf-8")
 
     def _extract_ok_stream(self, html_content):
         generate_match = re.search(

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-
 import re
 import sys
 import json
@@ -17,6 +16,7 @@ import xbmcgui
 import xbmcplugin
 
 from resources.lib.base_website import BaseWebsite
+from resources.lib.lookup_info import choose_and_open, extract_html_items
 
 class PornhubWebsite(BaseWebsite):
     config = {
@@ -32,7 +32,7 @@ class PornhubWebsite(BaseWebsite):
             search_url="",
             addon_handle=addon_handle
         )
-
+        
         self.label = 'Pornhub'
         self.cookie_jar = CookieJar()
         self.opener = urllib.request.build_opener(
@@ -47,13 +47,13 @@ class PornhubWebsite(BaseWebsite):
             "Most Viewed": "mostviewed",
             "Top Rated": "rating"
         }
-
+        
         self.period_options = ["All Time", "This Month", "This Week"]
         self.period_paths = {"All Time": "alltime", "This Month": "monthly", "This Week": "weekly"}
-
+        
         self.pornstar_sort_options = ["Most Popular", "Most Viewed", "Top Trending", "Most Subscribed", "Alphabetical", "No. Of Videos", "Random"]
         self.pornstar_sort_paths = {
-            "Most Popular": "", "Most Viewed": "mv", "Top Trending": "t",
+            "Most Popular": "", "Most Viewed": "mv", "Top Trending": "t", 
             "Most Subscribed": "ms", "Alphabetical": "a", "No. Of Videos": "nv", "Random": "r"
         }
 
@@ -121,7 +121,7 @@ class PornhubWebsite(BaseWebsite):
         try:
             self._set_age_cookie()
             req = urllib.request.Request(
-                f"{self.base_url}/video?o=newest",
+                self.base_url,
                 headers=self.get_headers(referer or self.base_url)
             )
             with self.opener.open(req, timeout=8) as resp:
@@ -130,6 +130,32 @@ class PornhubWebsite(BaseWebsite):
         except Exception as exc:
             self.logger.warning(f"Pornhub: session warmup failed: {exc}")
             return False
+
+    def _prime_stream_url(self, stream_url, referer, headers, attempts=3):
+        """Prime DNS/CDN access before handing the HLS URL to Kodi."""
+        clean_url = stream_url.split("|", 1)[0]
+        request_headers = {
+            "User-Agent": headers.get("User-Agent", self.get_headers().get("User-Agent")),
+            "Referer": headers.get("Referer", referer),
+            "Origin": headers.get("Origin", self.base_url.rstrip("/")),
+        }
+        cookie = headers.get("Cookie")
+        if cookie:
+            request_headers["Cookie"] = cookie
+
+        for attempt in range(attempts):
+            try:
+                req = urllib.request.Request(clean_url, headers=request_headers)
+                with self.opener.open(req, timeout=8) as resp:
+                    sample = resp.read(512)
+                if sample:
+                    return True
+            except Exception as exc:
+                self.logger.warning(
+                    f"Pornhub: stream preflight failed on attempt {attempt + 1}: {exc}"
+                )
+                time.sleep(0.5 * (attempt + 1))
+        return False
 
     def _create_cookie(self, name, value, domain):
         from http.cookiejar import Cookie
@@ -161,7 +187,7 @@ class PornhubWebsite(BaseWebsite):
                 if is_api:
                     headers['Accept'] = 'application/json, text/plain, */*'
                     headers['X-Requested-With'] = 'XMLHttpRequest'
-
+                
                 req = urllib.request.Request(url, headers=headers)
                 with self.opener.open(req, timeout=15) as resp:
                     return resp.read().decode('utf-8', errors='ignore')
@@ -180,8 +206,16 @@ class PornhubWebsite(BaseWebsite):
         if hasattr(self, 'notify_error'):
             self.notify_error("Failed to load data.")
         return None
-
+    
     def process_content(self, url):
+        params = {}
+        if len(sys.argv) > 2 and sys.argv[2]:
+            params = dict(urllib.parse.parse_qsl(sys.argv[2][1:]))
+        action = params.get('action')
+        if action == "show_related":
+            self.process_related_videos(url)
+            return
+
         if not url or url == "BOOTSTRAP": url = self.base_url
 
         parsed_url = urllib.parse.urlparse(url)
@@ -197,18 +231,18 @@ class PornhubWebsite(BaseWebsite):
             if hasattr(self, 'add_dir'):
                 self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], name_param=self.name)
                 self.add_dir('Categories', f"{self.base_url}/categories", 2, self.icons['categories'])
-
+                
                 pornstars_url = f"{self.base_url}/pornstars"
                 self.add_dir(
-                    'Pornstars',
-                    pornstars_url,
-                    2,
-                    self.icons['pornstars'],
+                    'Pornstars', 
+                    pornstars_url, 
+                    2, 
+                    self.icons['pornstars'], 
                     context_menu=[
                         ('Sort by', f'RunPlugin({sys.argv[0]}?mode=7&action=select_pornstar_sort&website={self.name}&original_url={urllib.parse.quote_plus(pornstars_url)})')
                     ]
                 )
-
+            
             self.process_video_list(url)
 
         if hasattr(self, 'end_directory'):
@@ -218,7 +252,7 @@ class PornhubWebsite(BaseWebsite):
         parsed = urllib.parse.urlparse(current_url)
         params = urllib.parse.parse_qs(parsed.query)
         api_params = {'page': params.get('page', ['1'])[0]}
-
+        
         if '/pornstar/' in parsed.path:
             pornstar_name = parsed.path.split('/pornstar/')[-1].split('/')[0]
             api_params['search'] = pornstar_name.replace('-', ' ')
@@ -227,14 +261,16 @@ class PornhubWebsite(BaseWebsite):
             api_params['search'] = model_name.replace('-', ' ')
         elif 'search' in params:
             api_params['search'] = params['search'][0]
+        elif 'category' in params:
+            api_params['category'] = params['category'][0]
         elif 'category_slug' in params:
             api_params['category'] = params['category_slug'][0]
-
+        
         api_params['ordering'] = params.get('o', [self.sorting_paths['Newest']])[0]
-
+        
         if api_params['ordering'] in ['mostviewed', 'rating']:
             api_params['period'] = params.get('p', ['alltime'])[0]
-
+        
         api_url = f"{self.config['api_base']}/search?{urllib.parse.urlencode(api_params, doseq=True)}"
         content = self.make_request(api_url, referer=current_url, is_api=True)
         if not content: return
@@ -243,12 +279,12 @@ class PornhubWebsite(BaseWebsite):
         except json.JSONDecodeError: return
 
         videos = data.get('videos', [])
-
+        
         context_menu = [
             ('Sort by', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={urllib.parse.quote_plus(current_url)})'),
             ('Select Period', f'RunPlugin({sys.argv[0]}?mode=7&action=select_period&website={self.name}&original_url={urllib.parse.quote_plus(current_url)})')
         ]
-
+        
         for vid in videos:
             title = html.unescape(vid.get('title', ''))
             vid_id, thumb, duration = vid.get('video_id'), vid.get('default_thumb'), vid.get('duration')
@@ -257,9 +293,14 @@ class PornhubWebsite(BaseWebsite):
                     thumb = thumb.replace("&amp;", "&")
                     if "|" not in thumb:
                         thumb += "|User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0.0.0&Referer=https://www.pornhub.com/"
+                
+                video_url = f"{self.base_url}/view_video.php?viewkey={vid_id}"
+                video_context_menu = [
+                    ('Explore similar', f'RunPlugin({sys.argv[0]}?mode=7&action=explore_similar&website={self.name}&original_url={urllib.parse.quote_plus(video_url)})')
+                ] + context_menu
 
                 label = f"{title} [COLOR lime]({duration})[/COLOR]"
-                self.add_link(label, f"{self.base_url}/view_video.php?viewkey={vid_id}", 4, thumb, self.fanart, context_menu)
+                self.add_link(label, video_url, 4, thumb, self.fanart, video_context_menu)
 
         if len(videos) > 0 and hasattr(self, 'add_dir'):
             next_params = params.copy()
@@ -272,7 +313,7 @@ class PornhubWebsite(BaseWebsite):
         api_url = f"{self.config['api_base']}/categories"
         content = self.make_request(api_url, referer=self.config['base_url'], is_api=True)
         if not content: return
-
+        
         try:
             data = json.loads(content)
             for cat in data.get('categories', []):
@@ -305,13 +346,13 @@ class PornhubWebsite(BaseWebsite):
                         thumb = thumb.replace("&amp;", "&")
                         if "|" not in thumb:
                             thumb += "|User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0.0.0&Referer=https://www.pornhub.com/"
-
+                            
                     name = html.unescape(img_block.split('alt="')[1].split('"')[0])
                     if hasattr(self, 'add_dir'):
                         self.add_dir(name, full_url, 2, thumb, self.fanart, context_menu=pornstar_context_menu)
                 except IndexError:
                     continue
-
+            
             if '<li class="page_next">' in content and hasattr(self, 'add_dir'):
                 next_page_url_part = content.split('<li class="page_next">')[1].split('href="')[1].split('"')[0]
                 next_page_url = urllib.parse.urljoin(self.base_url, html.unescape(next_page_url_part))
@@ -321,11 +362,11 @@ class PornhubWebsite(BaseWebsite):
 
     def play_video(self, url):
         self.logger.info(f"Pornhub: play_video for {url}")
-
+        
         # Ensure age disclaimer cookies are present
         data = None
         self._set_age_cookie()
-        self._warmup_session(referer=self.base_url)
+        # Direct fetch without initial homepage warmup to avoid geo-block/consent cookies (returns 403)
 
         for attempt in range(2):
             content = self.make_request(url, referer=self.base_url if attempt == 0 else url)
@@ -336,28 +377,28 @@ class PornhubWebsite(BaseWebsite):
             if attempt == 0:
                 self.logger.warning("Pornhub: first video-page request had no playable flashvars; retrying after warmup.")
                 self._warmup_session(referer=url)
-
+        
         if data:
             media = data.get('mediaDefinitions', [])
             # Try HLS first
             streams = [s for s in media if s.get('format') == 'hls' and s.get('videoUrl')]
-
+            
             # Fallback to MP4 if no HLS found
             if not streams:
                 self.logger.info("Pornhub: No HLS found, checking for mp4 streams")
                 streams = [s for s in media if s.get('format') == 'mp4' and s.get('videoUrl')]
-
+            
             if streams:
                 # Find best stream by quality
                 try:
                     best_stream = max(streams, key=lambda x: int(str(x.get('quality', '0'))) if str(x.get('quality', '0')).isdigit() else 0)
                 except:
                     best_stream = streams[0]
-
+                
                 if best_stream:
                     stream_url = html.unescape(best_stream['videoUrl']).replace('\\/', '/')
                     ua = self.get_headers()['User-Agent']
-
+                    
                     # Prepare headers for segments and manifest
                     headers = {
                         'User-Agent': ua,
@@ -365,19 +406,22 @@ class PornhubWebsite(BaseWebsite):
                         'Origin': self.base_url.rstrip('/'),
                         'Cookie': "; ".join([f"{c.name}={c.value}" for c in self.cookie_jar])
                     }
-
+                    
                     header_str = urllib.parse.urlencode(headers)
 
+                    if not self._prime_stream_url(stream_url, url, headers):
+                        self.logger.warning("Pornhub: stream preflight did not succeed; Kodi playback may retry.")
+                    
                     # Construct Kodi player URL
                     kodi_url = stream_url
                     if "|" not in kodi_url:
                         kodi_url += "|" + header_str
-
+                        
                     self.logger.info(f"Pornhub: Playback resolved to: {kodi_url[:120]}...")
-
+                    
                     li = xbmcgui.ListItem(path=kodi_url)
                     li.setProperty('IsPlayable', 'true')
-
+                    
                     if best_stream.get('format') == 'hls':
                         li.setProperty('inputstream', 'inputstream.adaptive')
                         li.setProperty('inputstream.adaptive.manifest_type', 'hls')
@@ -387,10 +431,10 @@ class PornhubWebsite(BaseWebsite):
                         li.setMimeType('application/vnd.apple.mpegurl')
                     else:
                         li.setMimeType('video/mp4')
-
+                        
                     xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
                     return
-
+        
         self.logger.error(f"Pornhub: No playable streams found in flashvars for {url}")
         if hasattr(self, 'notify_error'): self.notify_error("No playable stream found.")
         xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
@@ -407,18 +451,18 @@ class PornhubWebsite(BaseWebsite):
 
         sort_key = self.sorting_options[idx]
         sort_val = self.sorting_paths[sort_key]
-
+        
         addon = xbmcaddon.Addon()
         addon.setSetting('pornhub_sort_by', sort_key)
-
+        
         parsed_url = urllib.parse.urlparse(original_url)
         params = urllib.parse.parse_qs(parsed_url.query)
         params['o'] = [sort_val]
         params.pop('page', None)
-
+        
         new_query = urllib.parse.urlencode(params, doseq=True)
         new_url = parsed_url._replace(query=new_query).geturl()
-
+        
         xbmc.executebuiltin(f"Container.Update({sys.argv[0]}?mode=2&website={self.name}&url={urllib.parse.quote_plus(new_url)})")
 
     def select_period(self, original_url):
@@ -450,3 +494,245 @@ class PornhubWebsite(BaseWebsite):
         new_query = urllib.parse.urlencode(params, doseq=True)
         new_url = parsed_url._replace(query=new_query).geturl()
         xbmc.executebuiltin(f"Container.Update({sys.argv[0]}?mode=2&website={self.name}&url={urllib.parse.quote_plus(new_url)})")
+
+    def process_related_videos(self, url):
+        if hasattr(self, 'add_dir'):
+            self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], name_param=self.name)
+        
+        content = self.make_request(url, referer=self.base_url)
+        if not content:
+            self.logger.warning("Pornhub: failed to fetch related video page.")
+            if hasattr(self, 'end_directory'): self.end_directory()
+            return
+
+        context_menu = [
+            ('Sort by', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={urllib.parse.quote_plus(url)})'),
+            ('Select Period', f'RunPlugin({sys.argv[0]}?mode=7&action=select_period&website={self.name}&original_url={urllib.parse.quote_plus(url)})')
+        ]
+
+        # Try parsing the relatedVideos JavaScript array for 100% true related videos
+        js_match = re.search(r'relatedVideos\s*=\s*(\[.*?\])\s*;', content, re.DOTALL)
+        if not js_match:
+            js_match = re.search(r'var\s+relatedVideos\s*=\s*(\[.*?\])', content, re.DOTALL)
+
+        if js_match:
+            try:
+                data = json.loads(js_match.group(1))
+                # Extract all global URLs to map high-quality CDN thumbnails dynamically
+                all_urls = re.findall(r'(https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/[^"\s\'>]+)', content)
+                url_map = {}
+                for u in all_urls:
+                    if "phncdn" in u or "phncdn.com" in u or "/videos/" in u:
+                        m_path = re.search(r'/\d{6}/\d{2}/\d+/', u)
+                        if m_path:
+                            path_key = m_path.group(0)
+                            # Prioritize images (.jpg, .jpeg, .png, .webp, or /plain/) over preview video webm/mp4
+                            is_image = any(ext in u.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp', '/plain/']) and '.webm' not in u.lower()
+                            if is_image or path_key not in url_map:
+                                url_map[path_key] = u
+
+                found_any = False
+                for item in data:
+                    fields = item.get("fields")
+                    if not fields:
+                        continue
+                    vkey = fields.get("vkey")
+                    if not vkey:
+                        continue
+                    
+                    title = html.unescape(fields.get("title", "Related Video"))
+                    title = re.sub(r'<[^>]+>', '', title).strip()
+                    duration_sec = fields.get("duration", 0)
+                    media_path = fields.get("media_path", "")
+
+                    # Map thumbnail from our global URL map
+                    thumb = ""
+                    if media_path:
+                        thumb = url_map.get(media_path, "")
+                        if not thumb:
+                            # Generic lookup by ID
+                            video_id_str = media_path.strip("/").split("/")[-1]
+                            # Try to find an image first
+                            for u in all_urls:
+                                if video_id_str in u and any(ext in u.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp', '/plain/']) and '.webm' not in u.lower():
+                                    thumb = u
+                                    break
+                            if not thumb:
+                                for u in all_urls:
+                                    if video_id_str in u:
+                                        thumb = u
+                                        break
+                    if not thumb:
+                        thumb = self.fanart
+
+                    if thumb and "|" not in thumb:
+                        thumb = thumb.replace("&amp;", "&")
+                        thumb += "|User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0.0.0&Referer=https://www.pornhub.com/"
+
+                    duration_str = ""
+                    if duration_sec > 0:
+                        mins = duration_sec // 60
+                        secs = duration_sec % 60
+                        duration_str = f"{mins}:{secs:02d}"
+
+                    video_url = f"{self.base_url}/view_video.php?viewkey={vkey}"
+                    video_context_menu = [
+                        ('Explore similar', f'RunPlugin({sys.argv[0]}?mode=7&action=explore_similar&website={self.name}&original_url={urllib.parse.quote_plus(video_url)})'),
+                    ] + context_menu
+
+                    label = title
+                    if duration_str:
+                        label += f" [COLOR lime]({duration_str})[/COLOR]"
+
+                    self.add_link(label, video_url, 4, thumb, self.fanart, video_context_menu)
+                    found_any = True
+
+                if found_any:
+                    if hasattr(self, 'end_directory'): self.end_directory()
+                    return
+            except Exception as e:
+                self.logger.warning(f"Pornhub: failed to parse JS relatedVideos: {e}")
+
+        # Fallback to HTML matching if JavaScript parsing is unavailable
+        related_matches = re.findall(r'<li\b[^>]*class="[^"]*(?:videoBox|ph-thumbnail)[^"]*"[^>]*>(.*?)</li>', content, re.DOTALL)
+        if not related_matches:
+            related_matches = re.findall(r'<div\b[^>]*class="[^"]*(?:videoBox|ph-thumbnail)[^"]*"[^>]*>(.*?)</div>', content, re.DOTALL)
+
+        found_any = False
+        for chunk in related_matches:
+            v_match = re.search(r'href="[^"]*viewkey=([^"&]+)"', chunk)
+            if not v_match:
+                continue
+            viewkey = v_match.group(1)
+            
+            t_match = re.search(r'title="([^"]+)"', chunk) or re.search(r'<span class="title">[^<]*<a[^>]*>([^<]+)</a>', chunk, re.DOTALL)
+            img_match = re.search(r'<img[^>]+src="([^"]+)"', chunk) or re.search(r'data-src="([^"]+)"', chunk)
+            dur_match = re.search(r'<var class="duration">([^<]+)</var>', chunk)
+
+            title = html.unescape(t_match.group(1).strip()) if t_match else 'Untitled Video'
+            title = re.sub(r'<[^>]+>', '', title).strip()
+            img = img_match.group(1) if img_match else ''
+            duration = dur_match.group(1).strip() if dur_match else ''
+
+            if img:
+                img = img.replace("&amp;", "&")
+                if "|" not in img:
+                    img += "|User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0.0.0&Referer=https://www.pornhub.com/"
+
+            video_url = f"{self.base_url}/view_video.php?viewkey={viewkey}"
+            
+            video_context_menu = [
+                ('Explore similar', f'RunPlugin({sys.argv[0]}?mode=7&action=explore_similar&website={self.name}&original_url={urllib.parse.quote_plus(video_url)})'),
+            ] + context_menu
+
+            label = title
+            if duration:
+                label += f" [COLOR lime]({duration})[/COLOR]"
+                
+            self.add_link(label, video_url, 4, img, self.fanart, video_context_menu)
+            found_any = True
+
+        if not found_any:
+            self.logger.warning("Pornhub: no related videos found on video page.")
+            
+        if hasattr(self, 'end_directory'):
+            self.end_directory()
+
+    def explore_similar(self, original_url=None):
+        if not original_url:
+            self.notify_info("No video URL available")
+            return
+
+        html_content = self.make_request(original_url)
+        if not html_content:
+            self.notify_error("Could not load video info")
+            return
+
+        pornstars_chunk = ""
+        categories_chunk = ""
+        tags_chunk = ""
+
+        # Extract pornstars wrapper
+        pornstars_match = re.search(r'<div[^>]+class="[^"]*pornstarsWrapper[^"]*"[^>]*>(.*?)</div>', html_content, re.DOTALL)
+        if pornstars_match:
+            pornstars_chunk = pornstars_match.group(1)
+
+        # Extract categories wrapper
+        categories_match = re.search(r'<div[^>]+class="[^"]*categoriesWrapper[^"]*"[^>]*>(.*?)</div>', html_content, re.DOTALL)
+        if categories_match:
+            categories_chunk = categories_match.group(1)
+
+        # Extract tags wrapper
+        tags_match = re.search(r'<div[^>]+class="[^"]*tagsWrapper[^"]*"[^>]*>(.*?)</div>', html_content, re.DOTALL)
+        if tags_match:
+            tags_chunk = tags_match.group(1)
+
+        pornstar_items = []
+        if pornstars_chunk:
+            patterns = [
+                ("Pornstar", r'href="(/pornstar/[^"]+)"[^>]*>([^<]+)', 2),
+                ("Model", r'href="(/model/[^"]+)"[^>]*>([^<]+)', 2),
+            ]
+            pornstar_items = extract_html_items(pornstars_chunk, self.base_url, patterns)
+
+        category_items = []
+        if categories_chunk:
+            patterns = [
+                ("Category", r'href="(/categories/[^"]+)"[^>]*>([^<]+)', 2),
+            ]
+            category_items = extract_html_items(categories_chunk, self.base_url, patterns)
+            for item in category_items:
+                parsed = urllib.parse.urlparse(item["url"])
+                slug = parsed.path.rstrip("/").split("/")[-1]
+                item["url"] = f"{self.base_url}/video?category_slug={slug}"
+
+        tag_items = []
+        if tags_chunk:
+            patterns = [
+                ("Tag", r'href="(/video/search\?search=[^"]+)"[^>]*>([^<]+)', 2),
+                ("Tag", r'href="(/search\?search=[^"]+)"[^>]*>([^<]+)', 2),
+            ]
+            tag_items = extract_html_items(tags_chunk, self.base_url, patterns)
+
+        items = pornstar_items + category_items + tag_items
+
+        if not items:
+            # Fallback to global matching if wrapper blocks are not found or are empty
+            patterns = [
+                ("Pornstar", r'href="(/pornstar/[^"]+)"[^>]*>([^<]+)', 2),
+                ("Model", r'href="(/model/[^"]+)"[^>]*>([^<]+)', 2),
+                ("Category", r'href="(/categories/[^"]+)"[^>]*>([^<]+)', 2),
+                ("Tag", r'href="(/video/search\?search=[^"]+)"[^>]*>([^<]+)', 2),
+                ("Tag", r'href="(/search\?search=[^"]+)"[^>]*>([^<]+)', 2),
+            ]
+            items = extract_html_items(html_content, self.base_url, patterns)
+            for item in items:
+                if item["group"] == "Category":
+                    parsed = urllib.parse.urlparse(item["url"])
+                    slug = parsed.path.rstrip("/").split("/")[-1]
+                    item["url"] = f"{self.base_url}/video?category_slug={slug}"
+        
+        if items:
+            lang = xbmc.getLanguage(0).lower()
+            if "german" in lang or "deutsch" in lang:
+                group = "Wiedergabe"
+                label = "[COLOR lime]>>> Ähnliche Videos anzeigen <<<[/COLOR]"
+            elif "spanish" in lang or "español" in lang or "espanol" in lang:
+                group = "Reproducción"
+                label = "[COLOR lime]>>> Mostrar videos similares <<<[/COLOR]"
+            elif "french" in lang or "français" in lang or "francais" in lang:
+                group = "Lecture"
+                label = "[COLOR lime]>>> Afficher les vidéos similaires <<<[/COLOR]"
+            else:
+                group = "Playback"
+                label = "[COLOR lime]>>> Show Similar Videos <<<[/COLOR]"
+            items.insert(0, {
+                "group": group,
+                "label": label,
+                "url": original_url,
+                "mode": 2,
+                "action": "show_related"
+            })
+            
+        if not choose_and_open(items, self.config["name"], "Explore similar"):
+            self.logger.info("[pornhub] No lookup target selected for {}".format(original_url))

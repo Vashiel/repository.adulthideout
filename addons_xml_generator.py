@@ -64,8 +64,9 @@ class Generator:
                 if ( not os.path.isdir( addon ) or addon == ".svn" or addon == ".git" ): continue
                 # create path
                 _path = os.path.join( addon, "addon.xml" )
+                if not os.path.exists(_path): continue
                 # split lines for stripping
-                xml_lines = open( _path, "r" ).read().splitlines()
+                xml_lines = open( _path, "r", encoding="UTF-8" ).read().splitlines()
                 # new addon
                 addon_xml = ""
                 # loop thru cleaning each line
@@ -135,6 +136,8 @@ if ( __name__ == "__main__" ):
     for x in filesinrootdir:
         if re.search("plugin|repository|script" , x):#|repository
             foldertozip = rootdir+'\\'+x
+            if not os.path.isdir(foldertozip):
+                continue
             zipfilename = x + '.zip'
             zipfilenamefirstpart = zipfilename[:-4]
             zipfilenamelastpart = zipfilename[len(zipfilename)-4:]
@@ -146,6 +149,7 @@ if ( __name__ == "__main__" ):
                 print ('Directory doesn\'t exist, creating: ' + zipsfolder)
             #check if and move changelog, fanart and icon to zipdir
             filesinfoldertozip = os.listdir(foldertozip)
+            version = ''
             for y in filesinfoldertozip:
                 print ('processing file: ' + os.path.join(rootdir,x,y))
                 if re.search("addon.xml", y): # get version number of plugin

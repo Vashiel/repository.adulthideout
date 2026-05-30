@@ -256,19 +256,19 @@ class JavhdpornWebsite(BaseWebsite):
             self.notify_error("JavHDPorn: Could not resolve video stream")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
-
+            
         proxy_ctrl = None
         local_m3u8_path = None
-
+        
         # If it's a streamhls.click stream, it might use TikTok .image chunks
         if stream_url and "m3u8" in stream_url and "streamhls.click" in stream_url:
             try:
                 self.logger.info("JavHDPorn: Processing streamhls.click playlist...")
                 from resources.lib.resolvers.javhdporn_resolver import rewrite_playlist, TiktokImageProxy
-
+                
                 proxy_ctrl = TiktokImageProxy()
                 proxy_base_url = proxy_ctrl.start()
-
+                
                 local_m3u8_path = rewrite_playlist(stream_url, headers, proxy_base_url)
                 if local_m3u8_path:
                     stream_url = local_m3u8_path
@@ -282,16 +282,16 @@ class JavhdpornWebsite(BaseWebsite):
         else:
             header_string = urllib.parse.urlencode(headers)
             list_item = xbmcgui.ListItem(path=stream_url + "|" + header_string)
-
+            
         list_item.setProperty("IsPlayable", "true")
         if ".m3u8" in stream_url or (local_m3u8_path and ".m3u8" in local_m3u8_path):
             list_item.setMimeType("application/vnd.apple.mpegurl")
             list_item.setContentLookup(False)
         else:
             list_item.setMimeType("video/mp4")
-
+            
         xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
-
+        
         if proxy_ctrl and local_m3u8_path:
             from resources.lib.proxy_utils import PlaybackGuard
             try:

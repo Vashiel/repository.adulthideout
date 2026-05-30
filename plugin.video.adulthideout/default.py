@@ -142,6 +142,12 @@ def handle_routing():
     
     log(f"Routing: mode={mode}, website={website_name}")
 
+    try:
+        from resources.lib.official_source import verify_and_warn
+        verify_and_warn(ADDON, show_dialog=(mode is None))
+    except Exception as exc:
+        log(f"Official source check failed unexpectedly: {exc}", xbmc.LOGWARNING)
+
     if mode is None:
         build_main_menu_fast()
         return

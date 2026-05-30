@@ -15,6 +15,7 @@ import xbmcvfs
 import sys
 import os
 from resources.lib.base_website import BaseWebsite
+from resources.lib.lookup_info import choose_and_open, extract_html_items
 
 class XvideosWebsite(BaseWebsite):
     config = {
@@ -94,17 +95,24 @@ class XvideosWebsite(BaseWebsite):
         
         # 2. Category / Tag Path
         if '/c/' in parsed.path or '/tags/' in parsed.path:
-            # Use /tags/ format for combined sorting + orientation (robust)
-            tag_match = re.search(r'/(?:c|tags)/(?:s:[^/]+/)?(?:t:[^/]+/)?([^/]+)', parsed.path)
-            tag_name = tag_match.group(1) if tag_match else parsed.path.split('/')[-1]
+            prefix = '/c/' if '/c/' in parsed.path else '/tags/'
+            parts = [part for part in parsed.path.strip('/').split('/')[1:] if part]
+            page_part = ''
+            if parts and parts[-1].isdigit():
+                page_part = '/' + parts.pop()
+            tag_parts = [part for part in parts if not part.startswith('s:') and not part.startswith('t:')]
+            tag_name = tag_parts[-1] if tag_parts else parsed.path.rstrip('/').split('/')[-1]
+
+            if sort_token in ['relevance', 'uploaddate'] and not orientation:
+                clean_path = f"{prefix}{tag_name}{page_part}"
+                return urllib.parse.urlunparse(parsed._replace(path=clean_path, query=''))
             
             if orientation and orientation != "straight":
                 # Combined path: /tags/s:sort/t:orientation/tagname
-                new_path = f"/tags/s:{sort_token}/t:{orientation}/{tag_name}"
+                new_path = f"/tags/s:{sort_token}/t:{orientation}/{tag_name}{page_part}"
             else:
                 # Standard path based on original prefix
-                prefix = '/c/' if '/c/' in parsed.path else '/tags/'
-                new_path = f"{prefix}s:{sort_token}/{tag_name}"
+                new_path = f"{prefix}s:{sort_token}/{tag_name}{page_part}"
             
             return urllib.parse.urlunparse(parsed._replace(path=new_path, query=''))
 
@@ -218,6 +226,15 @@ class XvideosWebsite(BaseWebsite):
         category = self.addon.getSetting(f"{self.config['name']}_category") or "Straight"
         cat_value = category.lower() if category != "Straight" else ""
         
+        # Check action for Related Videos view
+        params = {}
+        if len(sys.argv) > 2 and sys.argv[2]:
+            params = dict(urllib.parse.parse_qsl(sys.argv[2][1:]))
+        action = params.get('action')
+        if action == "show_related":
+            self.process_related_videos(url)
+            return
+
         parsed_url = urllib.parse.urlparse(url)
         query_params = urllib.parse.parse_qs(parsed_url.query)
 
@@ -262,8 +279,6 @@ class XvideosWebsite(BaseWebsite):
 
         content = self.make_request(search_url)
 
-
-
         if content:
             parsed = urllib.parse.urlparse(url)
             path = parsed.path.rstrip('/')
@@ -303,18 +318,22 @@ class XvideosWebsite(BaseWebsite):
             matches = re.finditer(pattern, content, re.DOTALL)
 
             base_url = urllib.parse.urlparse(current_url).scheme + "://" + urllib.parse.urlparse(current_url).netloc
-            context_menu = [
-                ('Select Category', f'RunPlugin(plugin://plugin.video.adulthideout/?mode=7&action=select_category&website={self.config["name"]}&original_url={urllib.parse.quote_plus(current_url)})'),
-                ('Sort by...', f'RunPlugin(plugin://plugin.video.adulthideout/?mode=7&action=select_sort&website={self.config["name"]}&original_url={urllib.parse.quote_plus(current_url)})'),
-            ]
-
 
             for match in matches:
                 relative_url = match.group(1).replace('THUMBNUM/', '')
                 thumb = match.group(2).replace('THUMBNUM', '1')
                 name = html.unescape(match.group(3)).replace('`', "'")
                 duration = match.group(4)
+                if self._is_unplayable_listing(name, relative_url):
+                    self.logger.info("Skipping unavailable XVideos listing: %s", name)
+                    continue
                 url = urllib.parse.urljoin(base_url, relative_url)
+                
+                context_menu = [
+                    ('Explore similar', f'RunPlugin({sys.argv[0]}?mode=7&action=explore_similar&website={self.config["name"]}&original_url={urllib.parse.quote_plus(url)})'),
+                    ('Select Category', f'RunPlugin(plugin://plugin.video.adulthideout/?mode=7&action=select_category&website={self.config["name"]}&original_url={urllib.parse.quote_plus(current_url)})'),
+                    ('Sort by...', f'RunPlugin(plugin://plugin.video.adulthideout/?mode=7&action=select_sort&website={self.config["name"]}&original_url={urllib.parse.quote_plus(current_url)})'),
+                ]
                 listname = f"{name} [COLOR lime]({duration})[/COLOR]"
                 self.add_link(listname, url, 4, thumb, self.fanart, context_menu)
 
@@ -350,6 +369,10 @@ class XvideosWebsite(BaseWebsite):
 
         except Exception as e:
             self.notify_error(f"Parsing failed: {str(e)}")
+
+    def _is_unplayable_listing(self, title, url):
+        haystack = f"{title} {url}".lower()
+        return "interactive video" in haystack
 
     def process_popular_tags(self, content, current_url, cat_value):
         """Show popular tags from homepage dropdown (dyntop-cat, dyntopterm classes)"""
@@ -457,12 +480,104 @@ class XvideosWebsite(BaseWebsite):
                 li.setPath(path)
                 li.setMimeType('video/mp4')
             else:
-                self.notify_error("No video found")
+                lowered = content.lower()
+                if any(marker in lowered for marker in ("premium", "login", "video has been deleted", "video not found", "no longer available")):
+                    self.notify_error("Video is unavailable or login-gated")
+                else:
+                    self.notify_error("No video stream found")
+                xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
                 return
             
             xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
         else:
             self.notify_error("Failed to load video page")
+            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
+
+    def process_related_videos(self, url):
+        self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], self.config["name"])
+        content = self.make_request(url)
+        if not content:
+            self.notify_error("Failed to load video page")
+            self.end_directory()
+            return
+            
+        match = re.search(r'var\s+video_related\s*=\s*(\[.*?\])\s*;', content, re.DOTALL)
+        if not match:
+            self.notify_info("Keine ähnlichen Videos gefunden.")
+            self.end_directory()
+            return
+            
+        try:
+            import json
+            data = json.loads(match.group(1))
+            base_url = urllib.parse.urlparse(url).scheme + "://" + urllib.parse.urlparse(url).netloc
+            for item in data:
+                rel_url = item.get("u", "")
+                if not rel_url:
+                    continue
+                rel_url = rel_url.replace('THUMBNUM/', '')
+                video_url = urllib.parse.urljoin(base_url, rel_url)
+                title = html.unescape(item.get("tf", item.get("t", "Related Video"))).replace('`', "'")
+                duration = item.get("d", "")
+                thumb = item.get("i", "")
+                
+                context_menu = [
+                    ('Explore similar', f'RunPlugin({sys.argv[0]}?mode=7&action=explore_similar&website={self.config["name"]}&original_url={urllib.parse.quote_plus(video_url)})'),
+                    ('Select Category', f'RunPlugin(plugin://plugin.video.adulthideout/?mode=7&action=select_category&website={self.config["name"]}&original_url={urllib.parse.quote_plus(url)})'),
+                    ('Sort by...', f'RunPlugin(plugin://plugin.video.adulthideout/?mode=7&action=select_sort&website={self.config["name"]}&original_url={urllib.parse.quote_plus(url)})'),
+                ]
+                listname = f"{title} [COLOR lime]({duration})[/COLOR]"
+                self.add_link(listname, video_url, 4, thumb, self.fanart, context_menu)
+        except Exception as e:
+            self.notify_error("Failed to parse related videos")
+            
+        self.end_directory()
+
+    def explore_similar(self, original_url=None):
+        if not original_url:
+            self.notify_info("No video URL available")
+            return
+
+        html_content = self.make_request(original_url)
+        if not html_content:
+            self.notify_error("Could not load video info")
+            return
+
+        patterns = [
+            ("Pornstar", r'href="(/pornstars/[^"]+)"[^>]*>(?:<span[^>]*>)?([^<]+)', 2),
+            ("Tag", r'href="(/search/[^"]+)"[^>]*>(?:<span[^>]*>)?([^<]+)', 2),
+            ("Tag", r'href="(/tags/[^"]+)"[^>]*>(?:<span[^>]*>)?([^<]+)', 2),
+            ("Category", r'href="(/c/[^"]+)"[^>]*>(?:<span[^>]*>)?([^<]+)', 2),
+            ("Maker", r'href="(/porn-maker/[^"]+)"[^>]*>(?:<span[^>]*>)?([^<]+)', 2),
+            ("Profile", r'href="(/profiles/[^"]+)"[^>]*>(?:<span[^>]*>)?([^<]+)', 2),
+            ("Channel", r'href="(/channels/[^"]+)"[^>]*>(?:<span[^>]*>)?([^<]+)', 2),
+        ]
+        items = extract_html_items(html_content, self.base_url, patterns)
+        
+        if items:
+            lang = xbmc.getLanguage(0).lower()
+            if "german" in lang or "deutsch" in lang:
+                group = "Wiedergabe"
+                label = "[COLOR lime]>>> Ähnliche Videos anzeigen <<<[/COLOR]"
+            elif "spanish" in lang or "español" in lang or "espanol" in lang:
+                group = "Reproducción"
+                label = "[COLOR lime]>>> Mostrar videos similares <<<[/COLOR]"
+            elif "french" in lang or "français" in lang or "francais" in lang:
+                group = "Lecture"
+                label = "[COLOR lime]>>> Afficher les vidéos similaires <<<[/COLOR]"
+            else:
+                group = "Playback"
+                label = "[COLOR lime]>>> Show Similar Videos <<<[/COLOR]"
+            items.insert(0, {
+                "group": group,
+                "label": label,
+                "url": original_url,
+                "mode": 2,
+                "action": "show_related"
+            })
+            
+        if not choose_and_open(items, self.config["name"], "Explore similar"):
+            self.logger.info("[xvideos] No lookup target selected for {}".format(original_url))
 
     def handle_search_entry(self, url, mode, name, action=None):
         category = self.addon.getSetting(f"{self.config['name']}_category") or "Straight"

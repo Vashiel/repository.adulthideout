@@ -3,12 +3,15 @@
   <category label="30001"> <setting id="dummy_category" type="bool" default="false" visible="false" />
     <setting id="fix_mouse_scroll" type="action" label="30010" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/fix_mouse_scroll.py)" />
     <setting id="max_retry_attempts" type="enum" label="30011" values="1|2|3|4|5|6|7|8|9|10" default="2" />
+    <!-- 1.0.11: Explore Similar feature expansions & Pornhub playback/thumbnail regression fixes -->
     <!-- Improved persistent Wall/List handling across pagination and after playback -->
     <setting id="viewtype" type="enum" label="30012" values="List|Poster|Wall|Fanart" default="2" />
     <setting id="clear_cache" type="action" label="30013" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/clear_cache.py)" />
     <setting id="reset_settings" type="action" label="30014" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/reset_settings.py)" />
   </category>
-  <category label="30002"> <setting type="lsep" label="[B]Ashemaletube[/B]" />
+  <category label="30002"> <setting type="lsep" label="[B]85PO[/B]" />
+    <setting id="show_85po" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]Ashemaletube[/B]" />
     <setting id="show_ashemaletube" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]AnySex[/B]" />
     <setting id="show_anysex" type="bool" label="30003" default="true" />
@@ -47,6 +50,8 @@
     <setting id="show_fullxcinema" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Hanime[/B]" />
     <setting id="show_hanime" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]HStream[/B]" />
+    <setting id="show_hstream" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]HentaiDude[/B]" />
     <setting id="show_hentaidude" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]HentaiOcean[/B]" />
@@ -89,6 +94,8 @@
     <setting id="show_porngo" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Pornhub[/B]" />
     <setting id="show_pornhub" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]PremiumPorn[/B]" />
+    <setting id="show_premiumporn" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]PornTrex[/B]" />
     <setting id="show_porntrex" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]CumLouder[/B]" />
@@ -153,6 +160,8 @@
     <setting id="show_vjav" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]VoyeurHit[/B]" />
     <setting id="show_voyeurhit" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]WhereIsMyPorn[/B]" />
+    <setting id="show_whereismyporn" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]xHamster[/B]" />
     <setting id="show_xhamster" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]XBabe[/B]" />
@@ -185,6 +194,8 @@
     <setting id="show_xmoviesforyou" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]XOpenload[/B]" />
     <setting id="show_xopenload" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]XXXTube[/B]" />
+    <setting id="show_xxxtube" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Porn300[/B]" />
     <setting id="show_porn300" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Porn7[/B]" />
@@ -364,6 +375,7 @@
   <category label="30260"> <setting type="lsep" label="30260" />
     <setting id="xnxx_content_type" type="enum" label="30005" values="Straight|Gay|Trans" default="0" />
     <setting id="xnxx_sort_order" type="enum" label="30004" values="Best|Today's selection|New|Hits" default="0" />
+    <setting id="xxxtube_sort_by" type="enum" label="30004" values="Latest|Top Rated" default="0" />
   </category>
 
   <category label="Internal Settings" visible="false">
