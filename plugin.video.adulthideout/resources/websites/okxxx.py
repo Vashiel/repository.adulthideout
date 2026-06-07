@@ -182,19 +182,7 @@ class OKXXX(BaseWebsite):
         self.end_directory(content_type="movies")
 
     def end_directory(self, content_type="movies"):
-        import xbmcplugin
-        import xbmc
-        xbmcplugin.setContent(self.addon_handle, content_type)
-        xbmcplugin.endOfDirectory(self.addon_handle)
-        
-        try:
-            viewtype = int(self.addon.getSetting('viewtype') or '2')
-        except:
-            viewtype = 2
-            
-        view_modes = [50, 51, 500, 501, 502]
-        if 0 <= viewtype < len(view_modes):
-            xbmc.executebuiltin(f'Container.SetViewMode({view_modes[viewtype]})')
+        super().end_directory(content_type=content_type)
 
 
     def search(self, query):

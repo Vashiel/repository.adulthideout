@@ -12,6 +12,7 @@ import xbmcvfs
 import traceback
 import inspect
 from importlib import import_module
+from resources.lib.view_utils import end_directory_with_view
 
 ADDON = xbmcaddon.Addon()
 ADDON_ID = ADDON.getAddonInfo('id')
@@ -22,12 +23,28 @@ WEBSITES_DIR = os.path.join(RESOURCES_DIR, 'websites')
 LOGOS_DIR = os.path.join(RESOURCES_DIR, 'logos')
 FANART_PATH = os.path.join(LOGOS_DIR, 'fanart.jpg')
 DEFAULT_ICON_PATH = os.path.join(LOGOS_DIR, 'icon.png')
+VIEW_SERVICE_PATH = os.path.join(ADDON_PATH, 'resources', 'lib', 'view_service.py')
+VIEW_SERVICE_VERSION = "9"
 
 def log(msg, level=xbmc.LOGINFO):
     xbmc.log(f"[{ADDON_ID}] {msg}", level)
 
 def notify_user(msg):
     xbmcgui.Dialog().notification('AdultHideout Error', str(msg), xbmcgui.NOTIFICATION_ERROR, 3000)
+
+def ensure_view_service():
+    try:
+        window = xbmcgui.Window(10000)
+        service_running = window.getProperty("AdultHideout.ViewServiceRunning") == "true"
+        service_version = window.getProperty("AdultHideout.ViewServiceVersion")
+        if (not service_running or service_version != VIEW_SERVICE_VERSION) and xbmcvfs.exists(VIEW_SERVICE_PATH):
+            if service_running and service_version != VIEW_SERVICE_VERSION:
+                for script_id in (VIEW_SERVICE_PATH, ADDON_ID):
+                    xbmc.executebuiltin("StopScript({})".format(script_id))
+                xbmc.sleep(500)
+            xbmc.executebuiltin("RunScript({})".format(VIEW_SERVICE_PATH))
+    except Exception as exc:
+        log("Could not start view service: {}".format(exc), xbmc.LOGWARNING)
 
 def get_setting_id_from_name(name):
     return f"show_{name.lower().replace('-', '').replace('_', '')}"
@@ -41,12 +58,19 @@ def build_main_menu_fast():
 
     log(f"Scanning for websites in: {WEBSITES_DIR}")
 
-    try:
-        viewtype = int(ADDON.getSetting('viewtype') or '0')
-    except ValueError:
-        viewtype = 0
-    
     found_any = False
+
+    global_search_item = xbmcgui.ListItem(label="[COLOR yellow]Global Search[/COLOR]")
+    global_search_icon = os.path.join(LOGOS_DIR, "search.png")
+    if not xbmcvfs.exists(global_search_icon):
+        global_search_icon = DEFAULT_ICON_PATH
+    global_search_item.setArt({"icon": global_search_icon, "thumb": global_search_icon, "fanart": FANART_PATH})
+    xbmcplugin.addDirectoryItem(
+        handle=ADDON_HANDLE,
+        url=f"{sys.argv[0]}?mode=20&website=global_search",
+        listitem=global_search_item,
+        isFolder=True,
+    )
     
     for filename in sorted(os.listdir(WEBSITES_DIR)):
         if not filename.endswith('.py') or filename == '__init__.py':
@@ -88,13 +112,7 @@ def build_main_menu_fast():
     if not found_any:
         log("No website files found (.py)!", xbmc.LOGWARNING)
 
-    xbmcplugin.setContent(ADDON_HANDLE, 'videos')
-    
-    view_modes = [50, 51, 500, 501, 502]
-    xbmcplugin.endOfDirectory(ADDON_HANDLE)
-    xbmc.sleep(75)
-    if viewtype < len(view_modes):
-        xbmc.executebuiltin(f'Container.SetViewMode({view_modes[viewtype]})')
+    end_directory_with_view(ADDON_HANDLE, ADDON)
 
 def load_single_website(website_name):
     if ADDON_PATH not in sys.path:
@@ -106,7 +124,7 @@ def load_single_website(website_name):
         module = import_module(f'resources.websites.{website_name}')
         for attr in dir(module):
             cls = getattr(module, attr)
-            if isinstance(cls, type) and issubclass(cls, BaseWebsite) and cls is not BaseWebsite:
+            if isinstance(cls, type) and issubclass(cls, BaseWebsite) and cls is not BaseWebsite and cls.__module__ == module.__name__:
                 return cls(ADDON_HANDLE)
     except ImportError:
         log(f"ImportError for {website_name}, trying fallback search.", xbmc.LOGWARNING)
@@ -122,7 +140,7 @@ def load_single_website(website_name):
                         module = import_module(f'resources.websites.{filename[:-3]}')
                         for attr in dir(module):
                             cls = getattr(module, attr)
-                            if isinstance(cls, type) and issubclass(cls, BaseWebsite) and cls is not BaseWebsite:
+                            if isinstance(cls, type) and issubclass(cls, BaseWebsite) and cls is not BaseWebsite and cls.__module__ == module.__name__:
                                 return cls(ADDON_HANDLE)
                     except Exception as e:
                         log(f"Error loading fallback module {filename}: {e}", xbmc.LOGERROR)
@@ -130,6 +148,7 @@ def load_single_website(website_name):
     return None
 
 def handle_routing():
+    ensure_view_service()
     params = {}
     try:
         if len(sys.argv) > 2 and sys.argv[2]:
@@ -150,6 +169,34 @@ def handle_routing():
 
     if mode is None:
         build_main_menu_fast()
+        return
+
+    if website_name == 'global_search' or mode in ('20', '21'):
+        from resources.lib.global_search import GlobalSearch
+        global_search = GlobalSearch(ADDON_HANDLE, addon=ADDON, loader=load_single_website, logger=log)
+        action = params.get('action')
+        if action == 'new_search':
+            global_search.new_search()
+        elif action == 'show_presets':
+            global_search.show_presets()
+        elif action == 'apply_preset':
+            global_search.apply_preset(params.get('profile'))
+        elif action == 'choose_sources':
+            global_search.choose_sources()
+        elif action == 'show_sources':
+            global_search.show_sources()
+        elif action == 'clear_history':
+            global_search.clear_history()
+        elif action == 'edit_search':
+            global_search.edit_search(params.get('query', ''))
+        elif mode == '21':
+            try:
+                page = int(params.get('page', '1') or '1')
+            except Exception:
+                page = 1
+            global_search.run(params.get('query', ''), refresh=params.get('refresh') == '1', page=page)
+        else:
+            global_search.show_menu()
         return
 
     target_website = None
@@ -199,7 +246,9 @@ def handle_routing():
         
         if action and hasattr(target_website, action):
             try:
-                if filter_type:
+                if action in ('download_with_ffmpeg', 'record_with_ffmpeg'):
+                    getattr(target_website, action)(original_url, params.get('name'))
+                elif filter_type:
                     getattr(target_website, action)(filter_type, original_url)
                 else:
                     getattr(target_website, action)(original_url)
@@ -207,6 +256,7 @@ def handle_routing():
                 getattr(target_website, action)()
         else:
             notify_user("Action not supported or implemented")
+        xbmcplugin.endOfDirectory(ADDON_HANDLE, succeeded=True, updateListing=False, cacheToDisc=False)
             
     elif mode == '8':
         if hasattr(target_website, 'process_categories'):

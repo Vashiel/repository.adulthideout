@@ -155,15 +155,17 @@ class LuxuretvWebsite(BaseWebsite):
             title_match = re.search(r'<div class="vtitle"><a[^>]+>([^<]+)</a></div>', block, re.DOTALL)
             duration_match = re.search(r'<div class="time"><b>([^<]+)</b></div>', block, re.DOTALL)
             
-            if url_thumb_match and title_match and duration_match:
+            if url_thumb_match and title_match:
                 video_url = url_thumb_match.group(1)
                 thumb = url_thumb_match.group(2)
                 title = title_match.group(1)
-                duration = duration_match.group(1)
+                duration = duration_match.group(1) if duration_match else ""
 
                 full_url = urllib.parse.urljoin(self.base_url, video_url)
-                title_with_duration = f"{html.unescape(title)} [COLOR gray]({duration})[/COLOR]"
-                self.add_link(title_with_duration, full_url, 4, thumb, self.fanart)
+                display_title = html.unescape(title)
+                if duration:
+                    display_title = f"{display_title} [COLOR gray]({duration})[/COLOR]"
+                self.add_link(display_title, full_url, 4, thumb, self.fanart)
 
     def add_next_button(self, content, current_url):
         next_page_match = re.search(r'<link rel="next" href="([^"]+)"', content)

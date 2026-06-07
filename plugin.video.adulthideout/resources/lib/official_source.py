@@ -216,6 +216,7 @@ def _load_hash_manifest(addon_path, prefer_remote=True):
         manifest_text = _read_text(local_path)
 
     try:
+        manifest_text = manifest_text.lstrip("\ufeff")
         manifest = json.loads(manifest_text)
     except Exception:
         return None

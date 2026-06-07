@@ -9,11 +9,19 @@ import xbmc
 import xbmcgui
 import xbmcplugin
 import sys
-import subprocess
-import threading
-import glob
 from resources.lib.base_website import BaseWebsite
-from resources.lib.resilient_http import fetch_text
+from resources.lib.proxy_utils import PlaybackGuard, ProxyController
+vendor_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "lib", "vendor")
+if os.path.isdir(vendor_path) and vendor_path not in sys.path:
+    sys.path.insert(0, vendor_path)
+try:
+    import cloudscraper
+except Exception:
+    cloudscraper = None
+try:
+    import requests
+except Exception:
+    requests = None
 try:
     from resources.lib.decoders.kvs_decoder import kvs_decode_url
 except ImportError:
@@ -33,14 +41,41 @@ class Po85(BaseWebsite):
         self.icons['default'] = self.logo
         self.icons['search'] = os.path.join(self.addon.getAddonInfo('path'), 'resources', 'logos', 'search.png')
         self.icons['categories'] = os.path.join(self.addon.getAddonInfo('path'), 'resources', 'logos', 'categories.png')
+        self.ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+        self.session = self._build_session()
+
+    def _build_session(self):
+        if cloudscraper:
+            try:
+                return cloudscraper.create_scraper(browser={"custom": self.ua})
+            except Exception as exc:
+                self.logger.warning("[85po] cloudscraper init failed: %s", exc)
+        return requests.Session() if requests else None
+
+    def _headers(self, referer=None):
+        return {
+            "User-Agent": self.ua,
+            "Referer": referer or "https://www.85po.com/",
+            "Origin": "https://www.85po.com",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "identity",
+            "Connection": "keep-alive",
+        }
 
     def make_request(self, url):
         self.logger.info(f"[85po] Requesting: {url}")
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-            'Referer': 'https://www.85po.com/'
-        }
-        return fetch_text(url, headers=headers, logger=self.logger)
+        if not self.session:
+            self.notify_error("No HTTP session available.")
+            return ""
+        try:
+            response = self.session.get(url, headers=self._headers(), timeout=30)
+            response.raise_for_status()
+            response.encoding = response.encoding or "utf-8"
+            return response.text.replace("\x00", "")
+        except Exception as exc:
+            self.logger.error("[85po] Request failed for %s: %s", url, exc)
+            return ""
 
     def process_content(self, url, **kwargs):
         params = {}
@@ -154,109 +189,46 @@ class Po85(BaseWebsite):
 
         self.end_directory()
 
-    def _find_system_python(self):
-        local_app_data = os.environ.get("LOCALAPPDATA", "")
-        pattern = os.path.join(local_app_data, "Programs", "Python", "Python*", "python.exe")
-        for candidate in sorted(glob.glob(pattern), reverse=True):
-            if os.path.isfile(candidate):
-                return candidate
-        return "python"
-
-    def _start_external_proxy(self, stream_url, video_url):
-        helper_path = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..", "lib", "system_stream_proxy.py")
-        )
-        if not os.path.isfile(helper_path):
-            return None, None
-
-        python_exe = self._find_system_python()
-        ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
-        command = [
-            python_exe,
-            "-u",
-            helper_path,
-            "--url",
-            stream_url,
-            "--referer",
-            video_url,
-            "--origin",
-            "https://www.85po.com",
-            "--user-agent",
-            ua,
-        ]
-
-        startupinfo = None
-        creationflags = 0
-        if os.name == "nt":
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            startupinfo.wShowWindow = 0
-            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            stdin=subprocess.DEVNULL,
-            text=True,
-            bufsize=1,
-            startupinfo=startupinfo,
-            creationflags=creationflags,
-        )
-
-        try:
-            local_url = process.stdout.readline().strip()
-        except Exception:
-            local_url = ""
-
-        if not local_url:
-            try:
-                error_output = process.stderr.read().strip()
-                if error_output:
-                    self.logger.error("[85po] External proxy stderr: %s", error_output)
-            except Exception:
-                pass
-            try:
-                process.terminate()
-            except Exception:
-                pass
-            return None, None
-
-        return process, local_url
-
-    def _start_process_guard(self, process):
-        class _ProcessGuard(threading.Thread):
-            def __init__(self, kodi_player, monitor, proxy_process):
-                super(_ProcessGuard, self).__init__(name="Po85ProxyGuard", daemon=True)
-                self.player = kodi_player
-                self.monitor = monitor
-                self.proxy_process = proxy_process
-
-            def run(self):
-                started = False
-                while not self.monitor.abortRequested():
-                    if self.player.isPlaying():
-                        started = True
-                    elif started:
-                        break
-                    if self.proxy_process.poll() is not None:
-                        break
-                    self.monitor.waitForAbort(1)
-
-                if self.proxy_process.poll() is None:
-                    try:
-                        self.proxy_process.terminate()
-                    except Exception:
-                        pass
-
-        _ProcessGuard(xbmc.Player(), xbmc.Monitor(), process).start()
-
     def play_video(self, url):
         self.logger.info(f"[85po] play_video for {url}")
+        resolved = self.resolve_recording_stream(url)
+        if not resolved or not resolved.get("url"):
+            self.logger.error("[85po] No playable direct stream links found")
+            self.notify_error("No playable streams found.")
+            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
+            return
+
+        resolved_url = resolved["url"]
+        headers = resolved.get("headers") or {}
+        playback_path = resolved_url + "|" + urllib.parse.urlencode(headers)
+        playback_controller = None
+
+        try:
+            playback_controller = ProxyController(
+                upstream_url=resolved_url,
+                upstream_headers=headers,
+                cookies=self.session.cookies.get_dict() if self.session else None,
+                session=self.session,
+                probe_size=True,
+            )
+            playback_path = playback_controller.start()
+            self.logger.info("[85po] Using in-process Range proxy for playback")
+        except Exception as exc:
+            self.logger.warning("[85po] Range proxy failed, falling back direct: %s", exc)
+
+        self.logger.info(f"[85po] Resolved stream URL with headers/proxy: {playback_path[:120]}...")
+        liz = xbmcgui.ListItem(path=playback_path)
+        liz.setProperty('IsPlayable', 'true')
+        liz.setMimeType('video/mp4')
+        liz.setContentLookup(False)
+        xbmcplugin.setResolvedUrl(self.addon_handle, True, listitem=liz)
+        if playback_controller:
+            PlaybackGuard(xbmc.Player(), xbmc.Monitor(), playback_path, playback_controller).start()
+
+    def resolve_recording_stream(self, url):
         html_content = self.make_request(url)
         if not html_content:
-            self.notify_error("Could not fetch video page")
-            return
+            return None
             
         # Extract license code
         license_match = re.search(r"license_code:\s*'([^']+)'", html_content, re.IGNORECASE)
@@ -297,33 +269,21 @@ class Po85(BaseWebsite):
                 if resolved_url.startswith("function/0/"):
                     resolved_url = resolved_url[len("function/0/"):]
                 
-        if resolved_url:
-            ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
-            
-            playback_path = resolved_url
-            
-            if os.name == "nt":
-                # For Windows, route through local stream proxy to fix 403 Forbidden issues
-                proxy_process, local_url = self._start_external_proxy(resolved_url, url)
-                if proxy_process and local_url:
-                    playback_path = local_url
-                    self._start_process_guard(proxy_process)
-                else:
-                    # Fallback to direct headers pipe if proxy fails
-                    headers_pipe = f"|User-Agent={urllib.parse.quote(ua, safe='')}&Referer={urllib.parse.quote(url, safe='')}&Origin={urllib.parse.quote('https://www.85po.com', safe='')}"
-                    playback_path += headers_pipe
-            else:
-                headers_pipe = f"|User-Agent={urllib.parse.quote(ua, safe='')}&Referer={urllib.parse.quote(url, safe='')}&Origin={urllib.parse.quote('https://www.85po.com', safe='')}"
-                playback_path += headers_pipe
+        if not resolved_url:
+            return None
 
-            self.logger.info(f"[85po] Resolved stream URL with headers: {playback_path[:120]}...")
-            liz = xbmcgui.ListItem(path=playback_path)
-            liz.setProperty('IsPlayable', 'true')
-            liz.setMimeType('video/mp4')
-            xbmcplugin.setResolvedUrl(self.addon_handle, True, listitem=liz)
-        else:
-            self.logger.error("[85po] No playable direct stream links found")
-            self.notify_error("No playable streams found.")
+        headers = {
+            "User-Agent": self.ua,
+            "Referer": url,
+            "Origin": "https://www.85po.com",
+            "Accept": "*/*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "identity",
+        }
+        cookies = self.session.cookies.get_dict() if self.session else {}
+        if cookies:
+            headers["Cookie"] = "; ".join("{}={}".format(key, value) for key, value in cookies.items())
+        return {"url": resolved_url, "headers": headers, "extension": "mp4"}
 
     def explore_similar(self, original_url=None):
         if not original_url:

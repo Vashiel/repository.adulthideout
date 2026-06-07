@@ -290,3 +290,39 @@ msgstr "AdultHideout : installation non officielle ?"
 msgctxt "#30621"
 msgid "Official installation could not be confirmed."
 msgstr "L'installation officielle n'a pas pu etre confirmee."
+
+msgctxt "#30630"
+msgid "Enable FFmpeg recorder"
+msgstr "Activer l'enregistreur FFmpeg"
+
+msgctxt "#30631"
+msgid "FFmpeg executable path"
+msgstr "Chemin de l'executable FFmpeg"
+
+msgctxt "#30632"
+msgid "Recording download folder"
+msgstr "Dossier de telechargement des enregistrements"
+
+msgctxt "#30633"
+msgid "Download video"
+msgstr "Telecharger la video"
+
+msgctxt "#30634"
+msgid "FFmpeg recorder is disabled."
+msgstr "L'enregistreur FFmpeg est desactive."
+
+msgctxt "#30635"
+msgid "FFmpeg executable was not found."
+msgstr "L'executable FFmpeg est introuvable."
+
+msgctxt "#30636"
+msgid "Recording started: {}"
+msgstr "Enregistrement demarre : {}"
+
+msgctxt "#30637"
+msgid "Could not resolve a direct stream for recording."
+msgstr "Impossible de resoudre un flux direct pour l'enregistrement."
+
+msgctxt "#30638"
+msgid "Recording download folder could not be created."
+msgstr "Le dossier de telechargement des enregistrements n'a pas pu etre cree."

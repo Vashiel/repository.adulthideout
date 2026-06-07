@@ -226,25 +226,14 @@ class HStreamWebsite(BaseWebsite):
         self.end_directory()
 
     def play_video(self, url):
-        page = self._http_get(url, referer=self.base_url)
-        episode_id = self._match_first(page, r'id=["\']e_id["\'][^>]+value=["\']([^"\']+)')
-        token = self._match_first(page, r'name=["\']_token["\']\s+value=["\']([^"\']+)')
-        if not episode_id or not token:
-            self.notify_error("Failed to read player data.")
-            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
-            return
-
-        data = self._player_api(episode_id, token, url)
-        stream_url = self._select_stream(data)
+        resolved = self.resolve_recording_stream(url)
+        stream_url = resolved.get("url")
         if not stream_url:
             self.notify_error("No playable stream found.")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
             return
 
-        headers = {
-            "User-Agent": self.headers["User-Agent"],
-            "Referer": url,
-        }
+        headers = resolved.get("headers") or {}
         proxy = _HStreamRangeProxy(self.session, stream_url, headers)
         play_url = proxy.start()
         _ACTIVE_PROXIES.append(proxy)
@@ -254,6 +243,24 @@ class HStreamWebsite(BaseWebsite):
         li.setMimeType("video/mp4")
         li.setContentLookup(False)
         xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+
+    def resolve_recording_stream(self, url):
+        page = self._http_get(url, referer=self.base_url)
+        episode_id = self._match_first(page, r'id=["\']e_id["\'][^>]+value=["\']([^"\']+)')
+        token = self._match_first(page, r'name=["\']_token["\']\s+value=["\']([^"\']+)')
+        if not episode_id or not token:
+            return None
+
+        data = self._player_api(episode_id, token, url)
+        stream_url = self._select_stream(data)
+        if not stream_url:
+            return None
+
+        headers = {
+            "User-Agent": self.headers["User-Agent"],
+            "Referer": url,
+        }
+        return {"url": stream_url, "headers": headers, "extension": "mp4"}
 
     def search(self, query):
         if not query:

@@ -1,3 +1,27 @@
+v. 1.0.12 "Signal Lock" - 2026-06-01
+- **85po Android Compatibility**: Fixed Android/Kodi 403 Forbidden failures by using the vendored cloudscraper/request session path with full browser-style headers and identity encoding.
+- **85po Playback**: Reworked listing parsing and MP4 stream resolution so playback and recording share the same active session state.
+- **LuxureTV**: Repaired extraction for the updated site layout, relaxed duration handling and corrected cookie retry header casing.
+- **FFmpeg Recorder**: Added the "Video herunterladen" context action, FFmpeg path/folder settings and a reusable recording resolver framework.
+- **Protected Downloads**: Added proxy-backed FFmpeg routing for sites that block external binary requests, keeping downloads inside Kodi's trusted session/proxy flow.
+- **Recording Coverage**: Enabled recording stream resolution for 85po, HStream, Ikisoda and XXXTube.
+- **New Site**: Added AllowFlash with listings, search, categories, pagination, premium filtering, DNS retry handling and seek-safe MP4 playback through a local Range proxy.
+- **New Site**: Added NotFans with listings, search, tag categories, pagination, sorting and KVS MP4 playback.
+- **New Site**: Added WOW.xxx with listings, search, categories, pagination, sorting and configurable MP4 quality preference.
+- **New Site**: Added XXThots with listings, search, categories, pagination, sorting and Android-safe proxy-backed MP4 playback.
+- **New Site**: Added JAVSubbed.net with listings, categories (English Subbed, Censored, Uncensored), actress directory, studios, search, and dynamic resolver playback and recording support.
+- **New Site**: Added Sextb.net with listings, categories (Amateur, Censored, Uncensored, English Subtitle), search, actress/studio/genre directories, pagination, and player decryption support.
+- **New Site**: Added Porn4Fans with listings, search, categories, models, pagination, sorting, cached thumbnails and KVS MP4 playback/recording support.
+- **New Site**: Added YesPornVIP with listings, search, models, pagination, sorting and KVS MP4 playback/recording support.
+- **New Site**: Added Tgtsporn with listings, search, models, pagination, sorting and KVS MP4 playback/recording support.
+- **New Site**: Added PornMedium with listings, search, categories, pagination, sorting and MP4 quality selection.
+- **KVS Engine**: Added a reusable KVSTubeWebsite base class with generic listing/category/search/stream resolution for rapid KVS tube site integration.
+- **Global Search**: Added a controlled multi-site search entry with selectable sources, source presets, progressive paging, profile-aware result caching, stable return-to-results behavior after playback and per-source result limits instead of a slow all-site scan.
+- **NoodleMagazine**: Reworked playback resolution to use the official nmcorp player playlist before falling back to raw page MP4 extraction, avoiding stale CDN77 403 links.
+- **View Settings**: Restored the Wide List option, added a lightweight settings monitor and stopped per-page view enforcement so Kodi-side view changes no longer get overwritten during pagination/navigation.
+- **Removed**: UFlash, because the site now requires login/paywall access for playable streams and no longer provides public video URLs.
+- **Kodi Stability**: Hardened download directory creation with xbmcvfs plus native filesystem fallback behavior and cleaned directory action termination for mode 7.
+
 v. 1.0.11 "Night Shift" - 2026-05-28
 - **New Sites**: 85po.com, HStream, PremiumPorn, XXXTube, WhereIsMyPorn.
 - **85po.com**: Added listings, search, tag categories, pagination, Explore Similar and seek-safe KVS playback.

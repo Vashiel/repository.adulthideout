@@ -12,6 +12,7 @@ import xbmcgui
 import xbmcplugin
 import xbmcvfs
 import html
+from resources.lib.view_utils import end_directory_with_view
 
 class KodiLogHandler(logging.Handler):
     def emit(self, record):
@@ -204,6 +205,8 @@ class BaseWebsite:
         # Auto-add context menu for sorting if not provided
         if context_menu is None:
             context_menu = []
+        else:
+            context_menu = list(context_menu)
         
         # Add sort menu if available
         if hasattr(self, 'select_sort') and hasattr(self, 'sort_options') and self.sort_options:
@@ -221,6 +224,13 @@ class BaseWebsite:
                 context_menu.append(
                     ('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={urllib.parse.quote_plus(current_url)})')
                 )
+
+        if mode == 4 and self.__class__.resolve_recording_stream is not BaseWebsite.resolve_recording_stream:
+            try:
+                from resources.lib.ffmpeg_recorder import add_record_context
+                context_menu = add_record_context(self, context_menu, url, name)
+            except Exception as exc:
+                self.logger.warning("FFmpeg recorder context failed: %s", exc)
         
         if context_menu: 
             liz.addContextMenuItems(context_menu)
@@ -268,6 +278,16 @@ class BaseWebsite:
     def process_content(self, url, **kwargs):
         raise NotImplementedError
 
+    def resolve_recording_stream(self, url):
+        return None
+
+    def download_with_ffmpeg(self, original_url=None, title=None):
+        from resources.lib.ffmpeg_recorder import record_with_ffmpeg
+        record_with_ffmpeg(self, original_url, title=title)
+
+    def record_with_ffmpeg(self, original_url=None, title=None):
+        self.download_with_ffmpeg(original_url, title=title)
+
     def convert_duration(self, duration_str):
         """Converts duration string (MM:SS or HH:MM:SS) to total seconds for Kodi."""
         if not duration_str:
@@ -286,9 +306,4 @@ class BaseWebsite:
         raise NotImplementedError
 
     def end_directory(self, content_type="videos"):
-        xbmcplugin.setContent(self.addon_handle, content_type)
-        viewtype = int(self.addon.getSetting('viewtype') or '0')
-        view_modes = [50, 51, 500, 501, 502]
-        xbmcplugin.endOfDirectory(self.addon_handle)
-        xbmc.sleep(75)
-        xbmc.executebuiltin(f'Container.SetViewMode({view_modes[viewtype]})')
+        end_directory_with_view(self.addon_handle, self.addon, content_type=content_type)

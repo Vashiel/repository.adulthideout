@@ -377,13 +377,14 @@ class NoodleMagazine(BaseWebsite):
             html_content = self.get_page_content(url)
             if not html_content: return
 
-            video_url = self._extract_video_url(html_content, url)
+            resolved = self._resolve_stream(url, html_content)
+            video_url = resolved.get('url') if resolved else None
             if not video_url:
                 self.notify_error("No video URL found")
                 return
 
             video_url = html.unescape(video_url)
-            upstream_headers = {'Referer': url}
+            upstream_headers = resolved.get('headers') or {'Referer': url}
             
             proxy_ctrl = ProxyController(upstream_url=video_url, upstream_headers=upstream_headers, session=session)
             local_url = proxy_ctrl.start()
@@ -399,6 +400,95 @@ class NoodleMagazine(BaseWebsite):
         except Exception as e:
             self.logger.error(f"Playback error: {e}")
             self.notify_error(str(e))
+
+    def resolve_recording_stream(self, url):
+        html_content = self.get_page_content(url)
+        resolved = self._resolve_stream(url, html_content) if html_content else None
+        if not resolved:
+            return None
+        return {
+            "url": resolved.get("url"),
+            "headers": resolved.get("headers") or {},
+            "extension": "mp4",
+        }
+
+    def _resolve_stream(self, page_url, html_content):
+        player_url = self._extract_player_url(html_content)
+        player_sources = self._extract_player_sources(player_url, page_url) if player_url else []
+        if player_sources:
+            return {
+                "url": player_sources[0],
+                "headers": {
+                    "User-Agent": _DEFAULT_UA,
+                    "Referer": player_url,
+                    "Accept": "*/*",
+                },
+            }
+
+        video_url = self._extract_video_url(html_content, page_url)
+        if not video_url:
+            return None
+        return {
+            "url": video_url,
+            "headers": {
+                "User-Agent": _DEFAULT_UA,
+                "Referer": page_url,
+                "Accept": "*/*",
+            },
+        }
+
+    def _extract_player_url(self, html_content):
+        patterns = [
+            r'<meta\s+property=["\']og:video["\']\s+content=["\']([^"\']+)["\']',
+            r'"embedUrl"\s*:\s*"([^"]+nmcorp\.video/player/[^"]+)"',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, html_content or "", re.IGNORECASE)
+            if match:
+                return html.unescape(match.group(1)).replace("\\/", "/")
+        return None
+
+    def _extract_player_sources(self, player_url, page_url):
+        if not player_url:
+            return []
+        try:
+            import requests
+            response = requests.get(
+                player_url,
+                headers={
+                    "User-Agent": _DEFAULT_UA,
+                    "Referer": page_url,
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                },
+                timeout=25,
+            )
+            if response.status_code != 200:
+                self.logger.warning("[NM] Player fetch returned HTTP %s", response.status_code)
+                return []
+
+            playlist_match = re.search(r"window\.playlist\s*=\s*(\{.*?\});", response.text, re.DOTALL)
+            if not playlist_match:
+                return []
+
+            playlist = json.loads(playlist_match.group(1))
+            sources = []
+            for source in playlist.get("sources") or []:
+                stream_url = source.get("file")
+                if not stream_url or ".mp4" not in stream_url:
+                    continue
+                try:
+                    quality = int(re.sub(r"\D", "", str(source.get("label") or "")) or "0")
+                except Exception:
+                    quality = 0
+                sources.append((quality, html.unescape(stream_url).replace("\\/", "/")))
+
+            sources.sort(key=lambda item: item[0], reverse=True)
+            if sources:
+                self.logger.info("[NM] Resolved %d sources via nmcorp player.", len(sources))
+            return [url for _quality, url in sources]
+        except Exception as e:
+            self.logger.warning(f"[NM] Player source extraction failed: {e}")
+            return []
 
     def _extract_video_url(self, html_content, page_url):
         patterns = [r'https?://[a-z0-9-]+\.pvvstream\.pro/videos/[^"\'\s<>]+\.mp4\?[^"\'\s<>]*(?:secure|url)=[^"\'\s<>]+']

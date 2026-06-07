@@ -245,25 +245,15 @@ class IkisodaWebsite(BaseWebsite):
         return [stream for _, stream in streams]
 
     def play_video(self, url):
-        html_content = self._fetch(url)
-        streams = self._extract_streams(html_content)
+        resolved = self.resolve_recording_stream(url)
+        streams = [resolved.get("url")] if resolved and resolved.get("url") else []
         if not streams:
             self.notify_error("Ikisoda: Could not resolve video stream")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
 
-        headers = {
-            "User-Agent": self.ua,
-            "Referer": url,
-            "Origin": self.base_url.rstrip("/"),
-            "Accept": "*/*",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept-Encoding": "identity",
-        }
+        headers = resolved.get("headers") or {}
         cookies = self.session.cookies.get_dict()
-        if cookies:
-            headers["Cookie"] = "; ".join("{}={}".format(key, value) for key, value in cookies.items())
-
         playback_controller = None
         try:
             playback_controller = ProxyController(
@@ -286,3 +276,22 @@ class IkisodaWebsite(BaseWebsite):
         xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
         if playback_controller:
             PlaybackGuard(xbmc.Player(), xbmc.Monitor(), play_url, playback_controller).start()
+
+    def resolve_recording_stream(self, url):
+        html_content = self._fetch(url)
+        streams = self._extract_streams(html_content)
+        if not streams:
+            return None
+
+        headers = {
+            "User-Agent": self.ua,
+            "Referer": url,
+            "Origin": self.base_url.rstrip("/"),
+            "Accept": "*/*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "identity",
+        }
+        cookies = self.session.cookies.get_dict()
+        if cookies:
+            headers["Cookie"] = "; ".join("{}={}".format(key, value) for key, value in cookies.items())
+        return {"url": streams[0], "headers": headers, "extension": "mp4"}

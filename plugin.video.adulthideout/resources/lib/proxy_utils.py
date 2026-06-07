@@ -450,13 +450,18 @@ class _Upstream:
         if extra:
             h.update(extra)
         xbmc.log(f"[AHProxy] GET request to {self.url[:100]} (stream={stream})", xbmc.LOGINFO)
-        try:
-            resp = self.session.get(self.url, headers=h, allow_redirects=True, stream=stream, timeout=timeout)
-            xbmc.log(f"[AHProxy] Response status: {resp.status_code}, Content-Type: {resp.headers.get('Content-Type')}", xbmc.LOGINFO)
-            return resp
-        except Exception as e:
-            xbmc.log(f"[AHProxy] GET request failed: {e}", xbmc.LOGERROR)
-            raise
+        last_error = None
+        for attempt in range(1, 4):
+            try:
+                resp = self.session.get(self.url, headers=h, allow_redirects=True, stream=stream, timeout=timeout)
+                xbmc.log(f"[AHProxy] Response status: {resp.status_code}, Content-Type: {resp.headers.get('Content-Type')}", xbmc.LOGINFO)
+                return resp
+            except Exception as e:
+                last_error = e
+                xbmc.log(f"[AHProxy] GET request failed attempt {attempt}/3: {e}", xbmc.LOGWARNING if attempt < 3 else xbmc.LOGERROR)
+                if attempt < 3:
+                    xbmc.sleep(500 * attempt)
+        raise last_error
 
 
 # =============================================================================

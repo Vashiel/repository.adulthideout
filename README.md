@@ -2,32 +2,40 @@
 
 ![Adulthideout 10th Anniversary](repository.adulthideout/resources/fanart.jpg)
 
-## 1.0.11 "Night Shift"
+## 1.0.12 "Signal Lock"
 
-AdultHideout started in **January 2016** as a tiny personal Kodi addon for one site. In 2026 the project is in its **10th Anniversary Year**, and 1.0.11 continues the repair-and-expansion run after 1.0.10.
+AdultHideout started in **January 2016** as a tiny personal Kodi addon for one site. In 2026 the project is in its **10th Anniversary Year**, and 1.0.12 stands as one of our most ambitious updates yet—introducing a completely redesigned engine architecture and a brand-new way to experience the adult web.
 
-**Night Shift** adds new sites, expands "Explore Similar", removes external crypto requirements for supported Byse/AES flows, and focuses heavily on playback reliability across Windows, Android/Fire TV, CoreELEC, Linux and macOS Kodi setups.
+**Signal Lock** introduces the revolutionary **Global Search**, brings ten new premium sites into the fold, adds in-process download/recording capabilities via FFmpeg, and implements a unified KVS player framework.
 
 ### New Sites
 
-85po.com, HStream, PremiumPorn, XXXTube, WhereIsMyPorn.
+AllowFlash, NotFans, WOW.xxx, XXThots, JAVSubbed.net, Sextb.net, Porn4Fans, YesPornVIP, Tgtsporn, PornMedium.
 
 ### Highlights
 
-- Added listings, search, categories/tags, pagination and playback support for the new sites.
-- Added "Explore Similar" support for more sites, including Rule34Video, XVideos, XNXX, SpankBang, Pornhub, HQPorner and 85po.
-- Reworked PremiumPorn and ThePornBang crypto handling with bundled pure-Python helpers, avoiding external compiled crypto modules.
-- Improved seek-safe local Range proxy playback for several MP4/KVS/CDN streams.
-- Fixed Pornhub related-video thumbnails and playback startup regressions.
-- Fixed XVideos pagination after Sort By and filtered unavailable entries.
-- Added localized official-source/install warnings in English, German, Spanish and French.
-- Updated settings, logos, release metadata and official file hashes.
+- **Global Search:** Search across multiple sources simultaneously with profile presets, progressive paging, and stable navigation.
+- **In-Process Downloading:** Added dynamic "Video herunterladen" context actions backed by a robust FFmpeg recording engine.
+- **Engine Evolution:** Created `KVSTubeWebsite`, a unified base class to handle KVS-powered sites with remarkable simplicity and speed.
+- **85po Android Fix:** Solved Cloudflare 403 blocks on Android/Fire TV by reusing session state and local Range proxy streams.
+- **LuxureTV Repair:** Rebuilt parsing to adapt to recent markup changes, preventing failures when video durations are missing.
+- **NoodleMagazine Rework:** Rewrote video resolution to query official nmcorp player playlists, bypassing broken CDN links.
+- **Cleaned Up:** Removed UFlash due to new login/paywall requirements.
 
-### Feature Focus: Explore Similar
+### Feature Focus: Global Search — Unified Multi-Site Discovery
 
-1.0.11 expands the context-menu based **Explore Similar** workflow. On supported sites, AdultHideout can now use the current video page to discover related navigation targets such as tags, categories, performers, uploaders, channels, profiles or real related videos.
+With 1.0.12, we are introducing a new way to explore content: **Global Search**. 
 
-The feature is implemented where the source site exposes useful metadata. In this release it was added or expanded for Rule34Video, XVideos, XNXX, SpankBang, Pornhub, HQPorner and 85po. The goal is simple: when a video gives you a useful trail, the addon lets you follow it without backing out and manually searching again.
+Instead of searching one website at a time, Global Search allows you to query multiple scraper sources simultaneously. 
+
+Key features of the global search:
+- **Profile Presets:** Search using predefined sets of sources (e.g., straight, gay, trans, hentai) to query only what you need.
+- **Asynchronous & Progressive Paging:** Load results in stages with per-source limits, preventing slow-responding sites from bottlenecking the entire search.
+- **State Persistence:** When returning from watching a video, the search results page loads instantly without a full re-scan, preserving the current page and scroll position.
+- **Profile-Aware Caching:** Under-the-hood caching prevents repetitive network requests while keeping results up-to-date.
+- **Play from Here Support:** Plays search results sequentially across different websites as a seamless playlist using Kodi's native player features.
+
+This allows you to search across multiple sites from a single search interface in the addon.
 
 ---
 
@@ -85,6 +93,15 @@ For repository issues, use GitHub Issues. For copyright complaints regarding con
 
 <details>
 <summary>Older release notes</summary>
+
+### 1.0.11 "Night Shift" - 2026-05-29
+- Added 85po.com, HStream, PremiumPorn, XXXTube, and WhereIsMyPorn.
+- Expanded "Explore Similar" support to Rule34Video, XVideos, XNXX, SpankBang, Pornhub, HQPorner, and 85po.
+- Reworked PremiumPorn and ThePornBang crypto handling with bundled pure-Python helpers.
+- Improved seek-safe local Range proxy playback for several MP4/KVS/CDN streams.
+- Fixed Pornhub related-video thumbnails and playback startup regressions.
+- Fixed XVideos pagination after Sort By.
+- Added localized official-source/install warnings.
 
 ### 1.0.10 "Afterglow" - 2026-05-22
 - Added PornHoarder, SpeedPorn and YourLesbians.

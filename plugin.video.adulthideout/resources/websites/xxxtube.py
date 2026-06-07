@@ -386,12 +386,29 @@ class XxxTube(BaseWebsite):
         return None
 
     def play_video(self, url):
-        html_content = self.make_request(url)
-        stream_url = self._extract_stream_url(html_content)
+        resolved = self.resolve_recording_stream(url)
+        stream_url = resolved.get("url")
         if not stream_url:
             self.notify_error("Could not resolve XXXTube stream")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
+
+        headers = resolved.get("headers") or {}
+        proxy = _XXXTubeRangeProxy(self.session, stream_url, headers)
+        play_url = proxy.start()
+        _ACTIVE_PROXIES.append(proxy)
+        del _ACTIVE_PROXIES[:-4]
+        list_item = xbmcgui.ListItem(path=play_url)
+        list_item.setProperty("IsPlayable", "true")
+        list_item.setMimeType("video/mp4")
+        list_item.setContentLookup(False)
+        xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
+
+    def resolve_recording_stream(self, url):
+        html_content = self.make_request(url)
+        stream_url = self._extract_stream_url(html_content)
+        if not stream_url:
+            return None
 
         headers = {
             "User-Agent": self.ua,
@@ -404,12 +421,4 @@ class XxxTube(BaseWebsite):
         )
         if cookie_header:
             headers["Cookie"] = cookie_header
-        proxy = _XXXTubeRangeProxy(self.session, stream_url, headers)
-        play_url = proxy.start()
-        _ACTIVE_PROXIES.append(proxy)
-        del _ACTIVE_PROXIES[:-4]
-        list_item = xbmcgui.ListItem(path=play_url)
-        list_item.setProperty("IsPlayable", "true")
-        list_item.setMimeType("video/mp4")
-        list_item.setContentLookup(False)
-        xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
+        return {"url": stream_url, "headers": headers, "extension": "mp4"}
