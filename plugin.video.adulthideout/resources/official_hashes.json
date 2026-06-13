@@ -4,7 +4,7 @@
   "hash_algorithm": "sha256",
   "hashes": {
     "addon.xml": "f61b2a84646c84e90d2cf7c7b2bd4a8a5382ccc1b93b7f0ff70e8bdaa66018be",
-    "changelog.txt": "c9043a6a42e3b0e98b197d372e56e8ade119137d3433b0b3cb3d738ee7dc7d30",
+    "changelog.txt": "8652cada7d601ca03d48afc4700272a4c4a7cf0243383d686bf0b465bceaa169",
     "default.py": "1d2209718c153206c341a14148b84970d44c1226f4f99049240f76a3bf6d3734",
     "resources/lib/base_website.py": "49f988ccbbb6fb5e3fcc66ca75b2eae03f2f334d2a441fe0606f842784b4d49c",
     "resources/lib/global_search.py": "1831c30c5dd16abd03041297460eb3989c0be27c9644f72da6bf756ba73f74b0",

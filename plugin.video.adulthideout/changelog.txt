@@ -11,7 +11,7 @@ v. 1.0.13 "Rangefinder" - 2026-06-13
 - **Sextb.net**: Added shared resolver preferences, resolver enable switches and pre-playback stream health checks so unstable/dead server choices can fall through to the next supported resolver before playback starts.
 - **Global Search**: Filtered captured results to playable video items only, preventing source Search/Categories/Models navigation entries from appearing in global result pages.
 - **Playback Proxy**: Fixed urllib proxy seek handling by giving each Range request its own cancel signal, preventing stale connections from surviving fast seeks.
-- **CamgirlFap Playback**: Fixed stream probe rejecting valid plain MP4 URLs (e.g. 710072.mp4) that lack a quality suffix â€” the site delivers both quality-tagged and plain MP4 links, now both are probed and accepted.
+- **CamgirlFap Playback**: Fixed stream probe rejecting valid plain MP4 URLs (e.g. 710072.mp4) that lack a quality suffix - the site delivers both quality-tagged and plain MP4 links, now both are probed and accepted.
 - **Playback Proxy DNS**: Fixed intermittent seek freezes caused by Windows DNS resolver failures (Errno 11002/getaddrinfo) after the first range request; added pre-resolve IP cache with http.client fallback so subsequent seek requests never need a fresh DNS lookup.
 
 v. 1.0.12 "Signal Lock" - 2026-06-01
@@ -142,7 +142,7 @@ v 1.0.1 - 2025-09-29
 - Improved: Motherless sorting now persists across AH restarts
 - Notes: CrazyShit is disabled by default and must be enabled in settings (contains strong content).
 
-v 1.0.0 â€” 2025-08-02
+v 1.0.0 - 2025-08-02
 - Core refactor: unified HTTP/parsing/playback in BaseWebsite
 - 6 new adapters: DaftPorn, ePorner, MissAV, Pornhub, PornTN (+ decoder), TubePornClassic (+ decoder)
 - Removed legacy scripts (functions.py, search.py, content.py, queries.py, old website modules) and JSON caches
