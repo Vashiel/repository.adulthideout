@@ -421,6 +421,18 @@ class GlobalSearch:
             "is_folder": bool(is_folder),
         }
 
+    def _is_video_result(self, url, source_item, is_folder):
+        if is_folder:
+            return False
+        if not url:
+            return False
+        if "mode=4" in url:
+            return True
+        try:
+            return bool(source_item and source_item.getProperty("IsPlayable") == "true")
+        except Exception:
+            return False
+
     def _add_cached_result(self, result):
         source = result.get("source", "")
         label = "[COLOR yellow][{}][/COLOR] {}".format(self._source_label(source), result.get("label") or "Video")
@@ -517,21 +529,18 @@ class GlobalSearch:
                 finally:
                     self._restore_profile_overrides(previous_settings)
                 site_added = 0
-                folder_skipped = 0
+                non_video_skipped = 0
                 for url, listitem, is_folder in captured:
-                    if is_folder:
-                        if not url:
-                            folder_skipped += 1
-                            continue
-                    elif "mode=4" not in url:
+                    if not self._is_video_result(url, listitem, is_folder):
+                        non_video_skipped += 1
                         continue
-                    cache_results.append(self._result_from_item(source, url, listitem, is_folder=is_folder))
+                    cache_results.append(self._result_from_item(source, url, listitem, is_folder=False))
                     added += 1
                     site_added += 1
                     if site_added >= max_results_per_site:
                         break
-                self.logger("Global search source '{}' captured {} items ({} folder entries skipped)".format(
-                    source, site_added, folder_skipped
+                self.logger("Global search source '{}' captured {} video items ({} non-video entries skipped)".format(
+                    source, site_added, non_video_skipped
                 ))
         finally:
             progress.close()

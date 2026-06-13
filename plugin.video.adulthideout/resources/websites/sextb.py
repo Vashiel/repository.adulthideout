@@ -24,13 +24,13 @@ class Sextb(BaseWebsite):
             addon_handle=addon_handle,
             addon=addon
         )
-        self.sort_options = ["Latest", "New Releases", "Most Liked", "Most Viewed", "Popular"]
+        self.sort_options = ["Latest", "Coming Soon", "Most Liked", "Most Viewed", "Popular"]
         self.sort_paths = {
-            "Latest": "/new-releases",
-            "New Releases": "/new-releases?genre=all&studio=all&quality=all&year=all&sort=release",
-            "Most Liked": "/new-releases?genre=all&studio=all&quality=all&year=all&sort=liked",
-            "Most Viewed": "/new-releases?genre=all&studio=all&quality=all&year=all&sort=viewed",
-            "Popular": "/new-releases?genre=all&studio=all&quality=all&year=all&sort=favorite"
+            "Latest": "/jav-censored-u5psppar?genre=all&studio=all&quality=all&year=all&sort=release",
+            "Coming Soon": "/new-releases",
+            "Most Liked": "/jav-censored-u5psppar?genre=all&studio=all&quality=all&year=all&sort=liked",
+            "Most Viewed": "/jav-censored-u5psppar?genre=all&studio=all&quality=all&year=all&sort=viewed",
+            "Popular": "/jav-censored-u5psppar?genre=all&studio=all&quality=all&year=all&sort=favorite"
         }
         self.ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
         self.icon = os.path.join(self.addon.getAddonInfo('path'), 'resources', 'logos', 'sextb.png')
@@ -47,6 +47,7 @@ class Sextb(BaseWebsite):
             self.logger.error("[sextb] Failed to import/initialize cloudscraper: %s", exc)
             self.scraper = None
 
+        self._last_unplayable_reason = ""
         self._thumb_cache_dir = self._init_thumb_cache()
 
     def _init_thumb_cache(self):
@@ -192,9 +193,10 @@ class Sextb(BaseWebsite):
         
         self.add_dir("Search", "", 5, self.icons['search'], name_param=self.name)
         self.add_dir("Amateur", "https://sextb.net/jav-amateur-d7r86hnd", 2, self.icons['categories'])
-        self.add_dir("Censored", "https://sextb.net/jav-censored-0ooqcan3", 2, self.icons['categories'])
-        self.add_dir("Uncensored", "https://sextb.net/jav-uncensored-afmve54x", 2, self.icons['categories'])
-        self.add_dir("English Subtitle", "https://sextb.net/jav-subtitle-nhg3k71i", 2, self.icons['categories'])
+        self.add_dir("Censored", "https://sextb.net/jav-censored-u5psppar", 2, self.icons['categories'])
+        self.add_dir("Uncensored", "https://sextb.net/jav-uncensored-wwzd85vc", 2, self.icons['categories'])
+        self.add_dir("English Subtitle", "https://sextb.net/jav-subtitle-o9apo8o4", 2, self.icons['categories'])
+        self.add_dir("Coming Soon", "https://sextb.net/new-releases", 2, self.icons['categories'])
         self.add_dir("Actresses", "https://sextb.net/list-actress", 9, self.icons['pornstars'])
         self.add_dir("Studios", "https://sextb.net/list-studios", 8, self.icons['categories'])
         self.add_dir("Genres", "https://sextb.net/genres", 11, self.icons['categories'])
@@ -395,10 +397,12 @@ class Sextb(BaseWebsite):
 
     def play_video(self, url):
         self.logger.info(f"[sextb] play_video: {url}")
+        self._last_unplayable_reason = ""
         resolved = self.resolve_recording_stream(url)
         if not resolved or not resolved.get("url"):
-            self.logger.error("[sextb] No playable direct stream links found")
-            self.notify_error("No playable streams found.")
+            message = self._last_unplayable_reason or "No playable streams found."
+            self.logger.error("[sextb] No playable direct stream links found: %s", message)
+            self.notify_error(message)
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
              
@@ -431,31 +435,51 @@ class Sextb(BaseWebsite):
         html_content = self.make_request(target_url)
         if not html_content:
             return None
-             
-        film_id_match = re.search(r'var\s+filmId\s*=\s*(\d+);', html_content)
-        pt_match = re.search(r'window\.__pt\s*=\s*"([^"]+)";', html_content)
-        pk_match = re.search(r'window\.__pk\s*=\s*"([^"]+)";', html_content)
-        
-        if not film_id_match or not pt_match or not pk_match:
+
+        if self._is_updating_links_page(html_content):
+            self._last_unplayable_reason = "Sextb is still updating links for this video."
+            self.logger.warning("[sextb] Video has no public server links yet: %s", target_url)
+            return None
+
+        context = self._extract_player_context(html_content)
+        if not context:
+            self._last_unplayable_reason = "Sextb player data could not be parsed."
             self.logger.warning("[sextb] Failed to parse filmId, pt, or pk from page")
             return None
-             
-        film_id = film_id_match.group(1)
-        pt = pt_match.group(1)
-        pk = pk_match.group(1)
-         
-        buttons = re.findall(r'<button[^>]+class="[^"]*btn-player[^"]*"[^>]*data-id="(\d+)"[^>]*>(.*?)</button>', html_content)
-        servers = []
-        for epi_id, name_raw in buttons:
-            name = re.sub(r'<[^>]*>', '', name_raw).strip()
-            servers.append((name, epi_id))
-             
+
+        film_id, pt, pk, servers = context
         if not servers:
+            self._last_unplayable_reason = "Sextb has no public server links for this video."
             self.logger.warning("[sextb] No player server buttons found on video page")
             return None
              
-        priority = ['ST', 'DD', 'FL', 'SW', 'TB', 'US', 'PP']
-        servers.sort(key=lambda x: priority.index(x[0]) if x[0] in priority else 99)
+        from resources.lib.resolvers import resolver
+
+        server_resolver_urls = {
+            "ST": "https://streamtape.net/",
+            "DD": "https://dsvplay.com/",
+            "TB": "https://turboplayers.xyz/",
+            "SW": "https://hglink.to/",
+            "FL": "https://ryderjet.com/",
+            "US": "https://player.upn.one/",
+            "PP": "https://stb.strp2p.com/",
+        }
+        priority = ['ST', 'DD', 'TB', 'SW', 'FL', 'US', 'PP']
+        enabled_servers = []
+        for server in servers:
+            resolver_url = server_resolver_urls.get(server[0])
+            if resolver_url and not resolver.is_resolver_enabled(resolver_url, self.addon):
+                self.logger.info(f"[sextb] Skipping disabled resolver server: {server[0]}")
+                continue
+            enabled_servers.append(server)
+
+        servers = enabled_servers
+        servers.sort(
+            key=lambda x: (
+                resolver.resolver_sort_key_for_url(server_resolver_urls.get(x[0], ""), self.addon),
+                priority.index(x[0]) if x[0] in priority else 99,
+            )
+        )
          
         ajax_url = "https://sextb.net/ajax/player"
         ajax_headers = {
@@ -463,10 +487,16 @@ class Sextb(BaseWebsite):
             "Referer": target_url
         }
          
-        from resources.lib.resolvers.resolver import resolve
-         
-        for name, epi_id in servers:
+        for index, (name, epi_id) in enumerate(servers):
             self.logger.info(f"[sextb] Attempting server: {name} (ID: {epi_id})")
+            if index > 0:
+                refreshed_html = self.make_request(target_url)
+                refreshed_context = self._extract_player_context(refreshed_html) if refreshed_html else None
+                if refreshed_context:
+                    film_id, pt, pk, refreshed_servers = refreshed_context
+                    refreshed_map = dict(refreshed_servers)
+                    epi_id = refreshed_map.get(name, epi_id)
+
             payload = {
                 "episode": epi_id,
                 "filmId": film_id,
@@ -509,7 +539,7 @@ class Sextb(BaseWebsite):
             self.logger.info(f"[sextb] Decrypted iframe URL: {iframe_url}")
              
             try:
-                res_url, headers = resolve(iframe_url, referer=target_url)
+                res_url, headers = resolver.resolve(iframe_url, referer=target_url)
                 if res_url and not res_url.startswith("http://localhost") and not "ERROR" in res_url:
                     parts = res_url.split('|')
                     direct_url = parts[0]
@@ -518,8 +548,44 @@ class Sextb(BaseWebsite):
                         extra_headers = dict(urllib.parse.parse_qsl(parts[1]))
                         url_headers.update(extra_headers)
                     ext = "m3u8" if ".m3u8" in direct_url else "mp4"
+                    if resolver.resolver_preflight_enabled(self.addon):
+                        if not resolver.probe_resolved_stream(direct_url, url_headers):
+                            self.logger.warning(
+                                f"[sextb] Resolver server {name} failed stream preflight; trying next server"
+                            )
+                            continue
                     return {"url": direct_url, "headers": url_headers, "extension": ext}
             except Exception as e:
                 self.logger.warning(f"[sextb] Failed to resolve iframe URL {iframe_url}: {e}")
                  
+        self._last_unplayable_reason = "All available Sextb servers failed."
         return None
+
+    def _extract_player_context(self, html_content):
+        film_id_match = re.search(r'var\s+filmId\s*=\s*(\d+);', html_content)
+        pt_match = re.search(r'window\.__pt\s*=\s*"([^"]+)";', html_content)
+        pk_match = re.search(r'window\.__pk\s*=\s*"([^"]+)";', html_content)
+        if not film_id_match or not pt_match or not pk_match:
+            return None
+
+        buttons = re.findall(
+            r'<button[^>]+class="[^"]*btn-player[^"]*"[^>]*data-id="(\d+)"[^>]*>([\s\S]*?)</button>',
+            html_content,
+            re.IGNORECASE,
+        )
+        servers = []
+        for epi_id, name_raw in buttons:
+            name = re.sub(r'<[^>]*>', '', name_raw).strip()
+            if not name or name.upper() == "VIP":
+                continue
+            servers.append((name, epi_id))
+
+        return film_id_match.group(1), pt_match.group(1), pk_match.group(1), servers
+
+    def _is_updating_links_page(self, html_content):
+        lower = (html_content or "").lower()
+        return (
+            "coming-soon" in lower
+            or "we are updating the link for this movie" in lower
+            or "please come back later" in lower
+        )

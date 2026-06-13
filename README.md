@@ -2,29 +2,33 @@
 
 ![Adulthideout 10th Anniversary](repository.adulthideout/resources/fanart.jpg)
 
-## 1.0.12 "Signal Lock"
+## 1.0.13 "Rangefinder"
 
-AdultHideout started in **January 2016** as a tiny personal Kodi addon for one site. In 2026 the project is in its **10th Anniversary Year**, and 1.0.12 stands as one of our most ambitious updates yet—introducing a completely redesigned engine architecture and a brand-new way to experience the adult web.
+AdultHideout started in **January 2016** as a tiny personal Kodi addon for one site. In 2026 the project is in its **10th Anniversary Year**, and 1.0.13 "Rangefinder" focuses on resolver reliability, seek-safe playback, and another strong round of site integrations.
 
-**Signal Lock** introduces the revolutionary **Global Search**, brings ten new premium sites into the fold, adds in-process download/recording capabilities via FFmpeg, and implements a unified KVS player framework.
+**Rangefinder** sharpens playback reliability with resolver upgrades, seek-safe proxy paths, and new supported sites including MyPornTape, FamilyPornHD, CamCaps fixes, CamgirlFap, PornoBae, AllPornStream, Xtapes and related KVS/hoster improvements.
 
 ### New Sites
 
-AllowFlash, NotFans, WOW.xxx, XXThots, JAVSubbed.net, Sextb.net, Porn4Fans, YesPornVIP, Tgtsporn, PornMedium.
+MyPornTape, FamilyPornHD, CamgirlFap, PornoBae, AllPornStream and Xtapes.
+
+### Repaired / Expanded
+
+CamCaps, Sextb.net, NoodleMagazine, Global Search, shared resolver preferences, KVS playback, local Range proxy handling and FFmpeg recording paths.
 
 ### Highlights
 
-- **Global Search:** Search across multiple sources simultaneously with profile presets, progressive paging, and stable navigation.
-- **In-Process Downloading:** Added dynamic "Video herunterladen" context actions backed by a robust FFmpeg recording engine.
-- **Engine Evolution:** Created `KVSTubeWebsite`, a unified base class to handle KVS-powered sites with remarkable simplicity and speed.
-- **85po Android Fix:** Solved Cloudflare 403 blocks on Android/Fire TV by reusing session state and local Range proxy streams.
-- **LuxureTV Repair:** Rebuilt parsing to adapt to recent markup changes, preventing failures when video durations are missing.
-- **NoodleMagazine Rework:** Rewrote video resolution to query official nmcorp player playlists, bypassing broken CDN links.
-- **Cleaned Up:** Removed UFlash due to new login/paywall requirements.
+- **Seek-Safe Playback:** Expanded local Range proxy use for sources where Kodi hangs or stalls on direct MP4 seeks.
+- **Resolver Stack:** Added and refined shared resolver paths for 88z, WatchStreamHD, MyDaddy, Hglink, TubexPlayer and TurboPlayers.
+- **Source Expansion:** Added MyPornTape and several 1.0.13-era sites with listings, search, categories, pagination and playback validation.
+- **CamCaps Repair:** Updated CamCaps for the current `camcaps.to` domain and refreshed parsing for listings, categories, performers and playback.
+- **Sextb.net Resolver Controls:** Added resolver enable switches, preferred resolver selection and health checks before playback.
+- **Global Search Cleanup:** Filtered global search results to playable video items only and kept cached result navigation stable.
+- **Release Hygiene:** Refreshed logos, settings, changelog, release metadata, official hashes and repository update files.
 
 ### Feature Focus: Global Search — Unified Multi-Site Discovery
 
-With 1.0.12, we are introducing a new way to explore content: **Global Search**. 
+With the current release line, **Global Search** remains available as a controlled way to explore content across selected sources. 
 
 Instead of searching one website at a time, Global Search allows you to query multiple scraper sources simultaneously. 
 

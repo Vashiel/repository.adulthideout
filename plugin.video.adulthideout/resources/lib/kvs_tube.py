@@ -26,6 +26,7 @@ class KVSTubeWebsite(BaseWebsite):
     categories_path = "/categories/"
     models_path = None
     use_playback_proxy = False
+    use_urllib_proxy = True
     prefer_default_stream = False
     request_retries = 2
     next_page_full_count = 0
@@ -373,6 +374,7 @@ class KVSTubeWebsite(BaseWebsite):
                     session=self.session,
                     skip_resolve=True,
                     probe_size=True,
+                    use_urllib=self.use_urllib_proxy,
                 )
                 play_url = playback_controller.start()
                 self.logger.info("%s using in-process Range proxy for playback", self.label or self.name)

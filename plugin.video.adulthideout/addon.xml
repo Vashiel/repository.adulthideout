@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.12" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.13" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.requests" version="2.25.1"/>
@@ -11,6 +11,22 @@
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
+v. 1.0.13 "Rangefinder" - 2026-06-13
+- **New Site**: Added MyPornTape with listings, search, categories, models, pagination, sorting, real homepage logo and KVS MP4 playback/recording support.
+- **New Site**: Added FamilyPornHD with listings, categories, search, pagination, real homepage logo and WatchStreamHD HLS resolver playback.
+- **New Resolver**: Added WatchStreamHD resolver that rewrites CDN-auth HLS playlists to fully qualified URLs for seek-safe local playback.
+- **New Site**: Added PornoBae with listings, search, categories, pagination and playback via the custom TubexPlayer HLS resolver.
+- **Experimental Site**: Added AllPornStream as a contained catalog/mirror experiment with listings, search, actors, categories, producers, pagination and playback via the shared resolver preference stack.
+- **AllPornStream/MyDaddy**: Added a shared MyDaddy resolver that follows the browser alt-player path and resolves old MyDaddy-only posts to fresh BigCDN MP4 streams.
+- **New Site**: Added Xtapes with listings, search, categories, pagination, sort options, real homepage logo and shared 88z HLS resolver playback/recording support.
+- **New Resolver**: Added reusable 88z player resolution with encrypted API decoding and HLS stream probing for sites using the same embed player.
+- **New Site**: Added CamgirlFap with listings, search, categories, models, pagination, sorting, cached thumbnails, real homepage logo and KVS MP4 playback/recording support through the seek-safe local Range proxy.
+- **Sextb.net**: Added shared resolver preferences, resolver enable switches and pre-playback stream health checks so unstable/dead server choices can fall through to the next supported resolver before playback starts.
+- **Global Search**: Filtered captured results to playable video items only, preventing source Search/Categories/Models navigation entries from appearing in global result pages.
+- **Playback Proxy**: Fixed urllib proxy seek handling by giving each Range request its own cancel signal, preventing stale connections from surviving fast seeks.
+- **CamgirlFap Playback**: Fixed stream probe rejecting plain MP4 URLs without quality suffix; both quality-tagged and plain links are now probed and accepted.
+- **Playback Proxy DNS**: Fixed intermittent seek freezes (Windows Errno 11002) with pre-resolve IP cache and http.client fallback so seeks never need a fresh DNS lookup.
+
 v. 1.0.12 "Signal Lock" - 2026-06-01
 - **85po Android**: Fixed Android/Kodi Cloudflare 403 failures by reusing a browser-like session for listings, parsing and MP4 delivery.
 - **LuxureTV**: Repaired listing extraction after the site markup changed and made metadata parsing resilient when durations are missing.
@@ -60,3 +76,4 @@ https://github.com/Vashiel/repository.adulthideout
         </assets>
     </extension>
 </addon>
+
