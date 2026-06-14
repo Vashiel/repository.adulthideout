@@ -150,7 +150,6 @@ class XMoviesForYou(BaseWebsite):
             # URL
             link_match = re.search(r'<a\s+href="(https?://[^"]+|/[^"]+)"', block, re.IGNORECASE)
             if not link_match:
-                self.logger.debug(f"[XMoviesForYou] Block {i} skipped: no link found")
                 continue
             video_url = link_match.group(1)
             if not video_url.startswith('http'):

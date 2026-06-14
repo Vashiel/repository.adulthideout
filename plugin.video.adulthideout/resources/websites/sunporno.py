@@ -199,15 +199,11 @@ class SunpornoWebsite(BaseWebsite):
             self.notify_error("Video URL not found")
             return
 
-        xbmc.log(f"[Sunporno] Video URL: {video_url[:100]}...", xbmc.LOGINFO)
-        xbmc.log(f"[Sunporno] RND value: {rnd_value}", xbmc.LOGINFO)
+        xbmc.log("[Sunporno] Video configuration extracted", xbmc.LOGINFO)
 
         cookies_dict = {}
         for cookie in self.cookie_jar:
             cookies_dict[cookie.name] = cookie.value
-            xbmc.log(f"[Sunporno] Cookie: {cookie.name}={cookie.value[:20]}...", xbmc.LOGDEBUG)
-            
-        xbmc.log(f"[Sunporno] Cookies for video: {list(cookies_dict.keys())}", xbmc.LOGINFO)
 
         video_url = video_url.strip().rstrip('/')
         

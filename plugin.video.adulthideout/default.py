@@ -12,6 +12,7 @@ import xbmcvfs
 import traceback
 import inspect
 from importlib import import_module
+from resources.lib import dns_retry
 from resources.lib.view_utils import end_directory_with_view
 
 ADDON = xbmcaddon.Addon()
@@ -25,6 +26,8 @@ FANART_PATH = os.path.join(LOGOS_DIR, 'fanart.jpg')
 DEFAULT_ICON_PATH = os.path.join(LOGOS_DIR, 'icon.png')
 VIEW_SERVICE_PATH = os.path.join(ADDON_PATH, 'resources', 'lib', 'view_service.py')
 VIEW_SERVICE_VERSION = "9"
+
+dns_retry.install()
 
 def log(msg, level=xbmc.LOGINFO):
     xbmc.log(f"[{ADDON_ID}] {msg}", level)
@@ -181,14 +184,32 @@ def handle_routing():
             global_search.show_presets()
         elif action == 'apply_preset':
             global_search.apply_preset(params.get('profile'))
+        elif action == 'combine_presets':
+            global_search.combine_presets()
+        elif action == 'save_custom_preset':
+            global_search.save_custom_preset()
+        elif action == 'show_custom_presets':
+            global_search.show_custom_presets()
+        elif action == 'apply_custom_preset':
+            global_search.apply_custom_preset(params.get('preset_id'))
+        elif action == 'delete_custom_preset':
+            global_search.delete_custom_preset()
         elif action == 'choose_sources':
             global_search.choose_sources()
+        elif action == 'select_all_sources':
+            global_search.select_all_sources()
         elif action == 'show_sources':
             global_search.show_sources()
         elif action == 'clear_history':
             global_search.clear_history()
         elif action == 'edit_search':
             global_search.edit_search(params.get('query', ''))
+        elif action == 'refresh_search':
+            try:
+                page = int(params.get('page', '1') or '1')
+            except Exception:
+                page = 1
+            global_search.refresh_search(params.get('query', ''), page=page)
         elif mode == '21':
             try:
                 page = int(params.get('page', '1') or '1')

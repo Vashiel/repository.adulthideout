@@ -11,6 +11,7 @@ import xbmcgui
 import xbmcplugin
 
 from resources.lib.base_website import BaseWebsite
+from resources.lib.resilient_http import fetch_text
 from resources.lib.resolvers import resolver
 
 
@@ -67,7 +68,15 @@ class AllPornStream(BaseWebsite):
             self.logger.warning("[AllPornStream] HTTP %s for %s", response.status_code, url)
         except Exception as exc:
             self.logger.warning("[AllPornStream] Request failed for %s: %s", url, exc)
-        return ""
+        fallback = fetch_text(
+            url,
+            headers=self._headers(referer),
+            scraper=None,
+            logger=self.logger,
+            timeout=20,
+            use_windows_curl_fallback=True,
+        )
+        return fallback or ""
 
     def _clean(self, text):
         if not text:

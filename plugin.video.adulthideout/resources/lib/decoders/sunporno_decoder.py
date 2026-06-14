@@ -129,8 +129,6 @@ class SunpornoDecoder:
         if self.logger:
             if hasattr(self.logger, 'log'):
                 self.logger.log(msg)
-            else:
-                print(msg)
 
     def decode_embed(self, html):
         """

@@ -11,6 +11,7 @@ import xbmcplugin
 
 from resources.lib.base_website import BaseWebsite
 from resources.lib.resolvers import resolver
+from resources.lib.stream_validation import is_stream_host_resolvable
 
 
 class BananaMovies(BaseWebsite):
@@ -300,6 +301,8 @@ class BananaMovies(BaseWebsite):
                     candidate_headers = {}
 
                 if candidate_url and candidate_url.startswith("http"):
+                    if not is_stream_host_resolvable(candidate_url, self.logger):
+                        continue
                     stream_url = candidate_url
                     stream_headers = candidate_headers
                     break

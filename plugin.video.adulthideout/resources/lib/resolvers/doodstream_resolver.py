@@ -185,30 +185,5 @@ def resolve(url, referer=None, headers=None):
         "Referer": f"https://{host}/",
     }
 
-    xbmc.log(f"[AdultHideout][doodstream] Final stream URL: {final_stream_url[:100]}", xbmc.LOGINFO)
+    xbmc.log("[AdultHideout][doodstream] Final stream URL resolved", xbmc.LOGINFO)
     return final_stream_url, play_headers
-
-
-if __name__ == "__main__":
-    # For local testing
-    import logging
-    logging.basicConfig(level=logging.INFO)
-
-    class FakeXBMC:
-        LOGINFO = 1
-        LOGERROR = 3
-        LOGWARNING = 2
-        @staticmethod
-        def log(msg, level=1):
-            print(msg)
-
-    import sys
-    sys.modules['xbmc'] = FakeXBMC()
-
-    test_url = "https://dsvplay.com/e/m1t67rtf6d2c/"
-    try:
-        result, hdrs = resolve(test_url)
-        print("\nFinal URL:", result)
-        print("Headers:", hdrs)
-    except Exception as e:
-        print("Error:", e)

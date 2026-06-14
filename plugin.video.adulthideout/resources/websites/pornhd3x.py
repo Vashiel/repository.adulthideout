@@ -82,7 +82,6 @@ class PornHD3X(BaseWebsite):
                 with open(local_path, 'wb') as f:
                     f.write(data)
                 if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
-                    self.logger.debug(f"PornHD3X: Cached thumb {ext} -> {local_path}")
                     return local_path
             except Exception as write_err:
                 self.logger.warning(f"PornHD3X: Could not write thumb to {local_path}: {write_err}")

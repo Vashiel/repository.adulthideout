@@ -6,12 +6,6 @@ designed to make AdultHideout's PremiumPorn scraper 100% zero-dependency.
 import hashlib
 import os
 
-try:
-    import xbmc
-    xbmc.log("[AdultHideout] === SUCCESS === Loaded zero-dependency byse_crypto.py from lib/vendor!", level=xbmc.LOGINFO)
-except Exception:
-    pass
-
 # --- Elliptic Curve SECP256R1 (P-256) Arithmetic ---
 P256_P = 115792089210356248762697446949407573530086143415290314195533631308867097853951
 P256_A = -3
@@ -252,11 +246,6 @@ def ghash(h, data):
     return y
 
 def gcm_decrypt(key, iv, ciphertext, tag, aad=b""):
-    try:
-        import xbmc
-        xbmc.log("[AdultHideout] === SUCCESS === decrypting GCM using pure-Python byse_crypto.py in lib/vendor!", level=xbmc.LOGINFO)
-    except Exception:
-        pass
     round_keys = expand_key(key)
     nr = len(key) // 4 + 6
     # Compute hash key H
@@ -371,11 +360,6 @@ def aes_decrypt(block, round_keys, nr):
     return bytes(state)
 
 def cbc_decrypt(key, iv, ciphertext):
-    try:
-        import xbmc
-        xbmc.log("[AdultHideout] === SUCCESS === decrypting CBC using pure-Python byse_crypto.py in lib/vendor!", level=xbmc.LOGINFO)
-    except Exception:
-        pass
     round_keys = expand_key(key)
     nr = len(key) // 4 + 6
     decrypted = bytearray()

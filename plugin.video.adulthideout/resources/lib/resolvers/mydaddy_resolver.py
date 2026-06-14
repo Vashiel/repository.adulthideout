@@ -109,12 +109,12 @@ def _probe(url, headers):
             response.read(1)
         return status in (200, 206) and "video" in content_type
     except Exception as exc:
-        xbmc.log("[AdultHideout][mydaddy] Probe failed for {}: {}".format(url, exc), xbmc.LOGDEBUG)
+        xbmc.log("[AdultHideout][mydaddy] Probe failed: {}".format(exc), xbmc.LOGDEBUG)
         return False
 
 
 def resolve(url, referer=None, headers=None):
-    xbmc.log("[AdultHideout][mydaddy] Resolving: {}".format(url), xbmc.LOGINFO)
+    xbmc.log("[AdultHideout][mydaddy] Resolving stream", xbmc.LOGINFO)
 
     candidates = []
     url = _extract_mydaddy_url(url)

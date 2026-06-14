@@ -13,6 +13,7 @@ import xbmcplugin
 from resources.lib.base_website import BaseWebsite
 from resources.lib.decoders.kvs_decoder import kvs_decode_url
 from resources.lib.resilient_http import fetch_text
+from resources.lib.stream_validation import is_stream_host_resolvable
 
 
 class BigAssPorn(BaseWebsite):
@@ -301,6 +302,9 @@ class BigAssPorn(BaseWebsite):
             return
 
         video_url = self._resolve_final_stream_url(video_url, url)
+        if not is_stream_host_resolvable(video_url, self.logger):
+            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
+            return
         headers = {
             "User-Agent": self.ua,
             "Referer": url,

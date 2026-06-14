@@ -9,7 +9,23 @@ from typing import Optional, Dict, Any, Union, List
 
 from requests.adapters import HTTPAdapter
 from requests.sessions import Session
-from requests_toolbelt.utils import dump
+
+
+class _DumpFallback:
+    @staticmethod
+    def dump_all(response):
+        try:
+            request = getattr(response, 'request', None)
+            parts = []
+            if request is not None:
+                parts.append("{} {}".format(request.method, request.url))
+            parts.append("HTTP {} {}".format(response.status_code, response.reason))
+            return ("\n".join(parts) + "\n").encode("utf-8", errors="replace")
+        except Exception:
+            return b""
+
+
+dump = _DumpFallback()
 
 # ------------------------------------------------------------------------------- #
 
@@ -265,10 +281,7 @@ class CloudScraper(Session):
 
     @staticmethod
     def debugRequest(req):
-        try:
-            print(dump.dump_all(req).decode('utf-8', errors='backslashreplace'))
-        except ValueError as e:
-            print(f"Debug Error: {getattr(e, 'message', e)}")
+        return
 
     # ------------------------------------------------------------------------------- #
     # Decode Brotli on older versions of urllib3 manually
@@ -378,7 +391,6 @@ class CloudScraper(Session):
             if response != newResponse:
                 response = newResponse
                 if self.debug:
-                    print('==== requestPostHook Debug ====')
                     self.debugRequest(response)
 
         # ------------------------------------------------------------------------------- #
@@ -398,7 +410,7 @@ class CloudScraper(Session):
             # Check for Turnstile Challenge
             if self.turnstile.is_Turnstile_Challenge(response):
                 if self.debug:
-                    print('Detected a Cloudflare Turnstile challenge.')
+                    pass
                 self._solveDepthCnt += 1
                 response = self.turnstile.handle_Turnstile_Challenge(response, **kwargs)
                 return response
@@ -408,7 +420,7 @@ class CloudScraper(Session):
             # Check for v3 JavaScript VM Challenge
             if self.cloudflare_v3.is_V3_Challenge(response):
                 if self.debug:
-                    print('Detected a Cloudflare v3 JavaScript VM challenge.')
+                    pass
                 self._solveDepthCnt += 1
                 response = self.cloudflare_v3.handle_V3_Challenge(response, **kwargs)
                 return response
@@ -450,12 +462,12 @@ class CloudScraper(Session):
                 self.last_403_time = time.time()
 
                 if self.debug:
-                    print(f'[cloudscraper] Received 403 error, attempting session refresh (attempt {self._403_retry_count}/{self.max_403_retries})')
+                    pass
 
                 # Try to refresh the session and retry the request
                 if self._refresh_session(url):
                     if self.debug:
-                        print('[cloudscraper] Session refreshed successfully, retrying original request...')
+                        pass
 
                     # Mark that we're in a retry to prevent retry count reset
                     self._in_403_retry = True
@@ -467,7 +479,7 @@ class CloudScraper(Session):
                         if retry_response.status_code == 200:
                             self._403_retry_count = 0
                             if self.debug:
-                                print('[cloudscraper] 403 retry successful, request completed')
+                                pass
 
                         return retry_response
                     finally:
@@ -476,10 +488,10 @@ class CloudScraper(Session):
                             delattr(self, '_in_403_retry')
                 else:
                     if self.debug:
-                        print('[cloudscraper] Session refresh failed, returning 403 response')
+                        pass
             else:
                 if self.debug:
-                    print(f'[cloudscraper] Max 403 retries ({self.max_403_retries}) exceeded, returning 403 response')
+                    pass
 
         # Decrement concurrent request counter
         if self.current_concurrent_requests > 0:
@@ -514,7 +526,7 @@ class CloudScraper(Session):
         """
         try:
             if self.debug:
-                print('Refreshing session due to staleness or 403 errors...')
+                pass
 
             # Clear existing Cloudflare cookies
             self._clear_cloudflare_cookies()
@@ -538,26 +550,26 @@ class CloudScraper(Session):
                 test_response = super(CloudScraper, self).get(base_url, timeout=30)
 
                 if self.debug:
-                    print(f'Session refresh request status: {test_response.status_code}')
+                    pass
 
                 # Only return True if we got a successful response
                 success = test_response.status_code in [200, 301, 302, 304]
 
                 if success and self.debug:
-                    print('✅ Session refresh successful')
+                    pass
                 elif not success and self.debug:
-                    print(f'[cloudscraper] Session refresh failed with status: {test_response.status_code}')
+                    pass
 
                 return success
 
             except Exception as e:
                 if self.debug:
-                    print(f'[cloudscraper] Session refresh failed: {e}')
+                    pass
                 return False
 
         except Exception as e:
             if self.debug:
-                print(f'[cloudscraper] Error during session refresh: {e}')
+                pass
             return False
 
     def _clear_cloudflare_cookies(self):
@@ -575,7 +587,7 @@ class CloudScraper(Session):
                     pass
 
         if self.debug:
-            print('Cleared Cloudflare cookies for session refresh')
+            pass
 
     def _apply_request_throttling(self):
         """
@@ -588,13 +600,13 @@ class CloudScraper(Session):
         if time_since_last_request < self.min_request_interval:
             sleep_time = self.min_request_interval - time_since_last_request
             if self.debug:
-                print(f'[cloudscraper] Request throttling: sleeping {sleep_time:.2f}s')
+                pass
             time.sleep(sleep_time)
 
         # Wait if too many concurrent requests
         while self.current_concurrent_requests >= self.max_concurrent_requests:
             if self.debug:
-                print(f'[cloudscraper] Concurrent request limit reached ({self.current_concurrent_requests}/{self.max_concurrent_requests}), waiting...')
+                pass
             time.sleep(0.1)
 
         self.last_request_time = time.time()
@@ -648,12 +660,11 @@ class CloudScraper(Session):
                     )
 
                     if self.debug:
-                        print(f'[cloudscraper] Rotated TLS cipher suite (rotation #{self._cipher_rotation_count})')
-                        print(f'    Using {len(selected_ciphers)} ciphers starting from index {start_index}')
+                        pass
 
         except Exception as e:
             if self.debug:
-                print(f'[cloudscraper] TLS cipher rotation failed: {e}')
+                pass
 
     # ------------------------------------------------------------------------------- #
 
@@ -802,11 +813,7 @@ class CloudScraper(Session):
 # ------------------------------------------------------------------------------- #
 
 if ssl.OPENSSL_VERSION_INFO < (1, 1, 1):
-    print(
-        f"DEPRECATION: The OpenSSL being used by this python install ({ssl.OPENSSL_VERSION}) does not meet the minimum supported "
-        "version (>= OpenSSL 1.1.1) in order to support TLS 1.3 required by Cloudflare, "
-        "You may encounter an unexpected Captcha or cloudflare 1020 blocks."
-    )
+    pass
 
 # ------------------------------------------------------------------------------- #
 

@@ -74,11 +74,7 @@ class HQPorner(BaseWebsite):
             return False
 
     def _save_debug_html(self, content, filename):
-        debug_path = xbmcvfs.translatePath(self.addon.getAddonInfo('profile'))
-        if not xbmcvfs.exists(debug_path):
-            xbmcvfs.mkdirs(debug_path)
-        with open(os.path.join(debug_path, filename), 'w', encoding='utf-8') as f:
-            f.write(content)
+        return
 
     def _parse_duration(self, duration_str):
         seconds = 0
@@ -210,10 +206,8 @@ class HQPorner(BaseWebsite):
                 xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
                 return
             self._save_debug_html(hqporner_html, f"debug_hqporner_archive_{url[-10:]}.html")
-            self.logger.debug(f"HQPorner: Archive video page HTML (first 500 chars): {hqporner_html[:500]}")
         else:
             self._save_debug_html(hqporner_html, f"debug_hqporner_{url[-10:]}.html")
-            self.logger.debug(f"HQPorner: Main video page HTML (first 500 chars): {hqporner_html[:500]}")
 
         mydaddy_match = re.search(
             r'(?:nativeplayer|altplayer|player)\.php\?i=(//mydaddy\.cc/video/[a-f0-9]+/?(?:&alt)?)',
@@ -221,7 +215,7 @@ class HQPorner(BaseWebsite):
             re.IGNORECASE | re.DOTALL,
         )
         if not mydaddy_match:
-            self.logger.error(f"HQPorner: No mydaddy match found in HTML: {hqporner_html[:1000]}")
+            self.logger.error("HQPorner: No mydaddy match found in HTML.")
             self.notify_error("Could not find the embedded video URL.")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
@@ -240,7 +234,6 @@ class HQPorner(BaseWebsite):
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
         self._save_debug_html(mydaddy_html, f"debug_mydaddy_{url[-10:]}.html")
-        self.logger.debug(f"HQPorner: Mydaddy HTML (first 500 chars): {mydaddy_html[:500]}")
 
         source_matches = re.findall(
             r'(//(?:s\d+\.)?(?:bigcdn\.cc|othercdn\.com)/pubs/[a-f0-9.]+/(\d+)\.mp4)',
@@ -248,7 +241,7 @@ class HQPorner(BaseWebsite):
             re.IGNORECASE | re.DOTALL,
         )
         if not source_matches:
-            self.logger.error(f"HQPorner: No video path match found in mydaddy HTML: {mydaddy_html[:1000]}")
+            self.logger.error("HQPorner: No video path match found in mydaddy HTML.")
             self.notify_error("Could not find the video base path.")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return

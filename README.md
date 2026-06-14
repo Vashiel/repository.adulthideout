@@ -2,28 +2,33 @@
 
 ![Adulthideout 10th Anniversary](repository.adulthideout/resources/fanart.jpg)
 
-## 1.0.13 "Rangefinder"
+## 1.0.14 "Featherlight"
 
-AdultHideout started in **January 2016** as a tiny personal Kodi addon for one site. In 2026 the project is in its **10th Anniversary Year**, and 1.0.13 "Rangefinder" focuses on resolver reliability, seek-safe playback, and another strong round of site integrations.
+AdultHideout started in **January 2016** as a tiny personal Kodi addon for one site. In 2026 the project is in its **10th Anniversary Year**, and 1.0.14 "Featherlight" focuses on a lighter package, cleaner internals, smarter global search, and more stable network behavior.
 
-**Rangefinder** sharpens playback reliability with resolver upgrades, seek-safe proxy paths, and new supported sites including MyPornTape, FamilyPornHD, CamCaps fixes, CamgirlFap, PornoBae, AllPornStream, Xtapes and related KVS/hoster improvements.
+**Featherlight** trims the addon heavily while keeping the hard-won playback stack intact. It improves Global Search, reduces packaged size, softens official-source checks during temporary metadata outages, and adds another set of practical site integrations.
+
+## Featured Highlights
+
+*   🚀 **Featherlight Optimization (Addon Size Cut by over 50%!):** 
+    We performed a major codebase cleanup. Unused large vendored libraries, captcha integrations, optional JS runtimes, and obsolete metadata files were completely removed, and all logo assets were compressed. The packaged addon is now dramatically smaller, ensuring much faster installations, updates, and overall snappier performance on low-resource devices (like Android TV and Fire TV sticks).
+*   🔍 **Global Search 2.0 (Massive Discovery Upgrade):** 
+    We completely reworked the Multi-Site Global Search into a powerful, unified search hub. You can now search across dozens of websites simultaneously using category presets (Straight, Gay, Trans, Hentai) to query only what you need. Key upgrades include progressive paging (slow sources no longer stall the search), combined presets, Select All options, and a persistent cached state (instantly loads search results when returning from video playback without re-scanning).
 
 ### New Sites
 
-MyPornTape, FamilyPornHD, CamgirlFap, PornoBae, AllPornStream and Xtapes.
+JizzBerry, MyLust, Hentaisea, PimpBunny, ShesFreaky and Epawg.
 
 ### Repaired / Expanded
 
-CamCaps, Sextb.net, NoodleMagazine, Global Search, shared resolver preferences, KVS playback, local Range proxy handling and FFmpeg recording paths.
-
+Global Search, WOW.xxx DNS resilience, AllowFlash request fallback, CamCaps, Sextb.net, NoodleMagazine, shared resolver preferences, KVS playback, local Range proxy handling and FFmpeg recording paths.
 ### Highlights
 
-- **Seek-Safe Playback:** Expanded local Range proxy use for sources where Kodi hangs or stalls on direct MP4 seeks.
-- **Resolver Stack:** Added and refined shared resolver paths for 88z, WatchStreamHD, MyDaddy, Hglink, TubexPlayer and TurboPlayers.
-- **Source Expansion:** Added MyPornTape and several 1.0.13-era sites with listings, search, categories, pagination and playback validation.
-- **CamCaps Repair:** Updated CamCaps for the current `camcaps.to` domain and refreshed parsing for listings, categories, performers and playback.
-- **Sextb.net Resolver Controls:** Added resolver enable switches, preferred resolver selection and health checks before playback.
-- **Global Search Cleanup:** Filtered global search results to playable video items only and kept cached result navigation stable.
+- **Featherlight Optimization:** Compressed logo assets and removed stale caches, unused vendor modules and release leftovers, cutting the packaged addon size dramatically.
+- **Global Search 2.0:** Added Select All, richer presets, combined presets, stable cached result paging and cleaner video-only result lists.
+- **Network Resilience:** Added a Windows DNS retry/cache layer for intermittent `getaddrinfo 11002` failures and safer request fallback behavior for fragile sites.
+- **Official Source Check:** Local hash verification remains strict, but temporary online metadata outages no longer trigger a scary unofficial-install warning by themselves.
+- **Source Expansion:** Added Epawg, ShesFreaky, PimpBunny, Pervertium, MyLust, JizzBerry and HentaiSea alongside the previous 1.0.13 source wave.
 - **Release Hygiene:** Refreshed logos, settings, changelog, release metadata, official hashes and repository update files.
 
 ### Feature Focus: Global Search — Unified Multi-Site Discovery

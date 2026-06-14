@@ -43,7 +43,6 @@ class HeavyFetish(BaseWebsite):
     
     def __init__(self, addon_handle, addon=None):
         super().__init__(self.NAME, self.BASE_URL, self.SEARCH_URL, addon_handle, addon=addon)
-        print(f"DEBUG: Initialized. Cloudscraper enabled: {_HAS_CF}")
 
     def get_headers(self):
         return {
@@ -54,21 +53,18 @@ class HeavyFetish(BaseWebsite):
         }
 
     def make_request(self, url):
-        print(f"DEBUG: make_request url={url}")
         try:
             headers = self.get_headers()
             if _HAS_CF:
                 scraper = cloudscraper.create_scraper(browser={'custom': headers['User-Agent']})
                 r = scraper.get(url, headers=headers, timeout=20)
-                print(f"DEBUG: CS status {r.status_code}")
                 return r.text
             else:
-                print("DEBUG: Using urllib")
                 req = urllib.request.Request(url, headers=headers)
                 with urllib.request.urlopen(req, timeout=15) as response:
                     return response.read().decode('utf-8')
         except Exception as e:
-            print(f"DEBUG: Request error for {url}: {e}")
+            self.logger.error("HeavyFetish request failed: %s", e)
             return None
 
     def process_content(self, url):
@@ -87,10 +83,7 @@ class HeavyFetish(BaseWebsite):
             self.end_directory()
             return
         
-        print(f"DEBUG: process_content HTML len: {len(html)}")
-        print(f"DEBUG: Content Sample: {html[:200]}")
         matches = list(self.RE_VIDEO.finditer(html))
-        print(f"DEBUG: Found {len(matches)} video matches")
 
         seen_urls = set()
         for video_match in matches:
@@ -174,7 +167,7 @@ class HeavyFetish(BaseWebsite):
             video_url_match = re.search(r'video_url\s*:\s*[\'"]([^\'"]+)[\'"]', html)
             if video_url_match:
                 video_url = video_url_match.group(1)
-                xbmc.log(f"HeavyFetish: Extracted video URL: {video_url}", xbmc.LOGINFO)
+                xbmc.log("HeavyFetish: Extracted playable video URL", xbmc.LOGINFO)
                 
                 if not video_url.startswith('http'):
                     license_match = re.search(r'license_code\s*:\s*[\'"]([^\'"]+)[\'"]', html)
@@ -191,7 +184,7 @@ class HeavyFetish(BaseWebsite):
                 xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
                 return
             
-            xbmc.log(f"HeavyFetish: Playing direct URL: {video_url}", xbmc.LOGINFO)
+            xbmc.log("HeavyFetish: Starting direct playback", xbmc.LOGINFO)
             
             play_url = f"{video_url}|User-Agent={urllib.parse.quote(headers['User-Agent'])}&Referer={urllib.parse.quote(url)}"
             
@@ -215,10 +208,7 @@ class HeavyFetish(BaseWebsite):
             self.end_directory()
             return
         
-        print(f"DEBUG: list_categories HTML len: {len(html)}")
-        print(f"DEBUG: Content Sample: {html[:200]}")
         matches = list(self.RE_CAT.finditer(html))
-        print(f"DEBUG: Found {len(matches)} category matches")
 
         for m in matches:
             cat_url = m.group(1)

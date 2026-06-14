@@ -13,6 +13,7 @@ import xbmcplugin
 from resources.lib.base_website import BaseWebsite
 from resources.lib.decoders.kvs_decoder import kvs_decode_url
 from resources.lib.resilient_http import fetch_text
+from resources.lib.stream_validation import is_stream_host_resolvable
 
 
 class BigTitsLust(BaseWebsite):
@@ -239,6 +240,10 @@ class BigTitsLust(BaseWebsite):
                 video_url = html.unescape(fallback_match.group(1).replace("&amp;", "&"))
 
         if not video_url or not video_url.startswith("http"):
+            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
+            return
+
+        if not is_stream_host_resolvable(video_url, self.logger):
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
 

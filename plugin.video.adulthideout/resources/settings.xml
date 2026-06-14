@@ -71,6 +71,8 @@
     <setting id="show_eroasmr" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]eporner[/B]" />
     <setting id="show_eporner" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]Epawg[/B]" />
+    <setting id="show_epawg" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Freeomovie[/B]" />
     <setting id="show_freeomovie" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]FullXCinema[/B]" />
@@ -81,6 +83,8 @@
     <setting id="show_hstream" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]HentaiDude[/B]" />
     <setting id="show_hentaidude" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]Hentaisea[/B]" />
+    <setting id="show_hentaisea" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]HentaiOcean[/B]" />
     <setting id="show_hentaiocean" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]HClips[/B]" />
@@ -103,12 +107,16 @@
     <setting id="show_javhdporn" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]JAVSubbed[/B]" />
     <setting id="show_javsubbed" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]JizzBerry[/B]" />
+    <setting id="show_jizzberry" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]LuxureTV[/B]" />
     <setting id="show_luxuretv" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]MissAV[/B]" />
     <setting id="show_missav" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]Motherless[/B]" />
     <setting id="show_motherless" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]MyLust[/B]" />
+    <setting id="show_mylust" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]MyPornTape[/B]" />
     <setting id="show_myporntape" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]NoodleMagazine[/B]" />
@@ -121,6 +129,8 @@
     <setting id="show_paradisehill" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]PMVHaven[/B]" />
     <setting id="show_pmvhaven" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]PimpBunny[/B]" />
+    <setting id="show_pimpbunny" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]PornDig[/B]" />
     <setting id="show_porndig" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]PornDoe[/B]" />
@@ -178,6 +188,7 @@
     <setting type="lsep" label="[B]SpeedPorn[/B]" />
     <setting id="show_speedporn" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]SuperPorn[/B]" />
+    <setting id="show_superporn" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]ThePornBang[/B]" />
     <setting id="show_thepornbang" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]TNAFlix[/B]" />
@@ -290,6 +301,44 @@
     <setting id="show_perfectgirls" type="bool" label="30003" default="true" />
     <setting type="lsep" label="[B]PornoBae[/B]" />
     <setting id="show_pornobae" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]Analdin[/B]" />
+    <setting id="show_analdin" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]Area51[/B]" />
+    <setting id="show_area51" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]BDSMStreak[/B]" />
+    <setting id="show_bdsmstreak" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]BoundHub[/B]" />
+    <setting id="show_boundhub" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]Empflix[/B]" />
+    <setting id="show_empflix" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]Fuqer[/B]" />
+    <setting id="show_fuqer" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]GoPorn[/B]" />
+    <setting id="show_goporn" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]HeavyFetish[/B]" />
+    <setting id="show_heavyfetish" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]PervClips[/B]" />
+    <setting id="show_pervclips" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]Pervertium[/B]" />
+    <setting id="show_pervertium" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]Porcore[/B]" />
+    <setting id="show_porcore" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]PussySpace[/B]" />
+    <setting id="show_pussyspace" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]Shameless[/B]" />
+    <setting id="show_shameless" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]ShesFreaky[/B]" />
+    <setting id="show_shesfreaky" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]Shooshtime[/B]" />
+    <setting id="show_shooshtime" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]Smutr[/B]" />
+    <setting id="show_smutr" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]SunPorno[/B]" />
+    <setting id="show_sunporno" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]SxyPrn[/B]" />
+    <setting id="show_sxyprn" type="bool" label="30003" default="true" />
+    <setting type="lsep" label="[B]Thumbzilla[/B]" />
+    <setting id="show_thumbzilla" type="bool" label="30003" default="true" />
   </category>
   <category label="30100">
     <setting type="lsep" label="30100" />
@@ -312,14 +361,18 @@
     <setting id="camgirlfap_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" />
     <setting id="chaturbate_sort_by" type="enum" label="30004" values="Most Relevant|Most Viewers|Random" default="0" />
     <setting id="erome_sort_by" type="enum" label="   Sort by" values="Hot|New" default="1" enable="eq(-1,true)" />
+    <setting id="epawg_sort_by" type="enum" label="30004" values="Latest|Trending|Most Viewed" default="0" />
+    <setting id="shesfreaky_sort_by" type="enum" label="30004" values="Newest|Featured|Top Rated|Most Viewed" default="0" />
     <setting id="erome_content_type" type="enum" label="   Content" values="All|Straight|Gay|Trans|Hentai" default="0" enable="eq(-2,true)" />
     <setting id="thisvid_sort_by" type="enum" label="30004" values="Newest|Most Viewed|Top Rated" default="0" />
     <setting id="pornhat_sort_by" type="enum" label="30004" values="Newest|Top Rated|Most Viewed|Longest" default="0" />
     <setting id="pornmedium_sort_by" type="enum" label="30004" values="Latest|Best Rated|Most Viewed" default="0" />
     <setting id="pornmedium_sort_migrated_1012" type="bool" default="false" visible="false" />
+    <setting id="pervertium_sort_by" type="enum" label="30004" values="Latest Updates|Most Popular|Top Rated" default="0" />
     <setting id="pornone_sort_by" type="enum" label="30004" values="New|Hot|Most Viewed|Top Rated|Longest" default="0" />
     <setting id="tube8_sort_by" type="enum" label="30004" values="Newest|Most Viewed|Top Rated|Longest" default="0" />
     <setting id="letmejerk_sort_by" type="enum" label="30004" values="Popular|Latest|Top Rated" default="0" />
+    <setting id="mylust_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated|Best" default="0" />
     <setting id="upornia_sort_by" type="enum" label="30004" values="Most Popular|Latest Updates|Top Rated" default="0" />
     <setting id="xcafe_sort_by" type="enum" label="30004" values="Recommended|Newest|Most Popular|Top Rated" default="0" />
     <setting id="fullporner_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" />
@@ -351,6 +404,7 @@
     <setting id="lesbianporn8_sort_by" type="enum" label="30004" values="Newest|Hottest|Most Viewed|Top Rated" default="0" />
     <setting id="yourlesbians_sort_by" type="enum" label="30004" values="Newest|Most Viewed|Top Rated" default="0" />
     <setting id="pmvhaven_sort_by" type="enum" label="30004" values="Newest|Most Popular|Trending" default="0" />
+    <setting id="pimpbunny_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Best Rated" default="0" />
     <setting id="ikisoda_sort_by" type="enum" label="30004" values="Recently Added|Latest Releases|Most Viewed|Best Rated" default="0" />
     <setting id="zbporn_sort_by" type="enum" label="30004" values="Latest|Popular|Top Rated|Longest" default="0" />
     <setting id="tubev_sort_by" type="enum" label="30004" values="Popular|New" default="0" />
@@ -360,6 +414,7 @@
     <setting id="perfectgirls_sort_by" type="enum" label="30004" values="Latest|Popular|Trending" default="0" />
     <setting id="yespornvip_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated|Longest" default="0" />
     <setting id="familypornhd_sort_by" type="enum" label="30004" values="Latest|Popular" default="0" />
+    <setting id="jizzberry_sort_by" type="enum" label="30004" values="Newest|Top" default="0" />
   </category>
   <category label="30120">
     <setting type="lsep" label="30120" />
@@ -375,6 +430,7 @@
   <category label="30140">
     <setting type="lsep" label="30140" />
     <setting id="hanime_sort_by" type="enum" label="30004" values="Recent Upload|Old Upload|Most Views|Least Views|Most Likes|Least Likes|Alphabetical (A-Z)|Alphabetical (Z-A)" default="0" />
+    <setting id="hentaisea_sort_by" type="enum" label="30004" values="Latest Episodes|Series" default="0" />
     <setting id="hclips_sort_by" type="enum" label="30004" values="Latest|Popular|Top Rated|Most Commented" default="0" />
     <setting id="hdzog_sort_by" type="enum" label="30004" values="Most Popular|Latest Updates|Top Rated|Most Viewed|Longest" default="0" />
     <setting id="hqpornero_sort_by" type="number" default="0" visible="false" />
@@ -501,12 +557,6 @@
     <setting id="redtube_ps_breastType" type="text" default="All" visible="false" />
     <setting id="redtube_ps_tattoos" type="text" default="All" visible="false" />
     <setting id="redtube_ps_piercings" type="text" default="All" visible="false" />
-    <setting id="redtube_ps_ethnicity" type="text" default="All" visible="false" />
-    <setting id="redtube_ps_cup" type="text" default="All" visible="false" />
-    <setting id="redtube_ps_hair" type="text" default="All" visible="false" />
-    <setting id="redtube_ps_breastType" type="text" default="All" visible="false" />
-    <setting id="redtube_ps_tattoos" type="text" default="All" visible="false" />
-    <setting id="redtube_ps_piercings" type="text" default="All" visible="false" />
     <setting id="shemalez_sort_by" type="number" default="0" visible="false" />
     <setting id="xcafe_sort_by_internal" type="number" default="0" visible="false" />
     <setting id="pornhoarder_sort_by" type="number" default="0" visible="false" />
@@ -514,11 +564,5 @@
     <setting id="porndoe_content_type" type="number" default="0" visible="false" />
     <setting id="Rapelust_sort_by" type="number" default="0" visible="false" />
     <setting id="automated_test" type="bool" default="false" visible="false" />
-    <setting id="show_eroasm" type="bool" default="true" visible="false" />
-    <setting id="show_freeomovies" type="bool" default="true" visible="false" />
-    <setting id="show_heavy" type="bool" default="true" visible="false" />
-    <setting id="show_luxure" type="bool" default="true" visible="false" />
-    <setting id="show_porng" type="bool" default="true" visible="false" />
-    <setting id="show_vikipor" type="bool" default="true" visible="false" />
   </category>
 </settings>

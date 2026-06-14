@@ -30,9 +30,33 @@ DEFAULT_SOURCES = [
 
 SOURCE_PRESETS = [
     ("balanced", "Balanced Top Sites", DEFAULT_SOURCES),
+    ("playlist_safe", "Playlist Safe", [
+        "3movs", "eporner", "pornhub", "xvideos", "xnxx", "spankbang",
+        "tnaflix", "hclips", "txxx", "redtube", "tube8", "youporn",
+    ]),
     ("straight", "Straight / Mainstream", [
         "eporner", "pornhub", "xvideos", "xnxx", "spankbang", "tnaflix",
         "hclips", "txxx", "tube8", "redtube", "youporn", "youjizz",
+    ]),
+    ("big_tubes", "Big Tube Sites", [
+        "pornhub", "xvideos", "xnxx", "redtube", "youporn", "youjizz",
+        "tube8", "tnaflix", "empflix", "hclips", "spankbang", "thumbzilla",
+    ]),
+    ("kvs_tubes", "KVS Tube Sites", [
+        "porn4fans", "yespornvip", "pornmedium", "hqpornero", "tgtsporn",
+        "porn300", "porn7", "pornhat", "porndoe", "pornzog",
+    ]),
+    ("amateur", "Amateur / Homemade", [
+        "erome", "motherless", "xhamster", "spankbang", "xnxx", "xvideos",
+        "thisvid", "voyeurhit", "watchporn", "upornia",
+    ]),
+    ("full_movies", "Full Movies / Longform", [
+        "fullxcinema", "freeomovie", "familypornhd", "pornobae",
+        "premiumporn", "javhdporn", "javsubbed", "missav",
+    ]),
+    ("jav_asian", "JAV / Asian", [
+        "javhdporn", "javsubbed", "missav", "vjav", "pornmz",
+        "tubepornclassic", "xvideos", "xhamster",
     ]),
     ("trans", "Trans / Shemale", [
         "ashemaletube", "shemalez", "txxx", "xnxx", "xhamster", "spankbang",
@@ -45,6 +69,14 @@ SOURCE_PRESETS = [
     ("hentai_futa", "Hentai / Futa / Rule34", [
         "rule34video", "hanime", "hentaidude", "hentaiocean", "hentaigasm",
         "erome",
+    ]),
+    ("fetish", "Fetish / BDSM", [
+        "heavy_r", "heavyfetish", "boundhub", "punishworld", "punishbang",
+        "efukt", "pervertium", "pervclips", "spankbang",
+    ]),
+    ("cams", "Cam / Clips", [
+        "chaturbate", "camgirlfap", "archivebate", "camcaps", "erome",
+        "motherless", "thisvid",
     ]),
     ("new_1012", "1.0.12 New Sites", [
         "allowflash", "notfans", "wowxxx", "xxthots", "sextb", "porn4fans",
@@ -80,6 +112,16 @@ PROFILE_OVERRIDES = {
 }
 
 RESULTS_PER_PAGE = 40
+PLAYLIST_SAFE_CACHE_VERSION = "playlist-safe-v2"
+UNSTABLE_PLAYLIST_SOURCES = {
+    "analdin",
+    "anysex",
+    "bananamovies",
+    "bdsmstreak",
+    "bigassporn",
+    "bigtitslust",
+    "camcaps",
+}
 
 
 class GlobalSearch:
@@ -122,6 +164,10 @@ class GlobalSearch:
         history = self._load_state().get("history")
         return history if isinstance(history, list) else []
 
+    def _custom_presets(self):
+        presets = self._load_state().get("custom_presets")
+        return presets if isinstance(presets, dict) else {}
+
     def _remember_query(self, query):
         state = self._load_state()
         history = state.get("history")
@@ -135,8 +181,19 @@ class GlobalSearch:
         self._save_state(state)
 
     def _cache_key(self, query):
-        signature = "|".join([self._selected_profile()] + self._selected_sources())
+        signature = "|".join([PLAYLIST_SAFE_CACHE_VERSION, self._selected_profile()] + self._selected_sources())
         return "{}::{}".format(query.strip().lower(), signature)
+
+    def _legacy_cache_prefix(self, query):
+        return "{}::".format(query.strip().lower())
+
+    def _filter_results(self, results):
+        if not isinstance(results, list):
+            return []
+        return [
+            result for result in results
+            if isinstance(result, dict) and result.get("source") not in UNSTABLE_PLAYLIST_SOURCES
+        ]
 
     def _cached_results(self, query):
         cache = self._load_state().get("result_cache")
@@ -144,9 +201,18 @@ class GlobalSearch:
             return None
         entry = cache.get(self._cache_key(query))
         if not isinstance(entry, dict):
+            prefix = self._legacy_cache_prefix(query)
+            matches = [
+                value for key, value in cache.items()
+                if key.startswith(prefix) and isinstance(value, dict)
+            ]
+            if matches:
+                matches.sort(key=lambda item: item.get("saved_at", 0), reverse=True)
+                entry = matches[0]
+        if not isinstance(entry, dict):
             return None
         results = entry.get("results")
-        return results if isinstance(results, list) else None
+        return self._filter_results(results) if isinstance(results, list) else None
 
     def _save_results(self, query, results):
         state = self._load_state()
@@ -158,10 +224,24 @@ class GlobalSearch:
             "profile": self._selected_profile(),
             "sources": self._selected_sources(),
             "saved_at": int(time.time()),
-            "results": results[:200],
+            "results": results,
         }
         state["result_cache"] = cache
         self._save_state(state)
+
+    def _mark_refresh_once(self, query):
+        state = self._load_state()
+        state["refresh_once"] = query.strip().lower()
+        self._save_state(state)
+
+    def _consume_refresh_once(self, query):
+        state = self._load_state()
+        expected = query.strip().lower()
+        if state.get("refresh_once") != expected:
+            return False
+        state.pop("refresh_once", None)
+        self._save_state(state)
+        return True
 
     def _setting_id(self, name):
         return "show_{}".format(name.lower().replace("-", "").replace("_", ""))
@@ -176,6 +256,8 @@ class GlobalSearch:
             if not filename.endswith(".py") or filename == "__init__.py":
                 continue
             name = filename[:-3]
+            if name in UNSTABLE_PLAYLIST_SOURCES:
+                continue
             if self.addon.getSetting(self._setting_id(name)) == "false":
                 continue
             sources.append(name)
@@ -226,6 +308,7 @@ class GlobalSearch:
         self._add_dir("[COLOR yellow]New Global Search[/COLOR]", "new_search")
         self._add_dir("Source Presets [COLOR yellow]{}[/COLOR]".format(self._preset_label(self._selected_profile())), "show_presets", self.search_icon)
         self._add_dir("Choose Sources [COLOR yellow]{} selected[/COLOR]".format(len(selected)), "choose_sources", self.search_icon)
+        self._add_dir("Select All Sites [COLOR yellow]{} available[/COLOR]".format(len(self._available_sources())), "select_all_sources", self.search_icon)
         self._add_dir("Show Selected Sources", "show_sources", self.search_icon)
         history = self._history()
         if history:
@@ -260,9 +343,16 @@ class GlobalSearch:
         self._remember_query(new_query)
         self._open_results(new_query, refresh=True)
 
+    def refresh_search(self, query, page=1):
+        query = (query or "").strip()
+        if not query:
+            return self.show_menu()
+        self._open_results(query, refresh=True, page=page)
+
     def _preset_label(self, profile):
         if profile == "custom":
-            return "Custom"
+            label = self._load_state().get("custom_label")
+            return label if label else "Custom"
         for key, label, _ in SOURCE_PRESETS:
             if key == profile:
                 return label
@@ -275,6 +365,11 @@ class GlobalSearch:
             valid = [source for source in sources if source in available]
             marker = "[COLOR lime][x][/COLOR] " if key == current else "[ ] "
             self._add_dir("{}{} [COLOR yellow]{} sources[/COLOR]".format(marker, label, len(valid)), "apply_preset", self.search_icon, profile=key)
+        self._add_dir("[COLOR cyan]Combine Presets[/COLOR]", "combine_presets", self.search_icon)
+        self._add_dir("[COLOR cyan]Save Current Selection as Custom Preset[/COLOR]", "save_custom_preset", self.search_icon)
+        custom_presets = self._custom_presets()
+        if custom_presets:
+            self._add_dir("Custom Presets [COLOR yellow]{}[/COLOR]".format(len(custom_presets)), "show_custom_presets", self.search_icon)
         end_directory_with_view(self.addon_handle, self.addon)
 
     def apply_preset(self, profile):
@@ -286,9 +381,137 @@ class GlobalSearch:
                     state = self._load_state()
                     state["profile"] = key
                     state["sources"] = chosen
+                    state.pop("custom_label", None)
                     self._save_state(state)
                 break
         return self.show_menu()
+
+    def combine_presets(self):
+        available = set(self._available_sources())
+        usable = []
+        for key, label, sources in SOURCE_PRESETS:
+            valid = [source for source in sources if source in available]
+            if valid:
+                usable.append((key, label, valid))
+        if not usable:
+            xbmcgui.Dialog().notification("Global Search", "No presets available", xbmcgui.NOTIFICATION_WARNING, 3000)
+            return self.show_presets()
+
+        labels = ["{} [COLOR yellow]{} sources[/COLOR]".format(label, len(sources)) for _, label, sources in usable]
+        dialog = xbmcgui.Dialog()
+        if hasattr(dialog, "multiselect"):
+            indexes = dialog.multiselect("Combine Presets", labels)
+        else:
+            single = dialog.select("Combine Presets", labels)
+            indexes = [] if single == -1 else [single]
+        if indexes is None or indexes == -1:
+            return self.show_presets()
+
+        combined = []
+        names = []
+        for idx in indexes:
+            if 0 <= idx < len(usable):
+                _, label, sources = usable[idx]
+                names.append(label)
+                for source in sources:
+                    if source not in combined:
+                        combined.append(source)
+        if not combined:
+            xbmcgui.Dialog().notification("Global Search", "No sources selected", xbmcgui.NOTIFICATION_WARNING, 3000)
+            return self.show_presets()
+
+        state = self._load_state()
+        state["sources"] = combined
+        state["profile"] = "custom"
+        state["custom_label"] = " + ".join(names[:3])
+        if len(names) > 3:
+            state["custom_label"] += " +{}".format(len(names) - 3)
+        self._save_state(state)
+        xbmcgui.Dialog().notification(
+            "Global Search",
+            "{} sources combined".format(len(combined)),
+            xbmcgui.NOTIFICATION_INFO,
+            3000,
+        )
+        return self.show_menu()
+
+    def save_custom_preset(self):
+        selected = self._selected_sources()
+        if not selected:
+            xbmcgui.Dialog().notification("Global Search", "No sources selected", xbmcgui.NOTIFICATION_WARNING, 3000)
+            return self.show_presets()
+
+        keyboard = xbmc.Keyboard("", "[COLOR yellow]Custom Preset Name[/COLOR]")
+        keyboard.doModal()
+        if not keyboard.isConfirmed():
+            return self.show_presets()
+        label = keyboard.getText().strip()
+        if not label:
+            return self.show_presets()
+
+        preset_id = "custom_{}".format(int(time.time()))
+        state = self._load_state()
+        presets = state.get("custom_presets")
+        if not isinstance(presets, dict):
+            presets = {}
+        presets[preset_id] = {
+            "label": label,
+            "sources": selected,
+            "saved_at": int(time.time()),
+        }
+        state["custom_presets"] = presets
+        state["profile"] = "custom"
+        state["custom_label"] = label
+        state["sources"] = selected
+        self._save_state(state)
+        xbmcgui.Dialog().notification("Global Search", "Preset saved", xbmcgui.NOTIFICATION_INFO, 3000)
+        return self.show_presets()
+
+    def show_custom_presets(self):
+        available = set(self._available_sources())
+        presets = self._custom_presets()
+        for preset_id, preset in sorted(presets.items(), key=lambda item: item[1].get("label", "").lower()):
+            sources = [source for source in preset.get("sources", []) if source in available]
+            label = preset.get("label") or preset_id
+            item_label = "{} [COLOR yellow]{} sources[/COLOR]".format(label, len(sources))
+            self._add_dir(item_label, "apply_custom_preset", self.search_icon, preset_id=preset_id)
+        self._add_dir("[COLOR red]Delete Custom Preset[/COLOR]", "delete_custom_preset", self.search_icon)
+        end_directory_with_view(self.addon_handle, self.addon)
+
+    def apply_custom_preset(self, preset_id):
+        available = set(self._available_sources())
+        preset = self._custom_presets().get(preset_id)
+        if not isinstance(preset, dict):
+            return self.show_presets()
+        chosen = [source for source in preset.get("sources", []) if source in available]
+        if not chosen:
+            xbmcgui.Dialog().notification("Global Search", "Preset has no available sources", xbmcgui.NOTIFICATION_WARNING, 3000)
+            return self.show_custom_presets()
+        state = self._load_state()
+        state["profile"] = "custom"
+        state["custom_label"] = preset.get("label") or "Custom"
+        state["sources"] = chosen
+        self._save_state(state)
+        return self.show_menu()
+
+    def delete_custom_preset(self):
+        presets = self._custom_presets()
+        if not presets:
+            return self.show_presets()
+        ordered = sorted(presets.items(), key=lambda item: item[1].get("label", "").lower())
+        labels = [preset.get("label") or preset_id for preset_id, preset in ordered]
+        idx = xbmcgui.Dialog().select("Delete Custom Preset", labels)
+        if idx == -1:
+            return self.show_custom_presets()
+        preset_id, preset = ordered[idx]
+        if not xbmcgui.Dialog().yesno("Delete Custom Preset", preset.get("label") or preset_id):
+            return self.show_custom_presets()
+        state = self._load_state()
+        custom_presets = state.get("custom_presets")
+        if isinstance(custom_presets, dict):
+            custom_presets.pop(preset_id, None)
+        self._save_state(state)
+        return self.show_custom_presets()
 
     def choose_sources(self):
         available = self._available_sources()
@@ -319,7 +542,26 @@ class GlobalSearch:
         state = self._load_state()
         state["sources"] = chosen
         state["profile"] = "custom"
+        state.pop("custom_label", None)
         self._save_state(state)
+        return self.show_menu()
+
+    def select_all_sources(self):
+        available = self._available_sources()
+        if not available:
+            xbmcgui.Dialog().notification("Global Search", "No sources available", xbmcgui.NOTIFICATION_WARNING, 3000)
+            return self.show_menu()
+        state = self._load_state()
+        state["sources"] = available
+        state["profile"] = "custom"
+        state.pop("custom_label", None)
+        self._save_state(state)
+        xbmcgui.Dialog().notification(
+            "Global Search",
+            "{} sources selected".format(len(available)),
+            xbmcgui.NOTIFICATION_INFO,
+            3000,
+        )
         return self.show_menu()
 
     def show_sources(self):
@@ -341,10 +583,12 @@ class GlobalSearch:
         self._remember_query(query)
         self._open_results(query, refresh=True)
 
-    def _open_results(self, query, refresh=False):
-        target = "{}?mode=21&website=global_search&query={}".format(sys_argv0(), urllib.parse.quote_plus(query))
+    def _open_results(self, query, refresh=False, page=1):
         if refresh:
-            target += "&refresh=1"
+            self._mark_refresh_once(query)
+        target = "{}?mode=21&website=global_search&query={}&page={}".format(
+            sys_argv0(), urllib.parse.quote_plus(query), int(page)
+        )
         xbmcplugin.endOfDirectory(self.addon_handle, succeeded=True, updateListing=False, cacheToDisc=False)
         xbmc.sleep(100)
         xbmc.executebuiltin("Container.Update({},replace)".format(target))
@@ -449,7 +693,7 @@ class GlobalSearch:
         xbmcplugin.addDirectoryItem(self.addon_handle, result.get("url", ""), item, is_folder)
 
     def _add_refresh_item(self, query, page=1):
-        url = "{}?mode=21&website=global_search&query={}&page={}&refresh=1".format(
+        url = "{}?mode=20&website=global_search&action=refresh_search&query={}&page={}".format(
             sys_argv0(), urllib.parse.quote_plus(query), int(page)
         )
         item = xbmcgui.ListItem("[COLOR cyan]Refresh Global Search[/COLOR]")
@@ -497,6 +741,7 @@ class GlobalSearch:
         if not query:
             return self.show_menu()
         self._remember_query(query)
+        refresh = self._consume_refresh_once(query)
         if not refresh and self.show_cached_results(query, page):
             return
         sources = self._selected_sources()

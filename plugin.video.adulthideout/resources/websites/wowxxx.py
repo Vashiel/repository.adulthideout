@@ -12,6 +12,7 @@ import xbmcgui
 import xbmcplugin
 
 from resources.lib.base_website import BaseWebsite
+from resources.lib.proxy_utils import PlaybackGuard, ProxyController
 
 
 class Wowxxx(BaseWebsite):
@@ -262,37 +263,73 @@ class Wowxxx(BaseWebsite):
             sources.append({"quality": quality, "url": self._absolute(src_match.group(1))})
         return sources
 
-    def _select_stream_url(self, sources):
+    def _ordered_sources(self, sources):
         if not sources:
-            return None
+            return []
         preference = self._get_quality_preference()
         sources = sorted(sources, key=lambda item: item["quality"], reverse=True)
         if preference == "Highest":
-            return sources[0]["url"]
+            return sources
         wanted = int(re.sub(r"\D", "", preference) or "0")
         exact = [item for item in sources if item["quality"] == wanted]
-        if exact:
-            return exact[0]["url"]
-        lower = [item for item in sources if item["quality"] and item["quality"] <= wanted]
-        if lower:
-            return sorted(lower, key=lambda item: item["quality"], reverse=True)[0]["url"]
-        return sources[0]["url"]
+        lower = [item for item in sources if item["quality"] and item["quality"] <= wanted and item not in exact]
+        higher = [item for item in sources if item not in exact and item not in lower]
+        return exact + sorted(lower, key=lambda item: item["quality"], reverse=True) + sorted(higher, key=lambda item: item["quality"], reverse=True)
 
-    def resolve_recording_stream(self, url):
-        html_content = self._get(url, referer=self.base_url)
-        stream_url = self._select_stream_url(self._extract_sources(html_content))
-        if not stream_url:
-            self.logger.info("WOW.xxx no public stream on detail page: %s", url)
-            return None
+    def _stream_headers(self, page_url):
         headers = {
             "User-Agent": self.ua,
-            "Referer": url,
+            "Referer": page_url,
             "Accept": "*/*",
+            "Accept-Encoding": "identity",
         }
         cookie_header = "; ".join("{}={}".format(cookie.name, cookie.value) for cookie in self.session.cookies)
         if cookie_header:
             headers["Cookie"] = cookie_header
-        return {"url": stream_url, "headers": headers, "extension": "mp4"}
+        return headers
+
+    def _probe_stream(self, stream_url, headers):
+        try:
+            response = self.session.head(stream_url, headers=headers, allow_redirects=True, timeout=10)
+            content_type = response.headers.get("Content-Type", "").lower()
+            if response.status_code in (200, 206) and ("video" in content_type or "octet-stream" in content_type):
+                return response.url or stream_url
+        except Exception as exc:
+            self.logger.warning("WOW.xxx HEAD probe failed for stream candidate: %s", exc)
+
+        try:
+            probe_headers = dict(headers)
+            probe_headers["Range"] = "bytes=0-1"
+            response = self.session.get(stream_url, headers=probe_headers, allow_redirects=True, timeout=12, stream=True)
+            try:
+                content_type = response.headers.get("Content-Type", "").lower()
+                if response.status_code in (200, 206) and ("video" in content_type or "octet-stream" in content_type):
+                    return response.url or stream_url
+            finally:
+                response.close()
+        except Exception as exc:
+            self.logger.warning("WOW.xxx Range probe failed for stream candidate: %s", exc)
+
+        return None
+
+    def resolve_recording_stream(self, url):
+        html_content = self._get(url, referer=self.base_url)
+        sources = self._ordered_sources(self._extract_sources(html_content))
+        if not sources:
+            self.logger.info("WOW.xxx no public stream on detail page: %s", url)
+            return None
+
+        headers = self._stream_headers(url)
+        for source in sources:
+            stream_url = source.get("url")
+            if not stream_url:
+                continue
+            playable_url = self._probe_stream(stream_url, headers)
+            if playable_url:
+                return {"url": playable_url, "headers": headers, "extension": "mp4"}
+
+        self.logger.info("WOW.xxx no reachable stream candidates on detail page: %s", url)
+        return None
 
     def play_video(self, url):
         resolved = self.resolve_recording_stream(url)
@@ -303,7 +340,22 @@ class Wowxxx(BaseWebsite):
 
         play_url = resolved["url"]
         headers = resolved.get("headers") or {}
-        if headers:
+        playback_controller = None
+        try:
+            playback_controller = ProxyController(
+                upstream_url=play_url,
+                upstream_headers=headers,
+                cookies=self.session.cookies.get_dict() if self.session else None,
+                use_urllib=True,
+                probe_size=True,
+            )
+            play_url = playback_controller.start()
+            self.logger.info("WOW.xxx using in-process Range proxy for playback")
+        except Exception as exc:
+            playback_controller = None
+            self.logger.warning("WOW.xxx Range proxy failed, falling back direct: %s", exc)
+
+        if headers and playback_controller is None:
             play_url = "{}|{}".format(play_url, urllib.parse.urlencode(headers))
 
         list_item = xbmcgui.ListItem(path=play_url)
@@ -311,3 +363,5 @@ class Wowxxx(BaseWebsite):
         list_item.setMimeType("video/mp4")
         list_item.setContentLookup(False)
         xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
+        if playback_controller:
+            PlaybackGuard(xbmc.Player(), xbmc.Monitor(), play_url, playback_controller).start()

@@ -22,6 +22,7 @@ import xbmcgui
 import xbmcplugin
 
 from resources.lib.base_website import BaseWebsite
+from resources.lib.resilient_http import fetch_text
 
 
 _ACTIVE_PROXIES = []
@@ -168,7 +169,15 @@ class Allowflash(BaseWebsite):
                 xbmc.sleep(750 * attempt)
 
         self.logger.error("AllowFlash failed to fetch %s after %s attempts: %s", url, max_retries, last_error)
-        return ""
+        fallback = fetch_text(
+            url,
+            headers=self._headers(referer),
+            scraper=None,
+            logger=self.logger,
+            timeout=25,
+            use_windows_curl_fallback=True,
+        )
+        return fallback or ""
 
     def _end_failed_directory(self):
         xbmcplugin.endOfDirectory(self.addon_handle, succeeded=False, updateListing=False, cacheToDisc=False)

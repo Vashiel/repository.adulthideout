@@ -207,10 +207,6 @@ class _UrllibUpstream:
         if self.cookie_str and 'Cookie' not in h:
             h['Cookie'] = self.cookie_str
         
-        # Log headers for debugging (abbreviate Cookie)
-        clean_h = {k: (v[:20] + '...' if k == 'Cookie' and len(v) > 20 else v) for k, v in h.items()}
-        xbmc.log(f"[AHProxy-urllib] Request Headers: {clean_h}", xbmc.LOGDEBUG)
-            
         req = urllib.request.Request(url, headers=h)
         return req
     
@@ -510,6 +506,7 @@ class _Upstream:
     ):
         self.original_url = url
         self.resolved_url = None
+        self.skip_resolve = skip_resolve
         self.total_size = None
         xbmc.log(f"[AHProxy] Upstream URL: {url[:200]}", xbmc.LOGINFO)
 
@@ -537,10 +534,6 @@ class _Upstream:
                 except Exception:
                     pass
             
-            # Mask cookies for logging
-            clean_cookies = {k: '***' for k in cookies} if cookies else {}
-            xbmc.log(f"[AHProxy] Session initialized with cookies: {clean_cookies}", xbmc.LOGDEBUG)
-            xbmc.log(f"[AHProxy] Session headers: {self.session.headers}", xbmc.LOGDEBUG)
         except Exception:
             pass
 
@@ -646,7 +639,7 @@ class _Upstream:
         if extra:
             h.update(extra)
         resp = self.session.head(self.url, headers=h, allow_redirects=True, timeout=timeout)
-        if resp.url != self.url:
+        if not self.skip_resolve and resp.url != self.url:
             self.resolved_url = resp.url
             xbmc.log(f"[AHProxy] Dynamically resolved redirected URL via HEAD: {self.resolved_url}", xbmc.LOGINFO)
         return resp
@@ -661,7 +654,7 @@ class _Upstream:
             try:
                 resp = self.session.get(self.url, headers=h, allow_redirects=True, stream=stream, timeout=timeout)
                 xbmc.log(f"[AHProxy] Response status: {resp.status_code}, Content-Type: {resp.headers.get('Content-Type')}", xbmc.LOGINFO)
-                if resp.url != self.url:
+                if not self.skip_resolve and resp.url != self.url:
                     self.resolved_url = resp.url
                     xbmc.log(f"[AHProxy] Dynamically resolved redirected URL via GET: {self.resolved_url}", xbmc.LOGINFO)
                 return resp

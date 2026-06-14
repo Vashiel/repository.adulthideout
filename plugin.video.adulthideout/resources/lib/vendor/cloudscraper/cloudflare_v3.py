@@ -279,7 +279,7 @@ class CloudflareV3():
     def handle_V3_Challenge(self, resp, **kwargs):
         try:
             if self.cloudscraper.debug:
-                print('Handling Cloudflare v3 JavaScript VM challenge.')
+                pass
             
             # Extract challenge data
             challenge_info = self.extract_v3_challenge_data(resp)

@@ -109,30 +109,53 @@ class Tubev(BaseWebsite):
         if not html_content:
             return self.end_directory("videos")
 
-        pattern = re.compile(
-            r'<figure[^>]*>.*?'
-            r'<a[^>]+href="(https://www\.tubev\.sex/(?:video|video-archive)/\d+/[^"]+)"[^>]+title="([^"]+)"[^>]*>.*?'
-            r'<img[^>]+(?:src|data-src|data-original)="([^"]+)"[^>]*>.*?'
-            r'<div class="drop">\s*(.*?)\s*</div>.*?'
-            r'<div class="label">\s*<div>\s*([^<]+)\s*</div>',
-            re.IGNORECASE | re.DOTALL,
-        )
-
         seen = set()
-        for video_url, title_attr, thumb, title_text, duration in pattern.findall(html_content):
+        for block in re.findall(r"<figure\b[\s\S]*?</figure>", html_content, re.IGNORECASE):
+            href_match = re.search(
+                r'href=["\'](https://www\.tubev\.sex/(?:video|video-archive)/\d+/[^"\']+)["\']',
+                block,
+                re.IGNORECASE,
+            )
+            if not href_match:
+                continue
+            video_url = href_match.group(1)
             if video_url in seen:
                 continue
             seen.add(video_url)
 
+            title_attr_match = re.search(r'title=["\']([^"\']+)["\']', block, re.IGNORECASE)
+            title_text_match = re.search(
+                r'<div[^>]+class=["\']drop["\'][^>]*>\s*([\s\S]*?)\s*</div>',
+                block,
+                re.IGNORECASE,
+            )
+            title_attr = title_attr_match.group(1) if title_attr_match else ""
+            title_text = re.sub(r"<[^>]+>", " ", title_text_match.group(1)).strip() if title_text_match else ""
             title = html.unescape((title_text or title_attr).strip())
-            thumb = thumb.strip()
+
+            thumb = ""
+            img_match = re.search(
+                r'<img\b[^>]+(?:data-src|data-original|src)=["\']([^"\']+)["\']',
+                block,
+                re.IGNORECASE,
+            )
+            if img_match:
+                thumb = html.unescape(img_match.group(1).strip())
             if thumb.startswith("//"):
                 thumb = "https:" + thumb
             elif thumb.startswith("/"):
                 thumb = urllib.parse.urljoin(self.base_url, thumb)
 
             info = {"title": title, "plot": title}
-            duration_seconds = self.convert_duration(duration.strip())
+            duration = ""
+            duration_match = re.search(
+                r'<div[^>]+class=["\']label["\'][^>]*>\s*<div[^>]*>\s*([^<]+)',
+                block,
+                re.IGNORECASE,
+            )
+            if duration_match:
+                duration = duration_match.group(1).strip()
+            duration_seconds = self.convert_duration(duration)
             if duration_seconds:
                 info["duration"] = duration_seconds
 

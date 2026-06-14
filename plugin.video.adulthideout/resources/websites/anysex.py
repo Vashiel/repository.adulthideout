@@ -21,6 +21,8 @@ except Exception:
 
 import cloudscraper
 from resources.lib.base_website import BaseWebsite
+from resources.lib.resilient_http import fetch_text
+from resources.lib.stream_validation import is_stream_host_resolvable
 
 class AnySex(BaseWebsite):
     def __init__(self, addon_handle, addon=None):
@@ -111,17 +113,21 @@ class AnySex(BaseWebsite):
         return result_map
 
     def make_request(self, url):
-        try:
-            self.logger.info(f"Requesting: {url}")
-            response = self.scraper.get(url)
-            if response.status_code == 200:
-                return response.text
-            else:
-                self.logger.error(f"Request failed: {response.status_code}")
-                return None
-        except Exception as e:
-            self.logger.error(f"Request error: {e}")
-            return None
+        self.logger.info(f"Requesting: {url}")
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+            "Referer": self.base_url + "/",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+        return fetch_text(
+            url=url,
+            headers=headers,
+            scraper=self.scraper,
+            logger=self.logger,
+            timeout=20,
+            use_windows_curl_fallback=True,
+        )
 
     def _video_page_exists(self, url):
         cached = self._video_page_check_cache.get(url)
@@ -238,6 +244,9 @@ class AnySex(BaseWebsite):
     def play_video(self, url):
         resolved_url = self.resolve(url)
         if resolved_url:
+            if not is_stream_host_resolvable(resolved_url, self.logger):
+                xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
+                return
             li = xbmcgui.ListItem(path=resolved_url)
             li.setMimeType('video/mp4')
             li.setProperty('IsPlayable', 'true')

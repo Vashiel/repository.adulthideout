@@ -369,14 +369,14 @@ class LetmejerkWebsite(BaseWebsite):
         if video_id:
             refreshed_url = self._refresh_hls(video_id, url)
             if refreshed_url:
-                xbmc.log(f"[letmejerk] Playing (refresh-hls): {refreshed_url}", xbmc.LOGDEBUG)
+                xbmc.log("[letmejerk] Playing refreshed HLS stream", xbmc.LOGDEBUG)
                 self._play_stream(refreshed_url, url, True)
                 return
 
         # 3. Fallback: try the cached HLS URL from the page HTML
         final_url = self._extract_cached_hls(content)
         if final_url and not self._is_expired_hls(final_url):
-            xbmc.log(f"[letmejerk] Playing (cached): {final_url}", xbmc.LOGDEBUG)
+            xbmc.log("[letmejerk] Playing cached HLS stream", xbmc.LOGDEBUG)
             self._play_stream(final_url, url, True)
             return
 
@@ -445,5 +445,5 @@ class LetmejerkWebsite(BaseWebsite):
             self.notify_error("No video URL found in API response")
             return
 
-        xbmc.log(f"[letmejerk] Playing: {final_url}", xbmc.LOGDEBUG)
+        xbmc.log("[letmejerk] Playing resolved stream", xbmc.LOGDEBUG)
         self._play_stream(final_url, url, is_hls)

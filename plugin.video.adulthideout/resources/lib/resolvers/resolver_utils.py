@@ -70,7 +70,7 @@ def http_get(url, headers=None, retries=2, sleep=0.4, timeout=15):
                 try:
                     return data.decode("utf-8")
                 except UnicodeDecodeError:
-                    xbmc.log("[resolver_utils] UTF-8 decoding failed, trying latin-1 for {}".format(url), xbmc.LOGDEBUG)
+                    xbmc.log("[resolver_utils] UTF-8 decoding failed, trying latin-1", xbmc.LOGDEBUG)
                     return data.decode("latin-1", errors="replace")
         except Exception as e:
             last_exc = e
@@ -78,7 +78,7 @@ def http_get(url, headers=None, retries=2, sleep=0.4, timeout=15):
             if attempt < retries:
                 time.sleep(sleep)
 
-    xbmc.log("[AdultHideout][resolver_utils] HTTP GET failed for {}: {}".format(url, last_exc), xbmc.LOGERROR)
+    xbmc.log("[AdultHideout][resolver_utils] HTTP GET failed: {}".format(last_exc), xbmc.LOGERROR)
     return ""
 
 def unpack_js(p, a, c, k):
@@ -169,7 +169,7 @@ def resolve_generic(embed_url, referer, headers):
                 notify("Generic resolver success: {}".format(stream_url.split('/')[-1]))
                 return stream_url, headers
             else:
-                xbmc.log("[AdultHideout][resolver_utils] Generic match skipped (invalid format/start): {}".format(stream_url), xbmc.LOGDEBUG)
+                xbmc.log("[AdultHideout][resolver_utils] Generic match skipped (invalid format/start)", xbmc.LOGDEBUG)
 
     notify("Generic resolver: No stream found for {}".format(embed_url), xbmcgui.NOTIFICATION_WARNING)
     return "", headers
@@ -181,5 +181,3 @@ def get_ua():
         "Chrome/126.0.0.0 Safari/537.36"
     )
 
-if __name__ == "__main__":
-    print("UA:", get_ua())

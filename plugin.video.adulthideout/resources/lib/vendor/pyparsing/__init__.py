@@ -137,7 +137,7 @@ from .helpers import *  # type: ignore[misc, assignment]
 from .helpers import _builtin_exprs as helper_builtin_exprs
 
 from .unicode import unicode_set, UnicodeRangeList, pyparsing_unicode as unicode
-from .testing import pyparsing_test as testing
+testing = None
 from .common import (
     pyparsing_common as common,
     _builtin_exprs as common_builtin_exprs,

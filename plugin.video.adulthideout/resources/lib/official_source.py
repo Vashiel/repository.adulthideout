@@ -203,6 +203,13 @@ def _check_official_metadata(addon_id, addon_version):
     return issues
 
 
+def _is_remote_metadata_issue(issue):
+    prefix = _lang(30604, "").strip()
+    if "{}" in prefix:
+        prefix = prefix.split("{}", 1)[0].strip()
+    return bool(prefix and issue.startswith(prefix))
+
+
 def _load_hash_manifest(addon_path, prefer_remote=True):
     manifest_text = ""
     if prefer_remote:
@@ -282,11 +289,38 @@ def verify_and_warn(addon, show_dialog=True):
     addon_path = addon.getAddonInfo("path")
     addon_version = addon.getAddonInfo("version")
 
-    issues = []
-    issues.extend(_check_installed_repository())
+    repo_issues = _check_installed_repository()
+    metadata_issues = []
     if show_dialog:
-        issues.extend(_check_official_metadata(addon_id, addon_version))
-    issues.extend(_check_hashes(addon_path, prefer_remote=show_dialog))
+        metadata_issues = _check_official_metadata(addon_id, addon_version)
+    hash_issues = _check_hashes(addon_path, prefer_remote=show_dialog)
+
+    remote_metadata_issues = [
+        issue for issue in metadata_issues if _is_remote_metadata_issue(issue)
+    ]
+    metadata_hard_issues = [
+        issue for issue in metadata_issues if not _is_remote_metadata_issue(issue)
+    ]
+
+    if remote_metadata_issues and not repo_issues and not metadata_hard_issues and not hash_issues:
+        message = " | ".join(remote_metadata_issues)
+        _log(
+            "Remote official metadata unavailable, local verification passed: {}".format(message),
+            xbmc.LOGWARNING,
+        )
+        if show_dialog:
+            xbmcgui.Dialog().notification(
+                "AdultHideout",
+                _lang(30621),
+                xbmcgui.NOTIFICATION_WARNING,
+                5000,
+            )
+        return True
+
+    issues = []
+    issues.extend(repo_issues)
+    issues.extend(metadata_issues)
+    issues.extend(hash_issues)
 
     if not issues:
         _log("Official source check passed")

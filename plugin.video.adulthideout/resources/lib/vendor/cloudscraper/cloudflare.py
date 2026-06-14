@@ -188,7 +188,7 @@ class Cloudflare():
 
         if self.is_Captcha_Challenge(resp) or self.is_IUAM_Challenge(resp):
             if self.cloudscraper.debug:
-                print('Detected a Cloudflare version 1 challenge.')
+                pass
             return True
 
         return False

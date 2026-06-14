@@ -159,7 +159,6 @@ class DarknessPorn(BaseWebsite):
              
         headers = {'Referer': page_url, 'User-Agent': self._scraper_ua, 'Range': 'bytes=0-1'}
         try:
-            self.logger.debug(f"Starting Preflight GET to {stream_url} (this may take 20s)...")
             with scraper.get(stream_url, headers=headers, allow_redirects=True, stream=True, timeout=30) as r:
                 r.raise_for_status()
                 _ = r.content[:1]
@@ -260,15 +259,12 @@ class DarknessPorn(BaseWebsite):
             label = title_txt if not count_txt else f"{title_txt} [COLOR yellow]{count_txt}[/COLOR]"
             self.add_dir(label, cat_href, 2, img_src, self.fanart)
 
-        self.logger.debug(f"DarknessPorn: categories matched: {count_blocks} on {url}")
         if count_blocks == 0:
             self.notify_info("No categories found (layout changed?).")
 
         self.end_directory(content_type="videos")
 
     def play_video(self, url):
-        self.logger.debug(f"Playing video from: {url}")
-        
         content = self.make_request(url)
         if not content:
             self.notify_error("Failed to load video page.")
@@ -303,10 +299,7 @@ class DarknessPorn(BaseWebsite):
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
             return
             
-        self.logger.debug(f"Resolved stream URL: {stream_url}")
-
         hdrs = {'Referer': url}
-        self.logger.debug(f"Using manual headers for proxy: {hdrs}")
         
         scraper_session = self.get_session()
         if not scraper_session:
@@ -318,7 +311,7 @@ class DarknessPorn(BaseWebsite):
             cj_len = sum(1 for _ in getattr(scraper_session, "cookies", []))
         except Exception:
             cj_len = 0
-        self.logger.debug(f"Extracted {cj_len} cookies (CookieJar) and will reuse the same cloudscraper session for proxy.")
+        self.logger.info(f"DarknessPorn: proxy playback session ready ({cj_len} cookies).")
 
         try:
             ctrl = ProxyController(

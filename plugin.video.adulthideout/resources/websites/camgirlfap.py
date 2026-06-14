@@ -111,11 +111,9 @@ class CamgirlFap(KVSTubeWebsite):
         url = stream_url or ""
         is_mp4 = bool(re.search(r'\.mp4/?(?:$|\?)', url, re.IGNORECASE))
         if not is_mp4:
-            self.logger.warning("[camgirlfap] Skipping non-MP4 candidate: %s", stream_url)
+            self.logger.warning("[camgirlfap] Skipping non-MP4 stream candidate")
             return False
         has_quality = bool(re.search(r"_\d{3,4}p\.mp4/?(?:$|\?)", url, re.IGNORECASE))
-        if not has_quality:
-            self.logger.debug("[camgirlfap] No quality suffix in URL (will probe anyway): %s", stream_url)
         try:
             headers = self._headers(referer, accept="*/*")
             headers["Range"] = "bytes=0-4095"
@@ -124,8 +122,8 @@ class CamgirlFap(KVSTubeWebsite):
             response.close()
             ctype = response.headers.get("Content-Type", "").lower()
             if response.status_code not in (200, 206) or "video" not in ctype:
-                self.logger.warning("[camgirlfap] Stream probe rejected (status=%s, ct=%s): %s",
-                                    response.status_code, ctype, stream_url)
+                self.logger.warning("[camgirlfap] Stream probe rejected (status=%s, ct=%s)",
+                                    response.status_code, ctype)
                 return False
             return b"ftyp" in data[:64]
         except Exception as exc:

@@ -401,7 +401,7 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):
         import idna
 
         try:
-            host = idna.encode(host, uts46=True).decode("utf-8")
+            host = idna.encode(host).decode("utf-8")
         except idna.IDNAError:
             raise UnicodeError
         return host

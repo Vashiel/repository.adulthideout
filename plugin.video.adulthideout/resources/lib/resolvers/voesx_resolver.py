@@ -157,7 +157,7 @@ def resolve(url, referer=None, headers=None):
                     sources.sort(key=lambda x: x[0], reverse=True)
                     stream_url = sources[0][1]
                     play_headers = {"User-Agent": base_headers["User-Agent"], "Referer": web_url}
-                    logger.info("[voesx_resolver] Stream URL (decoded) found: %s", stream_url)
+                    logger.info("[voesx_resolver] Decoded stream URL found")
                     return stream_url, play_headers
             else:
                 logger.warning("[voesx_resolver] Could not find decryption LUT in script: %s", script_url)
@@ -166,7 +166,7 @@ def resolve(url, referer=None, headers=None):
         if mp4_match:
             stream_url = mp4_match.group("url")
             play_headers = {"User-Agent": base_headers["User-Agent"], "Referer": web_url}
-            logger.info("[voesx_resolver] Stream URL (Fallback MP4) found: %s", stream_url)
+            logger.info("[voesx_resolver] Fallback MP4 stream URL found")
             return stream_url, play_headers
 
         logger.error("[voesx_resolver] Could not find any stream URL.")
@@ -176,12 +176,3 @@ def resolve(url, referer=None, headers=None):
         logger.error("[voesx_resolver] Critical error: %s", e, exc_info=True)
         raise Exception("Voe.sx error: {}".format(e))
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    test_url = "https://voe.sx/e/di5hqowbbive"
-    try:
-        result, hdrs = resolve(test_url, referer="https://www.freeomovie.to/cougar-sightings-6/")
-        print("Final URL:", result)
-        print("Headers:", hdrs)
-    except Exception as e:
-        print("Error:", e)

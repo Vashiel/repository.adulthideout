@@ -122,7 +122,7 @@ def _probe_hls(url, headers):
             data = response.read(4096)
         return status < 400 and b"#EXTM3U" in data
     except Exception as exc:
-        xbmc.log("[AdultHideout][88z] HLS probe failed for {}: {}".format(url, exc), xbmc.LOGDEBUG)
+        xbmc.log("[AdultHideout][88z] HLS probe failed: {}".format(exc), xbmc.LOGDEBUG)
         return False
 
 
@@ -152,7 +152,7 @@ def _select_variant(master_url, headers):
         if status >= 400 or "#EXTM3U" not in text:
             return ""
     except Exception as exc:
-        xbmc.log("[AdultHideout][88z] Variant read failed for {}: {}".format(master_url, exc), xbmc.LOGDEBUG)
+        xbmc.log("[AdultHideout][88z] Variant read failed: {}".format(exc), xbmc.LOGDEBUG)
         return ""
 
     variants = []
