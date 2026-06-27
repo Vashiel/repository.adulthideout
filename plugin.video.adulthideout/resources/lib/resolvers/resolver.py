@@ -343,7 +343,8 @@ def resolve(url, referer="", headers=None):
                 ),
                 xbmc.LOGINFO,
             )
-            return selected_module.resolve(url, referer, headers)
+            resolved_url, resolved_headers = selected_module.resolve(url, referer, headers)
+            return resolved_url, resolved_headers
         except Exception as e:
             import traceback
             xbmc.log(

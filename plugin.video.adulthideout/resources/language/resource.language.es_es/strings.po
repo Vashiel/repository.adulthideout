@@ -326,3 +326,123 @@ msgstr "No se pudo resolver un stream directo para grabar."
 msgctxt "#30638"
 msgid "Recording download folder could not be created."
 msgstr "No se pudo crear la carpeta de descarga de grabaciones."
+
+msgctxt "#30640"
+msgid "Downloads"
+msgstr "Descargas"
+
+msgctxt "#30641"
+msgid "Download manager"
+msgstr "Gestor de descargas"
+
+msgctxt "#30642"
+msgid "Offline videos"
+msgstr "Videos sin conexion"
+
+msgctxt "#30643"
+msgid "Download folder"
+msgstr "Carpeta de descargas"
+
+msgctxt "#30644"
+msgid "Download method"
+msgstr "Metodo de descarga"
+
+msgctxt "#30645"
+msgid "Show download manager"
+msgstr "Mostrar gestor de descargas"
+
+msgctxt "#30646"
+msgid "Show offline videos"
+msgstr "Mostrar videos sin conexion"
+
+msgctxt "#30647"
+msgid "Choose where AdultHideout should save downloaded videos. Local, SMB and NFS folders are supported."
+msgstr "Elige donde guardar los videos. Se admiten carpetas locales, SMB y NFS."
+
+msgctxt "#30648"
+msgid "Choose a download folder"
+msgstr "Elegir carpeta de descargas"
+
+msgctxt "#30649"
+msgid "The selected folder is not writable."
+msgstr "No se puede escribir en la carpeta seleccionada."
+
+msgctxt "#30650"
+msgid "Offline videos folder (empty = download folder)"
+msgstr "Carpeta de videos sin conexion (vacia = carpeta de descargas)"
+
+msgctxt "#30651"
+msgid "Download queued: {}"
+msgstr "Descarga en cola: {}"
+
+msgctxt "#30654"
+msgid "Refresh"
+msgstr "Actualizar"
+
+msgctxt "#30655"
+msgid "Cancel download"
+msgstr "Cancelar descarga"
+
+msgctxt "#30656"
+msgid "Remove entry"
+msgstr "Eliminar entrada"
+
+msgctxt "#30657"
+msgid "aria2 JSON-RPC URL"
+msgstr "URL JSON-RPC de aria2"
+
+msgctxt "#30658"
+msgid "aria2 RPC secret"
+msgstr "Secreto RPC de aria2"
+
+msgctxt "#30659"
+msgid "aria2 target directory (on aria2 host)"
+msgstr "Carpeta de destino de aria2"
+
+msgctxt "#30660"
+msgid "Delete offline file"
+msgstr "Eliminar archivo sin conexion"
+
+msgctxt "#30661"
+msgid "HLS downloads require FFmpeg."
+msgstr "Las descargas HLS requieren FFmpeg."
+
+msgctxt "#30662"
+msgid "Sent to aria2: {}"
+msgstr "Enviado a aria2: {}"
+
+msgctxt "#30663"
+msgid "Sent to JDownloader: {}"
+msgstr "Enviado a JDownloader: {}"
+
+msgctxt "#30664"
+msgid "This stream needs headers that JDownloader cannot receive through Click'n'Load."
+msgstr "Este stream necesita cabeceras que JDownloader no puede recibir mediante Click'n'Load."
+
+msgctxt "#30665"
+msgid "Cancel the active download before removing it."
+msgstr "Cancela la descarga activa antes de eliminarla."
+
+msgctxt "#30666"
+msgid "JDownloader Click'n'Load URL"
+msgstr "URL Click'n'Load de JDownloader"
+
+msgctxt "#30667"
+msgid "Retry download"
+msgstr "Reintentar descarga"
+
+msgctxt "#30668"
+msgid "Sites A-H"
+msgstr "Sitios A-H"
+
+msgctxt "#30669"
+msgid "Sites I-P"
+msgstr "Sitios I-P"
+
+msgctxt "#30670"
+msgid "Sites Q-Z"
+msgstr "Sitios Q-Z"
+
+msgctxt "#30671"
+msgid "Site options"
+msgstr "Opciones de sitios"

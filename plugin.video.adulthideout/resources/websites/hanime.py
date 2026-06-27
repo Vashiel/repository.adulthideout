@@ -228,13 +228,13 @@ class Hanime(BaseWebsite):
 
         html_content = self._get_html(url)
         if not html_content:
-            self.notify_error("Seite konnte nicht geladen werden.")
+            self.notify_error("Could not load page.")
             self.end_directory()
             return
 
         video_items = self._extract_video_items(html_content, is_tag_page=is_tag_page)
         if not video_items:
-            self.notify_info("Keine Videos gefunden.")
+            self.notify_info("No videos found.")
         else:
             for item in video_items:
                 video_url = item["url"]
@@ -282,7 +282,7 @@ class Hanime(BaseWebsite):
 
         tag_blocks = re.findall(r'<a class="bg-tr".*?</a>', html_content, re.DOTALL)
         if not tag_blocks:
-            self.notify_info("Keine Tags gefunden.")
+            self.notify_info("No tags found.")
         else:
             for block in tag_blocks:
                 url_match = re.search(r'href="([^"]+)"', block)
@@ -681,12 +681,12 @@ class Hanime(BaseWebsite):
     def play_video(self, url):
         main_page_html = self._get_html(url)
         if not main_page_html:
-            self.notify_error("Video-Seite konnte nicht geladen werden.")
+            self.notify_error("Could not load video page.")
             return
 
         stream_url, player_url = self._resolve_stream_url(url, main_page_html)
         if not stream_url:
-            self.notify_error("Kein Stream gefunden.")
+            self.notify_error("No stream found.")
             return
 
         xbmc.log(f"{_LOG}: Stream URL resolved: {stream_url[:150]}", xbmc.LOGINFO)
@@ -730,7 +730,7 @@ class Hanime(BaseWebsite):
         except Exception as exc:
             xbmc.log(f"{_LOG}: primary playback strategy failed: {exc}", xbmc.LOGERROR)
             if not self._play_via_cloudscraper_proxy(stream_url, proxy_headers):
-                self.notify_error(f"Wiedergabe fehlgeschlagen: {exc}")
+                self.notify_error(f"Playback failed: {exc}")
 
     def select_sort(self, original_url=None):
         try:

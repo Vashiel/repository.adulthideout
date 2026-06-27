@@ -327,7 +327,7 @@ class HQPorner(BaseWebsite):
             lang = xbmc.getLanguage(0).lower()
             if "german" in lang or "deutsch" in lang:
                 group = "Wiedergabe"
-                label = "[COLOR lime]>>> Ähnliche Videos anzeigen <<<[/COLOR]"
+                label = "[COLOR lime]>>> Show similar videos <<<[/COLOR]"
             elif "spanish" in lang or "español" in lang or "espanol" in lang:
                 group = "Reproducción"
                 label = "[COLOR lime]>>> Mostrar videos similares <<<[/COLOR]"

@@ -30,6 +30,8 @@ class KVSTubeWebsite(BaseWebsite):
     prefer_default_stream = False
     request_retries = 2
     next_page_full_count = 0
+    directory_host_only = False
+    directory_path_prefixes = ()
 
     def __init__(self, name, base_url, search_url, addon_handle, addon=None):
         super().__init__(
@@ -139,6 +141,23 @@ class KVSTubeWebsite(BaseWebsite):
             return False
         return any(marker in href for marker in self.video_path_markers)
 
+    def _pick_thumb(self, img_tag):
+        """Return the listing thumbnail URL from an <img> tag.
+
+        Subclasses can override this when a site serves a webp disguised as
+        .jpg in src/data-webp (which Kodi's texture loader cannot decode) and
+        exposes a real JPEG in another attribute.
+        """
+        thumb = ""
+        for attr in ("data-original", "data-webp", "data-src", "src"):
+            thumb_match = re.search(r'\s{}=["\']([^"\']+)["\']'.format(attr), img_tag, re.IGNORECASE)
+            if thumb_match:
+                thumb = self._absolute(thumb_match.group(1))
+                break
+        if thumb.startswith("data:image/"):
+            thumb = self.icon
+        return thumb
+
     def _extract_videos(self, html_content):
         videos = []
         seen = set()
@@ -172,14 +191,7 @@ class KVSTubeWebsite(BaseWebsite):
             if not title or title.lower() in ("videos", "rss"):
                 continue
 
-            thumb = ""
-            for attr in ("data-original", "data-webp", "data-src", "src"):
-                thumb_match = re.search(r'\s{}=["\']([^"\']+)["\']'.format(attr), img_tag, re.IGNORECASE)
-                if thumb_match:
-                    thumb = self._absolute(thumb_match.group(1))
-                    break
-            if thumb.startswith("data:image/"):
-                thumb = self.icon
+            thumb = self._pick_thumb(img_tag)
 
             duration_match = re.search(
                 r'<(?:div|span)\b[^>]*class=["\'][^"\']*(?:duration|time)[^"\']*["\'][^>]*>([\s\S]*?)</(?:div|span)>',
@@ -247,7 +259,9 @@ class KVSTubeWebsite(BaseWebsite):
         seen = set()
         next_url = ""
         current_path = urllib.parse.urlparse(current_url).path.rstrip("/")
-        models_only = current_path.startswith("/models")
+        models_path = urllib.parse.urlparse(self._absolute(self.models_path or "/models/")).path.rstrip("/")
+        models_only = bool(models_path and current_path.startswith(models_path))
+        model_marker = models_path + "/" if models_path else "/models/"
         for anchor_match in re.finditer(r'<a\b([^>]*)href=["\']([^"\']+)["\']([^>]*)>([\s\S]{0,1800}?)</a>', html_content, re.IGNORECASE):
             attrs = "{} {}".format(anchor_match.group(1), anchor_match.group(3))
             href = anchor_match.group(2)
@@ -260,12 +274,19 @@ class KVSTubeWebsite(BaseWebsite):
                 elif from_match:
                     next_url = self.get_page_url(current_url, int(from_match.group(1)))
                 continue
-            if models_only and "/models/" not in href:
+            target = urllib.parse.urlparse(self._absolute(href))
+            if models_only:
+                if model_marker not in target.path or not re.search(r"<img\b", body, re.IGNORECASE):
+                    continue
+            elif not any(marker in href for marker in self.category_path_markers) and "/models/" not in href and "/tags/" not in href:
                 continue
-            if not any(marker in href for marker in self.category_path_markers) and "/models/" not in href and "/tags/" not in href:
+            if self.directory_host_only and target.netloc.lower() != urllib.parse.urlparse(self.base_url).netloc.lower():
+                continue
+            if not models_only and self.directory_path_prefixes and not target.path.startswith(self.directory_path_prefixes):
                 continue
             cat_url = self._absolute(href)
-            if not cat_url or cat_url in seen or urllib.parse.urlparse(cat_url).path.rstrip("/") in ("/categories", "/models", "/tags"):
+            if (not cat_url or cat_url in seen or target.path.rstrip("/") in
+                    ("/categories", "/models", "/pornstars", "/tags")):
                 continue
             seen.add(cat_url)
             title_match = re.search(r"<img\b[^>]*\s(?:alt|title)=['\"]([^'\"]+)['\"]", body, re.IGNORECASE)
@@ -280,10 +301,14 @@ class KVSTubeWebsite(BaseWebsite):
                 continue
             if title.lower() in getattr(self, "skip_category_titles", set()):
                 continue
-            self.add_dir(title, cat_url, 2, self.icons.get("categories", self.icon), self.fanart)
+            icon = self.icons.get("pornstars" if models_only else "categories", self.icon)
+            self.add_dir(title, cat_url, 2, icon, self.fanart)
         if next_url:
             self.add_dir("Next Page", next_url, 8, self.icons.get("default", self.icon), self.fanart)
         self.end_directory("videos")
+
+    def process_pornstars(self, url):
+        self.process_categories(url or self._absolute(self.models_path or "/models/"))
 
     def search(self, query):
         if query:

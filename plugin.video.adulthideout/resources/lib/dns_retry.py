@@ -16,7 +16,6 @@ except Exception:
     xbmcaddon = None
     xbmcvfs = None
 
-
 _INSTALLED = False
 _ORIGINAL_GETADDRINFO = socket.getaddrinfo
 _CACHE = None

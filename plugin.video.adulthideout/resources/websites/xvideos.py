@@ -503,7 +503,7 @@ class XvideosWebsite(BaseWebsite):
             
         match = re.search(r'var\s+video_related\s*=\s*(\[.*?\])\s*;', content, re.DOTALL)
         if not match:
-            self.notify_info("Keine ähnlichen Videos gefunden.")
+            self.notify_info("No similar videos found.")
             self.end_directory()
             return
             
@@ -558,7 +558,7 @@ class XvideosWebsite(BaseWebsite):
             lang = xbmc.getLanguage(0).lower()
             if "german" in lang or "deutsch" in lang:
                 group = "Wiedergabe"
-                label = "[COLOR lime]>>> Ähnliche Videos anzeigen <<<[/COLOR]"
+                label = "[COLOR lime]>>> Show similar videos <<<[/COLOR]"
             elif "spanish" in lang or "español" in lang or "espanol" in lang:
                 group = "Reproducción"
                 label = "[COLOR lime]>>> Mostrar videos similares <<<[/COLOR]"

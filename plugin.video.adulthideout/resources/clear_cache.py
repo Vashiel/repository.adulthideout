@@ -46,12 +46,12 @@ try:
 
     dialog = xbmcgui.Dialog()
     if deleted_count > 0:
-        dialog.notification('AdultHideout', f'{deleted_count} Cache-Ordner gelöscht.', xbmcgui.NOTIFICATION_INFO, 3000)
+        dialog.notification('AdultHideout', f'{deleted_count} cache folders deleted.', xbmcgui.NOTIFICATION_INFO, 3000)
     elif failed_count > 0:
-        dialog.notification('AdultHideout', 'Fehler beim Cache löschen. Siehe Log.', xbmcgui.NOTIFICATION_ERROR, 3000)
+        dialog.notification('AdultHideout', 'Failed to clear cache. See the log.', xbmcgui.NOTIFICATION_ERROR, 3000)
     else:
-        dialog.notification('AdultHideout', 'Keine Cache-Ordner gefunden.', xbmcgui.NOTIFICATION_INFO, 3000)
+        dialog.notification('AdultHideout', 'No cache folders found.', xbmcgui.NOTIFICATION_INFO, 3000)
 
 except Exception as e:
     xbmc.log(f"[ClearCache] CRITICAL ERROR in clear_cache.py: {e}", level=xbmc.LOGERROR)
-    xbmcgui.Dialog().notification('AdultHideout', f'Fehler: {e}', xbmcgui.NOTIFICATION_ERROR, 3000)
+    xbmcgui.Dialog().notification('AdultHideout', f'Error: {e}', xbmcgui.NOTIFICATION_ERROR, 3000)

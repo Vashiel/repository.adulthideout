@@ -327,3 +327,123 @@ msgstr ""
 msgctxt "#30638"
 msgid "Recording download folder could not be created."
 msgstr ""
+
+msgctxt "#30640"
+msgid "Downloads"
+msgstr "Downloads"
+
+msgctxt "#30641"
+msgid "Download manager"
+msgstr "Download manager"
+
+msgctxt "#30642"
+msgid "Offline videos"
+msgstr "Offline videos"
+
+msgctxt "#30643"
+msgid "Download folder"
+msgstr "Download folder"
+
+msgctxt "#30644"
+msgid "Download method"
+msgstr "Download method"
+
+msgctxt "#30645"
+msgid "Show download manager"
+msgstr "Show download manager"
+
+msgctxt "#30646"
+msgid "Show offline videos"
+msgstr "Show offline videos"
+
+msgctxt "#30647"
+msgid "Choose where AdultHideout should save downloaded videos. Local, SMB and NFS folders are supported."
+msgstr "Choose where AdultHideout should save downloaded videos. Local, SMB and NFS folders are supported."
+
+msgctxt "#30648"
+msgid "Choose a download folder"
+msgstr "Choose a download folder"
+
+msgctxt "#30649"
+msgid "The selected folder is not writable."
+msgstr "The selected folder is not writable."
+
+msgctxt "#30650"
+msgid "Offline videos folder (empty = download folder)"
+msgstr "Offline videos folder (empty = download folder)"
+
+msgctxt "#30651"
+msgid "Download queued: {}"
+msgstr "Download queued: {}"
+
+msgctxt "#30654"
+msgid "Refresh"
+msgstr "Refresh"
+
+msgctxt "#30655"
+msgid "Cancel download"
+msgstr "Cancel download"
+
+msgctxt "#30656"
+msgid "Remove entry"
+msgstr "Remove entry"
+
+msgctxt "#30657"
+msgid "aria2 JSON-RPC URL"
+msgstr "aria2 JSON-RPC URL"
+
+msgctxt "#30658"
+msgid "aria2 RPC secret"
+msgstr "aria2 RPC secret"
+
+msgctxt "#30659"
+msgid "aria2 target directory (on aria2 host)"
+msgstr "aria2 target directory (on aria2 host)"
+
+msgctxt "#30660"
+msgid "Delete offline file"
+msgstr "Delete offline file"
+
+msgctxt "#30661"
+msgid "HLS downloads require FFmpeg."
+msgstr "HLS downloads require FFmpeg."
+
+msgctxt "#30662"
+msgid "Sent to aria2: {}"
+msgstr "Sent to aria2: {}"
+
+msgctxt "#30663"
+msgid "Sent to JDownloader: {}"
+msgstr "Sent to JDownloader: {}"
+
+msgctxt "#30664"
+msgid "This stream needs headers that JDownloader cannot receive through Click'n'Load."
+msgstr "This stream needs headers that JDownloader cannot receive through Click'n'Load."
+
+msgctxt "#30665"
+msgid "Cancel the active download before removing it."
+msgstr "Cancel the active download before removing it."
+
+msgctxt "#30666"
+msgid "JDownloader Click'n'Load URL"
+msgstr "JDownloader Click'n'Load URL"
+
+msgctxt "#30667"
+msgid "Retry download"
+msgstr "Retry download"
+
+msgctxt "#30668"
+msgid "Sites A-H"
+msgstr "Sites A-H"
+
+msgctxt "#30669"
+msgid "Sites I-P"
+msgstr "Sites I-P"
+
+msgctxt "#30670"
+msgid "Sites Q-Z"
+msgstr "Sites Q-Z"
+
+msgctxt "#30671"
+msgid "Site options"
+msgstr "Site options"

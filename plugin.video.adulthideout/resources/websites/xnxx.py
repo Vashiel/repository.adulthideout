@@ -199,7 +199,7 @@ class Xnxx(BaseWebsite):
         
         video_list = [m.groupdict() for m in matches]
         if not video_list and "search" not in url:
-            self.notify_info("Keine Videos gefunden.")
+            self.notify_info("No videos found.")
             return self.end_directory()
 
         for data in video_list:
@@ -219,7 +219,7 @@ class Xnxx(BaseWebsite):
         next_page_match = re.search(r'<a[^>]+href="([^"]+)"[^>]*class="[^"]*(?:next|pagination-button)[^"]*"', html_content)
         if next_page_match:
             next_url = urllib.parse.urljoin(url, html.unescape(next_page_match.group(1)))
-            self.add_dir('[COLOR yellow]Nächste Seite >>[/COLOR]', url=next_url, mode=2)
+            self.add_dir('[COLOR yellow]Next Page >>[/COLOR]', url=next_url, mode=2)
 
         self.end_directory()
 
@@ -250,7 +250,7 @@ class Xnxx(BaseWebsite):
                 list_item.setMimeType('video/mp4')
             xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
         else:
-            self.notify_error("Konnte keinen abspielbaren Stream finden.")
+            self.notify_error("Could not find a playable stream.")
 
     def process_related_videos(self, url):
         self.add_dir('[COLOR blue]Search[/COLOR]', url='', mode=5)
@@ -262,7 +262,7 @@ class Xnxx(BaseWebsite):
             
         match = re.search(r'var\s+video_related\s*=\s*(\[.*?\])\s*;', content, re.DOTALL)
         if not match:
-            self.notify_info("Keine ähnlichen Videos gefunden.")
+            self.notify_info("No similar videos found.")
             self.end_directory()
             return
             
@@ -317,7 +317,7 @@ class Xnxx(BaseWebsite):
             lang = xbmc.getLanguage(0).lower()
             if "german" in lang or "deutsch" in lang:
                 group = "Wiedergabe"
-                label = "[COLOR lime]>>> Ähnliche Videos anzeigen <<<[/COLOR]"
+                label = "[COLOR lime]>>> Show similar videos <<<[/COLOR]"
             elif "spanish" in lang or "español" in lang or "espanol" in lang:
                 group = "Reproducción"
                 label = "[COLOR lime]>>> Mostrar videos similares <<<[/COLOR]"

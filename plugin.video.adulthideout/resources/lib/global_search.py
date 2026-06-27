@@ -28,8 +28,36 @@ DEFAULT_SOURCES = [
     "yespornvip",
 ]
 
+BROAD_RELIABLE_SOURCES = [
+    "3movs", "allowflash", "area51", "ashemaletube", "avjoy",
+    "blackporn24", "blowjobspro", "boundhub", "bravoporn", "camgirlfap",
+    "chaturbate", "cumlouder", "daftporn", "darknessporn", "drtuber",
+    "efukt", "empflix", "epawg", "eporner", "familypornhd",
+    "fpo", "freeomovie", "fullporner", "fullxcinema", "goporn",
+    "hclips", "hdzog", "heavy_r", "heavyfetish", "hentaigasm",
+    "hqporner", "hqpornero", "hypnotube", "javhdporn", "jizzberry",
+    "lesbianporn8", "milfporn8", "missav", "mylust", "myporntape",
+    "noodlemagazine", "notfans", "nudez", "okxxx", "perfectgirls",
+    "pervclips", "pervertium", "pimpbunny", "porcore", "porn7",
+    "porndig", "porndoe", "pornflip", "pornhat", "pornhd3x",
+    "pornheed", "pornhoarder", "pornhub", "pornmedium", "pornobae",
+    "pornone", "pornslash", "porntrex", "pornwhite", "pornzog",
+    "premiumporn", "punishbang", "punishworld", "pussyspace",
+    "rapelust", "redtube", "rule34video", "sextb", "shameless",
+    "shemalez", "shesfreaky", "shooshtime", "spankbang", "speedporn",
+    "sunporno", "superporn", "sxyprn", "tgtsporn", "thepornbang",
+    "theyarehuge", "thisvid", "thumbzilla", "tnaflix", "trendyporn",
+    "tube8", "tubepornclassic", "tubev", "txxx", "upornia",
+    "veporn", "vikiporn", "vjav", "voyeurhit", "watchporn",
+    "whereismyporn", "wowxxx", "xbabe", "xcafe", "xhamster",
+    "xmoviesforyou", "xnxx", "xopenload", "xtapes", "xvideos",
+    "xxthots", "xxxfiles", "xxxtube", "yespornvip", "youjizz",
+    "youporn", "yourlesbians", "zbporn",
+]
+
 SOURCE_PRESETS = [
     ("balanced", "Balanced Top Sites", DEFAULT_SOURCES),
+    ("broad_reliable", "Broad Reliable Sites", BROAD_RELIABLE_SOURCES),
     ("playlist_safe", "Playlist Safe", [
         "3movs", "eporner", "pornhub", "xvideos", "xnxx", "spankbang",
         "tnaflix", "hclips", "txxx", "redtube", "tube8", "youporn",
@@ -112,7 +140,7 @@ PROFILE_OVERRIDES = {
 }
 
 RESULTS_PER_PAGE = 40
-PLAYLIST_SAFE_CACHE_VERSION = "playlist-safe-v2"
+PLAYLIST_SAFE_CACHE_VERSION = "playlist-safe-v6-simple"
 UNSTABLE_PLAYLIST_SOURCES = {
     "analdin",
     "anysex",
@@ -180,8 +208,10 @@ class GlobalSearch:
         state["last_query"] = query
         self._save_state(state)
 
-    def _cache_key(self, query):
-        signature = "|".join([PLAYLIST_SAFE_CACHE_VERSION, self._selected_profile()] + self._selected_sources())
+    def _cache_key(self, query, search_mode="selected"):
+        signature = "|".join(
+            [PLAYLIST_SAFE_CACHE_VERSION, search_mode, self._selected_profile()] + self._selected_sources()
+        )
         return "{}::{}".format(query.strip().lower(), signature)
 
     def _legacy_cache_prefix(self, query):
@@ -195,11 +225,11 @@ class GlobalSearch:
             if isinstance(result, dict) and result.get("source") not in UNSTABLE_PLAYLIST_SOURCES
         ]
 
-    def _cached_results(self, query):
+    def _cached_results(self, query, search_mode="selected"):
         cache = self._load_state().get("result_cache")
         if not isinstance(cache, dict):
             return None
-        entry = cache.get(self._cache_key(query))
+        entry = cache.get(self._cache_key(query, search_mode))
         if not isinstance(entry, dict):
             prefix = self._legacy_cache_prefix(query)
             matches = [
@@ -214,15 +244,16 @@ class GlobalSearch:
         results = entry.get("results")
         return self._filter_results(results) if isinstance(results, list) else None
 
-    def _save_results(self, query, results):
+    def _save_results(self, query, results, search_mode="selected", sources=None):
         state = self._load_state()
         cache = state.get("result_cache")
         if not isinstance(cache, dict):
             cache = {}
-        cache[self._cache_key(query)] = {
+        cache[self._cache_key(query, search_mode)] = {
             "query": query,
+            "search_mode": search_mode,
             "profile": self._selected_profile(),
-            "sources": self._selected_sources(),
+            "sources": sources or self._selected_sources(),
             "saved_at": int(time.time()),
             "results": results,
         }
@@ -291,6 +322,18 @@ class GlobalSearch:
                 return path
         return self.default_icon
 
+    def _search_mode_label(self, search_mode):
+        if search_mode == "deep":
+            return "Search All Sites"
+        return "Global Search"
+
+    def _sources_for_search(self, query, search_mode):
+        available = self._available_sources()
+        selected = self._selected_sources()
+        if search_mode == "deep":
+            return available
+        return selected
+
     def _add_dir(self, label, action, icon=None, **params):
         query = {
             "mode": "20",
@@ -305,10 +348,10 @@ class GlobalSearch:
 
     def show_menu(self):
         selected = self._selected_sources()
-        self._add_dir("[COLOR yellow]New Global Search[/COLOR]", "new_search")
+        self._add_dir("[COLOR yellow]Search[/COLOR] [COLOR grey]{} sources[/COLOR]".format(len(selected)), "new_search", search_mode="selected")
         self._add_dir("Source Presets [COLOR yellow]{}[/COLOR]".format(self._preset_label(self._selected_profile())), "show_presets", self.search_icon)
         self._add_dir("Choose Sources [COLOR yellow]{} selected[/COLOR]".format(len(selected)), "choose_sources", self.search_icon)
-        self._add_dir("Select All Sites [COLOR yellow]{} available[/COLOR]".format(len(self._available_sources())), "select_all_sources", self.search_icon)
+        self._add_dir("Search All Sites [COLOR yellow]slow[/COLOR]", "new_search", self.search_icon, search_mode="deep")
         self._add_dir("Show Selected Sources", "show_sources", self.search_icon)
         history = self._history()
         if history:
@@ -321,7 +364,7 @@ class GlobalSearch:
             item = xbmcgui.ListItem(label)
             item.setArt({"thumb": self.search_icon, "icon": self.search_icon, "fanart": self.fanart})
             item.addContextMenuItems([("Edit", "RunPlugin({})".format(context_url))])
-            url = "{}?mode=21&website=global_search&query={}".format(sys_argv0(), urllib.parse.quote_plus(query))
+            url = "{}?mode=21&website=global_search&query={}&search_mode=selected".format(sys_argv0(), urllib.parse.quote_plus(query))
             xbmcplugin.addDirectoryItem(self.addon_handle, url, item, True)
         end_directory_with_view(self.addon_handle, self.addon)
 
@@ -332,7 +375,7 @@ class GlobalSearch:
         self._save_state(state)
         return self.show_menu()
 
-    def edit_search(self, query):
+    def edit_search(self, query, search_mode="selected"):
         keyboard = xbmc.Keyboard(query or "", "[COLOR yellow]Edit Global Search[/COLOR]")
         keyboard.doModal()
         if not keyboard.isConfirmed():
@@ -341,13 +384,13 @@ class GlobalSearch:
         if not new_query:
             return self.show_menu()
         self._remember_query(new_query)
-        self._open_results(new_query, refresh=True)
+        self._open_results(new_query, refresh=True, search_mode=search_mode)
 
-    def refresh_search(self, query, page=1):
+    def refresh_search(self, query, page=1, search_mode="selected"):
         query = (query or "").strip()
         if not query:
             return self.show_menu()
-        self._open_results(query, refresh=True, page=page)
+        self._open_results(query, refresh=True, page=page, search_mode=search_mode)
 
     def _preset_label(self, profile):
         if profile == "custom":
@@ -572,8 +615,8 @@ class GlobalSearch:
             xbmcplugin.addDirectoryItem(self.addon_handle, "", item, False)
         end_directory_with_view(self.addon_handle, self.addon)
 
-    def new_search(self):
-        keyboard = xbmc.Keyboard("", "[COLOR yellow]Global Search[/COLOR]")
+    def new_search(self, search_mode="selected"):
+        keyboard = xbmc.Keyboard("", "[COLOR yellow]{}[/COLOR]".format(self._search_mode_label(search_mode)))
         keyboard.doModal()
         if not keyboard.isConfirmed():
             return self.show_menu()
@@ -581,13 +624,13 @@ class GlobalSearch:
         if not query:
             return self.show_menu()
         self._remember_query(query)
-        self._open_results(query, refresh=True)
+        self._open_results(query, refresh=True, search_mode=search_mode)
 
-    def _open_results(self, query, refresh=False, page=1):
+    def _open_results(self, query, refresh=False, page=1, search_mode="selected"):
         if refresh:
             self._mark_refresh_once(query)
-        target = "{}?mode=21&website=global_search&query={}&page={}".format(
-            sys_argv0(), urllib.parse.quote_plus(query), int(page)
+        target = "{}?mode=21&website=global_search&query={}&page={}&search_mode={}".format(
+            sys_argv0(), urllib.parse.quote_plus(query), int(page), urllib.parse.quote_plus(search_mode)
         )
         xbmcplugin.endOfDirectory(self.addon_handle, succeeded=True, updateListing=False, cacheToDisc=False)
         xbmc.sleep(100)
@@ -692,23 +735,23 @@ class GlobalSearch:
             item.setProperty("IsPlayable", "true")
         xbmcplugin.addDirectoryItem(self.addon_handle, result.get("url", ""), item, is_folder)
 
-    def _add_refresh_item(self, query, page=1):
-        url = "{}?mode=20&website=global_search&action=refresh_search&query={}&page={}".format(
-            sys_argv0(), urllib.parse.quote_plus(query), int(page)
+    def _add_refresh_item(self, query, page=1, search_mode="selected"):
+        url = "{}?mode=20&website=global_search&action=refresh_search&query={}&page={}&search_mode={}".format(
+            sys_argv0(), urllib.parse.quote_plus(query), int(page), urllib.parse.quote_plus(search_mode)
         )
-        item = xbmcgui.ListItem("[COLOR cyan]Refresh Global Search[/COLOR]")
+        item = xbmcgui.ListItem("[COLOR cyan]Refresh {}[/COLOR]".format(self._search_mode_label(search_mode)))
         item.setArt({"thumb": self.search_icon, "icon": self.search_icon, "fanart": self.fanart})
         xbmcplugin.addDirectoryItem(self.addon_handle, url, item, True)
 
-    def _add_page_item(self, query, page, label):
-        url = "{}?mode=21&website=global_search&query={}&page={}".format(
-            sys_argv0(), urllib.parse.quote_plus(query), int(page)
+    def _add_page_item(self, query, page, label, search_mode="selected"):
+        url = "{}?mode=21&website=global_search&query={}&page={}&search_mode={}".format(
+            sys_argv0(), urllib.parse.quote_plus(query), int(page), urllib.parse.quote_plus(search_mode)
         )
         item = xbmcgui.ListItem(label)
         item.setArt({"thumb": self.search_icon, "icon": self.search_icon, "fanart": self.fanart})
         xbmcplugin.addDirectoryItem(self.addon_handle, url, item, True)
 
-    def _render_results_page(self, query, results, page=1):
+    def _render_results_page(self, query, results, page=1, search_mode="selected"):
         try:
             page = max(1, int(page))
         except Exception:
@@ -720,36 +763,36 @@ class GlobalSearch:
         start = (page - 1) * RESULTS_PER_PAGE
         end = start + RESULTS_PER_PAGE
 
-        self._add_refresh_item(query, page)
+        self._add_refresh_item(query, page, search_mode=search_mode)
         if page > 1:
-            self._add_page_item(query, page - 1, "[COLOR cyan]Previous Page[/COLOR] ({}/{})".format(page - 1, pages))
+            self._add_page_item(query, page - 1, "[COLOR cyan]Previous Page[/COLOR] ({}/{})".format(page - 1, pages), search_mode=search_mode)
         for result in results[start:end]:
             self._add_cached_result(result)
         if end < total:
-            self._add_page_item(query, page + 1, "[COLOR cyan]Next Page[/COLOR] ({}/{})".format(page + 1, pages))
+            self._add_page_item(query, page + 1, "[COLOR cyan]Next Page[/COLOR] ({}/{})".format(page + 1, pages), search_mode=search_mode)
         end_directory_with_view(self.addon_handle, self.addon)
 
-    def show_cached_results(self, query, page=1):
-        results = self._cached_results(query)
+    def show_cached_results(self, query, page=1, search_mode="selected"):
+        results = self._cached_results(query, search_mode=search_mode)
         if results is None:
             return False
-        self._render_results_page(query, results, page)
+        self._render_results_page(query, results, page, search_mode=search_mode)
         return True
 
-    def run(self, query, refresh=False, page=1):
+    def run(self, query, refresh=False, page=1, search_mode="selected"):
         query = (query or "").strip()
         if not query:
             return self.show_menu()
         self._remember_query(query)
-        refresh = self._consume_refresh_once(query)
-        if not refresh and self.show_cached_results(query, page):
+        refresh = bool(refresh) or self._consume_refresh_once(query)
+        if not refresh and self.show_cached_results(query, page, search_mode=search_mode):
             return
-        sources = self._selected_sources()
+        sources = self._sources_for_search(query, search_mode)
         profile = self._selected_profile()
         max_results_per_site = 12
-        self.logger("Global search profile '{}' using sources: {}".format(profile, ", ".join(sources)))
+        self.logger("Global search mode '{}' profile '{}' using sources: {}".format(search_mode, profile, ", ".join(sources)))
         progress = xbmcgui.DialogProgress()
-        progress.create("Global Search", "Searching {} sources".format(len(sources)))
+        progress.create(self._search_mode_label(search_mode), "Searching {} sources".format(len(sources)))
         added = 0
         failed = []
         cache_results = []
@@ -793,9 +836,9 @@ class GlobalSearch:
             xbmcgui.Dialog().notification("Global Search", "No results found", xbmcgui.NOTIFICATION_INFO, 3000)
         if failed:
             self.logger("Skipped/failed sources: {}".format(", ".join(failed)), xbmc.LOGWARNING)
-        self._save_results(query, cache_results)
-        self.logger("Global search '{}' returned {} results in {:.1f}s".format(query, added, time.time() - started))
-        self._render_results_page(query, cache_results, page)
+        self._save_results(query, cache_results, search_mode=search_mode, sources=sources)
+        self.logger("Global search '{}' ({}) returned {} results in {:.1f}s".format(query, search_mode, added, time.time() - started))
+        self._render_results_page(query, cache_results, page, search_mode=search_mode)
 
 
 def sys_argv0():

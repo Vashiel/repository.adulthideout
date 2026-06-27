@@ -92,14 +92,14 @@ class freeomovie(BaseWebsite):
         html_text = self._http_get(target_url)
         
         if not html_text:
-            self.notify_error("Seite konnte nicht geladen werden.")
+            self.notify_error("Could not load page.")
             xbmcplugin.endOfDirectory(self.addon_handle)
             return
 
         items = self._parse_listing(html_text)
         
         if not items:
-            self.notify_info("Keine Videos gefunden.")
+            self.notify_info("No videos found.")
         else:
             for item in items:
                 title = html.unescape(item.get("title", "Video")).strip()
@@ -121,7 +121,7 @@ class freeomovie(BaseWebsite):
     def process_categories(self, url):
         html_text = self._http_get(url)
         if not html_text:
-            self.notify_error("Kategorien konnten nicht geladen werden.")
+            self.notify_error("Could not load categories.")
             self.end_directory()
             return
 
@@ -187,13 +187,13 @@ class freeomovie(BaseWebsite):
         start_time = time.time()
         html_text = self._http_get(url)
         if not html_text:
-            self.notify_error("Detailseite konnte nicht geladen werden.")
+            self.notify_error("Could not load detail page.")
             return
 
         iframe_urls = self._extract_iframes(html_text)
         
         if not iframe_urls:
-            self.notify_error("Keine Hoster-Links gefunden.")
+            self.notify_error("No host links found.")
             return
 
         def sort_hosters(link):
@@ -219,7 +219,7 @@ class freeomovie(BaseWebsite):
         resolved_host = ""
 
         if autoplay:
-             xbmcgui.Dialog().notification("Autoplay", f"Prüfe {len(iframe_urls)} Hoster...", xbmcgui.NOTIFICATION_INFO, 2000)
+             xbmcgui.Dialog().notification("Autoplay", f"Checking {len(iframe_urls)} hosts...", xbmcgui.NOTIFICATION_INFO, 2000)
              
              for link in iframe_urls:
                  try:
@@ -259,13 +259,13 @@ class freeomovie(BaseWebsite):
                 host = urllib.parse.urlparse(u).netloc.replace('www.', '')
                 labels.append(host)
             
-            idx = xbmcgui.Dialog().select("Wähle Hoster", labels)
+            idx = xbmcgui.Dialog().select("Select host", labels)
             if idx > -1:
                  try:
                      resolved_host = labels[idx]
                      stream_url, headers = resolver.resolve(iframe_urls[idx], headers=self._headers)
                  except Exception as e:
-                     self.notify_error(f"Fehler: {e}")
+                     self.notify_error(f"Error: {e}")
                      return
             else:
                 return
@@ -299,7 +299,7 @@ class freeomovie(BaseWebsite):
                 
             xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
         else:
-            self.notify_error("Kein funktionierender Stream gefunden.")
+            self.notify_error("No working stream found.")
 
     def _is_local_proxy(self, url):
         """Check if a URL points to a local proxy server."""

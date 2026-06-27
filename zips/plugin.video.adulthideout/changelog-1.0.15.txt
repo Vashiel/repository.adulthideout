@@ -1,3 +1,22 @@
+v. 1.0.15 "Harbor" - 2026-06-27
+- **Download Manager**: Added queued background downloads with progress, cancellation and retry support using the internal downloader, FFmpeg, aria2 or JDownloader.
+- **Download Destinations**: Added first-use folder selection with writable-path validation and support for local, SMB and NFS destinations.
+- **Offline videos**: Added an optional, disabled-by-default view for replaying downloaded videos directly from AdultHideout.
+- **Global Search**: Improved cached return-to-results behavior and request handling for more reliable repeated searches.
+- **Networking**: Improved DNS retry handling and shared website request behavior.
+- **New Site**: Added Faapy with listings, search, categories, pornstars, channels, sorting, pagination, real homepage logo and seek-safe direct MP4 playback.
+- **New Site**: Added Fapality with listings, search, categories, pornstars, channels, pagination, real homepage logo and seek-safe direct MP4 playback.
+- **New Site**: Added MangoPorn with full movies, clips, search, categories, pagination, sorting, real homepage logo and seek-safe direct MP4 playback/recording support.
+- **New Site**: Added XGroovy with populated categories and models, search, pagination, sorting, real homepage logo and seek-safe MP4 playback/recording from its own get_file CDN (highest available quality, preview clips skipped).
+- **New Site**: Added InXXX with listings, search, categories, pagination, sorting, real homepage logo and seek-safe MP4 playback/recording from its own get_file CDN.
+- **New Site**: Added XFreeHD with public-video filtering, search, categories, pagination, sorting, real homepage logo and seek-safe direct MP4 playback/recording (prefers the HD source) from its own lb.xfreehd.com CDN.
+- **New Site**: Added TrannyVideosXXX (trans) with populated model folders, search, categories, pagination, sorting, real homepage logo and seek-safe direct MP4 playback/recording from its own vfile CDN (prefers 1080p).
+- **New Site**: Added MilfFox with listings, search, categories, models, sorting, pagination, original homepage logo and seek-safe MP4 playback/recording from its own v1.milffox.com CDN.
+- **New Site**: Added SexVid with real JPEG thumbnails, search, categories, sorting, pagination, original homepage logo and seek-safe MP4 playback/recording from its own SexVid CDN.
+- **New Site**: Added TokyoMotion with listings, search, categories, sorting, pagination, original homepage logo and seek-safe HD MP4 playback/recording from its own vsrc delivery path.
+- **Settings**: Added visibility and sorting controls for the new sites and restored the missing Zeenite sorting setting.
+- **Language Cleanup**: Replaced hard-coded German fallback labels and notifications with English across affected site modules; explicitly localized dialogs continue to follow Kodi's active language.
+
 v. 1.0.14 "Featherlight" - 2026-06-14
 - **Global Search 2.0**: Reworked global search into a much more usable search hub with selectable sources, Select All Sites, combined presets, profile-aware result caching, stable return-to-results behavior after playback, playable-video-only results and progressive paging instead of a slow blind all-site scan.
 - **Featherlight Optimization**: Performed a major addon size and cleanup pass, compressing logo assets and removing stale caches, unused vendor modules and verification leftovers while keeping Android/Cloudflare compatibility intact; the packaged addon is now dramatically smaller than the previous build.
@@ -589,4 +608,3 @@ v 0.2
 
 v 0.1
 First try
-

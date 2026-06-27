@@ -17,8 +17,8 @@ class MotherlessWebsite(BaseWebsite):
     def __init__(self, addon_handle):
         super().__init__(
             name="motherless",
-            base_url="https://motherless.com",
-            search_url="https://motherless.com/term/videos/{}",
+            base_url="https://motherless.xxx",
+            search_url="https://motherless.xxx/term/videos/{}",
             addon_handle=addon_handle
         )
         self.sort_options = ["Newest", "Being Watched Now", "Favorites", "Most Viewed", "Most Commented", "Popular", "Archived", "Random Video"]

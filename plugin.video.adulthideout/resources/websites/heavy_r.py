@@ -118,7 +118,7 @@ class HeavyRWebsite(BaseWebsite):
             self.parse_video_list(content, url)
             self.add_next_button(content)
         else:
-            self.notify_error("Inhalt konnte nicht geladen werden")
+            self.notify_error("Could not load content")
         
         self.end_directory()
 
@@ -134,7 +134,7 @@ class HeavyRWebsite(BaseWebsite):
         if content:
             matches = self.category_pattern.findall(content)
             if not matches:
-                self.notify_info("Keine Kategorien gefunden")
+                self.notify_info("No categories found")
             
             thumb = self.icons['categories']
             
@@ -182,7 +182,7 @@ class HeavyRWebsite(BaseWebsite):
             li.setMimeType("video/mp4")
             xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
         else:
-            self.notify_error("Keine Videoquelle gefunden")
+            self.notify_error("No video source found")
 
     def search(self, query):
         if not query: return

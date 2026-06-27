@@ -227,10 +227,10 @@ class BaseWebsite:
 
         if mode == 4 and self.__class__.resolve_recording_stream is not BaseWebsite.resolve_recording_stream:
             try:
-                from resources.lib.ffmpeg_recorder import add_record_context
-                context_menu = add_record_context(self, context_menu, url, name)
+                from resources.lib.download_manager import add_download_context
+                context_menu = add_download_context(self, context_menu, url, name, icon)
             except Exception as exc:
-                self.logger.warning("FFmpeg recorder context failed: %s", exc)
+                self.logger.warning("Download context failed: %s", exc)
         
         if context_menu: 
             liz.addContextMenuItems(context_menu)
@@ -282,8 +282,8 @@ class BaseWebsite:
         return None
 
     def download_with_ffmpeg(self, original_url=None, title=None):
-        from resources.lib.ffmpeg_recorder import record_with_ffmpeg
-        record_with_ffmpeg(self, original_url, title=title)
+        from resources.lib.download_manager import enqueue_download
+        enqueue_download(self, original_url, title=title)
 
     def record_with_ffmpeg(self, original_url=None, title=None):
         self.download_with_ffmpeg(original_url, title=title)

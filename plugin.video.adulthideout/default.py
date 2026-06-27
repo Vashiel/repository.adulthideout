@@ -3,6 +3,7 @@
 
 import sys
 import os
+import time
 import urllib.parse
 import xbmc
 import xbmcaddon
@@ -74,6 +75,30 @@ def build_main_menu_fast():
         listitem=global_search_item,
         isFolder=True,
     )
+
+    if ADDON.getSetting("show_download_manager") == "true":
+        downloads_item = xbmcgui.ListItem(label="[COLOR yellow]{}[/COLOR]".format(
+            ADDON.getLocalizedString(30641) or "Downloads"
+        ))
+        downloads_item.setArt({"icon": DEFAULT_ICON_PATH, "thumb": DEFAULT_ICON_PATH, "fanart": FANART_PATH})
+        xbmcplugin.addDirectoryItem(
+            handle=ADDON_HANDLE,
+            url=f"{sys.argv[0]}?mode=31",
+            listitem=downloads_item,
+            isFolder=True,
+        )
+
+    if ADDON.getSetting("enable_offline_library") == "true":
+        offline_item = xbmcgui.ListItem(label="[COLOR yellow]{}[/COLOR]".format(
+            ADDON.getLocalizedString(30642) or "Offline videos"
+        ))
+        offline_item.setArt({"icon": DEFAULT_ICON_PATH, "thumb": DEFAULT_ICON_PATH, "fanart": FANART_PATH})
+        xbmcplugin.addDirectoryItem(
+            handle=ADDON_HANDLE,
+            url=f"{sys.argv[0]}?mode=32",
+            listitem=offline_item,
+            isFolder=True,
+        )
     
     for filename in sorted(os.listdir(WEBSITES_DIR)):
         if not filename.endswith('.py') or filename == '__init__.py':
@@ -150,6 +175,24 @@ def load_single_website(website_name):
     
     return None
 
+def call_with_item_count(target_website, callback):
+    original_add = xbmcplugin.addDirectoryItem
+    count = {"items": 0}
+    started = time.time()
+
+    def counting_add(*args, **kwargs):
+        count["items"] += 1
+        return original_add(*args, **kwargs)
+
+    xbmcplugin.addDirectoryItem = counting_add
+    try:
+        callback()
+    except Exception:
+        raise
+    finally:
+        xbmcplugin.addDirectoryItem = original_add
+    return count["items"], time.time() - started
+
 def handle_routing():
     ensure_view_service()
     params = {}
@@ -179,7 +222,7 @@ def handle_routing():
         global_search = GlobalSearch(ADDON_HANDLE, addon=ADDON, loader=load_single_website, logger=log)
         action = params.get('action')
         if action == 'new_search':
-            global_search.new_search()
+            global_search.new_search(params.get('search_mode', 'selected'))
         elif action == 'show_presets':
             global_search.show_presets()
         elif action == 'apply_preset':
@@ -203,21 +246,42 @@ def handle_routing():
         elif action == 'clear_history':
             global_search.clear_history()
         elif action == 'edit_search':
-            global_search.edit_search(params.get('query', ''))
+            global_search.edit_search(params.get('query', ''), search_mode=params.get('search_mode', 'selected'))
         elif action == 'refresh_search':
             try:
                 page = int(params.get('page', '1') or '1')
             except Exception:
                 page = 1
-            global_search.refresh_search(params.get('query', ''), page=page)
+            global_search.refresh_search(params.get('query', ''), page=page, search_mode=params.get('search_mode', 'selected'))
         elif mode == '21':
             try:
                 page = int(params.get('page', '1') or '1')
             except Exception:
                 page = 1
-            global_search.run(params.get('query', ''), refresh=params.get('refresh') == '1', page=page)
+            global_search.run(
+                params.get('query', ''),
+                refresh=params.get('refresh') == '1',
+                page=page,
+                search_mode=params.get('search_mode', 'selected'),
+            )
         else:
             global_search.show_menu()
+        return
+
+    if mode == '31':
+        from resources.lib import download_manager
+        from resources.lib import offline_library
+        action = params.get('action')
+        if action == 'delete_offline':
+            offline_library.delete(params.get('path', ''))
+            xbmcplugin.endOfDirectory(ADDON_HANDLE, succeeded=True, updateListing=False, cacheToDisc=False)
+        else:
+            download_manager.handle_manager_action(ADDON_HANDLE, sys.argv[0], action, params)
+        return
+
+    if mode == '32':
+        from resources.lib import offline_library
+        offline_library.show(ADDON_HANDLE, sys.argv[0], params.get('path', ''))
         return
 
     target_website = None
@@ -246,14 +310,25 @@ def handle_routing():
         page = int(params.get('page', '1'))
         
         # Safe call: check if process_content supports 'page' argument
-        sig = inspect.signature(target_website.process_content)
-        if 'page' in sig.parameters:
-            target_website.process_content(url, page=page)
-        else:
-            target_website.process_content(url)
+        call_with_item_count(
+            target_website,
+            lambda: target_website.process_content(url, page=page)
+            if 'page' in inspect.signature(target_website.process_content).parameters
+            else target_website.process_content(url)
+        )
         
     elif mode == '4':
         target_website.play_video(url)
+
+    elif mode == '30':
+        from resources.lib.download_manager import enqueue_download
+        enqueue_download(
+            target_website,
+            params.get('original_url') or url,
+            title=params.get('name', ''),
+            thumbnail=params.get('thumbnail', ''),
+        )
+        xbmcplugin.endOfDirectory(ADDON_HANDLE, succeeded=True, updateListing=False, cacheToDisc=False)
         
     elif mode == '5':
         target_website.show_search_menu()
@@ -281,27 +356,27 @@ def handle_routing():
             
     elif mode == '8':
         if hasattr(target_website, 'process_categories'):
-            target_website.process_categories(url)
+            call_with_item_count(target_website, lambda: target_website.process_categories(url))
         else:
             xbmcplugin.endOfDirectory(ADDON_HANDLE)
             
     elif mode == '9':
         if hasattr(target_website, 'process_pornstars'):
-            target_website.process_pornstars(url)
+            call_with_item_count(target_website, lambda: target_website.process_pornstars(url))
         elif hasattr(target_website, 'process_actresses_list'):
-            target_website.process_actresses_list(url)
+            call_with_item_count(target_website, lambda: target_website.process_actresses_list(url))
         else:
             xbmcplugin.endOfDirectory(ADDON_HANDLE)
             
     elif mode == '10':
         if hasattr(target_website, 'process_channels'):
-            target_website.process_channels(url)
+            call_with_item_count(target_website, lambda: target_website.process_channels(url))
         else:
             xbmcplugin.endOfDirectory(ADDON_HANDLE)
             
     elif mode == '11':
         if hasattr(target_website, 'process_collections'):
-            target_website.process_collections(url)
+            call_with_item_count(target_website, lambda: target_website.process_collections(url))
         else:
             xbmcplugin.endOfDirectory(ADDON_HANDLE)
             

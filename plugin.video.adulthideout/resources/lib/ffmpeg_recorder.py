@@ -41,7 +41,7 @@ def add_record_context(website, context_menu, video_url, title):
         url=urllib.parse.quote_plus(video_url or ""),
         title=urllib.parse.quote_plus(title or ""),
     )
-    label = _localized(website.addon, 30633, "Video herunterladen")
+    label = _localized(website.addon, 30633, "Download video")
     items.append((label, command))
     return items
 
