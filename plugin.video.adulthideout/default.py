@@ -5,6 +5,7 @@ import sys
 import os
 import time
 import json
+import re
 import urllib.parse
 import xbmc
 import xbmcaddon
@@ -28,11 +29,35 @@ FANART_PATH = os.path.join(LOGOS_DIR, 'fanart.jpg')
 DEFAULT_ICON_PATH = os.path.join(LOGOS_DIR, 'icon.png')
 VAULT_ICON_PATH = os.path.join(LOGOS_DIR, 'vault.png')
 VIEW_SERVICE_PATH = os.path.join(ADDON_PATH, 'resources', 'lib', 'view_service.py')
-VIEW_SERVICE_VERSION = "19"
+VIEW_SERVICE_VERSION = "20"
 
-MAIN_MENU_SORT_OPTIONS = ["A-Z", "Z-A", "Newest Websites"]
-WEBSITE_RELEASE_ORDER_PATH = os.path.join(RESOURCES_DIR, "website_release_order.json")
-_website_release_order = None
+MAIN_MENU_SORT_KEYS = ("az", "za", "newest", "category")
+CONTENT_FILTER_KEYS = ("general", "trans", "hentai", "jav", "rule34", "fetish", "live", "creator")
+TYPE_FILTER_KEYS = ("tube", "archive", "live", "resolver")
+CONTENT_LABEL_IDS = {
+    "general": 30787,
+    "trans": 30788,
+    "hentai": 30789,
+    "jav": 30790,
+    "rule34": 30791,
+    "fetish": 30792,
+    "live": 30793,
+    "creator": 30794,
+}
+TYPE_LABEL_IDS = {
+    "tube": 30795,
+    "archive": 30796,
+    "live": 30797,
+    "resolver": 30798,
+}
+WEBSITE_LABEL_OVERRIDES = {
+    "giantessporn": "Giantess Porn",
+    "tickleporn": "Tickle Porn",
+}
+WEBSITE_CATALOG_PATH = os.path.join(RESOURCES_DIR, "website_catalog.json")
+_website_catalog = None
+_website_taxonomy_index = None
+_hidden_websites_cache = None
 
 dns_retry.install()
 
@@ -58,41 +83,281 @@ def ensure_view_service():
 def get_setting_id_from_name(name):
     return f"show_{name.lower().replace('-', '').replace('_', '')}"
 
+def get_website_label(name):
+    return WEBSITE_LABEL_OVERRIDES.get(
+        name,
+        name.replace("_", " ").replace("-", " ").title(),
+    )
+
+def get_main_menu_art(icon_path):
+    return {
+        "icon": icon_path,
+        "thumb": icon_path,
+        "poster": icon_path,
+        "banner": icon_path,
+        "landscape": icon_path,
+        "fanart": FANART_PATH,
+    }
+
+def get_hidden_websites():
+    global _hidden_websites_cache
+    if _hidden_websites_cache is not None:
+        return set(_hidden_websites_cache)
+    try:
+        values = json.loads(ADDON.getSetting("hidden_websites") or "[]")
+    except (TypeError, ValueError):
+        values = []
+    _hidden_websites_cache = {str(value) for value in values if value}
+    return set(_hidden_websites_cache)
+
+def save_hidden_websites(names):
+    global _hidden_websites_cache
+    _hidden_websites_cache = set(names)
+    ADDON.setSetting("hidden_websites", json.dumps(sorted(_hidden_websites_cache)))
+
+def migrate_legacy_website_visibility(modules):
+    if ADDON.getSetting("website_visibility_migrated") == "true":
+        return
+    hidden = get_hidden_websites()
+    false_setting_ids = set()
+    try:
+        profile_path = xbmcvfs.translatePath(ADDON.getAddonInfo("profile"))
+        settings_path = os.path.join(profile_path, "settings.xml")
+        if os.path.exists(settings_path):
+            with open(settings_path, "r", encoding="utf-8") as handle:
+                settings_text = handle.read()
+            false_setting_ids.update(re.findall(
+                r'<setting\b[^>]*\bid=["\'](show_[^"\']+)["\'][^>]*>\s*false\s*</setting>',
+                settings_text,
+                re.IGNORECASE,
+            ))
+    except Exception as exc:
+        log("Could not read legacy website visibility: {}".format(exc), xbmc.LOGDEBUG)
+    for name in modules:
+        setting_id = get_setting_id_from_name(name)
+        if setting_id in false_setting_ids:
+            if name != "crazyshit":
+                hidden.add(name)
+    save_hidden_websites(hidden)
+    ADDON.setSetting("website_visibility_migrated", "true")
+
+def is_website_hidden(name):
+    if name == "crazyshit" and ADDON.getSetting("show_crazyshit") != "true":
+        return True
+    return name in get_hidden_websites()
+
+def hide_website(name):
+    if not name:
+        return
+    if name == "crazyshit":
+        ADDON.setSetting("show_crazyshit", "false")
+    else:
+        hidden = get_hidden_websites()
+        hidden.add(name)
+        save_hidden_websites(hidden)
+    xbmcgui.Dialog().notification(
+        localized(30801, "Website hidden"),
+        get_website_label(name),
+        xbmcgui.NOTIFICATION_INFO,
+        2500,
+    )
+    xbmc.executebuiltin("Container.Update({},replace)".format(sys.argv[0]))
+
+def get_currently_hidden_websites():
+    hidden = get_hidden_websites()
+    if ADDON.getSetting("show_crazyshit") != "true":
+        hidden.add("crazyshit")
+    return sorted(hidden)
+
+def manage_hidden_websites():
+    hidden = get_currently_hidden_websites()
+    if not hidden:
+        xbmcgui.Dialog().notification(
+            localized(30802, "Hidden websites"),
+            localized(30805, "No hidden websites"),
+            xbmcgui.NOTIFICATION_INFO,
+            2500,
+        )
+        return
+    labels = [get_website_label(name) for name in hidden]
+    selected = xbmcgui.Dialog().multiselect(
+        localized(30804, "Select websites to restore"),
+        labels,
+    )
+    if not selected:
+        return
+    restored = {hidden[index] for index in selected}
+    stored = get_hidden_websites() - restored
+    save_hidden_websites(stored)
+    if "crazyshit" in restored:
+        ADDON.setSetting("show_crazyshit", "true")
+    xbmc.executebuiltin("Container.Update({},replace)".format(sys.argv[0]))
+
+def restore_all_websites():
+    if not xbmcgui.Dialog().yesno(
+        localized(30803, "Restore all websites"),
+        localized(30806, "Make every website visible again?"),
+    ):
+        return
+    save_hidden_websites(set())
+    ADDON.setSetting("show_crazyshit", "true")
+    xbmc.executebuiltin("Container.Update({},replace)".format(sys.argv[0]))
+
 def get_main_menu_sort_index():
     try:
         index = int(ADDON.getSetting("main_menu_website_sort") or "0")
     except (TypeError, ValueError):
         index = 0
-    return index if 0 <= index < len(MAIN_MENU_SORT_OPTIONS) else 0
+    return index if 0 <= index < len(MAIN_MENU_SORT_KEYS) else 0
 
-def get_website_release_order():
-    global _website_release_order
-    if _website_release_order is not None:
-        return _website_release_order
+def localized(label_id, fallback):
+    return ADDON.getLocalizedString(label_id) or fallback
+
+def get_website_catalog():
+    global _website_catalog
+    if _website_catalog is not None:
+        return _website_catalog
     try:
-        with open(WEBSITE_RELEASE_ORDER_PATH, "r", encoding="utf-8") as handle:
-            _website_release_order = json.load(handle).get("first_added", {})
+        with open(WEBSITE_CATALOG_PATH, "r", encoding="utf-8") as handle:
+            _website_catalog = json.load(handle)
     except Exception as exc:
-        log("Could not load website release order: {}".format(exc), xbmc.LOGWARNING)
-        _website_release_order = {}
-    return _website_release_order
+        log("Could not load website catalog: {}".format(exc), xbmc.LOGWARNING)
+        _website_catalog = {}
+    return _website_catalog
+
+def get_website_catalog_order():
+    sites = get_website_catalog().get("sites", {})
+    return {
+        name: int(metadata.get("catalog_id", 0))
+        for name, metadata in sites.items()
+    }
+
+def get_website_taxonomy_index():
+    global _website_taxonomy_index
+    if _website_taxonomy_index is not None:
+        return _website_taxonomy_index
+    taxonomy = get_website_catalog().get("taxonomy", {})
+    _website_taxonomy_index = {}
+    for section in ("content", "types"):
+        memberships = {}
+        for key, names in taxonomy.get(section, {}).items():
+            for name in names:
+                memberships.setdefault(name, []).append(key)
+        _website_taxonomy_index[section] = memberships
+    return _website_taxonomy_index
+
+def get_website_taxonomy(name):
+    taxonomy = get_website_taxonomy_index()
+    return (
+        taxonomy.get("content", {}).get(name, ["general"]),
+        taxonomy.get("types", {}).get(name, ["tube"]),
+    )
+
+def _read_filter_setting(setting_id, allowed):
+    try:
+        values = json.loads(ADDON.getSetting(setting_id) or "[]")
+    except (TypeError, ValueError):
+        values = []
+    return [value for value in values if value in allowed]
+
+def get_active_website_filters():
+    return (
+        _read_filter_setting("main_menu_website_content_filter", CONTENT_FILTER_KEYS),
+        _read_filter_setting("main_menu_website_type_filter", TYPE_FILTER_KEYS),
+    )
+
+def website_matches_filters(name):
+    selected_content, selected_types = get_active_website_filters()
+    content, source_types = get_website_taxonomy(name)
+    content_match = not selected_content or bool(set(content) & set(selected_content))
+    type_match = not selected_types or bool(set(source_types) & set(selected_types))
+    return content_match and type_match
+
+def get_primary_category(name):
+    content, _ = get_website_taxonomy(name)
+    return next((key for key in CONTENT_FILTER_KEYS if key in content), "general")
 
 def sort_website_modules(modules):
     mode = get_main_menu_sort_index()
     if mode == 1:
         return sorted(modules, reverse=True)
     if mode == 2:
-        first_added = get_website_release_order()
-        return sorted(modules, key=lambda name: (-int(first_added.get(name, 0)), name.lower()))
+        catalog_order = get_website_catalog_order()
+        return sorted(modules, key=lambda name: (-catalog_order.get(name, 0), name.lower()))
+    if mode == 3:
+        category_order = {key: index for index, key in enumerate(CONTENT_FILTER_KEYS)}
+        return sorted(
+            modules,
+            key=lambda name: (category_order.get(get_primary_category(name), 999), name.lower()),
+        )
     return sorted(modules)
 
 def select_main_menu_sort():
     current = get_main_menu_sort_index()
-    selected = xbmcgui.Dialog().select("Sort websites...", MAIN_MENU_SORT_OPTIONS, preselect=current)
+    options = [
+        "A-Z",
+        "Z-A",
+        localized(30782, "Newest Websites"),
+        localized(30783, "Category"),
+    ]
+    selected = xbmcgui.Dialog().select(localized(30778, "Sort websites..."), options, preselect=current)
     if selected == -1:
         return
     ADDON.setSetting("main_menu_website_sort", str(selected))
     xbmc.executebuiltin("Container.Update({},replace)".format(sys.argv[0]))
+
+def select_main_menu_filters():
+    selected_content, selected_types = get_active_website_filters()
+    entries = [localized(30799, "All Websites")]
+    entries.extend(
+        "{}: {}".format(localized(30784, "Content"), localized(CONTENT_LABEL_IDS[key], key.title()))
+        for key in CONTENT_FILTER_KEYS
+    )
+    entries.extend(
+        "{}: {}".format(localized(30785, "Website type"), localized(TYPE_LABEL_IDS[key], key.title()))
+        for key in TYPE_FILTER_KEYS
+    )
+    preselect = []
+    preselect.extend(1 + CONTENT_FILTER_KEYS.index(key) for key in selected_content)
+    type_offset = 1 + len(CONTENT_FILTER_KEYS)
+    preselect.extend(type_offset + TYPE_FILTER_KEYS.index(key) for key in selected_types)
+    selected = xbmcgui.Dialog().multiselect(
+        localized(30779, "Filter websites..."),
+        entries,
+        preselect=preselect,
+    )
+    if selected is None:
+        return
+    if 0 in selected:
+        content_values = []
+        type_values = []
+    else:
+        content_values = [
+            CONTENT_FILTER_KEYS[index - 1]
+            for index in selected
+            if 1 <= index < type_offset
+        ]
+        type_values = [
+            TYPE_FILTER_KEYS[index - type_offset]
+            for index in selected
+            if type_offset <= index < type_offset + len(TYPE_FILTER_KEYS)
+        ]
+    ADDON.setSetting("main_menu_website_content_filter", json.dumps(content_values))
+    ADDON.setSetting("main_menu_website_type_filter", json.dumps(type_values))
+    xbmc.executebuiltin("Container.Update({},replace)".format(sys.argv[0]))
+
+def get_website_menu_context(download_menu_command):
+    return [
+        (
+            localized(30778, "Sort websites..."),
+            "RunPlugin({}?mode=1&action=select_main_menu_sort)".format(sys.argv[0]),
+        ),
+        (
+            localized(30779, "Filter websites..."),
+            "RunPlugin({}?mode=1&action=select_main_menu_filters)".format(sys.argv[0]),
+        ),
+        (localized(30733, "Open Download Manager"), download_menu_command),
+    ]
 
 def build_main_menu_fast():
     if not os.path.exists(WEBSITES_DIR):
@@ -114,12 +379,9 @@ def build_main_menu_fast():
     global_search_icon = os.path.join(LOGOS_DIR, "search.png")
     if "search.png" not in available_logos:
         global_search_icon = DEFAULT_ICON_PATH
-    global_search_item.setArt({"icon": global_search_icon, "thumb": global_search_icon, "fanart": FANART_PATH})
+    global_search_item.setArt(get_main_menu_art(global_search_icon))
     download_menu_command = 'Container.Update({}?mode=31)'.format(sys.argv[0])
-    global_search_item.addContextMenuItems([(
-        ADDON.getLocalizedString(30733) or "Open Download Manager",
-        download_menu_command,
-    )])
+    global_search_item.addContextMenuItems(get_website_menu_context(download_menu_command))
     xbmcplugin.addDirectoryItem(
         handle=ADDON_HANDLE,
         url=f"{sys.argv[0]}?mode=20&website=global_search",
@@ -129,11 +391,8 @@ def build_main_menu_fast():
 
     vault_item = xbmcgui.ListItem(label="[COLOR yellow]{}[/COLOR]".format(ADDON.getLocalizedString(30700) or "Vault"))
     vault_icon = VAULT_ICON_PATH if os.path.exists(VAULT_ICON_PATH) else DEFAULT_ICON_PATH
-    vault_item.setArt({"icon": vault_icon, "thumb": vault_icon, "fanart": FANART_PATH})
-    vault_item.addContextMenuItems([(
-        ADDON.getLocalizedString(30733) or "Open Download Manager",
-        download_menu_command,
-    )])
+    vault_item.setArt(get_main_menu_art(vault_icon))
+    vault_item.addContextMenuItems(get_website_menu_context(download_menu_command))
     xbmcplugin.addDirectoryItem(
         handle=ADDON_HANDLE,
         url=f"{sys.argv[0]}?mode=40",
@@ -152,7 +411,7 @@ def build_main_menu_fast():
         downloads_item = xbmcgui.ListItem(label="[COLOR yellow]{}[/COLOR]".format(
             ADDON.getLocalizedString(30641) or "Downloads"
         ))
-        downloads_item.setArt({"icon": DEFAULT_ICON_PATH, "thumb": DEFAULT_ICON_PATH, "fanart": FANART_PATH})
+        downloads_item.setArt(get_main_menu_art(DEFAULT_ICON_PATH))
         xbmcplugin.addDirectoryItem(
             handle=ADDON_HANDLE,
             url=f"{sys.argv[0]}?mode=31",
@@ -164,7 +423,7 @@ def build_main_menu_fast():
         offline_item = xbmcgui.ListItem(label="[COLOR yellow]{}[/COLOR]".format(
             ADDON.getLocalizedString(30642) or "Offline videos"
         ))
-        offline_item.setArt({"icon": DEFAULT_ICON_PATH, "thumb": DEFAULT_ICON_PATH, "fanart": FANART_PATH})
+        offline_item.setArt(get_main_menu_art(DEFAULT_ICON_PATH))
         xbmcplugin.addDirectoryItem(
             handle=ADDON_HANDLE,
             url=f"{sys.argv[0]}?mode=32",
@@ -176,13 +435,17 @@ def build_main_menu_fast():
         filename[:-3] for filename in os.listdir(WEBSITES_DIR)
         if filename.endswith('.py') and filename != '__init__.py'
     ]
+    migrate_legacy_website_visibility(website_modules)
+    website_modules = [name for name in website_modules if not is_website_hidden(name)]
+    website_modules = [name for name in website_modules if website_matches_filters(name)]
+    category_mode = get_main_menu_sort_index() == 3
     for module_raw_name in sort_website_modules(website_modules):
         
-        setting_id = get_setting_id_from_name(module_raw_name)
-        if ADDON.getSetting(setting_id) == 'false':
-            continue
-
-        label = module_raw_name.replace('_', ' ').replace('-', ' ').title()
+        label = get_website_label(module_raw_name)
+        if category_mode:
+            category = get_primary_category(module_raw_name)
+            category_label = localized(CONTENT_LABEL_IDS[category], category.title())
+            label = "[COLOR gray]{}[/COLOR]  {}".format(category_label, label)
         
         icon_name = f"{module_raw_name}.png"
         fallback_name = f"{module_raw_name.replace('_', '-')}.png"
@@ -193,10 +456,14 @@ def build_main_menu_fast():
         else:
             icon_path = DEFAULT_ICON_PATH
 
-        context_menu = [
-            ('Sort websites...', f'RunPlugin({sys.argv[0]}?mode=1&action=select_main_menu_sort)'),
-            (ADDON.getLocalizedString(30733) or 'Open Download Manager', download_menu_command),
-        ]
+        context_menu = get_website_menu_context(download_menu_command)
+        context_menu.insert(2, (
+            localized(30800, "Hide website"),
+            "RunPlugin({}?mode=1&action=hide_website&target={})".format(
+                sys.argv[0],
+                urllib.parse.quote_plus(module_raw_name),
+            ),
+        ))
         if module_raw_name == 'chaturbate':
             context_menu.append(
                 ('Filter...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_filter&website={module_raw_name})')
@@ -206,14 +473,18 @@ def build_main_menu_fast():
         url = f"{sys.argv[0]}{url_params}"
         
         li = xbmcgui.ListItem(label=label)
-        li.setArt({'icon': icon_path, 'thumb': icon_path, 'fanart': FANART_PATH})
+        li.setArt(get_main_menu_art(icon_path))
         li.addContextMenuItems(context_menu)
         
         xbmcplugin.addDirectoryItem(handle=ADDON_HANDLE, url=url, listitem=li, isFolder=True)
         found_any = True
 
     if not found_any:
-        log("No website files found (.py)!", xbmc.LOGWARNING)
+        selected_content, selected_types = get_active_website_filters()
+        if selected_content or selected_types:
+            log("No enabled websites match the active website filters", xbmc.LOGINFO)
+        else:
+            log("No website files found (.py)!", xbmc.LOGWARNING)
 
     end_directory_with_view(ADDON_HANDLE, ADDON)
 
@@ -282,18 +553,35 @@ def handle_routing():
     
     log(f"Routing: mode={mode}, website={website_name}")
 
-    try:
-        from resources.lib.official_source import verify_and_warn
-        verify_and_warn(ADDON, show_dialog=(mode is None))
-    except Exception as exc:
-        log(f"Official source check failed unexpectedly: {exc}", xbmc.LOGWARNING)
+    if mode is None:
+        try:
+            from resources.lib.official_source import verify_and_warn
+            verify_and_warn(ADDON, show_dialog=True)
+        except Exception as exc:
+            log(f"Official source check failed unexpectedly: {exc}", xbmc.LOGWARNING)
 
     if mode is None:
         build_main_menu_fast()
         return
 
-    if mode == '1' and params.get('action') == 'select_main_menu_sort':
-        select_main_menu_sort()
+    website_menu_actions = (
+        'select_main_menu_sort',
+        'select_main_menu_filters',
+        'hide_website',
+        'manage_hidden_websites',
+        'restore_all_websites',
+    )
+    if mode == '1' and params.get('action') in website_menu_actions:
+        if params.get('action') == 'select_main_menu_sort':
+            select_main_menu_sort()
+        elif params.get('action') == 'select_main_menu_filters':
+            select_main_menu_filters()
+        elif params.get('action') == 'hide_website':
+            hide_website(params.get('target', ''))
+        elif params.get('action') == 'manage_hidden_websites':
+            manage_hidden_websites()
+        elif params.get('action') == 'restore_all_websites':
+            restore_all_websites()
         xbmcplugin.endOfDirectory(ADDON_HANDLE, succeeded=True, updateListing=False, cacheToDisc=False)
         return
 

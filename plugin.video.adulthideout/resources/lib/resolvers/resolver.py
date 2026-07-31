@@ -107,6 +107,7 @@ RESOLVERS = [
             "voe.sx", "voe-unblock", "voeunblock", "un-block-voe",
             "v-o-e-unblock", "audaciousdefaulthouse.com",
             "launchreliantcleaverriver.com", "fittingcentermondaysunday.com",
+            "matthewhotelscience.com",
         ),
     },
     {

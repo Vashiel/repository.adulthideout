@@ -124,7 +124,7 @@ class WordPressApiTube(BaseWebsite):
             self.end_directory("videos")
             return
 
-        if page == 1:
+        if self.is_primary_listing_url(url):
             self.add_dir("Search", "", 5, self.icons.get("search", self.icon))
             self.add_dir("Categories", "WP_CATEGORIES", 8, self.icons.get("categories", self.icon))
             if getattr(self, "show_pornstars", False):

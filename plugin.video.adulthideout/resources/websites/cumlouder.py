@@ -57,12 +57,13 @@ class CumLouder(BaseWebsite):
             self.logger.error(f"Request error: {e}")
             return None
 
-    def get_listing(self, url):
+    def get_listing(self, url, html_content=None):
         if url == "BOOTSTRAP":
             # get_start_url_and_label already handles sorting, but as fallback:
             url, _ = self.get_start_url_and_label()
-            
-        html_content = self.make_request(url)
+
+        if html_content is None:
+            html_content = self.make_request(url)
         if not html_content:
             return []
 
@@ -154,7 +155,29 @@ class CumLouder(BaseWebsite):
             xbmcgui.Dialog().notification('AdultHideout', 'Could not resolve video URL', xbmcgui.NOTIFICATION_ERROR, 3000)
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
 
-    def process_content(self, url):
+    def search(self, query):
+        if not query:
+            return
+        tag_slug = urllib.parse.quote(query.lower().strip().replace(' ', '-'))
+        tag_url = f"{self.base_url}/tag/{tag_slug}/"
+        html_content = self.make_request(tag_url)
+        if html_content and 'muestra-escena' in html_content:
+            self.process_content(tag_url, html_content=html_content)
+            return
+
+        cats = self.get_categories()
+        query_lower = query.lower()
+        matched_cats = [c for c in cats if query_lower in c['title'].lower()]
+        if matched_cats:
+            for cat in matched_cats:
+                self.add_dir(cat['title'], cat['url'], 2, cat['thumb'])
+            self.end_directory("videos")
+            return
+
+        self.notify_error(f"No results for: {query}")
+        self.end_directory("videos")
+
+    def process_content(self, url, html_content=None):
         # 1. Main Categories Page: No Search/Categories buttons
         if url == "categories":
             cats = self.get_categories()
@@ -164,7 +187,7 @@ class CumLouder(BaseWebsite):
             return
 
         # 2. All other pages: Show Search and Categories (except on sub-categories if those were to exist)
-        videos = self.get_listing(url)
+        videos = self.get_listing(url, html_content=html_content)
         
         # Add navigation on every page (except categories handled above)
         self.add_dir("Search", "", 5, self.icons['search'])

@@ -23,6 +23,7 @@ class CollectionOfBestPorn(BaseWebsite):
             addon=addon,
         )
         self.label = "CollectionOfBestPorn"
+        self.disabled = True
         self.ua = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         self.session = requests.Session()
@@ -35,6 +36,10 @@ class CollectionOfBestPorn(BaseWebsite):
             "Longest": "/longest/month",
         }
         self.categories_url = f"{self.base_url}tags"
+
+    def _show_offline(self):
+        self.notify_error("CollectionOfBestPorn is currently offline")
+        self.end_directory()
 
     def _headers(self, referer=None, accept="text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"):
         return {
@@ -64,6 +69,8 @@ class CollectionOfBestPorn(BaseWebsite):
         return "{}/page/{}".format(base, page)
 
     def process_content(self, url, page=1, **kwargs):
+        if self.disabled:
+            return self._show_offline()
         if not url or url == "BOOTSTRAP":
             url, _ = self.get_start_url_and_label()
 
@@ -106,6 +113,8 @@ class CollectionOfBestPorn(BaseWebsite):
         return count
 
     def process_categories(self, url):
+        if self.disabled:
+            return self._show_offline()
         content = self.make_request(url or self.categories_url)
         if not content:
             return self.end_directory(content_type='files')
@@ -127,6 +136,8 @@ class CollectionOfBestPorn(BaseWebsite):
         self.end_directory(content_type='files')
 
     def search(self, query):
+        if self.disabled:
+            return self._show_offline()
         if query:
             self.process_content(self.search_url.format(urllib.parse.quote_plus(query.strip())))
 
@@ -143,6 +154,10 @@ class CollectionOfBestPorn(BaseWebsite):
         return html.unescape(best[0])
 
     def play_video(self, url):
+        if self.disabled:
+            self.notify_error("CollectionOfBestPorn is currently offline")
+            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
+            return
         stream_url = self._resolve_stream(url)
         if not stream_url:
             self.notify_error("Could not resolve stream")

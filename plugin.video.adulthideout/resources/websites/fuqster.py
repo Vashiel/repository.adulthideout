@@ -101,6 +101,12 @@ class Fuqster(BaseWebsite):
             seen.add(video_url)
             display_title = html.unescape(title.strip())
             thumb = html.unescape(thumb)
+            if thumb.startswith("//"):
+                thumb = "https:" + thumb
+            elif thumb.startswith("http://"):
+                thumb = thumb.replace("http://", "https://")
+            if thumb.endswith(".jpg"):
+                thumb += "?fmt=webp"
             info = {"title": display_title, "mediatype": "video"}
             self.add_link(display_title, video_url, 4, thumb, self.fanart, info_labels=info)
 

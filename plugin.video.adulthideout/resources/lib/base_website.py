@@ -5,6 +5,7 @@ import logging
 import sys
 import os
 import json
+import re
 import urllib.parse
 import xbmc
 import xbmcaddon
@@ -61,6 +62,28 @@ class BaseWebsite:
                     self.logger.warning(f"Icon not found: {path}")
             _ICON_PATH_CACHE[addon_path] = cached_icons
         self.icons = dict(cached_icons)
+
+    def is_primary_listing_url(self, url):
+        """Return whether *url* belongs to the site's main video listing.
+
+        Pagination must not hide the standard navigation, while search,
+        category and performer URLs must remain clean video-only listings.
+        """
+        def normalized(value):
+            parsed = urllib.parse.urlparse(urllib.parse.urljoin(self.base_url, value or self.base_url))
+            path = re.sub(r"/(?:page/)?\d+/?$", "/", parsed.path or "/", flags=re.IGNORECASE)
+            path = "/" + path.strip("/") if path.strip("/") else "/"
+            query = tuple(sorted(
+                (key, item)
+                for key, item in urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+                if key.lower() not in ("from", "from_videos", "page")
+            ))
+            return parsed.netloc.lower(), path.lower(), query
+
+        candidates = [self.base_url]
+        candidates.extend(getattr(self, "sort_paths", {}).values())
+        current = normalized(url)
+        return current in {normalized(candidate) for candidate in candidates}
 
     def get_start_url_and_label(self):
         label = f"{self.name.capitalize()}"
@@ -201,10 +224,16 @@ class BaseWebsite:
             
         xbmcplugin.addDirectoryItem(handle=self.addon_handle, url=u, listitem=liz, isFolder=True)
 
+    def video_art(self, icon, fanart=None):
+        effective_fanart = icon if self.addon.getSetting('use_video_thumbs_as_fanart') == 'true' else (fanart or self.fanart)
+        return {'thumb': icon, 'icon': icon, 'poster': icon, 'fanart': effective_fanart}
+
     def add_link(self, name, url, mode, icon, fanart, context_menu=None, info_labels=None):
         u = f"{sys.argv[0]}?url={urllib.parse.quote_plus(url)}&mode={mode}&name={urllib.parse.quote_plus(name)}&website={self.name}"
         liz = xbmcgui.ListItem(name)
-        liz.setArt({'thumb': icon, 'icon': icon, 'fanart': fanart})
+        art = self.video_art(icon, fanart)
+        effective_fanart = art['fanart']
+        liz.setArt(art)
         liz.getVideoInfoTag().setTitle(name)
         liz.setProperty('IsPlayable', 'true')
         
@@ -246,7 +275,7 @@ class BaseWebsite:
                 from resources.lib.personal_library import build_save_command
                 context_menu.append((
                     self.addon.getLocalizedString(30706) or 'Save to Vault',
-                    build_save_command(sys.argv[0], u, name, self.name, icon, fanart, 'video')
+                    build_save_command(sys.argv[0], u, name, self.name, icon, effective_fanart, 'video')
                 ))
             except Exception as exc:
                 self.logger.warning("Vault video context failed: %s", exc)

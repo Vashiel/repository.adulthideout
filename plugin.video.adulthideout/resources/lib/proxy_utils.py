@@ -1375,7 +1375,7 @@ class _HlsProxyHandler(BaseHTTPRequestHandler):
         headers.setdefault("User-Agent", _DEFAULT_UA)
         
         try:
-            if parsed.path in ("/playlist.m3u8", "/resource"):
+            if parsed.path in ("/playlist.m3u8", "/resource", "/resource.ts"):
                 url = query.get("url", [""])[0]
                 if not url:
                     self.send_error(400, "Missing URL")
@@ -1394,10 +1394,20 @@ class _HlsProxyHandler(BaseHTTPRequestHandler):
                     for line in playlist.splitlines():
                         if line.strip() and not line.startswith("#"):
                             resource_url = urllib.parse.urljoin(url, line.strip())
-                            line = "http://{}:{}/resource?url={}".format(
+                            if self.controller.preserve_query:
+                                parent_query = urllib.parse.urlparse(url).query
+                                parsed_resource = urllib.parse.urlparse(resource_url)
+                                if parent_query and not parsed_resource.query:
+                                    resource_url = urllib.parse.urlunparse(
+                                        parsed_resource._replace(query=parent_query)
+                                    )
+                            resource_path = "/resource.ts" if resource_url.lower().split("?", 1)[0].endswith(".webp") else "/resource"
+                            line = "http://{}:{}{}?url={}{}".format(
                                 self.controller.host,
                                 self.server.server_address[1],
+                                resource_path,
                                 urllib.parse.quote_plus(resource_url),
+                                "&ext=.ts" if resource_path == "/resource.ts" else "",
                             )
                         lines.append(line)
                     content = "\n".join(lines).encode("utf-8")
@@ -1428,8 +1438,16 @@ class _HlsProxyHandler(BaseHTTPRequestHandler):
                             content = content[offset:]
                             break
 
+                content_type = res.headers.get("Content-Type", "video/mp2t")
+                if (
+                    len(content) >= 377
+                    and content[0] == 0x47
+                    and content[188] == 0x47
+                    and content[376] == 0x47
+                ):
+                    content_type = "video/mp2t"
                 self.send_response(200)
-                self.send_header("Content-Type", res.headers.get("Content-Type", "video/mp2t"))
+                self.send_header("Content-Type", content_type)
                 self.send_header("Content-Length", str(len(content)))
                 self.send_header("Cache-Control", "no-store")
                 self.end_headers()
@@ -1445,13 +1463,22 @@ class _HlsProxyHandler(BaseHTTPRequestHandler):
 
 
 class HlsProxyController:
-    def __init__(self, master_playlist_url, headers=None, session=None, host="127.0.0.1", port=0):
+    def __init__(
+        self,
+        master_playlist_url,
+        headers=None,
+        session=None,
+        host="127.0.0.1",
+        port=0,
+        preserve_query=False,
+    ):
         self.master_url = master_playlist_url
         self.headers = headers or {}
         self.session = session or requests.Session()
         self.request_lock = threading.Lock()
         self.host = host
         self.port = port
+        self.preserve_query = bool(preserve_query)
         self.httpd = None
         self.thread = None
         self.local_url = None

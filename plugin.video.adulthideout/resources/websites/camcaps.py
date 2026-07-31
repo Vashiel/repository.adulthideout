@@ -491,45 +491,43 @@ class CamcapsWebsite(BaseWebsite):
             return
 
         seen = set()
-        for href, label in re.findall(
-            r'<a class="tagHover" href="((?:https?://camcaps\.(?:io|tv|to))?/search/videos/[^"\']+)"[^>]*>(?:<i[^>]*></i>)?\s*([^<]+)\s*</a>',
+        matches = re.findall(
+            r'<a[^>]+href=["\']((?:https?://camcaps\.(?:io|tv|to))?/search/videos/[^"\']+)["\'][^>]*>([\s\S]*?)</a>',
             html_content,
             re.IGNORECASE | re.DOTALL,
-        ):
+        )
+        for href, inner in matches:
             category_url = self._absolute(href)
             if category_url in seen:
                 continue
             seen.add(category_url)
-            title = re.sub(r"\s+", " ", html.unescape(label)).strip()
-            self.add_dir(title, category_url, 2, self.icons.get("categories", self.icon))
+            title = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", inner))).strip()
+            if title and not title.isdigit():
+                self.add_dir(title, category_url, 2, self.icons.get("categories", self.icon))
 
         self.end_directory("videos")
 
     def process_pornstars(self, url):
-        html_content = self.make_request(url or urllib.parse.urljoin(self.base_url, "/users"))
+        html_content = self.make_request(url or urllib.parse.urljoin(self.base_url, "/tags"))
         if not html_content:
             self.end_directory("videos")
             return
 
         seen = set()
         matches = re.findall(
-            r'<a href="((?:https?://camcaps\.(?:io|tv|to))?/user/[^"]+)">\s*<div class="thumb-overlay">\s*<img src="([^"]+)"[^>]*>\s*</div>\s*</a>\s*<div class="content-info">\s*<a href="(?:https?://camcaps\.(?:io|tv|to))?/user/[^"]+">\s*<span class="content-truncate\s*">\s*([^<]+)\s*</span>',
+            r'<a[^>]+href=["\']((?:https?://camcaps\.(?:io|tv|to))?/search/videos/[^"\']+)["\'][^>]*>([\s\S]*?)</a>',
             html_content,
             re.IGNORECASE | re.DOTALL,
         )
-        for href, thumb_src, name_raw in matches:
-            profile_url = self._absolute(href.rstrip("/") + "/videos")
-            if profile_url in seen:
+        for href, inner in matches:
+            tag_url = self._absolute(href)
+            if tag_url in seen:
                 continue
-            seen.add(profile_url)
+            seen.add(tag_url)
 
-            name = html.unescape(name_raw).strip()
-            thumb = self._absolute(thumb_src) if thumb_src else self.icons.get("pornstars", self.icon)
-            self.add_dir(name, profile_url, 2, thumb, self.fanart)
-
-        next_url = self._extract_next_url(html_content)
-        if next_url and next_url != url:
-            self.add_dir("Next Page", next_url, 9, self.icons.get("default", self.icon))
+            name = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", inner))).strip()
+            if name:
+                self.add_dir(name, tag_url, 2, self.icons.get("pornstars", self.icon))
 
         self.end_directory("videos")
 

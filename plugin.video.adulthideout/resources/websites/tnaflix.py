@@ -1,8 +1,10 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import sys
 import os
 import re
+import html
 import urllib.parse
 import xbmcgui
 import xbmcplugin
@@ -14,7 +16,7 @@ try:
     vendor_path = os.path.join(addon_path, 'resources', 'lib', 'vendor')
     if vendor_path not in sys.path:
         sys.path.insert(0, vendor_path)
-except:
+except Exception:
     pass
 
 try:
@@ -24,6 +26,7 @@ except ImportError:
     HAS_CLOUDSCRAPER = False
 
 import requests
+
 
 class Tnaflix(BaseWebsite):
     BASE_URL_STR = "https://www.tnaflix.com/"
@@ -36,12 +39,33 @@ class Tnaflix(BaseWebsite):
             addon_handle=addon_handle
         )
         
-        self.sort_options = ["Featured", "Most Recent", "Top Rated"]
-        self.sort_paths = {
-            "Featured": "featured",
-            "Most Recent": "new",
-            "Top Rated": "toprated"
+        self.sort_options = ["Featured", "Most Recent", "Most Viewed", "Top Rated"]
+        self.sort_dir_map = {
+            0: "featured",
+            1: "latest",
+            2: "popular",
+            3: "toprated"
         }
+
+        self.duration_options = ["All Durations", "Short (1-3 min)", "Medium (3-10 min)", "Long (10-30 min)", "Full Length (30+ min)"]
+        self.duration_map = {
+            1: "short",
+            2: "medium",
+            3: "long",
+            4: "full"
+        }
+
+        self.period_options = ["Anytime", "Today", "This Week", "This Month", "This Year"]
+        self.period_map = {
+            1: "day",
+            2: "week",
+            3: "month",
+            4: "year"
+        }
+
+        self.setting_id_sort = "tnaflix_sort_by"
+        self.setting_id_duration = "tnaflix_duration"
+        self.setting_id_period = "tnaflix_period"
         
         self.session = None
         self.ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -55,6 +79,78 @@ class Tnaflix(BaseWebsite):
             self.session = requests.Session()
             self.session.headers.update({'User-Agent': self.ua})
 
+    def get_current_sort_idx(self):
+        try:
+            idx = int(self.addon.getSetting(self.setting_id_sort) or '0')
+        except (ValueError, TypeError):
+            idx = 0
+        if not 0 <= idx < len(self.sort_options):
+            idx = 0
+        return idx
+
+    def get_current_duration_idx(self):
+        try:
+            idx = int(self.addon.getSetting(self.setting_id_duration) or '0')
+        except (ValueError, TypeError):
+            idx = 0
+        if not 0 <= idx < len(self.duration_options):
+            idx = 0
+        return idx
+
+    def get_current_period_idx(self):
+        try:
+            idx = int(self.addon.getSetting(self.setting_id_period) or '0')
+        except (ValueError, TypeError):
+            idx = 0
+        if not 0 <= idx < len(self.period_options):
+            idx = 0
+        return idx
+
+    def build_tnaflix_url(self, query="", page=1, raw_url=None):
+        if raw_url and raw_url != "BOOTSTRAP":
+            parsed = urllib.parse.urlparse(raw_url)
+            params = urllib.parse.parse_qs(parsed.query)
+        else:
+            params = {}
+
+        if query:
+            params["what"] = [query]
+
+        sort_idx = self.get_current_sort_idx()
+        dur_idx = self.get_current_duration_idx()
+        period_idx = self.get_current_period_idx()
+
+        if dur_idx in self.duration_map:
+            params["d"] = [self.duration_map[dur_idx]]
+        elif "d" in params:
+            del params["d"]
+
+        if period_idx in self.period_map:
+            params["u"] = [self.period_map[period_idx]]
+        elif "u" in params:
+            del params["u"]
+
+        if sort_idx in self.sort_dir_map and self.sort_dir_map[sort_idx] != "featured":
+            params["dir"] = [self.sort_dir_map[sort_idx]]
+        elif "dir" in params:
+            del params["dir"]
+
+        if page > 1:
+            params["page"] = [str(page)]
+
+        flat_params = {k: v[0] for k, v in params.items() if v}
+
+        if "what" in flat_params or flat_params:
+            url = f"{self.base_url.rstrip('/')}/search?{urllib.parse.urlencode(flat_params)}"
+        else:
+            path_map = {0: "featured", 1: "new", 2: "popular", 3: "toprated"}
+            path = path_map.get(sort_idx, "featured")
+            url = f"{self.base_url.rstrip('/')}/{path}"
+            if page > 1:
+                url += f"?page={page}"
+
+        return url
+
     def make_request(self, url, headers=None):
         if not headers:
             headers = {'Referer': self.base_url}
@@ -67,12 +163,21 @@ class Tnaflix(BaseWebsite):
             pass
         return None
 
+    def get_global_context_menu(self, current_url=""):
+        encoded_url = urllib.parse.quote_plus(current_url or self.base_url)
+        return [
+            ('Select Sort...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={encoded_url})'),
+            ('Select Duration...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_duration&website={self.name}&original_url={encoded_url})'),
+            ('Select Upload Period...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_period&website={self.name}&original_url={encoded_url})')
+        ]
+
     def add_basic_dirs(self, current_url):
-        self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], self.fanart)
-        self.add_dir('Categories', urllib.parse.urljoin(self.base_url, 'categories'), 8, self.icons['categories'], self.fanart)
-        self.add_dir('Pornstars', urllib.parse.urljoin(self.base_url, 'pornstars'), 9, self.icons['pornstars'], self.fanart)
-        self.add_dir('Channels', urllib.parse.urljoin(self.base_url, 'channels'), 10, self.icons['default'], self.fanart)
-    
+        context_menu = self.get_global_context_menu(current_url)
+        self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], self.fanart, context_menu=context_menu)
+        self.add_dir('Categories', urllib.parse.urljoin(self.base_url, 'categories'), 8, self.icons['categories'], self.fanart, context_menu=context_menu)
+        self.add_dir('Pornstars', urllib.parse.urljoin(self.base_url, 'pornstars'), 9, self.icons['pornstars'], self.fanart, context_menu=context_menu)
+        self.add_dir('Channels', urllib.parse.urljoin(self.base_url, 'channels'), 10, self.icons['default'], self.fanart, context_menu=context_menu)
+
     def process_content(self, url):
         if url.endswith('/categories') or '/categories' in url:
             self.process_categories(url)
@@ -85,7 +190,10 @@ class Tnaflix(BaseWebsite):
         if url.endswith('/channels') or '/channels?' in url:
             self.process_channels(url)
             return
-        
+
+        if not url or url == "BOOTSTRAP" or url.rstrip('/') == self.base_url:
+            url = self.build_tnaflix_url()
+
         self.add_basic_dirs(url)
         
         content = self.make_request(url)
@@ -99,76 +207,56 @@ class Tnaflix(BaseWebsite):
 
     def process_video_list(self, content, current_url):
         video_items = []
-        
-        vid_blocks = re.findall(r'<div[^>]+data-vid="(\d+)"[^>]*>(.*?)</div>\s*</div>', content, re.DOTALL | re.IGNORECASE)
-        
-        if not vid_blocks:
-            vid_blocks = re.findall(r'<div[^>]+class="[^"]*col[^"]*"[^>]*>(.*?)</div>\s*</div>', content, re.DOTALL | re.IGNORECASE)
-        
-        for vid_id, block in vid_blocks:
-            url_match = re.search(r'href="(https://www\.tnaflix\.com/[^"]+/video\d+)"', block)
-            if not url_match:
-                url_match = re.search(r'href="(/[^"]+/video\d+)"', block)
+        context_menu = self.get_global_context_menu(current_url)
+
+        pattern = re.compile(
+            r'<a[^>]+class="[^"]*thumb[^"]*"[^>]+href="([^"]+/video\d+)"[^>]*>.*?<img[^>]+src="([^"]+)".*?(?:video-duration[^>]*>([^<]+)<)?',
+            re.DOTALL | re.IGNORECASE
+        )
+        matches = pattern.findall(content)
+
+        for href, thumb, duration in matches:
+            video_url = urllib.parse.urljoin(self.base_url, href)
+            vid_id_m = re.search(r'video(\d+)', href)
+            vid_id = vid_id_m.group(1) if vid_id_m else ""
             
-            if not url_match:
-                continue
-            
-            video_url = url_match.group(1)
-            if not video_url.startswith('http'):
-                video_url = urllib.parse.urljoin(self.base_url, video_url)
-            
-            thumb_match = re.search(r'<img[^>]+(?:data-src|src)="(https?://[^"]+(?:img\.tnaflix|cdnl\.tnaflix)[^"]*)"', block)
-            if not thumb_match:
-                thumb_match = re.search(r'data-src="([^"]+)"', block)
-            if not thumb_match:
-                thumb_match = re.search(r'<img[^>]+src="([^"]+)"', block)
-            
-            thumb = thumb_match.group(1) if thumb_match else self.icons['default']
-            if thumb and not thumb.startswith('http'):
-                if thumb.startswith('//'):
-                    thumb = 'https:' + thumb
-                elif not thumb.startswith('/assets'):
-                    thumb = urllib.parse.urljoin(self.base_url, thumb)
-                else:
-                    thumb = self.icons['default']
-            
-            dur_match = re.search(r'video-duration[^>]*>(\d{1,2}:\d{2}(?::\d{2})?)<', block)
-            duration = dur_match.group(1) if dur_match else ''
-            
-            title_match = re.search(r'class="[^"]*video-title[^"]*"[^>]*>([^<]+)<', block)
-            if not title_match:
-                title_match = re.search(r'alt="([^"]+)"', block)
-            title = title_match.group(1).strip() if title_match else f"Video {vid_id}"
-            
+            title_pattern = rf'video{vid_id}"[^>]*class="[^"]*video-title[^"]*"[^>]*>([^<]+)<' if vid_id else r'video-title[^>]*>([^<]+)<'
+            title_match = re.search(title_pattern, content, re.IGNORECASE)
+            title = html.unescape(title_match.group(1).strip()) if title_match else "TNAFlix Video"
+
+            if thumb.startswith('/assets'):
+                thumb = self.icons['default']
+            elif not thumb.startswith('http'):
+                thumb = 'https:' + thumb if thumb.startswith('//') else self.icons['default']
+
             video_items.append({
                 'url': video_url,
                 'thumb': thumb,
-                'duration': duration,
+                'duration': duration.strip() if duration else '',
                 'title': title
             })
-        
+
         if not video_items:
-            normalized = re.sub(r'\s+', ' ', content)
-            pattern = r'href="(https://www\.tnaflix\.com/[^"]+/video(\d+))"[^>]*>.*?(?:data-src|src)="([^"]+)".*?video-duration[^>]*>(\d{1,2}:\d{2})'
-            matches = re.findall(pattern, normalized, re.IGNORECASE)
-            
-            for url, vid_id, thumb, duration in matches:
-                title_pattern = rf'video{vid_id}"[^>]*class="[^"]*video-title[^"]*"[^>]*>([^<]+)<'
-                title_match = re.search(title_pattern, normalized, re.IGNORECASE)
-                title = title_match.group(1).strip() if title_match else f"Video {vid_id}"
-                
-                if thumb.startswith('/assets'):
-                    thumb = self.icons['default']
-                elif not thumb.startswith('http'):
-                    thumb = 'https:' + thumb if thumb.startswith('//') else self.icons['default']
-                
+            # Fallback legacy parser
+            vid_blocks = re.findall(r'<div[^>]+data-vid="(\d+)"[^>]*>(.*?)</div>\s*</div>', content, re.DOTALL | re.IGNORECASE)
+            for vid_id, block in vid_blocks:
+                url_match = re.search(r'href="(/[^"]+/video\d+|https://www\.tnaflix\.com/[^"]+/video\d+)"', block)
+                if not url_match: continue
+                v_url = urllib.parse.urljoin(self.base_url, url_match.group(1))
+                t_match = re.search(r'alt="([^"]+)"', block)
+                v_title = html.unescape(t_match.group(1).strip()) if t_match else f"Video {vid_id}"
+                dur_m = re.search(r'video-duration[^>]*>([^<]+)<', block)
+                v_dur = dur_m.group(1).strip() if dur_m else ""
+                thumb_m = re.search(r'src="([^"]+)"', block)
+                v_thumb = thumb_m.group(1) if thumb_m else self.icons['default']
+
                 video_items.append({
-                    'url': url,
-                    'thumb': thumb,
-                    'duration': duration,
-                    'title': title
+                    'url': v_url,
+                    'thumb': v_thumb,
+                    'duration': v_dur,
+                    'title': v_title
                 })
-        
+
         seen_urls = set()
         for item in video_items:
             if item['url'] not in seen_urls:
@@ -187,19 +275,41 @@ class Tnaflix(BaseWebsite):
                         else:
                             dur_sec = int(parts[0]) * 60 + int(parts[1])
                         info['duration'] = dur_sec
-                    except:
+                    except Exception:
                         pass
                 
-                self.add_link(display_name, item['url'], 4, item['thumb'], self.fanart, info_labels=info)
+                self.add_link(display_name, item['url'], 4, item['thumb'], self.fanart, info_labels=info, context_menu=context_menu)
+
+        self.logger.info(f"[TNAFlix] Rendered {len(seen_urls)} videos")
         
+        # Next page
         next_page = re.search(r'<link[^>]+rel="next"[^>]+href="([^"]+)"', content, re.IGNORECASE)
         if not next_page:
-            next_page = re.search(r'href="([^"]*\?page=(\d+)[^"]*)"', content)
+            next_page = re.search(r'href="([^"]*\?page=(\d+)[^"]*)"[^>]*>\s*Next', content, re.I)
         if next_page:
-            next_url = next_page.group(1)
-            if not next_url.startswith('http'):
-                next_url = urllib.parse.urljoin(self.base_url, next_url)
-            self.add_dir('[COLOR blue]Next Page >>>>[/COLOR]', next_url, 2, self.icons['default'], self.fanart)
+            next_url = urllib.parse.urljoin(self.base_url, html.unescape(next_page.group(1)))
+            self.add_dir('[COLOR blue]Next Page >>>>[/COLOR]', next_url, 2, self.icons['default'], self.fanart, context_menu=context_menu)
+
+    def select_sort(self, original_url=None):
+        dialog = xbmcgui.Dialog()
+        idx = dialog.select("Select Sort...", self.sort_options, preselect=self.get_current_sort_idx())
+        if idx != -1:
+            self.addon.setSetting(self.setting_id_sort, str(idx))
+            xbmc.executebuiltin(f'Container.Update({sys.argv[0]}?mode=2&url=BOOTSTRAP&website={self.name},replace)')
+
+    def select_duration(self, original_url=None):
+        dialog = xbmcgui.Dialog()
+        idx = dialog.select("Select Duration...", self.duration_options, preselect=self.get_current_duration_idx())
+        if idx != -1:
+            self.addon.setSetting(self.setting_id_duration, str(idx))
+            xbmc.executebuiltin(f'Container.Update({sys.argv[0]}?mode=2&url=BOOTSTRAP&website={self.name},replace)')
+
+    def select_period(self, original_url=None):
+        dialog = xbmcgui.Dialog()
+        idx = dialog.select("Select Upload Period...", self.period_options, preselect=self.get_current_period_idx())
+        if idx != -1:
+            self.addon.setSetting(self.setting_id_period, str(idx))
+            xbmc.executebuiltin(f'Container.Update({sys.argv[0]}?mode=2&url=BOOTSTRAP&website={self.name},replace)')
 
     def process_categories(self, url):
         content = self.make_request(url)
@@ -208,25 +318,20 @@ class Tnaflix(BaseWebsite):
             self.end_directory()
             return
         
-        self.add_basic_dirs(url)
-        
-        pattern = r'<div[^>]+class="[^"]*category-item[^"]*"[^>]*>\s*<a[^>]+href="(https://www\.tnaflix\.com/[^"]+)"[^>]*>\s*([^<]+?)\s*(?:<span[^>]*>[^<]+</span>)?\s*</a>'
+        pattern = r'<a[^>]+href=["\'](https?://www\.tnaflix\.com/[a-z0-9-]+|/[a-z0-9-]+)["\'][^>]*>(.*?)</a>'
         matches = re.findall(pattern, content, re.DOTALL | re.IGNORECASE)
-        
-        if not matches:
-            pattern = r'<a[^>]+href="(https://www\.tnaflix\.com/[^/"]+(?:-porn|-videos|-sex|/)[^"]*)"[^>]*>\s*([^<]+?)\s*(?:<span[^>]*>[^<]+</span>)?\s*</a>'
-            all_matches = re.findall(pattern, content, re.IGNORECASE)
-            matches = [(m[0], m[1]) for m in all_matches if '/' not in m[0].replace('https://www.tnaflix.com/', '').strip('/')]
-        
+        context_menu = self.get_global_context_menu(url)
+
+        skip_slugs = {'login', 'signup', 'categories', 'galleries', 'channels', 'pornstars', 'tags', 'dmca', 'cookies', 'text2257', 'content-protection', 'parental-control'}
         seen = set()
-        for cat_url, cat_name in matches:
-            if '/pornstar' in cat_url or '/channel' in cat_url or '/video' in cat_url:
-                continue
-            if cat_url not in seen:
-                seen.add(cat_url)
-                name = cat_name.strip()
-                if name and len(name) > 1 and not name.startswith('<'):
-                    self.add_dir(name, cat_url, 2, self.icons['categories'], self.fanart)
+
+        for href, title in matches:
+            clean_title = re.sub(r'<[^>]+>', ' ', title).strip()
+            slug = href.split('/')[-1]
+            if slug not in skip_slugs and clean_title and href not in seen:
+                seen.add(href)
+                cat_url = urllib.parse.urljoin(self.base_url, href)
+                self.add_dir(html.unescape(clean_title), cat_url, 2, self.icons['categories'], self.fanart, context_menu=context_menu)
         
         self.end_directory()
 
@@ -237,37 +342,20 @@ class Tnaflix(BaseWebsite):
             self.end_directory()
             return
         
-        self.add_basic_dirs(url)
-        
-        pattern = r'<a[^>]+class="[^"]*thumb[^"]*"[^>]+href="(https://www\.tnaflix\.com/profile/[^"]+|/profile/[^"]+)"[^>]*>.*?<img[^>]+src="([^"]+)"[^>]*>.*?<div[^>]+class="[^"]*thumb-title[^"]*"[^>]*>([^<]+)</div>'
+        pattern = r'<a[^>]+href=["\'](https?://www\.tnaflix\.com/[a-z0-9-]+|/[a-z0-9-]+)["\'][^>]*>(.*?)</a>'
         matches = re.findall(pattern, content, re.DOTALL | re.IGNORECASE)
-        
+        context_menu = self.get_global_context_menu(url)
+
+        skip_slugs = {'login', 'signup', 'categories', 'galleries', 'channels', 'pornstars', 'tags', 'dmca', 'cookies', 'text2257', 'content-protection', 'parental-control'}
         seen = set()
-        for star_path, thumb, name in matches:
-            if star_path.startswith('/'):
-                star_url = urllib.parse.urljoin(self.base_url, star_path)
-            else:
-                star_url = star_path
-            
-            if star_url in seen:
-                continue
-            seen.add(star_url)
-            
-            if not thumb.startswith('http'):
-                thumb = 'https:' + thumb if thumb.startswith('//') else self.icons['pornstars']
-            
-            star_name = name.strip()
-            if star_name:
-                self.add_dir(star_name, star_url, 2, thumb, self.fanart)
-        
-        next_match = re.search(r'<link[^>]+rel="next"[^>]+href="([^"]+)"', content, re.IGNORECASE)
-        if not next_match:
-            next_match = re.search(r'href="([^"]*\?page=(\d+)[^"]*)"', content)
-        if next_match:
-            next_url = next_match.group(1)
-            if not next_url.startswith('http'):
-                next_url = urllib.parse.urljoin(self.base_url, next_url)
-            self.add_dir('[COLOR blue]Next Page >>>>[/COLOR]', next_url, 9, self.icons['default'], self.fanart)
+
+        for href, title in matches:
+            clean_title = re.sub(r'<[^>]+>', ' ', title).strip()
+            slug = href.split('/')[-1]
+            if slug not in skip_slugs and clean_title and href not in seen:
+                seen.add(href)
+                star_url = urllib.parse.urljoin(self.base_url, href)
+                self.add_dir(html.unescape(clean_title), star_url, 2, self.icons['pornstars'], self.fanart, context_menu=context_menu)
         
         self.end_directory()
 
@@ -278,92 +366,60 @@ class Tnaflix(BaseWebsite):
             self.end_directory()
             return
         
-        self.add_basic_dirs(url)
-        
-        pattern = r'<a[^>]+class="[^"]*thumb[^"]*"[^>]+href="(https://www\.tnaflix\.com/channel/[^"]+|/channel/[^"]+)"[^>]*>.*?<img[^>]+src="([^"]+)"[^>]*>.*?<div[^>]+class="[^"]*thumb-title[^"]*"[^>]*>([^<]+)</div>'
+        pattern = r'<a[^>]+href=["\'](https?://www\.tnaflix\.com/[a-z0-9-]+|/[a-z0-9-]+)["\'][^>]*>(.*?)</a>'
         matches = re.findall(pattern, content, re.DOTALL | re.IGNORECASE)
-        
+        context_menu = self.get_global_context_menu(url)
+
+        skip_slugs = {'login', 'signup', 'categories', 'galleries', 'channels', 'pornstars', 'tags', 'dmca', 'cookies', 'text2257', 'content-protection', 'parental-control'}
         seen = set()
-        for chan_path, thumb, name in matches:
-            if chan_path.startswith('/'):
-                chan_url = urllib.parse.urljoin(self.base_url, chan_path)
-            else:
-                chan_url = chan_path
-            
-            if chan_url in seen:
-                continue
-            seen.add(chan_url)
-            
-            if not thumb.startswith('http'):
-                thumb = 'https:' + thumb if thumb.startswith('//') else self.icons['default']
-            
-            chan_name = name.strip()
-            if chan_name:
-                self.add_dir(chan_name, chan_url, 2, thumb, self.fanart)
-        
-        next_match = re.search(r'<link[^>]+rel="next"[^>]+href="([^"]+)"', content, re.IGNORECASE)
-        if not next_match:
-            next_match = re.search(r'href="([^"]*\?page=(\d+)[^"]*)"', content)
-        if next_match:
-            next_url = next_match.group(1)
-            if not next_url.startswith('http'):
-                next_url = urllib.parse.urljoin(self.base_url, next_url)
-            self.add_dir('[COLOR blue]Next Page >>>>[/COLOR]', next_url, 10, self.icons['default'], self.fanart)
+
+        for href, title in matches:
+            clean_title = re.sub(r'<[^>]+>', ' ', title).strip()
+            slug = href.split('/')[-1]
+            if slug not in skip_slugs and clean_title and href not in seen:
+                seen.add(href)
+                ch_url = urllib.parse.urljoin(self.base_url, href)
+                self.add_dir(html.unescape(clean_title), ch_url, 2, self.icons['default'], self.fanart, context_menu=context_menu)
         
         self.end_directory()
 
     def play_video(self, url):
-        content = self.make_request(url)
+        headers = {'Referer': self.base_url}
+        content = self.make_request(url, headers=headers)
         if not content:
             return self.notify_error("Failed to load video page")
-        
-        source_pattern = r'<source[^>]+src="([^"]+\.mp4[^"]*)"[^>]*(?:size="(\d+)")?'
-        sources = re.findall(source_pattern, content, re.IGNORECASE)
-        
-        if not sources:
-            cdn_pattern = r'(https://sl\d+\.tnaflix\.com/[^"]+\.mp4[^"]*)'
-            sources = [(url, '') for url in re.findall(cdn_pattern, content)]
-        
-        if not sources:
-            return self.notify_error("No video source found")
-        
-        video_url = None
-        max_quality = 0
-        
-        for src, size in sources:
-            quality = int(size) if size else 0
-            if not quality:
-                qual_match = re.search(r'-(\d+)p\.mp4', src)
-                if qual_match:
-                    quality = int(qual_match.group(1))
-            
-            if quality > max_quality:
-                max_quality = quality
-                video_url = src
-        
-        if not video_url and sources:
-            video_url = sources[0][0]
-        
-        if video_url:
-            kodi_headers = {
-                'User-Agent': self.ua,
-                'Referer': url
-            }
-            
-            if self.session:
-                cookies = self.session.cookies.get_dict()
-                if cookies:
-                    kodi_headers['Cookie'] = "; ".join([f"{k}={v}" for k, v in cookies.items()])
-            
-            final_url = f"{video_url}|{urllib.parse.urlencode(kodi_headers)}"
-            
-            li = xbmcgui.ListItem(path=final_url)
-            li.setProperty('IsPlayable', 'true')
-            li.setMimeType('video/mp4')
-            
-            xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
-        else:
-            self.notify_error("No playable video found")
 
-    def notify_error(self, msg):
-        xbmcgui.Dialog().notification('AdultHideout', msg, xbmcgui.NOTIFICATION_ERROR)
+        config_match = re.search(r'flashvars\.config\s*=\ "([^"]+)"', content)
+        if not config_match:
+            config_match = re.search(r'config:\s*["\']([^"\']+)["\']', content)
+
+        video_file = None
+        if config_match:
+            cfg_url = config_match.group(1)
+            cfg_url = html.unescape(cfg_url)
+            cfg_content = self.make_request(cfg_url, headers=headers)
+            if cfg_content:
+                file_match = re.search(r'<videoLink>([^<]+)</videoLink>', cfg_content)
+                if file_match:
+                    video_file = file_match.group(1)
+
+        if not video_file:
+            video_match = re.search(r'<source[^>]+src="([^"]+\.mp4[^"]*)"', content)
+            if video_match:
+                video_file = video_match.group(1)
+
+        if video_file:
+            video_file = html.unescape(video_file)
+            item = xbmcgui.ListItem(path=video_file)
+            item.setProperty('IsPlayable', 'true')
+            item.setMimeType('video/mp4')
+            xbmcplugin.setResolvedUrl(self.addon_handle, True, item)
+        else:
+            self.notify_error("Stream URL not found")
+
+    def search(self, query):
+        if query:
+            search_url = self.build_tnaflix_url(query=query)
+            self.process_content(search_url)
+        else:
+            self.end_directory()

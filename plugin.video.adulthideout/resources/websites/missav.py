@@ -197,7 +197,8 @@ class MissavWebsite(BaseWebsite):
             display_title = f"{name} ({duration})" if duration else name
             
             li = xbmcgui.ListItem(label=display_title)
-            li.setArt({'thumb': thumbnail, 'icon': thumbnail, 'fanart': self.fanart})
+            art = self.video_art(thumbnail, self.fanart)
+            li.setArt(art)
             li.setProperty('IsPlayable', 'true')
             li.addContextMenuItems(video_context_menu)
             
@@ -216,7 +217,7 @@ class MissavWebsite(BaseWebsite):
             try:
                 from resources.lib.personal_library import build_save_command
                 li.addContextMenuItems([(self.addon.getLocalizedString(30706) or 'Save to Vault', build_save_command(
-                    sys.argv[0], plugin_url, name, self.name, thumbnail, self.fanart, 'video'
+                    sys.argv[0], plugin_url, name, self.name, thumbnail, art['fanart'], 'video'
                 ))])
             except Exception as exc:
                 self.logger.warning("Vault context failed: %s", exc)

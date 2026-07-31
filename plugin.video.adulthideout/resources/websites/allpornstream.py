@@ -176,13 +176,25 @@ class AllPornStream(BaseWebsite):
         sort_name = self.sort_options[idx]
         return self._absolute(self.sort_paths.get(sort_name, "/")), "AllPornStream [COLOR yellow]{}[/COLOR]".format(sort_name)
 
-    def _context_menu(self):
-        return [
+    def _context_menu(self, directory_url=""):
+        items = [
             (
                 "Sort by...",
                 "RunPlugin({}?mode=7&action=select_sort&website={})".format(sys.argv[0], self.name),
             )
         ]
+        if directory_url:
+            items.append(
+                (
+                    "Directory options...",
+                    "RunPlugin({}?mode=7&action=select_directory_options&website={}&original_url={})".format(
+                        sys.argv[0],
+                        self.name,
+                        urllib.parse.quote_plus(directory_url),
+                    ),
+                )
+            )
+        return items
 
     def _extract_videos(self, page_html):
         items = []
@@ -444,21 +456,7 @@ class AllPornStream(BaseWebsite):
             current_page = 1
         params["page"] = str(current_page)
 
-        sort_labels = {"count": "Video Count", "likes": "Likes", "views": "Views", "alphabetical": "A-Z"}
-        summary = "Options: {} {} / {} / Page {} of {}".format(
-            sort_labels.get(params["sort"], "Video Count"),
-            "asc" if params["dir"] == "asc" else "desc",
-            params["letter"] or params["q"] or "All",
-            current_page,
-            total_pages,
-        )
-        self.add_dir(
-            "[COLOR yellow]{}[/COLOR]".format(summary),
-            self._directory_url(section, params),
-            7,
-            self.icons.get("settings", self.icon),
-            action="select_directory_options",
-        )
+        directory_context = self._context_menu(self._directory_url(section, params))
 
         if current_page > 1:
             previous_params = dict(params)
@@ -468,6 +466,7 @@ class AllPornStream(BaseWebsite):
                 self._directory_url(section, previous_params),
                 self._directory_mode(section),
                 self.icons.get("default", self.icon),
+                context_menu=directory_context,
             )
 
         start = (current_page - 1) * per_page
@@ -475,7 +474,7 @@ class AllPornStream(BaseWebsite):
             label = item["label"]
             if item.get("count"):
                 label += " [COLOR gray]({} videos)[/COLOR]".format(item["count"])
-            self.add_dir(label, item["url"], 2, item["thumb"])
+            self.add_dir(label, item["url"], 2, item["thumb"], context_menu=directory_context)
 
         if current_page < total_pages:
             next_params = dict(params)
@@ -485,6 +484,7 @@ class AllPornStream(BaseWebsite):
                 self._directory_url(section, next_params),
                 self._directory_mode(section),
                 self.icons.get("default", self.icon),
+                context_menu=directory_context,
             )
 
         if not filtered:

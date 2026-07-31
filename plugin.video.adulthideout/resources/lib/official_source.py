@@ -287,10 +287,13 @@ def _load_hash_manifest(addon_path, prefer_remote=True):
 def _is_unreleased_build(addon_path):
     changelog_path = os.path.join(addon_path, "changelog.txt")
     try:
-        first_line = _read_text(changelog_path).splitlines()[0]
+        first_line = _read_text(changelog_path).splitlines()[0].lower()
     except (IndexError, TypeError):
         return False
-    return "unreleased" in first_line.lower()
+    return any(
+        marker in first_line
+        for marker in ("unreleased", "in development", "development build")
+    )
 
 
 def _check_hashes(addon_path, prefer_remote=True):
@@ -308,10 +311,10 @@ def _check_hashes(addon_path, prefer_remote=True):
         if not rel_path or not expected_hash:
             continue
         local_path = os.path.join(addon_path, rel_path.replace("/", os.sep))
-        data = _read_bytes(local_path)
-        if not data:
+        if not os.path.exists(local_path):
             issues.append(_lang(30612, rel_path))
             continue
+        data = _read_bytes(local_path)
         actual_hash = hashlib.sha256(data).hexdigest().lower()
         if actual_hash != str(expected_hash).lower():
             issues.append(_lang(30613, rel_path))
@@ -351,12 +354,13 @@ def verify_and_warn(addon, show_dialog=True):
     addon_id = addon.getAddonInfo("id")
     addon_path = addon.getAddonInfo("path")
     addon_version = addon.getAddonInfo("version")
+    is_unreleased = _is_unreleased_build(addon_path)
 
     repo_issues = _check_installed_repository()
     metadata_issues = []
-    if show_dialog:
+    if show_dialog and not is_unreleased:
         metadata_issues = _check_official_metadata(addon_id, addon_version)
-    prefer_remote_hashes = show_dialog and not _is_unreleased_build(addon_path)
+    prefer_remote_hashes = show_dialog and not is_unreleased
     hash_issues = _check_hashes(
         addon_path,
         prefer_remote=prefer_remote_hashes,

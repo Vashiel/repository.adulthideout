@@ -30,11 +30,24 @@ ALLOWED_HOSTS = frozenset((
     "www.euroxxx.net",
     "images1.hdpornos.xxx",
     "images2.hdpornos.xxx",
+    "hentai-moon.com",
+    "www.hentai-moon.com",
+    "cdn.javmiku.com",
+    "t.aki-h.com",
+    "watchhentai.net",
+    "yourdailypornvideos.ws",
+    "tickle.porn",
+    "www.tickle.porn",
+    "giantess.porn",
+    "www.giantess.porn",
 ))
 ALLOWED_PATH_PREFIXES = (
     "/_",
     "/contents/videos_screenshots/",
     "/avatar/",
+    "/posts/",
+    "/timthumb/",
+    "/uploads/",
     "/wp-content/uploads/",
 )
 SESSION_COUNT = 4

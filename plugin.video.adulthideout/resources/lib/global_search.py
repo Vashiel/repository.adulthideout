@@ -346,11 +346,19 @@ class GlobalSearch:
         self._save_state(state)
         return True
 
-    def _setting_id(self, name):
-        return "show_{}".format(name.lower().replace("-", "").replace("_", ""))
+    def _hidden_sources(self):
+        try:
+            values = json.loads(self.addon.getSetting("hidden_websites") or "[]")
+        except (TypeError, ValueError):
+            values = []
+        hidden = {str(value) for value in values if value}
+        if self.addon.getSetting("show_crazyshit") != "true":
+            hidden.add("crazyshit")
+        return hidden
 
     def _available_sources(self):
         sources = []
+        hidden = self._hidden_sources()
         try:
             filenames = sorted(os.listdir(self.websites_dir))
         except Exception:
@@ -361,7 +369,7 @@ class GlobalSearch:
             name = filename[:-3]
             if name in UNSTABLE_PLAYLIST_SOURCES:
                 continue
-            if self.addon.getSetting(self._setting_id(name)) == "false":
+            if name in hidden:
                 continue
             sources.append(name)
         return sources

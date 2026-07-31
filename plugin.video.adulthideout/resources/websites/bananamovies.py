@@ -186,7 +186,8 @@ class BananaMovies(BaseWebsite):
         if not next_match:
             next_match = re.search(r'<a[^>]+href="([^"]+)"[^>]*>\s*Next', html_content, re.IGNORECASE)
         if next_match:
-            next_url = urllib.parse.urljoin(url, html.unescape(next_match.group(1).strip()))
+            raw_next = html.unescape(next_match.group(1).strip())
+            next_url = urllib.parse.urljoin(self.base_url, raw_next)
 
         if next_url and next_url != url:
             self.add_dir("Next Page", next_url, 2, self.icons.get("default", self.icon), context_menu=context_menu)

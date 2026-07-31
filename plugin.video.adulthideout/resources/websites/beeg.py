@@ -159,53 +159,22 @@ class BeegWebsite(BaseWebsite):
 
     def search(self, query):
         if not query: return
-        query_lower = query.lower()
-        collected = self._collect_recent_tags()
-        matches = [tag for group in collected.values() for tag in group if query_lower in tag['name'].lower()]
-
-        if len(matches) == 1:
-            self.process_content(f"https://store.externulls.com/facts/tag?slug={matches[0]['slug']}&limit=24&offset=0")
-            return
-
-        if matches:
-            for tag in matches:
-                self.add_dir(f"{tag['name'].title()} [Tag]", f"https://store.externulls.com/facts/tag?slug={tag['slug']}&limit=24&offset=0", 2, tag['icon'])
-            self.end_directory()
-            return
-
-        # Fallback: search recent feed titles when the tag index has no direct match.
-        for page_idx in range(5):
-            offset = page_idx * 24
-            data = self._fetch_api_json(f"https://store.externulls.com/facts/tag?id=27173&limit=24&offset={offset}")
-            if not isinstance(data, list):
-                continue
-
-            found = False
-            for v in data:
-                try:
-                    vid = str(v.get('file', {}).get('id', ''))
-                    if not vid:
-                        continue
-                    title = f"Video {vid}"
-                    for d in v.get('file', {}).get('data', []):
-                        if d.get('cd_column') == 'sf_name':
-                            title = d.get('cd_value', title)
-                            break
-                    if query_lower not in title.lower():
-                        continue
-                    thumb = self.icons.get('default')
-                    if v.get('fc_facts') and v['fc_facts'][0].get('fc_thumbs'):
-                        thumb = f"https://thumbs.externulls.com/videos/{vid}/{v['fc_facts'][0]['fc_thumbs'][0]}.webp?size=1280x720"
-                    self.add_link(title, f"{self.base_url}/{vid}", 4, thumb, self.fanart)
-                    found = True
-                except:
-                    pass
-
-            if found:
+        search_slug = urllib.parse.quote(query.lower().strip().replace(' ', '-'))
+        search_url = f"https://store.externulls.com/facts/tag?slug={search_slug}&limit=24&offset=0"
+        data = self._fetch_api_json(search_url)
+        if isinstance(data, list) and len(data) > 0:
+            self.process_content(search_url)
+        else:
+            query_lower = query.lower()
+            collected = self._collect_recent_tags()
+            matches = [tag for group in collected.values() for tag in group if query_lower in tag['name'].lower()]
+            if matches:
+                for tag in matches:
+                    self.add_dir(f"{tag['name'].title()} [Tag]", f"https://store.externulls.com/facts/tag?slug={tag['slug']}&limit=24&offset=0", 2, tag['icon'])
                 self.end_directory()
-                return
-
-        self.notify_error(f"No results for: {query}")
+            else:
+                self.notify_error(f"No results for: {query}")
+                self.end_directory()
 
     def play_video(self, url):
         vid = url.split('/')[-1]

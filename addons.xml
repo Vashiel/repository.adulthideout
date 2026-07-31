@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.18" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.19" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.requests" version="2.25.1"/>
@@ -12,12 +12,15 @@
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
-v. 1.0.18 "Rampart" - 2026-07-20
-Stronghold, expanded and reinforced.
-Completed the Stronghold expansion with 23 new full-length sources, more resilient playback paths and calmer navigation.
-Added main-menu sorting: A-Z, Z-A or newest websites first, based on each source's first AdultHideout release.
-Fixed TubeOrigin HLS/artwork, Motherless live-feed persistence and Stripchat video playback on Android TV.
-Expanded reusable AVSeeks, Upload18, Loadvid, GUpload, VidHide, MyDaddy and StreamTape resolution.
+v. 1.0.19 "Wingspan" - 2026-08-01
+Wingspan continues Featherlight's size-and-speed work. The latest optimization pass reduced the development tree from 7.12 MB to 6.11 MB and the release ZIP from 3.50 MB to 2.87 MB.
+Upgraded Eporner to adaptive HLS streaming with instant 4K / 1080p resolution locking.
+Added BAlbums, FemdomVC, FootStockings, HypnoPorn, CosplayPornTube, CumDrinkingClips, VXXX, WatchXXXFree, IcePornCasting, EroticMV, PornEZ, Feet9, Tickle Porn, Giantess Porn, hcBDSM and PornBimbo, expanding Wingspan to 35 new sources.
+Reduced the development tree by 14% and the release ZIP by 18% through conservative artwork optimization and generated-bytecode cleanup.
+Newest Websites now uses permanent catalog IDs, preserving the correct age order across future releases and site changes.
+Added Fapello, JAVtiful, Hentai2W, Hentai-Moon, HentaiCity, JAVMix, JAVRate, JAV Guru, LeakGallery and Rule34 World.
+Improved search accuracy, directory controls, categories, pagination and thumbnails across the updated site modules, including faster LeakGallery playback, Rule34 World's video-only feed and corrected WebP thumbnails for Tickle Porn and Giantess Porn.
+Added complete main-menu artwork metadata so logo tiles render correctly in Arctic Fuse and other skins while preserving the shared AdultHideout fanart background.
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>

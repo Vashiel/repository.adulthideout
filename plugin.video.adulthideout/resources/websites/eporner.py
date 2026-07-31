@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+# -*- coding: utf-8 -*-
 
 import sys
 import os
@@ -17,7 +17,7 @@ try:
     vendor_path = os.path.join(addon_path, 'resources', 'lib', 'vendor')
     if vendor_path not in sys.path:
         sys.path.insert(0, vendor_path)
-except:
+except Exception:
     pass
 
 try:
@@ -27,6 +27,7 @@ except ImportError:
     HAS_CLOUDSCRAPER = False
 
 import requests
+
 
 class Eporner(BaseWebsite):
     BASE_URL_STR = "https://www.eporner.com/"
@@ -40,15 +41,19 @@ class Eporner(BaseWebsite):
             addon_handle=addon_handle
         )
         
-        self.sort_options = ["Newest", "Most Viewed", "Top Rated", "Longest"]
-        self.api_order_params = { 
-            "Newest": "latest", 
-            "Most Viewed": "most-popular", 
-            "Top Rated": "top-rated", 
-            "Longest": "longest" 
+        self.sort_options = ["Newest", "Most Viewed", "Top Rated", "Longest", "Shortest"]
+        self.api_order_params = {
+            "Newest": "latest",
+            "Most Viewed": "most-popular",
+            "Top Rated": "top-rated",
+            "Longest": "longest",
+            "Shortest": "shortest"
         }
         self.gay_filter_options = ["Exclude Gay (Straight)", "Only Gay", "Include Gay (Both)"]
-        self.gay_filter_map = { "0": "0", "1": "2", "2": "1" }
+        self.gay_filter_map = {"0": "0", "1": "2", "2": "1"}
+
+        self.quality_options = ["All Qualities", "720p+ (HD)", "1080p+ (Full HD)", "4K (2160p)"]
+        self.duration_options = ["All Durations", "Short (< 10 min)", "10+ min", "20+ min", "30+ min"]
 
         self.session = None
         self.ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -62,6 +67,19 @@ class Eporner(BaseWebsite):
             self.session = requests.Session()
             self.session.headers.update({'User-Agent': self.ua})
 
+    def _format_duration(self, seconds):
+        if not seconds:
+            return "0:00"
+        try:
+            seconds = int(seconds)
+            m, s = divmod(seconds, 60)
+            h, m = divmod(m, 60)
+            if h:
+                return f"{h}:{m:02d}:{s:02d}"
+            return f"{m}:{s:02d}"
+        except Exception:
+            return "0:00"
+
     def make_request(self, url, headers=None):
         if not headers:
             headers = {'Referer': self.base_url}
@@ -74,12 +92,17 @@ class Eporner(BaseWebsite):
             pass
         return None
 
-    def add_basic_dirs(self, current_url):
-        encoded_url = urllib.parse.quote_plus(current_url)
-        context_menu = [
-            ('Filter Content...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_gay_filter&website={self.name}&original_url={encoded_url})')
+    def get_global_context_menu(self, current_url=""):
+        encoded_url = urllib.parse.quote_plus(current_url or self.base_url)
+        return [
+            ('Select Sort...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={encoded_url})'),
+            ('Select Content Filter...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_gay_filter&website={self.name}&original_url={encoded_url})'),
+            ('Select Quality...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_quality&website={self.name}&original_url={encoded_url})'),
+            ('Select Duration...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_duration&website={self.name}&original_url={encoded_url})')
         ]
-        
+
+    def add_basic_dirs(self, current_url):
+        context_menu = self.get_global_context_menu(current_url)
         cat_url = urllib.parse.urljoin(self.base_url, 'cats/')
         self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], self.fanart, context_menu=context_menu)
         self.add_dir('Categories', cat_url, 8, self.icons['categories'], self.fanart, context_menu=context_menu)
@@ -119,38 +142,56 @@ class Eporner(BaseWebsite):
 
         saved_sort_idx = self.addon.getSetting(f'{self.name}_sort_by') or '0'
         try: sort_idx = int(saved_sort_idx)
-        except: sort_idx = 0
+        except Exception: sort_idx = 0
         if sort_idx >= len(self.sort_options): sort_idx = 0
         sort_key = self.sort_options[sort_idx]
         
         saved_gay_idx = self.addon.getSetting('eporner_gay_filter') or '0'
-        
+        saved_qual_idx = self.addon.getSetting('eporner_quality_filter') or '0'
+        saved_dur_idx = self.addon.getSetting('eporner_min_duration') or '0'
+        try: dur_idx = int(saved_dur_idx)
+        except Exception: dur_idx = 0
+
+        try: qual_idx = int(saved_qual_idx)
+        except Exception: qual_idx = 0
+
+        api_query = query
+        hd_param = '0'
+
+        if qual_idx == 1: # 720p+ (HD)
+            hd_param = '1'
+        elif qual_idx == 2: # 1080p+ (Full HD)
+            hd_param = '1'
+            if '1080p' not in api_query.lower():
+                api_query = f"{api_query} 1080p".strip() if api_query else "1080p"
+        elif qual_idx == 3: # 4K
+            hd_param = '1'
+            if '4k' not in api_query.lower():
+                api_query = f"{api_query} 4k".strip() if api_query else "4k"
+
         api_params = {
-            'query': query,
+            'query': api_query,
             'page': page,
             'per_page': '30',
             'order': self.api_order_params.get(sort_key, 'most-popular'),
             'gay': self.gay_filter_map.get(saved_gay_idx, '0'),
+            'hd': hd_param,
             'thumbsize': 'medium',
             'format': 'json'
         }
         
         api_url = f"{self.API_BASE}?{urllib.parse.urlencode(api_params)}"
-        self.render_video_list(api_url, page, query, sort_key, saved_gay_idx, url)
+        self.render_video_list(api_url, page, query, sort_key, saved_gay_idx, dur_idx, url)
         self.end_directory()
 
-    def render_video_list(self, api_url, current_page, query, sort_key, gay_idx, original_url):
+    def render_video_list(self, api_url, current_page, query, sort_key, gay_idx, dur_idx, original_url):
         data_str = self.make_request(api_url)
         if not data_str: return
 
         try:
             data = json.loads(data_str)
             videos = data.get('videos', [])
-            
-            encoded_url = urllib.parse.quote_plus(original_url)
-            context_menu = [
-                ('Filter Content...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_gay_filter&website={self.name}&original_url={encoded_url})')
-            ]
+            context_menu = self.get_global_context_menu(original_url)
 
             for video in videos:
                 title = video.get('title')
@@ -160,11 +201,23 @@ class Eporner(BaseWebsite):
                 thumb = video.get('default_thumb', {}).get('src')
                 vid_url = video.get('url')
 
-                display_name = f"{title} [COLOR yellow]({self._format_duration(duration)})[/COLOR] [COLOR blue]★{rating}[/COLOR]"
+                dur_sec = int(duration) if duration else 0
+
+                # Duration filtering
+                if dur_idx == 1 and dur_sec >= 600:
+                    continue
+                elif dur_idx == 2 and dur_sec < 600:
+                    continue
+                elif dur_idx == 3 and dur_sec < 1200:
+                    continue
+                elif dur_idx == 4 and dur_sec < 1800:
+                    continue
+
+                display_name = f"{title} [COLOR yellow]({self._format_duration(dur_sec)})[/COLOR] [COLOR blue]★{rating}[/COLOR]"
                 
                 info = {
                     'plot': f"Views: {views}\nRating: {rating}",
-                    'duration': int(duration) if duration else 0,
+                    'duration': dur_sec,
                     'mediatype': 'video'
                 }
                 
@@ -181,8 +234,8 @@ class Eporner(BaseWebsite):
                 next_url = f"{self.base_url}api/v2/video/search/?{urllib.parse.urlencode(next_api_params)}"
                 self.add_dir('[COLOR blue]Next Page >>>>[/COLOR]', next_url, 2, self.icons['default'], self.fanart, context_menu=context_menu)
 
-        except Exception:
-            pass
+        except Exception as exc:
+            self.logger.error(f"[Eporner] Error rendering video list: {exc}")
 
     def process_categories(self, url):
         cat_url = urllib.parse.urljoin(self.base_url, 'cats/')
@@ -203,16 +256,70 @@ class Eporner(BaseWebsite):
                 clean_name = name.strip() or clean_key.split('/')[-1].replace('-', ' ').capitalize()
                 unique_categories[clean_key] = clean_name
 
-        encoded_url = urllib.parse.quote_plus(url)
-        context_menu = [
-            ('Filter Content...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_gay_filter&website={self.name}&original_url={encoded_url})')
-        ]
+        context_menu = self.get_global_context_menu(url)
 
         for url_part_key, name in sorted(unique_categories.items(), key=lambda x: x[1]):
             full_url = urllib.parse.urljoin(self.base_url, f'{url_part_key}/')
             self.add_dir(name, full_url, 2, self.icons['categories'], self.fanart, context_menu=context_menu)
         
         self.end_directory()
+
+    def select_sort(self, original_url=None):
+        dialog = xbmcgui.Dialog()
+        idx = dialog.select("Select Sort...", self.sort_options)
+        if idx != -1:
+            self.addon.setSetting(f'{self.name}_sort_by', str(idx))
+            xbmc.executebuiltin(f'Container.Update({sys.argv[0]}?mode=2&url=BOOTSTRAP&website={self.name},replace)')
+
+    def select_gay_filter(self, original_url=None):
+        dialog = xbmcgui.Dialog()
+        idx = dialog.select("Select Content Filter...", self.gay_filter_options)
+        if idx != -1:
+            self.addon.setSetting('eporner_gay_filter', str(idx))
+            xbmc.executebuiltin(f'Container.Update({sys.argv[0]}?mode=2&url=BOOTSTRAP&website={self.name},replace)')
+
+    def select_quality(self, original_url=None):
+        dialog = xbmcgui.Dialog()
+        idx = dialog.select("Select Quality...", self.quality_options)
+        if idx != -1:
+            self.addon.setSetting('eporner_quality_filter', str(idx))
+            xbmc.executebuiltin(f'Container.Update({sys.argv[0]}?mode=2&url=BOOTSTRAP&website={self.name},replace)')
+
+    def select_duration(self, original_url=None):
+        dialog = xbmcgui.Dialog()
+        idx = dialog.select("Select Duration...", self.duration_options)
+        if idx != -1:
+            self.addon.setSetting('eporner_min_duration', str(idx))
+            xbmc.executebuiltin(f'Container.Update({sys.argv[0]}?mode=2&url=BOOTSTRAP&website={self.name},replace)')
+
+    def _select_hls_variant(self, master_m3u8_text, target_qual):
+        lines = master_m3u8_text.splitlines()
+        candidates = []
+        for idx, line in enumerate(lines):
+            if line.startswith('#EXT-X-STREAM-INF'):
+                url_line = lines[idx+1] if idx+1 < len(lines) else ""
+                if url_line.startswith('http'):
+                    res_match = re.search(r'RESOLUTION=(\d+)x(\d+)', line)
+                    height = int(res_match.group(2)) if res_match else 0
+                    candidates.append((height, url_line))
+        if not candidates:
+            return None
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        if target_qual == "4K":
+            for h, url in candidates:
+                if h >= 2160: return url
+            return candidates[0][1]
+        elif target_qual == "1080p":
+            for h, url in candidates:
+                if h == 1080: return url
+            for h, url in candidates:
+                if h >= 1080 and h <= 1440: return url
+            return candidates[0][1]
+        elif target_qual == "720p":
+            for h, url in candidates:
+                if h == 720: return url
+            return candidates[-1][1]
+        return candidates[0][1]
 
     def play_video(self, url):
         content = self.make_request(url)
@@ -232,109 +339,90 @@ class Eporner(BaseWebsite):
                 if num == 0: s = table[0]
                 while num: s = table[num % 36] + s; num //= 36
                 parts.append(s)
-            except: pass
+            except Exception: pass
         hash_val = ''.join(parts)
 
-        json_url = f'{self.base_url}xhr/video/{vid}?hash={hash_val}&domain=www.eporner.com&fallback=false&embed=true&supportedFormats=dash,mp4'
-        xhr_headers = {'X-Requested-With': 'XMLHttpRequest', 'Referer': url}
+        json_url = f'{self.base_url}xhr/video/{vid}?hash={hash_val}&domain=www.eporner.com&fallback=false&embed=true&supportedFormats=dash,hls,mp4'
+        xhr_headers = {'X-Requested-With': 'XMLHttpRequest', 'Referer': url, 'User-Agent': self.ua}
         
         api_content = self.make_request(json_url, headers=xhr_headers)
         if not api_content: return self.notify_error("Failed to authorize")
 
         try:
             data = json.loads(api_content)
-            stream_url = None
             
+            saved_qual_idx = self.addon.getSetting('eporner_quality_filter') or '0'
+            try: qual_idx = int(saved_qual_idx)
+            except Exception: qual_idx = 0
+
+            pref_map = {0: "1080p", 1: "720p", 2: "1080p", 3: "4K"}
+            target_qual = pref_map.get(qual_idx, "1080p")
+
+            # Primary: Try HLS adaptive stream with target resolution selection
+            hls_sources = data.get('sources', {}).get('hls', {})
+            hls_master_url = None
+            if isinstance(hls_sources, dict):
+                auto_hls = hls_sources.get('auto', {})
+                if isinstance(auto_hls, dict):
+                    hls_master_url = auto_hls.get('src')
+
+            if hls_master_url:
+                stream_url = hls_master_url
+                master_text = self.make_request(hls_master_url)
+                if master_text:
+                    variant_url = self._select_hls_variant(master_text, target_qual)
+                    if variant_url:
+                        stream_url = variant_url
+
+                item = xbmcgui.ListItem(path=stream_url)
+                item.setProperty('IsPlayable', 'true')
+                item.setMimeType('application/x-mpegURL')
+                item.setProperty('inputstream', 'inputstream.adaptive')
+                item.setProperty('inputstream.adaptive.manifest_type', 'hls')
+                xbmcplugin.setResolvedUrl(self.addon_handle, True, item)
+                return
+
+            # Fallback: MP4 direct stream selection
+            stream_url = None
             sources = data.get('sources', {}).get('mp4', {})
             if isinstance(sources, dict):
-                mp4_urls = [v.get('src') for v in sources.values() if isinstance(v, dict) and v.get('src')]
-                if mp4_urls:
-                    stream_url = max(mp4_urls, key=lambda u: int(re.search(r'(\d+)p', u).group(1)) if re.search(r'(\d+)p', u) else 0)
-            
-            if not stream_url:
-                stream_url = data.get('sources', {}).get('hls', {}).get('auto', {}).get('src')
+                priority = []
+                if target_qual == "4K":
+                    priority = ['2160p', '1440p', '1080p', '720p', '480p']
+                elif target_qual == "1080p":
+                    priority = ['1080p', '720p', '1440p', '2160p', '480p']
+                elif target_qual == "720p":
+                    priority = ['720p', '1080p', '480p', '360p']
+                else:
+                    priority = ['1080p', '720p', '1440p', '2160p', '480p']
+
+                for p in priority:
+                    for label, s_info in sources.items():
+                        if isinstance(s_info, dict) and p in label.lower() and s_info.get('src'):
+                            stream_url = s_info.get('src')
+                            break
+                    if stream_url:
+                        break
+
+                if not stream_url:
+                    mp4_urls = [v.get('src') for v in sources.values() if isinstance(v, dict) and v.get('src')]
+                    if mp4_urls:
+                        stream_url = mp4_urls[0]
 
             if stream_url:
-                if '.m3u8' in stream_url:
-                    kodi_headers = {'User-Agent': self.ua, 'Referer': url}
-                    header_str = "&".join(
-                        f"{k}={urllib.parse.quote(v, safe='')}" for k, v in kodi_headers.items()
-                    )
-                    li = xbmcgui.ListItem(path=f"{stream_url}|{header_str}")
-                    li.setProperty('IsPlayable', 'true')
-                    li.setMimeType('application/vnd.apple.mpegurl')
-                    li.setProperty('inputstream', 'inputstream.adaptive')
-                    li.setProperty('inputstream.adaptive.manifest_type', 'hls')
-                    xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
-                    return
-
-                # Kodi's internal curl stalls on the eporner video CDNs
-                # (vid-*-cdn.eporner.com) while Python sessions stream fine,
-                # so route playback through the local proxy like other sites.
-                from resources.lib.proxy_utils import ProxyController, PlaybackGuard
-
-                controller = ProxyController(
-                    stream_url,
-                    upstream_headers={
-                        'User-Agent': self.ua,
-                        'Referer': url,
-                        # vid-*.eporner.com is same-site to eporner.com; the
-                        # proxy's default Sec-Fetch-Site "cross-site" makes
-                        # the CDN serve a ~640KB placeholder clip instead of
-                        # the real video
-                        'Sec-Fetch-Site': 'same-site',
-                        'Sec-Fetch-Mode': 'no-cors',
-                        'Sec-Fetch-Dest': 'video',
-                    },
-                    cookies=self.session.cookies.get_dict() if self.session else None,
-                    session=self.session,
-                    skip_resolve=True,
-                )
-                local_url = controller.start()
-
-                guard = PlaybackGuard(xbmc.Player(), xbmc.Monitor(), local_url, controller)
-                guard.start()
-
-                li = xbmcgui.ListItem(path=local_url)
-                li.setProperty('IsPlayable', 'true')
-                li.setMimeType('video/mp4')
-                li.setContentLookup(False)
-
-                xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
-                guard.join()
+                item = xbmcgui.ListItem(path=stream_url)
+                item.setProperty('IsPlayable', 'true')
+                item.setMimeType('video/mp4')
+                xbmcplugin.setResolvedUrl(self.addon_handle, True, item)
             else:
-                self.notify_error("No stream found")
+                self.notify_error("Stream URL not found")
+        except Exception as exc:
+            self.logger.error(f"[Eporner] Play error: {exc}")
+            self.notify_error("Failed to parse video sources")
 
-        except Exception:
-            self.notify_error("Parse error")
-
-    def select_sort(self, original_url=None):
-        if not original_url: return
-        try: current = int(self.addon.getSetting(f'{self.name}_sort_by') or '0')
-        except: current = 0
-        
-        idx = xbmcgui.Dialog().select("Sort by...", self.sort_options, preselect=current)
-        if idx != -1:
-            self.addon.setSetting(f'{self.name}_sort_by', str(idx))
-            xbmc.executebuiltin(f"Container.Update({sys.argv[0]}?mode=2&url={urllib.parse.quote_plus(original_url)}&website={self.name},replace)")
-
-    def select_gay_filter(self, original_url=None):
-        if not original_url: return
-        try: current = int(self.addon.getSetting('eporner_gay_filter') or '0')
-        except: current = 0
-        
-        idx = xbmcgui.Dialog().select("Filter Content...", self.gay_filter_options, preselect=current)
-        if idx != -1:
-            self.addon.setSetting('eporner_gay_filter', str(idx))
-            xbmc.executebuiltin(f"Container.Update({sys.argv[0]}?mode=2&url={urllib.parse.quote_plus(original_url)}&website={self.name},replace)")
-
-    def _format_duration(self, seconds):
-        try:
-            seconds = int(seconds)
-            m, s = divmod(seconds, 60)
-            if m > 60: h, m = divmod(m, 60); return f"{h}:{m:02d}:{s:02d}"
-            return f"{m}:{s:02d}"
-        except: return "0:00"
-
-    def notify_error(self, msg):
-        xbmcgui.Dialog().notification('AdultHideout', msg, xbmcgui.NOTIFICATION_ERROR)
+    def search(self, query):
+        if query:
+            search_url = f"{self.API_BASE}?query={urllib.parse.quote_plus(query)}"
+            self.process_content(search_url)
+        else:
+            self.end_directory()

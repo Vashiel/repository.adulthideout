@@ -112,9 +112,7 @@ class KVSTubeWebsite(BaseWebsite):
         ]
 
     def _is_top_listing(self, url):
-        parsed = urllib.parse.urlparse(url or self.base_url)
-        path = parsed.path.strip("/")
-        return path in ("", "latest-updates", "video", "videos", "new", "recent") and "q" not in urllib.parse.parse_qs(parsed.query)
+        return self.is_primary_listing_url(url)
 
     def get_page_url(self, base_url, page_num):
         if page_num <= 1:

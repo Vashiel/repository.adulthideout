@@ -1,7 +1,7 @@
-
 import re
 import sys
 import os
+import html
 import urllib.parse
 from resources.lib.base_website import BaseWebsite
 
@@ -17,6 +17,7 @@ except Exception:
 
 import cloudscraper
 from resources.lib.resilient_http import fetch_text
+
 
 class Fuqer(BaseWebsite):
     NAME = "fuqer"
@@ -39,24 +40,21 @@ class Fuqer(BaseWebsite):
     def get_html(self, url):
         headers = self.get_headers(url)
         try:
-            html = fetch_text(
+            html_text = fetch_text(
                 url,
                 headers=headers,
                 scraper=self.scraper,
                 logger=None,
                 timeout=30,
             )
-            if html:
-                return html
+            if html_text:
+                return html_text
         except Exception as e:
             import xbmc
             xbmc.log(f"[Fuqer] Error fetching {url}: {e}", xbmc.LOGERROR)
         return None
 
     def process_content(self, url):
-        """Route to appropriate listing method based on URL.
-        KVAT Spec: Search (pos 1), Categories (pos 2), Videos, Next Page (last)
-        """
         import xbmc
         xbmc.log(f"[Fuqer][ProcessContent] URL: {url}", xbmc.LOGINFO)
         
@@ -65,7 +63,6 @@ class Fuqer(BaseWebsite):
         if is_category_index:
             self.list_categories(url)
             return
-        
         
         self.add_dir("[COLOR yellow]Search[/COLOR]", "search", 5, self.icons.get('search', self.icon), self.fanart)
         self.add_dir("[COLOR yellow]Categories[/COLOR]", "https://www.fuqer.com/channels/", 2, self.icons.get('categories', self.icon), self.fanart)
@@ -81,18 +78,16 @@ class Fuqer(BaseWebsite):
         self.end_directory()
 
     def list_categories(self, url):
-        """List channel/category pages."""
         import xbmc
         xbmc.log(f"[Fuqer][Categories] Fetching: {url}", xbmc.LOGINFO)
         
-        html = self.get_html(url)
-        if not html:
+        html_text = self.get_html(url)
+        if not html_text:
             self.end_directory()
             return
         
         count = 0
-        blocks = html.split('class="item"')
-        count = 0
+        blocks = html_text.split('class="item"')
         for block in blocks[1:]:
             link_match = re.search(
                 r'href="((?:https://www\.fuqer\.com)?/channels/[^"]+)"[^>]*>',
@@ -112,8 +107,8 @@ class Fuqer(BaseWebsite):
             thumb_match = re.search(r'data-src="([^"]+)"', block)
             thumbnail = thumb_match.group(1) if thumb_match else ""
             
-            if thumbnail and not '|' in thumbnail:
-                 thumbnail += f"|User-Agent={urllib.parse.quote(self.UA)}&Referer={urllib.parse.quote(self.BASE_URL)}"
+            if thumbnail and '|' not in thumbnail:
+                thumbnail += f"|User-Agent={urllib.parse.quote(self.UA)}&Referer={urllib.parse.quote(self.BASE_URL)}"
 
             self.add_dir(title, cat_url, 2, thumbnail)
             count += 1
@@ -122,45 +117,40 @@ class Fuqer(BaseWebsite):
         self.end_directory()
 
     def _get_listing_with_pagination(self, url):
-        """
-        Fetch listing and next page URL.
-        Returns: (items, next_url)
-        items: list of tuples (title, url, thumbnail)
-        next_url: string or None
-        """
         import xbmc
         xbmc.log(f"[Fuqer][Listing] Fetching listing for: {url}", xbmc.LOGINFO)
-        html = self.get_html(url)
-        if not html:
+        html_text = self.get_html(url)
+        if not html_text:
             xbmc.log(f"[Fuqer][Listing] Failed to get HTML for: {url}", xbmc.LOGERROR)
             return [], None
 
         items = []
         next_url = None
-        
-        pattern = re.compile(
-            r'<div class="item video_item">\s*'
-            r'<a href="(?P<url>https://www\.fuqer\.com/videos/[^"]+)"\s+title="(?P<title>[^"]+)"[^>]*>.*?'
-            r'data-src="(?P<thumb>[^"]+)".*?'
-            r'class="label time">\s*(?P<duration>[^<]+)\s*</span>',
-            re.DOTALL | re.IGNORECASE
+        seen = set()
+
+        matches = re.findall(
+            r'<a\s+[^>]*href=["\'](https://www\.fuqer\.com/videos/[^"\']+)["\'][^>]*>([\s\S]*?)</a>',
+            html_text
         )
-
-        matches = pattern.finditer(html)
-        count = 0
-        for m in matches:
-            url_item = m.group('url')
-            title = m.group('title')
-            thumbnail = m.group('thumb')
-            if thumbnail and not '|' in thumbnail:
+        for href, inner in matches:
+            if href in seen:
+                continue
+            seen.add(href)
+            title_m = re.search(r'title=["\']([^"\']+)["\']', inner) or re.search(r'alt=["\']([^"\']+)["\']', inner)
+            thumb_m = re.search(r'data-src=["\']([^"\']+)["\']', inner) or re.search(r'src=["\']([^"\']+)["\']', inner)
+            if not title_m or not thumb_m:
+                continue
+            title = html.unescape(title_m.group(1).strip())
+            thumbnail = thumb_m.group(1).strip()
+            if thumbnail.startswith('//'):
+                thumbnail = 'https:' + thumbnail
+            if thumbnail and '|' not in thumbnail:
                 thumbnail += f"|User-Agent={urllib.parse.quote(self.UA)}&Referer={urllib.parse.quote(self.BASE_URL)}"
+            items.append((title, href, thumbnail))
 
-            items.append((title, url_item, thumbnail))
-            count += 1
-            
-        xbmc.log(f"[Fuqer][Listing] Parsed {count} items via regex", xbmc.LOGINFO)
+        xbmc.log(f"[Fuqer][Listing] Parsed {len(items)} items", xbmc.LOGINFO)
 
-        next_match = re.search(r'<a href=["\']([^"\'#]+)["\'][^>]*>\s*Next\s*<i', html)
+        next_match = re.search(r'<a[^>]+href=["\']([^"\'#]+)["\'][^>]*>\s*Next', html_text, re.IGNORECASE)
         if next_match:
             n_url = next_match.group(1)
             next_url = urllib.parse.urljoin(url, n_url)
@@ -183,19 +173,18 @@ class Fuqer(BaseWebsite):
         xbmc.log(f"[Fuqer][Resolve] Starting resolution for: {url}", xbmc.LOGINFO)
         
         try:
-            html = self.get_html(url)
-            if not html:
+            html_text = self.get_html(url)
+            if not html_text:
                 xbmc.log("[Fuqer][Resolve] Failed to get video page HTML", xbmc.LOGERROR)
                 return None
             
-            match = re.search(r'var defaultRaw\s*=\s*"([^"]+)"', html)
+            match = re.search(r'var defaultRaw\s*=\s*"([^"]+)"', html_text)
             if not match:
                 xbmc.log("[Fuqer][Resolve] defaultRaw not found in HTML", xbmc.LOGERROR)
                 return None
                 
             video_url = match.group(1).replace(r'\/', '/')
             xbmc.log(f"[Fuqer][Resolve] Found defaultRaw: {video_url}", xbmc.LOGINFO)
-            
             
             try:
                 r = self.scraper.request("GET", "https://www.fuqer.com/secure_link.php", 

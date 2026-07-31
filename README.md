@@ -2,16 +2,38 @@
   <img src="repository.adulthideout/resources/fanart.jpg" alt="AdultHideout 10th Anniversary" width="100%">
 </p>
 
-<h1 align="center">AdultHideout 1.0.18</h1>
+<h1 align="center">AdultHideout 1.0.19</h1>
 <p align="center">
-  <strong>Rampart</strong><br>
-  Stronghold, expanded and reinforced.<br>
-  Released July 20, 2026.
+  <strong>Wingspan</strong><br>
+  Featherlight takes wing.<br>
+  Released August 1, 2026.
 </p>
 
-AdultHideout started in **January 2016** as a tiny personal Kodi addon for one site. Ten years later, **Rampart** completes the largest AdultHideout expansion yet.
+AdultHideout started in **January 2016** as a tiny personal Kodi addon for one site. Ten years later, **Wingspan** brings the expanded AdultHideout back to a leaner, faster footprint.
 
-**Stronghold** was the first half: it introduced Vault, Download Center and a rebuilt Global Search. It grew too large to leave as one release. **Rampart is the second half and the current release**: it completes that work with twenty-three new sources, stronger playback paths, Android fixes and navigation that now understands the addon's release history.
+**Stronghold** introduced Vault, Download Center and a rebuilt Global Search. **Rampart** completed that expansion with twenty-three new sources, stronger playback paths, Android fixes and navigation that understands the addon's release history. **Wingspan** keeps all of it, then applies the size-and-speed discipline first established by Featherlight.
+
+## Wingspan: Featherlight Takes Wing
+
+Featherlight proved that AdultHideout could become dramatically smaller without sacrificing platform compatibility. Wingspan repeats that work on a much larger addon: despite everything added since 1.0.14, the development tree has been reduced from **7.12 MB to 6.11 MB**, while the release package drops from **3.50 MB to 2.87 MB** without removing user-facing functionality.
+
+Artwork is smaller without a visible quality loss, generated cache artifacts are gone, navigation performs less redundant work, and full installation verification no longer repeats on every click.
+
+### A Large Addon That Feels Organized
+
+With **261 websites**, the old settings layout had outgrown itself. Wingspan reorganizes it around compact website filters, categories and resolver controls. Sources can be grouped by content or source type, filters can be combined, and individual websites can be hidden directly from the context menu instead of hunting through hundreds of switches.
+
+The permanent website catalog also gives every source a stable identity. **Newest Websites** now follows the first AdultHideout release of each source, not file timestamps that change during updates.
+
+### 35 New Sources
+
+**BAlbums, Fapello, JAVtiful, Hentai2W, Hentai-Moon, HentaiCity, JAVMix, JAVRate, JAV Guru, LeakGallery, Rule34 World, SpankingTube, HentaiMama, Jable, CamStreams, CamWhores, Iwara, WatchHentai, Aki-H, YourDailyPornVideos, FemdomVC, FootStockings, HypnoPorn, CosplayPornTube, CumDrinkingClips, VXXX, WatchXXXFree, IcePornCasting, EroticMV, PornEZ, Feet9, Tickle Porn, Giantess Porn, hcBDSM and PornBimbo.**
+
+### Playback And Presentation
+
+Eporner now starts adaptive HLS streams at the chosen **4K or 1080p** resolution from the first frame. New and repaired sources gain safer seeking, mirror fallback and protected-artwork handling where required.
+
+Complete icon, thumbnail, poster, banner and landscape metadata restores website logo tiles in **Arctic Fuse** and other skins while preserving AdultHideout's shared fanart background. Video thumbnails can also be used as fanart through an optional setting.
 
 ## The Stronghold Foundation
 

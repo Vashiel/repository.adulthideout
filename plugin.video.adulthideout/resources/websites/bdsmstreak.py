@@ -50,7 +50,7 @@ class BdsmstreakWebsite(BaseWebsite):
 
     def add_basic_dirs(self, current_url):
         self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'])
-        self.add_dir('Categories', f'{self.base_url}/categories/', 8, self.icons['categories'])
+        self.add_dir('Categories', f'{self.base_url}/v2/categories', 8, self.icons['categories'])
 
     def parse_video_list(self, content, current_url):
         new_pattern = r'class="video-card"[^>]*>.*?<a href="(/video/[^"]+)"[^>]*>.*?background-image: url\(\'([^\']+)\'\).*?<h3[^>]*class="video-title"[^>]*>([^<]+)</h3>'
@@ -111,9 +111,9 @@ class BdsmstreakWebsite(BaseWebsite):
         self.notify_error("No video found")
 
     def process_categories(self, url):
-        content = self.make_request(url)
+        content = self.make_request(url or f"{self.base_url}/v2/categories")
         if content:
-            pattern = r'href=[\'"](/category/([^\'"]+))[\'"]'
+            pattern = r'href=[\'"](/c/([^\'"]+))[\'"]'
             matches = re.findall(pattern, content)
             
             seen = set()

@@ -20,7 +20,7 @@ from resources.lib.thumb_proxy import ThumbProxy
 
 RUNNING_PROPERTY = "AdultHideout.ViewServiceRunning"
 VERSION_PROPERTY = "AdultHideout.ViewServiceVersion"
-SERVICE_VERSION = "19"
+SERVICE_VERSION = "20"
 PENDING_SECONDS = 60
 
 

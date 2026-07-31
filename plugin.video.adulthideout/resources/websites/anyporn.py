@@ -91,30 +91,32 @@ class Anyporn(BaseWebsite):
         self.end_directory(content_type='files')
 
     def _render_video_list(self, content):
-        pattern = (
-            r"href='(/(\d+)/)'\s+data-rt='[^']*'>"
-            r'<img class="thumb lazy-load"data-original="([^"]+)"alt="([^"]+)"'
+        matches = re.findall(
+            r'<a\s+[^>]*href=["\'](/(\d+)/)["\'][^>]*>\s*'
+            r'<img\s+[^>]*data-original=["\']([^"\']+)["\'][^>]*alt=["\']([^"\']+)["\']',
+            content,
+            re.IGNORECASE
         )
         duration_pattern = r'durationid_(\d+)"><script>var element = document\.getElementById\("durationid_\d+"\);element\.innerHTML = "([^"]+)";'
         durations = dict(re.findall(duration_pattern, content))
 
         seen = set()
-        for video_path, video_id, thumb, title in re.findall(pattern, content, re.DOTALL):
-            if video_id in seen:
+        for rel_url, vid_id, thumb, title in matches:
+            if rel_url in seen:
                 continue
-            seen.add(video_id)
-            video_url = urllib.parse.urljoin(self.base_url, video_path)
-            thumb_url = "https:" + thumb if thumb.startswith("//") else thumb
+            seen.add(rel_url)
+            full_url = urllib.parse.urljoin(self.base_url, rel_url)
             display_title = html.unescape(title.strip())
-            duration = durations.get(video_id, "").replace("m:", ":").replace("s", "")
+            thumb_url = "https:" + thumb if thumb.startswith("//") else thumb
+            dur_str = durations.get(vid_id, "").replace("m:", ":").replace("s", "")
             label = display_title
+            if dur_str:
+                label = f"{display_title} [COLOR lime]({dur_str})[/COLOR]"
             info = {"title": display_title, "mediatype": "video"}
-            if duration:
-                label = "{} [COLOR lime]({})[/COLOR]".format(display_title, duration)
-                seconds = self.convert_duration(duration)
-                if seconds:
-                    info["duration"] = seconds
-            self.add_link(label, video_url, 4, thumb_url, self.fanart, info_labels=info)
+            if dur_str:
+                sec = self.convert_duration(dur_str)
+                if sec: info["duration"] = sec
+            self.add_link(label, full_url, 4, thumb_url, self.fanart, info_labels=info)
 
     def _add_next_button(self, content, current_url):
         match = re.search(r'href="(/[a-z-]+/\d+/)" data-action="ajax"[^>]*data-container-id="[^"]*pagination"', content)

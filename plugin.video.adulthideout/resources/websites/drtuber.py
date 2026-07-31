@@ -264,7 +264,8 @@ class Drtuber(BaseWebsite):
             title = title.replace('&quot;', '"').replace('&#039;', "'")
             
             li = xbmcgui.ListItem(label=title)
-            li.setArt({'thumb': thumb, 'icon': thumb, 'fanart': self.fanart})
+            art = self.video_art(thumb, self.fanart)
+            li.setArt(art)
             li.setInfo('video', {'title': title, 'duration': duration_seconds, 'mediatype': 'video'})
             li.setProperty('IsPlayable', 'true')
             can_sort = '/search/' not in url and '/categories/' not in url
@@ -275,7 +276,7 @@ class Drtuber(BaseWebsite):
             try:
                 from resources.lib.personal_library import build_save_command
                 li.addContextMenuItems([(self.addon.getLocalizedString(30706) or 'Save to Vault', build_save_command(
-                    sys.argv[0], target_url, title, self.name, thumb, self.fanart, 'video'
+                    sys.argv[0], target_url, title, self.name, thumb, art['fanart'], 'video'
                 ))])
             except Exception as exc:
                 self.logger.warning("Vault context failed: %s", exc)

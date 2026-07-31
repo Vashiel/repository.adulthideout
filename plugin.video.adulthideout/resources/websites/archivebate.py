@@ -484,7 +484,7 @@ class ArchivebateWebsite(BaseWebsite):
             next_token = "{}{}:{}".format(self.SEARCH_PREFIX, urllib.parse.quote_plus(query), current_page + 1)
             self.add_dir("Next Page", next_token, 2, self.icons.get("default", self.icon))
 
-        self.end_directory("videos")
+        self.end_directory()
 
     def _apply_sort_to_url(self, url):
         """Append ?filter=popular if sort is set to Popular."""
@@ -536,7 +536,7 @@ class ArchivebateWebsite(BaseWebsite):
     def search(self, query):
         if not query:
             return
-        target = "{}{}:1".format(self.SEARCH_PREFIX, urllib.parse.quote_plus(query.strip()))
+        target = "{}/?search={}".format(self.base_url, urllib.parse.quote_plus(query.strip()))
         self.process_content(target)
 
     def play_video(self, url):

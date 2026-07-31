@@ -16,6 +16,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 # General & Common
+
 msgctxt "#30001"
 msgid "General"
 msgstr ""
@@ -56,7 +57,12 @@ msgctxt "#30014"
 msgid "[B]Reset All Settings[/B]"
 msgstr ""
 
+msgctxt "#30015"
+msgid "Use video thumbnails as fanart"
+msgstr ""
+
 # Site Specific Filters Categories
+
 msgctxt "#30100"
 msgid "Ashemaletube Filters"
 msgstr ""
@@ -130,6 +136,7 @@ msgid "YouPorn Filters"
 msgstr ""
 
 # Specific Filter Labels
+
 msgctxt "#30101"
 msgid "Sort Videos By"
 msgstr ""
@@ -159,6 +166,7 @@ msgid "Duration"
 msgstr ""
 
 # Shared Filter Attributes
+
 msgctxt "#30500"
 msgid "Country"
 msgstr ""
@@ -204,6 +212,7 @@ msgid "Debut Year"
 msgstr ""
 
 # Official source warning
+
 msgctxt "#30600"
 msgid "The official repository add-on '{}' is not installed."
 msgstr ""
@@ -451,234 +460,467 @@ msgstr "Site options"
 msgctxt "#30700"
 msgid "Vault"
 msgstr "Vault"
+
 msgctxt "#30701"
 msgid "New Collection"
 msgstr "New Collection"
+
 msgctxt "#30702"
 msgid "All Items"
 msgstr "All Items"
+
 msgctxt "#30703"
 msgid "Search Vault"
 msgstr "Search Vault"
+
 msgctxt "#30704"
 msgid "Backup / Restore"
 msgstr "Backup / Restore"
+
 msgctxt "#30705"
 msgid "Watch Later"
 msgstr "Watch Later"
+
 msgctxt "#30706"
 msgid "Save to Vault"
 msgstr "Save to Vault"
+
 msgctxt "#30707"
 msgid "Rename Collection"
 msgstr "Rename Collection"
+
 msgctxt "#30708"
 msgid "Delete Collection"
 msgstr "Delete Collection"
+
 msgctxt "#30709"
 msgid "Add to Another Collection"
 msgstr "Add to Another Collection"
+
 msgctxt "#30710"
 msgid "Remove from Collection"
 msgstr "Remove from Collection"
+
 msgctxt "#30711"
 msgid "Previous Page"
 msgstr "Previous Page"
+
 msgctxt "#30712"
 msgid "Next Page"
 msgstr "Next Page"
+
 msgctxt "#30713"
 msgid "Export Vault Backup"
 msgstr "Export Vault Backup"
+
 msgctxt "#30714"
 msgid "Restore Vault Backup"
 msgstr "Restore Vault Backup"
+
 msgctxt "#30715"
 msgid "Collection name"
 msgstr "Collection name"
+
 msgctxt "#30716"
 msgid "Save to Collection"
 msgstr "Save to Collection"
+
 msgctxt "#30717"
 msgid "Collection created"
 msgstr "Collection created"
+
 msgctxt "#30718"
 msgid "Saved: {}"
 msgstr "Saved: {}"
+
 msgctxt "#30719"
 msgid "Choose backup folder"
 msgstr "Choose backup folder"
+
 msgctxt "#30720"
 msgid "Choose Vault backup"
 msgstr "Choose Vault backup"
+
 msgctxt "#30721"
 msgid "Backup exported"
 msgstr "Backup exported"
+
 msgctxt "#30722"
 msgid "Backup restored"
 msgstr "Backup restored"
+
 msgctxt "#30723"
 msgid "Invalid backup file"
 msgstr "Invalid backup file"
+
 msgctxt "#30724"
 msgid "Remove this item from all collections?"
 msgstr "Remove this item from all collections?"
+
 msgctxt "#30725"
 msgid "Replace the current Vault with this backup?"
 msgstr "Replace the current Vault with this backup?"
+
 msgctxt "#30726"
 msgid "Item cannot be saved"
 msgstr "Item cannot be saved"
+
 msgctxt "#30727"
 msgid "Delete collection '{}' ?"
 msgstr "Delete collection '{}'?"
+
 msgctxt "#30728"
 msgid "Collection"
 msgstr "Collection"
+
 msgctxt "#30729"
 msgid "Saved item"
 msgstr "Saved item"
+
 msgctxt "#30730"
 msgid "Saved {} items"
 msgstr "Saved {} items"
+
 msgctxt "#30731"
 msgid "Delete from Vault"
 msgstr "Delete from Vault"
+
 msgctxt "#30732"
 msgid "Select multiple videos for Vault"
 msgstr "Select multiple videos for Vault"
+
 msgctxt "#30733"
 msgid "Open Download Manager"
 msgstr "Open Download Manager"
+
 msgctxt "#30734"
 msgid "Background progress display"
 msgstr "Background progress display"
+
 msgctxt "#30735"
 msgid "10 seconds"
 msgstr "10 seconds"
+
 msgctxt "#30736"
 msgid "1 minute"
 msgstr "1 minute"
+
 msgctxt "#30737"
 msgid "Always"
 msgstr "Always"
+
 msgctxt "#30738"
 msgid "Queued"
 msgstr "Queued"
+
 msgctxt "#30739"
 msgid "Running"
 msgstr "Running"
+
 msgctxt "#30740"
 msgid "Transferring"
 msgstr "Transferring"
+
 msgctxt "#30741"
 msgid "Submitted"
 msgstr "Submitted"
+
 msgctxt "#30742"
 msgid "Complete"
 msgstr "Complete"
+
 msgctxt "#30743"
 msgid "Failed"
 msgstr "Failed"
+
 msgctxt "#30744"
 msgid "Cancelled"
 msgstr "Cancelled"
+
 msgctxt "#30745"
 msgid "Backend"
 msgstr "Backend"
+
 msgctxt "#30746"
 msgid "Status"
 msgstr "Status"
+
 msgctxt "#30747"
 msgid "Download"
 msgstr "Download"
+
 msgctxt "#30748"
 msgid "Download complete: {}"
 msgstr "Download complete: {}"
+
 msgctxt "#30749"
 msgid "Download failed: {}"
 msgstr "Download failed: {}"
+
 msgctxt "#30750"
 msgid "Download produced no file"
 msgstr "Download produced no file"
+
 msgctxt "#30751"
 msgid "Cancelled by user"
 msgstr "Cancelled by user"
+
 msgctxt "#30752"
 msgid "ETA {}"
 msgstr "ETA {}"
+
 msgctxt "#30753"
 msgid "Could not resolve a downloadable stream."
 msgstr "Could not resolve a downloadable stream."
+
 msgctxt "#30754"
 msgid "Auto"
 msgstr "Auto"
+
 msgctxt "#30755"
 msgid "Internal"
 msgstr "Internal"
+
 msgctxt "#30756"
 msgid "FFmpeg"
 msgstr "FFmpeg"
+
 msgctxt "#30757"
 msgid "aria2"
 msgstr "aria2"
+
 msgctxt "#30758"
 msgid "JDownloader"
 msgstr "JDownloader"
+
 msgctxt "#30759"
 msgid "Filter & Sort Results"
 msgstr "Filter & Sort Results"
+
 msgctxt "#30760"
 msgid "Filter Sources"
 msgstr "Filter Sources"
+
 msgctxt "#30761"
 msgid "Filter by Text"
 msgstr "Filter by Text"
+
 msgctxt "#30762"
 msgid "Sort Order"
 msgstr "Sort Order"
+
 msgctxt "#30763"
 msgid "Reset Filters"
 msgstr "Reset Filters"
+
 msgctxt "#30764"
 msgid "Relevance"
 msgstr "Relevance"
+
 msgctxt "#30765"
 msgid "Title A-Z"
 msgstr "Title A-Z"
+
 msgctxt "#30766"
 msgid "Source"
 msgstr "Source"
+
 msgctxt "#30767"
 msgid "Select at least one source."
 msgstr "Select at least one source."
+
 msgctxt "#30768"
 msgid "Filter Results"
 msgstr "Filter Results"
+
 msgctxt "#30769"
 msgid "Preferred playback quality"
 msgstr "Preferred playback quality"
+
 msgctxt "#30770"
 msgid "Highest available"
 msgstr "Highest available"
+
 msgctxt "#30771"
 msgid "2160p"
 msgstr "2160p"
+
 msgctxt "#30772"
 msgid "1080p"
 msgstr "1080p"
+
 msgctxt "#30773"
 msgid "720p"
 msgstr "720p"
+
 msgctxt "#30774"
 msgid "480p"
 msgstr "480p"
+
 msgctxt "#30775"
 msgid "360p"
 msgstr "360p"
+
 msgctxt "#30776"
 msgid "Preferred resolver"
 msgstr "Preferred resolver"
+
 msgctxt "#30777"
 msgid "Check resolved mirrors before playback"
 msgstr "Check resolved mirrors before playback"
+
+msgctxt "#30778"
+msgid "Sort websites..."
+msgstr "Sort websites..."
+
+msgctxt "#30779"
+msgid "Filter websites..."
+msgstr "Filter websites..."
+
+msgctxt "#30782"
+msgid "Newest Websites"
+msgstr "Newest Websites"
+
+msgctxt "#30783"
+msgid "Category"
+msgstr "Category"
+
+msgctxt "#30784"
+msgid "Content"
+msgstr "Content"
+
+msgctxt "#30785"
+msgid "Website type"
+msgstr "Website type"
+
+msgctxt "#30787"
+msgid "General"
+msgstr "General"
+
+msgctxt "#30788"
+msgid "Trans"
+msgstr "Trans"
+
+msgctxt "#30789"
+msgid "Hentai / Animation"
+msgstr "Hentai / Animation"
+
+msgctxt "#30790"
+msgid "JAV / Asian"
+msgstr "JAV / Asian"
+
+msgctxt "#30791"
+msgid "Rule34"
+msgstr "Rule34"
+
+msgctxt "#30792"
+msgid "BDSM / Fetish"
+msgstr "BDSM / Fetish"
+
+msgctxt "#30793"
+msgid "Live / Cams"
+msgstr "Live / Cams"
+
+msgctxt "#30794"
+msgid "Creator Archives"
+msgstr "Creator Archives"
+
+msgctxt "#30795"
+msgid "Tube"
+msgstr "Tube"
+
+msgctxt "#30796"
+msgid "Archive"
+msgstr "Archive"
+
+msgctxt "#30797"
+msgid "Live"
+msgstr "Live"
+
+msgctxt "#30798"
+msgid "Resolver-backed"
+msgstr "Resolver-backed"
+
+msgctxt "#30799"
+msgid "All Websites"
+msgstr "All Websites"
+
+msgctxt "#30800"
+msgid "Hide website"
+msgstr "Hide website"
+
+msgctxt "#30801"
+msgid "Website hidden"
+msgstr "Website hidden"
+
+msgctxt "#30802"
+msgid "Hidden websites"
+msgstr "Hidden websites"
+
+msgctxt "#30803"
+msgid "Restore all websites"
+msgstr "Restore all websites"
+
+msgctxt "#30804"
+msgid "Select websites to restore"
+msgstr "Select websites to restore"
+
+msgctxt "#30805"
+msgid "No hidden websites"
+msgstr "No hidden websites"
+
+msgctxt "#30806"
+msgid "Make every website visible again?"
+msgstr "Make every website visible again?"
+
+msgctxt "#30807"
+msgid "Websites"
+msgstr "Websites"
+
+msgctxt "#30808"
+msgid "Manage hidden websites"
+msgstr "Manage hidden websites"
+
+msgctxt "#30809"
+msgid "Enable CrazyShit"
+msgstr "Enable CrazyShit"
+
+msgctxt "#30810"
+msgid "Resolvers"
+msgstr "Resolvers"
+
+msgctxt "#30811"
+msgid "External downloaders"
+msgstr "External downloaders"
+
+msgctxt "#30812"
+msgid "Configure website filters"
+msgstr "Configure website filters"
+
+msgctxt "#30813"
+msgid "Select website"
+msgstr "Select website"
+
+msgctxt "#30815"
+msgid "Reset filters"
+msgstr "Reset filters"
+
+msgctxt "#30816"
+msgid "Reset all filters for this website?"
+msgstr "Reset all filters for this website?"
+
+msgctxt "#30817"
+msgid "Disabled"
+msgstr "Disabled"
+
+msgctxt "#30818"
+msgid "Enabled"
+msgstr "Enabled"
+
+msgctxt "#30819"
+msgid "Choose enabled resolvers"
+msgstr "Choose enabled resolvers"
+
+msgctxt "#30820"
+msgid "Enabled resolvers"
+msgstr "Enabled resolvers"
