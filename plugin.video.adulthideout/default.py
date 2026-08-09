@@ -360,23 +360,18 @@ def run_diagnostics(site=""):
     try:
         diagnostics = xbmcaddon.Addon(DIAGNOSTICS_ADDON_ID)
     except Exception:
-        install = xbmcgui.Dialog().yesno(
-            localized(30821, "AdultHideout Diagnostics"),
-            localized(30823, "AdultHideout Diagnostics is not installed. Install it now?"),
+        # InstallAddon already presents Kodi's native confirmation dialog. A
+        # separate yes/no prompt here caused users to confirm the same install
+        # twice and raced Kodi's asynchronous add-on registry refresh.
+        xbmc.executebuiltin(
+            "InstallAddon({})".format(DIAGNOSTICS_ADDON_ID),
+            True,
         )
-        if not install:
-            return
-
-        xbmc.executebuiltin("InstallAddon({})".format(DIAGNOSTICS_ADDON_ID))
+        xbmc.executebuiltin("UpdateLocalAddons", True)
         monitor = xbmc.Monitor()
-        progress = xbmcgui.DialogProgressBG()
-        progress.create(
-            localized(30821, "AdultHideout Diagnostics"),
-            localized(30844, "Installing diagnostics..."),
-        )
         diagnostics = None
-        for attempt in range(60):
-            if monitor.waitForAbort(0.5):
+        for _attempt in range(40):
+            if monitor.waitForAbort(0.25):
                 break
             try:
                 diagnostics = xbmcaddon.Addon(DIAGNOSTICS_ADDON_ID)
@@ -384,8 +379,6 @@ def run_diagnostics(site=""):
                     break
             except Exception:
                 diagnostics = None
-            progress.update(min(95, int((attempt + 1) * 100 / 60)))
-        progress.close()
 
         if diagnostics is None:
             xbmcgui.Dialog().ok(

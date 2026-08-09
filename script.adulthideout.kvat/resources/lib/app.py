@@ -10,7 +10,7 @@ import xbmcaddon
 import xbmcgui
 import xbmcvfs
 
-from resources.lib.core import (
+from adulthideout_kvat_core import (
     ADDON,
     ADDON_ID,
     JOBS_PATH,

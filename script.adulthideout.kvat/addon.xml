@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="script.adulthideout.kvat" name="AdultHideout Diagnostics" version="0.2.0" provider-name="Vashiel">
+<addon id="script.adulthideout.kvat" name="AdultHideout Diagnostics" version="0.2.1" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="plugin.video.adulthideout" version="1.0.20"/>
@@ -18,7 +18,7 @@
         <description lang="es_ES">Prueba los sitios de AdultHideout directamente en Kodi y crea un informe seguro para solucionar problemas.</description>
         <description lang="fr_FR">Teste les sites AdultHideout directement dans Kodi et crée un rapport respectueux de la vie privée pour le dépannage.</description>
         <description lang="it_IT">Verifica i siti di AdultHideout direttamente in Kodi e crea un rapporto sicuro per la risoluzione dei problemi.</description>
-        <news>Smart checks now require real video results, follow suspicious folder-only listings safely and verify thumbnails without storing an image cache.</news>
+        <news>Fixed application and worker startup when another Kodi add-on exposes a conflicting Python resources package.</news>
         <platform>all</platform>
         <license>GPL-2.0-only</license>
         <assets>

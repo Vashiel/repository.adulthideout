@@ -1,14 +1,23 @@
+import importlib.util
 import os
 import sys
 
 import xbmc
 
 
-ADDON_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-if ADDON_ROOT not in sys.path:
-    sys.path.insert(0, ADDON_ROOT)
+LIB_DIR = os.path.abspath(os.path.dirname(__file__))
+CORE_PATH = os.path.join(LIB_DIR, "core.py")
+CORE_MODULE = "adulthideout_kvat_core"
+spec = importlib.util.spec_from_file_location(CORE_MODULE, CORE_PATH)
+core = importlib.util.module_from_spec(spec)
+sys.modules[CORE_MODULE] = core
+spec.loader.exec_module(core)
 
-from resources.lib.core import now_iso, read_json, run_site_test, sanitize_text, write_json
+now_iso = core.now_iso
+read_json = core.read_json
+run_site_test = core.run_site_test
+sanitize_text = core.sanitize_text
+write_json = core.write_json
 
 
 def main(args):

@@ -1,11 +1,11 @@
 {
   "addon_id": "plugin.video.adulthideout",
-  "generated_utc": "2026-08-09T09:09:47Z",
+  "generated_utc": "2026-08-09T09:38:41Z",
   "hash_algorithm": "sha256",
   "hashes": {
-    "addon.xml": "63ccfd2fd2d0583207d1c868a3b89f9ad85a33a0c9dda35d5be7b213caf3b6bf",
-    "changelog.txt": "f2ff11aa4971e015507b5ca1f4c58769b015dfff271d337b714218fdd691ccd4",
-    "default.py": "5da40bd1595132fd4d100687269a6243339b556b3d5196e22499fc86e22eab45",
+    "addon.xml": "b60b0f97f7fd9d3b63d8a78b6522892b946df6042c5b2c6b8f9374a85c3a4b9d",
+    "changelog.txt": "2170caa6ed4dfde7ada446f6d4cdf83a52427148070b63f87b1a2f7b36c00387",
+    "default.py": "5d9a11036058f27feeaffd0e09217b0919b19edcfdf5d79033b0653acc6845b9",
     "LICENSE.txt": "fc6e2e8c4b76f7ee65e8f6153e44d8a197ac992767582fd9cd01d393a38298cc",
     "resources/clear_cache.py": "d5e3fa53d14df8144d0e500d12a102da775c46f60fb342e8c63f26e132310443",
     "resources/language/resource.language.de_de/strings.po": "056c080a3c45a459fb3cb53fc5a80a5119f818e46aca83081b8283dd17dcd82d",
