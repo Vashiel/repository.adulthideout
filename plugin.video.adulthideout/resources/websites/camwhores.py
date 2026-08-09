@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import re
+
 from resources.lib.kvs_tube import KVSTubeWebsite
 
 
@@ -19,6 +21,11 @@ class CamWhores(KVSTubeWebsite):
     category_path_markers = ("/categories/",)
     use_playback_proxy = True
     next_page_full_count = 24
+
+    def _include_video_block(self, block):
+        opening_tag = block.split(">", 1)[0]
+        classes = re.search(r'class=["\']([^"\']+)', opening_tag, re.IGNORECASE)
+        return not classes or "private" not in classes.group(1).lower().split()
 
     def __init__(self, addon_handle, addon=None):
         super().__init__(

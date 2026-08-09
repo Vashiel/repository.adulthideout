@@ -1,19 +1,19 @@
 import re
 import os
 import urllib.parse
-import urllib.request
 import xbmc
 import xbmcgui
 import xbmcplugin
 from resources.lib.base_website import BaseWebsite
+from resources.lib.resilient_http import fetch_text
 
 
 class EmpflixWebsite(BaseWebsite):
     def __init__(self, addon_handle, addon=None):
         super().__init__(
             name="empflix",
-            base_url="https://www.empflix.com",
-            search_url="https://www.empflix.com/search?what={}",
+            base_url="https://m.empflix.com",
+            search_url="https://m.empflix.com/search?what={}",
             addon_handle=addon_handle,
             addon=addon
         )
@@ -25,6 +25,10 @@ class EmpflixWebsite(BaseWebsite):
             2: "/toprated"
         }
         self.icon = os.path.join(self.addon.getAddonInfo('path'), 'resources', 'logos', 'empflix.png')
+        self.ua = (
+            "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
+        )
 
     def get_start_url_and_label(self):
         sort_id = f"{self.name}_sort_by"
@@ -34,14 +38,13 @@ class EmpflixWebsite(BaseWebsite):
         return f"{self.base_url}{path}", label
 
     def make_request(self, url):
-        try:
-            req = urllib.request.Request(url, headers={
-                'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            })
-            with urllib.request.urlopen(req, timeout=15) as response:
-                return response.read().decode('utf-8')
-        except Exception:
-            return None
+        return fetch_text(
+            url,
+            headers={"User-Agent": self.ua, "Referer": self.base_url + "/"},
+            logger=self.logger,
+            timeout=20,
+            use_windows_curl_fallback=True,
+        )
 
     def process_content(self, url):
         self.add_basic_dirs(url)
@@ -58,7 +61,7 @@ class EmpflixWebsite(BaseWebsite):
             self.end_directory()
             return
 
-        video_pattern = r'href="(https://www\.empflix\.com/[^"]+/video(\d+))"'
+        video_pattern = r'href="(https://(?:www|m)\.empflix\.com/[^"]+/video(\d+))"'
         video_matches = re.findall(video_pattern, content)
         
         thumb_lookup = {}
@@ -129,11 +132,11 @@ class EmpflixWebsite(BaseWebsite):
             self.end_directory()
             return
         
-        cat_pattern = r'href="(https://www\.empflix\.com/[^"]+)"[^>]*>\s*<img[^>]+src="([^"]+)"[^>]*>\s*<div class="thumb-title">([^<]+)</div>'
+        cat_pattern = r'href="(https://(?:www|m)\.empflix\.com/[^"]+)"[^>]*>\s*<img[^>]+src="([^"]+)"[^>]*>\s*<div class="thumb-title">([^<]+)</div>'
         categories = re.findall(cat_pattern, content)
         
         if not categories:
-            cat_pattern2 = r'<a class="thumb[^"]*" href="(https://www\.empflix\.com/[^"]+)"[^>]*>.*?src="([^"]+)".*?<div class="thumb-title">([^<]+)</div>'
+            cat_pattern2 = r'<a class="thumb[^"]*" href="(https://(?:www|m)\.empflix\.com/[^"]+)"[^>]*>.*?src="([^"]+)".*?<div class="thumb-title">([^<]+)</div>'
             categories = re.findall(cat_pattern2, content, re.DOTALL)
         
         if not categories:
@@ -142,7 +145,7 @@ class EmpflixWebsite(BaseWebsite):
             for thumb_url, slug in re.findall(thumb_pattern, content):
                 thumb_lookup[slug] = thumb_url
             
-            cat_pattern3 = r'href="(https://www\.empflix\.com/([^"]+)-porn)"'
+            cat_pattern3 = r'href="(https://(?:www|m)\.empflix\.com/([^"]+)-porn)"'
             for cat_url, slug in re.findall(cat_pattern3, content):
                 slug_key = f"{slug}-porn"
                 title = slug.replace('-', ' ').title()
@@ -162,7 +165,7 @@ class EmpflixWebsite(BaseWebsite):
             self.end_directory()
             return
 
-        video_pattern = r'href="(https://www\.empflix\.com/[^"]+/video(\d+))"'
+        video_pattern = r'href="(https://(?:www|m)\.empflix\.com/[^"]+/video(\d+))"'
         video_matches = re.findall(video_pattern, content)
         
         thumb_pattern1 = r'"(https://img\.empflix\.com/[^"]+/(\d+)/thumbs/[^"]+\.jpg)"'

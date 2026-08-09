@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import importlib
 import os
 import re
 import shutil
@@ -21,6 +22,9 @@ import xbmcvfs
 VIDEO_EXTENSIONS = ("mp4", "mkv", "webm", "mov", "ts")
 VFS_PREFIXES = ("smb://", "nfs://")
 JOB_STATES = ("queued", "running", "transferring", "submitted", "complete", "failed", "cancelled")
+LOCAL_BACKENDS = ("internal", "ffmpeg")
+ACTIVE_LOCAL_STATES = ("running", "transferring")
+STALE_DOWNLOAD_SECONDS = 120
 ADDON_ID = "plugin.video.adulthideout"
 STATUS_LABEL_IDS = {
     "queued": (30738, "Queued"),
@@ -72,6 +76,10 @@ def _job_path(job_id):
 
 def _cancel_path(job_id):
     return os.path.join(_jobs_dir(), "{}.cancel".format(job_id))
+
+
+def _queue_lock_path():
+    return os.path.join(_jobs_dir(), "queue.lock")
 
 
 def is_cancel_requested(job_id):
@@ -135,6 +143,80 @@ def has_downloads():
 
 def has_active_downloads():
     return any(job.get("status") in ("queued", "running", "transferring", "submitted") for job in list_jobs())
+
+
+def _acquire_queue_lock():
+    path = _queue_lock_path()
+    for _attempt in range(2):
+        try:
+            descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(descriptor, str(os.getpid()).encode("ascii", "ignore"))
+            os.close(descriptor)
+            return True
+        except FileExistsError:
+            try:
+                if time.time() - os.path.getmtime(path) > 30:
+                    os.remove(path)
+                    continue
+            except OSError:
+                pass
+            return False
+        except OSError:
+            return False
+    return False
+
+
+def _release_queue_lock():
+    try:
+        os.remove(_queue_lock_path())
+    except OSError:
+        pass
+
+
+def _launch_worker(job):
+    worker = os.path.join(_addon().getAddonInfo("path"), "resources", "lib", "download_worker.py")
+    xbmc.executebuiltin('RunScript("{}","{}","{}")'.format(worker, job["id"], job["run_token"]))
+
+
+def start_next_download():
+    """Start the oldest queued built-in job when no local worker is active."""
+    if not _acquire_queue_lock():
+        return False
+    try:
+        now = int(time.time())
+        jobs = list_jobs()
+        for job in jobs:
+            if job.get("backend") not in LOCAL_BACKENDS or job.get("status") not in ACTIVE_LOCAL_STATES:
+                continue
+            if now - int(job.get("updated") or now) > STALE_DOWNLOAD_SECONDS:
+                job.update({
+                    "status": "queued",
+                    "error": _lang(30680, "Interrupted download queued for continuation."),
+                    "run_token": uuid.uuid4().hex,
+                })
+                save_job(job)
+
+        jobs = list_jobs()
+        if any(job.get("backend") in LOCAL_BACKENDS and job.get("status") in ACTIVE_LOCAL_STATES for job in jobs):
+            return False
+
+        queued = sorted(
+            (
+                job for job in jobs
+                if job.get("backend") in LOCAL_BACKENDS and job.get("status") == "queued"
+            ),
+            key=lambda item: item.get("created", 0),
+        )
+        if not queued:
+            return False
+
+        job = queued[0]
+        job.update({"status": "running", "error": "", "run_token": uuid.uuid4().hex})
+        save_job(job)
+        _launch_worker(job)
+        return True
+    finally:
+        _release_queue_lock()
 
 
 def add_download_context(website, context_menu, page_url, title, thumbnail=""):
@@ -240,6 +322,19 @@ def _write_probe(folder):
         return False
 
 
+def _kodi_safe_download_folder():
+    path = _profile_path("downloads", "files")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def _browse_download_folder(heading):
+    try:
+        return xbmcgui.Dialog().browseSingle(3, heading, "files", "", False, False, "")
+    except AttributeError:
+        return xbmcgui.Dialog().browse(3, heading, "files")
+
+
 def ensure_download_folder(interactive=True):
     addon = _addon()
     folder = (addon.getSetting("download_folder") or addon.getSetting("ffmpeg_download_folder") or "").strip()
@@ -250,35 +345,59 @@ def ensure_download_folder(interactive=True):
     if not interactive:
         return ""
     heading = addon.getLocalizedString(30648) or "Choose a download folder"
-    message = addon.getLocalizedString(30647) or "Choose where AdultHideout should save downloaded videos. Local, SMB and NFS folders are supported."
-    if not xbmcgui.Dialog().yesno("AdultHideout", message):
-        return ""
-    try:
-        folder = xbmcgui.Dialog().browseSingle(3, heading, "files", "", False, False, "")
-    except AttributeError:
-        folder = xbmcgui.Dialog().browse(3, heading, "files")
-    folder = (folder or "").strip()
-    if not folder:
-        return ""
-    if not _write_probe(folder):
-        _notify(addon.getLocalizedString(30649) or "The selected folder is not writable.", error=True)
-        return ""
-    addon.setSetting("download_folder", folder)
-    return folder
+    if folder:
+        xbmcgui.Dialog().ok(
+            "AdultHideout",
+            addon.getLocalizedString(30672) or "AdultHideout cannot write to the configured download folder.",
+        )
+
+    while True:
+        choice = xbmcgui.Dialog().select(
+            addon.getLocalizedString(30673) or "Download storage",
+            [
+                addon.getLocalizedString(30674) or "Choose another folder",
+                addon.getLocalizedString(30675) or "Use Kodi-safe storage",
+                addon.getLocalizedString(30676) or "Cancel",
+            ],
+        )
+        if choice < 0 or choice == 2:
+            return ""
+        if choice == 1:
+            folder = _kodi_safe_download_folder()
+        else:
+            folder = (_browse_download_folder(heading) or "").strip()
+            if not folder:
+                continue
+
+        if _write_probe(folder):
+            addon.setSetting("download_folder", folder)
+            if choice == 1:
+                _notify(addon.getLocalizedString(30677) or "Kodi-safe download storage selected.")
+            return folder
+
+        xbmcgui.Dialog().ok(
+            "AdultHideout",
+            addon.getLocalizedString(30678) or "Kodi cannot write to this folder. Choose another folder or use Kodi-safe storage.",
+        )
 
 
 def normalize_resolved(result):
     if isinstance(result, dict):
-        return result.get("url"), result.get("headers") or {}, result.get("extension") or ""
+        options = {
+            "hls_proxy": bool(result.get("hls_proxy")),
+            "preserve_query": bool(result.get("preserve_query")),
+        }
+        return result.get("url"), result.get("headers") or {}, result.get("extension") or "", options
     if isinstance(result, (tuple, list)):
         return (
             result[0] if len(result) > 0 else None,
             result[1] if len(result) > 1 else {},
             result[2] if len(result) > 2 else "",
+            {},
         )
     if isinstance(result, str):
-        return result, {}, ""
-    return None, {}, ""
+        return result, {}, "", {}
+    return None, {}, "", {}
 
 
 def _backend_for(stream_url):
@@ -315,12 +434,13 @@ def enqueue_download(website, page_url, title="", thumbnail=""):
         _notify(_lang(30753, "Could not resolve a downloadable stream."), error=True)
         return False
     try:
-        stream_url, headers, explicit_extension = normalize_resolved(resolver(page_url))
+        stream_url, headers, explicit_extension, resolved_options = normalize_resolved(resolver(page_url))
     except Exception as exc:
         xbmc.log("[AdultHideout][downloads] resolve failed: {}".format(exc), xbmc.LOGERROR)
         stream_url = None
         headers = {}
         explicit_extension = ""
+        resolved_options = {}
     if not stream_url:
         _notify(_lang(30753, "Could not resolve a downloadable stream."), error=True)
         return False
@@ -347,6 +467,8 @@ def enqueue_download(website, page_url, title="", thumbnail=""):
         "page_url": page_url or "",
         "stream_url": stream_url,
         "headers": dict(headers or {}),
+        "hls_proxy": bool(resolved_options.get("hls_proxy")),
+        "preserve_query": bool(resolved_options.get("preserve_query")),
         "extension": extension,
         "thumbnail": thumbnail or "",
         "folder": folder,
@@ -363,9 +485,8 @@ def enqueue_download(website, page_url, title="", thumbnail=""):
         return _submit_aria2(job)
     if backend == "jdownloader":
         return _submit_jdownloader(job)
-    worker = os.path.join(_addon().getAddonInfo("path"), "resources", "lib", "download_worker.py")
-    xbmc.executebuiltin('RunScript("{}","{}","{}")'.format(worker, job["id"], job["run_token"]))
     _notify((_addon().getLocalizedString(30651) or "Download queued: {}").format(job["title"]))
+    start_next_download()
     return True
 
 
@@ -467,6 +588,56 @@ def cancel_job(job_id):
         except Exception:
             pass
     update_job(job_id, status="cancelled", error=_lang(30751, "Cancelled by user"))
+    start_next_download()
+
+
+def _load_website_for_download(name):
+    from resources.lib.base_website import BaseWebsite
+
+    module = importlib.import_module("resources.websites.{}".format(name))
+    for attribute in dir(module):
+        candidate = getattr(module, attribute)
+        if (
+            isinstance(candidate, type)
+            and issubclass(candidate, BaseWebsite)
+            and candidate is not BaseWebsite
+            and candidate.__module__ == module.__name__
+        ):
+            return candidate(-1)
+    raise RuntimeError("Website module could not be loaded: {}".format(name))
+
+
+def _refresh_job_stream(job):
+    try:
+        website = _load_website_for_download(job.get("website", ""))
+        resolver = getattr(website, "resolve_recording_stream", None)
+        if not resolver:
+            raise RuntimeError(_lang(30753, "Could not resolve a downloadable stream."))
+        stream_url, headers, explicit_extension, resolved_options = normalize_resolved(resolver(job.get("page_url", "")))
+        if not stream_url:
+            raise RuntimeError(_lang(30753, "Could not resolve a downloadable stream."))
+
+        backend = _backend_for(stream_url)
+        if backend == "internal" and _looks_hls(stream_url):
+            raise RuntimeError(_addon().getLocalizedString(30661) or "HLS downloads require FFmpeg.")
+        if backend == "ffmpeg" and not _resolve_ffmpeg():
+            raise RuntimeError(_addon().getLocalizedString(30635) or "FFmpeg executable was not found.")
+
+        job.update({
+            "stream_url": stream_url,
+            "headers": dict(headers or {}),
+            "extension": _extension(stream_url, explicit_extension),
+            "backend": backend,
+            "hls_proxy": bool(resolved_options.get("hls_proxy")),
+            "preserve_query": bool(resolved_options.get("preserve_query")),
+        })
+        return True
+    except Exception as exc:
+        xbmc.log("[AdultHideout][downloads] stream refresh failed: {}".format(exc), xbmc.LOGERROR)
+        job.update({"status": "failed", "error": str(exc)})
+        save_job(job)
+        _notify((_addon().getLocalizedString(30679) or "Could not refresh the download link: {}").format(exc), error=True)
+        return False
 
 
 def retry_job(job_id):
@@ -477,14 +648,26 @@ def retry_job(job_id):
         os.remove(_cancel_path(job_id))
     except OSError:
         pass
-    job.update({"status": "queued", "error": "", "progress": 0, "run_token": uuid.uuid4().hex})
+    if not _refresh_job_stream(job):
+        return False
+    existing = staging_path(job)
+    downloaded = os.path.getsize(existing) if os.path.isfile(existing) else 0
+    job.update({
+        "status": "queued",
+        "error": "",
+        "progress": 0,
+        "downloaded": downloaded,
+        "total": 0,
+        "speed": 0,
+        "eta": 0,
+        "run_token": uuid.uuid4().hex,
+    })
     save_job(job)
     if job.get("backend") == "aria2":
         return _submit_aria2(job)
     if job.get("backend") == "jdownloader":
         return _submit_jdownloader(job)
-    worker = os.path.join(_addon().getAddonInfo("path"), "resources", "lib", "download_worker.py")
-    xbmc.executebuiltin('RunScript("{}","{}","{}")'.format(worker, job["id"], job["run_token"]))
+    start_next_download()
     return True
 
 
@@ -509,6 +692,7 @@ def delete_job(job_id):
                 os.remove(leftover)
         except OSError:
             pass
+    start_next_download()
 
 
 def _format_size(value):

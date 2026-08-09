@@ -1,19 +1,31 @@
 # -*- coding: utf-8 -*-
 
 import os
+import importlib.util
 import subprocess
 import sys
 import time
 
 import xbmc
 
-# RunScript starts this file with resources/lib as its import root. Add the
-# actual add-on root so package imports work consistently on every platform.
-ADDON_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-if ADDON_ROOT not in sys.path:
-    sys.path.insert(0, ADDON_ROOT)
+LIB_DIR = os.path.abspath(os.path.dirname(__file__))
+ADDON_ROOT = os.path.abspath(os.path.join(LIB_DIR, "..", ".."))
 
-from resources.lib import download_manager
+for path in (LIB_DIR, ADDON_ROOT):
+    while path in sys.path:
+        sys.path.remove(path)
+    sys.path.insert(0, path)
+
+# Load the manager under an AdultHideout-specific module name. Some third-party
+# Kodi modules expose their own top-level resources.lib package and otherwise
+# replace AdultHideout's manager inside a background RunScript process.
+MANAGER_PATH = os.path.join(LIB_DIR, "download_manager.py")
+MANAGER_MODULE = "adulthideout_download_manager"
+spec = importlib.util.spec_from_file_location(MANAGER_MODULE, MANAGER_PATH)
+download_manager = importlib.util.module_from_spec(spec)
+sys.modules[MANAGER_MODULE] = download_manager
+spec.loader.exec_module(download_manager)
+
 
 
 class _BackgroundProgress:
@@ -124,37 +136,55 @@ def _run_internal(job, run_token, progress=None):
 
 def _run_ffmpeg(job, run_token, progress=None):
     path = download_manager.staging_path(job)
-    command = download_manager.build_ffmpeg_command(job, path)
     log_path = path + ".log"
-    startupinfo, creationflags = download_manager.hidden_process_options()
-    with open(log_path, "ab") as log_file:
-        process = subprocess.Popen(
-            command,
-            stdin=subprocess.DEVNULL,
-            stdout=log_file,
-            stderr=subprocess.STDOUT,
-            startupinfo=startupinfo,
-            creationflags=creationflags,
-        )
-        last_update = 0
-        while process.poll() is None:
-            if _cancelled(job["id"], run_token):
-                process.terminate()
-                try:
-                    process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                return None
-            now = time.time()
-            if now - last_update >= 1 and os.path.exists(path):
-                current = download_manager.update_job_for_run(job["id"], run_token, downloaded=os.path.getsize(path))
-                if current and progress:
-                    progress.update(current)
-                last_update = now
-            xbmc.sleep(500)
-        if process.returncode != 0:
-            raise RuntimeError("FFmpeg exited with code {}. See {}".format(process.returncode, log_path))
-    return path if os.path.isfile(path) and os.path.getsize(path) else None
+    controller = None
+    ffmpeg_job = job
+    try:
+        if job.get("hls_proxy"):
+            import proxy_utils
+
+            controller = proxy_utils.HlsProxyController(
+                job["stream_url"],
+                headers=job.get("headers") or {},
+                preserve_query=job.get("preserve_query", False),
+            )
+            ffmpeg_job = dict(job)
+            ffmpeg_job["stream_url"] = controller.start()
+            ffmpeg_job["headers"] = {}
+
+        command = download_manager.build_ffmpeg_command(ffmpeg_job, path)
+        startupinfo, creationflags = download_manager.hidden_process_options()
+        with open(log_path, "ab") as log_file:
+            process = subprocess.Popen(
+                command,
+                stdin=subprocess.DEVNULL,
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                startupinfo=startupinfo,
+                creationflags=creationflags,
+            )
+            last_update = 0
+            while process.poll() is None:
+                if _cancelled(job["id"], run_token):
+                    process.terminate()
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                    return None
+                now = time.time()
+                if now - last_update >= 1 and os.path.exists(path):
+                    current = download_manager.update_job_for_run(job["id"], run_token, downloaded=os.path.getsize(path))
+                    if current and progress:
+                        progress.update(current)
+                    last_update = now
+                xbmc.sleep(500)
+            if process.returncode != 0:
+                raise RuntimeError("FFmpeg exited with code {}. See {}".format(process.returncode, log_path))
+        return path if os.path.isfile(path) and os.path.getsize(path) else None
+    finally:
+        if controller:
+            controller.stop()
 
 
 def run(job_id, run_token=""):
@@ -193,6 +223,7 @@ def run(job_id, run_token=""):
             xbmcgui.Dialog().notification("AdultHideout", download_manager._lang(30749, "Download failed: {}", str(exc)), xbmcgui.NOTIFICATION_ERROR, 5000)
     finally:
         progress.close()
+        download_manager.start_next_download()
 
 
 if __name__ == "__main__" and len(sys.argv) > 1:

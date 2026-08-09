@@ -23,12 +23,15 @@ except ImportError:
         pass
 
 try:
-    addon_path = xbmcaddon.Addon().getAddonInfo('path')
+    addon_path = xbmcaddon.Addon('plugin.video.adulthideout').getAddonInfo('path')
     vendor_path = os.path.join(addon_path, 'resources', 'lib', 'vendor')
     if vendor_path not in sys.path:
         sys.path.insert(0, vendor_path)
 except Exception as e:
-    xbmc.log(f"[AdultHideout] Vendor path inject failed in proxy_utils.py: {e}", xbmc.LOGERROR)
+    vendor_path = os.path.join(os.path.dirname(__file__), 'vendor')
+    if vendor_path not in sys.path:
+        sys.path.insert(0, vendor_path)
+    xbmc.log(f"[AdultHideout] Using local vendor path in proxy_utils.py: {e}", xbmc.LOGDEBUG)
 
 try:
     import cloudscraper
@@ -38,7 +41,10 @@ except Exception as e:
     _HAS_CF = False
 
 import requests
-from resources.lib.playback_preferences import preferred_quality, select_quality_variant
+try:
+    from resources.lib.playback_preferences import preferred_quality, select_quality_variant
+except ImportError:
+    from playback_preferences import preferred_quality, select_quality_variant
 
 # Kleinere Chunks (32 KB) damit read() schneller zurückkehrt — kritisch für Seeks!
 # 512 KB blockiert zu lange wenn mehrere Streams parallel laufen.
@@ -730,7 +736,7 @@ class _ProxyHandler(BaseHTTPRequestHandler):
             "Sec-Fetch-Dest": src.get("Sec-Fetch-Dest", "video"),
         }
         origin = self._infer_origin()
-        if origin:
+        if origin and getattr(self.upstream, "include_origin", True):
             extra["Origin"] = origin
         return extra
 
@@ -1184,6 +1190,7 @@ class ProxyController:
         use_urllib=False,
         probe_size=True,
         fast_wait=None,
+        include_origin=True,
     ):
         if use_urllib:
             self.up = _UrllibUpstream(
@@ -1200,6 +1207,7 @@ class ProxyController:
                 session=session,
                 skip_resolve=skip_resolve,
             )
+        self.up.include_origin = bool(include_origin)
         self.host = host
         self.port = port
         if fast_wait is not None:
@@ -1401,7 +1409,13 @@ class _HlsProxyHandler(BaseHTTPRequestHandler):
                                     resource_url = urllib.parse.urlunparse(
                                         parsed_resource._replace(query=parent_query)
                                     )
-                            resource_path = "/resource.ts" if resource_url.lower().split("?", 1)[0].endswith(".webp") else "/resource"
+                            resource_file = urllib.parse.urlparse(resource_url).path.lower()
+                            if resource_file.endswith(".m3u8"):
+                                resource_path = "/playlist.m3u8"
+                            elif resource_file.endswith((".ts", ".webp")):
+                                resource_path = "/resource.ts"
+                            else:
+                                resource_path = "/resource"
                             line = "http://{}:{}{}?url={}{}".format(
                                 self.controller.host,
                                 self.server.server_address[1],

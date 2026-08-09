@@ -155,12 +155,17 @@ class KVSTubeWebsite(BaseWebsite):
             thumb = self.icon
         return thumb
 
+    def _include_video_block(self, block):
+        return True
+
     def _extract_videos(self, html_content):
         videos = []
         seen = set()
         blocks = re.split(r'(?=<div\b[^>]+class=["\'][^"\']*(?:item|thumb|video)[^"\']*["\'])', html_content or "", flags=re.IGNORECASE)
         for block in blocks:
             if not any(marker in block for marker in self.video_path_markers):
+                continue
+            if not self._include_video_block(block):
                 continue
             href_match = None
             for match in re.finditer(r'<a\b[^>]+href=["\']([^"\']+)["\'][^>]*>', block, re.IGNORECASE):

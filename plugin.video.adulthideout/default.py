@@ -30,6 +30,11 @@ DEFAULT_ICON_PATH = os.path.join(LOGOS_DIR, 'icon.png')
 VAULT_ICON_PATH = os.path.join(LOGOS_DIR, 'vault.png')
 VIEW_SERVICE_PATH = os.path.join(ADDON_PATH, 'resources', 'lib', 'view_service.py')
 VIEW_SERVICE_VERSION = "20"
+DIAGNOSTICS_ADDON_ID = "script.adulthideout.kvat"
+OPT_IN_WEBSITE_SETTINGS = {
+    "crazyshit": "show_crazyshit",
+    "pervclips": "show_pervclips",
+}
 
 MAIN_MENU_SORT_KEYS = ("az", "za", "newest", "category")
 CONTENT_FILTER_KEYS = ("general", "trans", "hentai", "jav", "rule34", "fetish", "live", "creator")
@@ -135,22 +140,23 @@ def migrate_legacy_website_visibility(modules):
         log("Could not read legacy website visibility: {}".format(exc), xbmc.LOGDEBUG)
     for name in modules:
         setting_id = get_setting_id_from_name(name)
-        if setting_id in false_setting_ids:
-            if name != "crazyshit":
-                hidden.add(name)
+        if setting_id in false_setting_ids and name not in OPT_IN_WEBSITE_SETTINGS:
+            hidden.add(name)
     save_hidden_websites(hidden)
     ADDON.setSetting("website_visibility_migrated", "true")
 
 def is_website_hidden(name):
-    if name == "crazyshit" and ADDON.getSetting("show_crazyshit") != "true":
+    opt_in_setting = OPT_IN_WEBSITE_SETTINGS.get(name)
+    if opt_in_setting and ADDON.getSetting(opt_in_setting) != "true":
         return True
     return name in get_hidden_websites()
 
 def hide_website(name):
     if not name:
         return
-    if name == "crazyshit":
-        ADDON.setSetting("show_crazyshit", "false")
+    opt_in_setting = OPT_IN_WEBSITE_SETTINGS.get(name)
+    if opt_in_setting:
+        ADDON.setSetting(opt_in_setting, "false")
     else:
         hidden = get_hidden_websites()
         hidden.add(name)
@@ -165,8 +171,9 @@ def hide_website(name):
 
 def get_currently_hidden_websites():
     hidden = get_hidden_websites()
-    if ADDON.getSetting("show_crazyshit") != "true":
-        hidden.add("crazyshit")
+    for name, setting_id in OPT_IN_WEBSITE_SETTINGS.items():
+        if ADDON.getSetting(setting_id) != "true":
+            hidden.add(name)
     return sorted(hidden)
 
 def manage_hidden_websites():
@@ -189,8 +196,10 @@ def manage_hidden_websites():
     restored = {hidden[index] for index in selected}
     stored = get_hidden_websites() - restored
     save_hidden_websites(stored)
-    if "crazyshit" in restored:
-        ADDON.setSetting("show_crazyshit", "true")
+    for name in restored:
+        setting_id = OPT_IN_WEBSITE_SETTINGS.get(name)
+        if setting_id:
+            ADDON.setSetting(setting_id, "true")
     xbmc.executebuiltin("Container.Update({},replace)".format(sys.argv[0]))
 
 def restore_all_websites():
@@ -200,7 +209,8 @@ def restore_all_websites():
     ):
         return
     save_hidden_websites(set())
-    ADDON.setSetting("show_crazyshit", "true")
+    for setting_id in OPT_IN_WEBSITE_SETTINGS.values():
+        ADDON.setSetting(setting_id, "true")
     xbmc.executebuiltin("Container.Update({},replace)".format(sys.argv[0]))
 
 def get_main_menu_sort_index():
@@ -346,6 +356,58 @@ def select_main_menu_filters():
     ADDON.setSetting("main_menu_website_type_filter", json.dumps(type_values))
     xbmc.executebuiltin("Container.Update({},replace)".format(sys.argv[0]))
 
+def run_diagnostics(site=""):
+    try:
+        diagnostics = xbmcaddon.Addon(DIAGNOSTICS_ADDON_ID)
+    except Exception:
+        install = xbmcgui.Dialog().yesno(
+            localized(30821, "AdultHideout Diagnostics"),
+            localized(30823, "AdultHideout Diagnostics is not installed. Install it now?"),
+        )
+        if not install:
+            return
+
+        xbmc.executebuiltin("InstallAddon({})".format(DIAGNOSTICS_ADDON_ID))
+        monitor = xbmc.Monitor()
+        progress = xbmcgui.DialogProgressBG()
+        progress.create(
+            localized(30821, "AdultHideout Diagnostics"),
+            localized(30844, "Installing diagnostics..."),
+        )
+        diagnostics = None
+        for attempt in range(60):
+            if monitor.waitForAbort(0.5):
+                break
+            try:
+                diagnostics = xbmcaddon.Addon(DIAGNOSTICS_ADDON_ID)
+                if diagnostics.getAddonInfo("path"):
+                    break
+            except Exception:
+                diagnostics = None
+            progress.update(min(95, int((attempt + 1) * 100 / 60)))
+        progress.close()
+
+        if diagnostics is None:
+            xbmcgui.Dialog().ok(
+                localized(30821, "AdultHideout Diagnostics"),
+                localized(
+                    30845,
+                    "Installation failed. Install AdultHideout Diagnostics from the AdultHideout Repository.",
+                ),
+            )
+            return
+
+    script_path = os.path.join(
+        xbmcvfs.translatePath(diagnostics.getAddonInfo("path")),
+        "default.py",
+    )
+    arguments = []
+    if site:
+        arguments.append("site={}".format(urllib.parse.quote_plus(site)))
+    quoted_arguments = "".join(',"{}"'.format(value) for value in arguments)
+    xbmc.executebuiltin('RunScript("{}"{})'.format(script_path, quoted_arguments))
+
+
 def get_website_menu_context(download_menu_command):
     return [
         (
@@ -401,12 +463,13 @@ def build_main_menu_fast():
     )
 
     show_downloads = ADDON.getSetting("show_download_manager") == "true"
-    if not show_downloads:
-        try:
-            from resources.lib.download_manager import has_active_downloads
+    try:
+        from resources.lib.download_manager import has_active_downloads, start_next_download
+        start_next_download()
+        if not show_downloads:
             show_downloads = has_active_downloads()
-        except Exception as exc:
-            log("Could not inspect download history: {}".format(exc), xbmc.LOGDEBUG)
+    except Exception as exc:
+        log("Could not inspect download history: {}".format(exc), xbmc.LOGDEBUG)
     if show_downloads:
         downloads_item = xbmcgui.ListItem(label="[COLOR yellow]{}[/COLOR]".format(
             ADDON.getLocalizedString(30641) or "Downloads"
@@ -430,7 +493,7 @@ def build_main_menu_fast():
             listitem=offline_item,
             isFolder=True,
         )
-    
+
     website_modules = [
         filename[:-3] for filename in os.listdir(WEBSITES_DIR)
         if filename.endswith('.py') and filename != '__init__.py'
@@ -457,7 +520,15 @@ def build_main_menu_fast():
             icon_path = DEFAULT_ICON_PATH
 
         context_menu = get_website_menu_context(download_menu_command)
-        context_menu.insert(2, (
+        if ADDON.getSetting("enable_website_collections") == "true":
+            context_menu.insert(0, (
+                localized(30827, "Add to Collection..."),
+                "RunPlugin({}?mode=70&action=add_to_collection&site={})".format(
+                    sys.argv[0],
+                    urllib.parse.quote_plus(module_raw_name),
+                ),
+            ))
+        context_menu.insert(3, (
             localized(30800, "Hide website"),
             "RunPlugin({}?mode=1&action=hide_website&target={})".format(
                 sys.argv[0],
@@ -539,6 +610,154 @@ def call_with_item_count(target_website, callback):
         xbmcplugin.addDirectoryItem = original_add
     return count["items"], time.time() - started
 
+def handle_website_collections(params):
+    from resources.lib.website_collections import CustomCollectionsManager
+    mgr = CustomCollectionsManager(ADDON)
+    action = params.get('action', 'collections_menu')
+
+    def collection_label(name):
+        labels = {
+            "Favorites": localized(30839, "Favorites"),
+            "My Top Sites": localized(30840, "My Top Sites"),
+        }
+        return labels.get(name, name)
+
+    if action == 'add_to_collection':
+        site_id = params.get('site') or params.get('website')
+        if not site_id:
+            return
+        collections = mgr.get_collection_names()
+        dialog_options = [collection_label(name) for name in collections] + ["[COLOR yellow]+ {}[/COLOR]".format(
+            localized(30828, "New Collection")
+        )]
+        selected = xbmcgui.Dialog().select(localized(30827, "Add to Collection..."), dialog_options)
+        if selected == -1:
+            return
+        if selected == len(collections):
+            kb = xbmc.Keyboard("", localized(30829, "Enter Collection Name"))
+            kb.doModal()
+            if kb.isConfirmed() and kb.getText().strip():
+                new_name = kb.getText().strip()
+                mgr.create_collection(new_name)
+                mgr.add_site(new_name, site_id)
+                xbmcgui.Dialog().notification(
+                    localized(30826, "Website Collections"),
+                    localized(30831, "Added to Collection").format(new_name),
+                    xbmcgui.NOTIFICATION_INFO,
+                    2000,
+                )
+        else:
+            col_name = collections[selected]
+            mgr.add_site(col_name, site_id)
+            xbmcgui.Dialog().notification(
+                localized(30826, "Website Collections"),
+                    localized(30831, "Added to Collection").format(collection_label(col_name)),
+                xbmcgui.NOTIFICATION_INFO,
+                2000,
+            )
+        return
+
+    if action == 'remove_from_collection':
+        col_name = params.get('collection')
+        site_id = params.get('site')
+        if col_name and site_id:
+            mgr.remove_site(col_name, site_id)
+            xbmc.executebuiltin("Container.Refresh")
+        return
+
+    if action == 'create_collection':
+        kb = xbmc.Keyboard("", localized(30829, "Enter Collection Name"))
+        kb.doModal()
+        if kb.isConfirmed() and kb.getText().strip():
+            new_name = kb.getText().strip()
+            ok, msg = mgr.create_collection(new_name)
+            if ok:
+                xbmc.executebuiltin("Container.Refresh")
+            else:
+                message_id = 30837 if msg == "exists" else 30838
+                xbmcgui.Dialog().notification(
+                    localized(30832, "Error"),
+                    localized(message_id, "Collection already exists" if msg == "exists" else "Collection name cannot be empty"),
+                    xbmcgui.NOTIFICATION_ERROR,
+                    2500,
+                )
+        return
+
+    if action == 'delete_collection':
+        col_name = params.get('collection')
+        if col_name and xbmcgui.Dialog().yesno(
+            localized(30833, "Delete"),
+            localized(30834, "Delete collection '{}'?").format(col_name),
+        ):
+            mgr.delete_collection(col_name)
+            xbmc.executebuiltin("Container.Refresh")
+        return
+
+    if action == 'view_collection':
+        col_name = params.get('collection')
+        sites = mgr.get_collection_sites(col_name)
+        try:
+            available_logos = set(os.listdir(LOGOS_DIR))
+        except OSError:
+            available_logos = set()
+
+        for module_raw_name in sites:
+            if not os.path.isfile(os.path.join(WEBSITES_DIR, "{}.py".format(module_raw_name))):
+                continue
+            label = get_website_label(module_raw_name)
+            icon_name = f"{module_raw_name}.png"
+            fallback_name = f"{module_raw_name.replace('_', '-')}.png"
+            if icon_name in available_logos:
+                icon_path = os.path.join(LOGOS_DIR, icon_name)
+            elif fallback_name in available_logos:
+                icon_path = os.path.join(LOGOS_DIR, fallback_name)
+            else:
+                icon_path = DEFAULT_ICON_PATH
+
+            context_menu = [
+                (localized(30835, "Remove from Collection"), f"RunPlugin({sys.argv[0]}?mode=70&action=remove_from_collection&collection={urllib.parse.quote_plus(col_name)}&site={urllib.parse.quote_plus(module_raw_name)})")
+            ]
+
+            url = f"{sys.argv[0]}?mode=2&website={module_raw_name}&url=BOOTSTRAP"
+            li = xbmcgui.ListItem(label=label)
+            li.setArt(get_main_menu_art(icon_path))
+            li.addContextMenuItems(context_menu)
+            xbmcplugin.addDirectoryItem(handle=ADDON_HANDLE, url=url, listitem=li, isFolder=True)
+
+        xbmcplugin.endOfDirectory(ADDON_HANDLE, succeeded=True, cacheToDisc=False)
+        return
+
+    # Default: collections_menu
+    collections = mgr.get_collections()
+
+    new_item = xbmcgui.ListItem(label="[COLOR yellow]+ {}[/COLOR]".format(
+        localized(30828, "New Collection")
+    ))
+    new_item.setArt(get_main_menu_art(DEFAULT_ICON_PATH))
+    xbmcplugin.addDirectoryItem(
+        handle=ADDON_HANDLE,
+        url=f"{sys.argv[0]}?mode=70&action=create_collection",
+        listitem=new_item,
+        isFolder=False,
+    )
+
+    for col_name, site_list in collections.items():
+        label = f"{collection_label(col_name)} [COLOR gray]({len(site_list)})[/COLOR]"
+        col_item = xbmcgui.ListItem(label=label)
+        col_item.setArt(get_main_menu_art(DEFAULT_ICON_PATH))
+        context_menu = [
+            (localized(30836, "Delete Collection"), f"RunPlugin({sys.argv[0]}?mode=70&action=delete_collection&collection={urllib.parse.quote_plus(col_name)})")
+        ]
+        col_item.addContextMenuItems(context_menu)
+        xbmcplugin.addDirectoryItem(
+            handle=ADDON_HANDLE,
+            url=f"{sys.argv[0]}?mode=70&action=view_collection&collection={urllib.parse.quote_plus(col_name)}",
+            listitem=col_item,
+            isFolder=True,
+        )
+
+    xbmcplugin.endOfDirectory(ADDON_HANDLE, succeeded=True, cacheToDisc=False)
+
 def handle_routing():
     ensure_view_service()
     params = {}
@@ -550,8 +769,13 @@ def handle_routing():
 
     mode = params.get('mode')
     website_name = params.get('website')
+    action = params.get('action')
     
-    log(f"Routing: mode={mode}, website={website_name}")
+    log(f"Routing: mode={mode}, website={website_name}, action={action}")
+
+    if mode == '70' or action in ('collections_menu', 'view_collection', 'add_to_collection', 'remove_from_collection', 'create_collection', 'delete_collection'):
+        handle_website_collections(params)
+        return
 
     if mode is None:
         try:
@@ -560,7 +784,7 @@ def handle_routing():
         except Exception as exc:
             log(f"Official source check failed unexpectedly: {exc}", xbmc.LOGWARNING)
 
-    if mode is None:
+    if mode is None and action != 'direct_search':
         build_main_menu_fast()
         return
 
@@ -570,6 +794,7 @@ def handle_routing():
         'hide_website',
         'manage_hidden_websites',
         'restore_all_websites',
+        'run_diagnostics',
     )
     if mode == '1' and params.get('action') in website_menu_actions:
         if params.get('action') == 'select_main_menu_sort':
@@ -582,14 +807,31 @@ def handle_routing():
             manage_hidden_websites()
         elif params.get('action') == 'restore_all_websites':
             restore_all_websites()
+        elif params.get('action') == 'run_diagnostics':
+            run_diagnostics(params.get('target', ''))
         xbmcplugin.endOfDirectory(ADDON_HANDLE, succeeded=True, updateListing=False, cacheToDisc=False)
         return
 
-    if website_name == 'global_search' or mode in ('20', '21'):
+    if website_name == 'global_search' or mode in ('20', '21') or action == 'direct_search':
         from resources.lib.global_search import GlobalSearch
         global_search = GlobalSearch(ADDON_HANDLE, addon=ADDON, loader=load_single_website, logger=log)
-        action = params.get('action')
-        if action == 'new_search':
+        if action == 'direct_search' or params.get('direct_query') or params.get('q'):
+            query = params.get('query') or params.get('direct_query') or params.get('q') or ''
+            if len(query.strip()) < 3:
+                xbmcplugin.endOfDirectory(ADDON_HANDLE, succeeded=True, cacheToDisc=False)
+                return
+            try:
+                page = int(params.get('page', '1') or '1')
+            except Exception:
+                page = 1
+            global_search.run(
+                query,
+                refresh=params.get('refresh') == '1',
+                page=page,
+                search_mode=params.get('search_mode', 'skin'),
+            )
+            return
+        elif action == 'new_search':
             global_search.new_search(params.get('search_mode', 'selected'))
         elif action == 'show_presets':
             global_search.show_presets()

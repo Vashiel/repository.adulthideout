@@ -1,0 +1,138 @@
+# Kodi Media Center language file
+msgid ""
+msgstr ""
+"Project-Id-Version: AdultHideout Diagnostics\n"
+"Language: en_GB\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgctxt "#30000"
+msgid "AdultHideout Diagnostics"
+msgstr "AdultHideout Diagnostics"
+
+msgctxt "#30001"
+msgid "Smart check all websites"
+msgstr "Smart check all websites"
+
+msgctxt "#30002"
+msgid "Full playback check"
+msgstr "Full playback check"
+
+msgctxt "#30003"
+msgid "Select websites"
+msgstr "Select websites"
+
+msgctxt "#30004"
+msgid "Retest failed"
+msgstr "Retest failed"
+
+msgctxt "#30005"
+msgid "Previous reports"
+msgstr "Previous reports"
+
+msgctxt "#30006"
+msgid "Export latest report"
+msgstr "Export latest report"
+
+msgctxt "#30007"
+msgid "Quick listing check all websites"
+msgstr "Quick listing check all websites"
+
+msgctxt "#30020"
+msgid "Total"
+msgstr "Total"
+
+msgctxt "#30021"
+msgid "Passed"
+msgstr "Passed"
+
+msgctxt "#30022"
+msgid "Warnings"
+msgstr "Warnings"
+
+msgctxt "#30023"
+msgid "Failed"
+msgstr "Failed"
+
+msgctxt "#30024"
+msgid "Timeouts"
+msgstr "Timeouts"
+
+msgctxt "#30025"
+msgid "Problems"
+msgstr "Problems"
+
+msgctxt "#30026"
+msgid "Report"
+msgstr "Report"
+
+msgctxt "#30027"
+msgid "No websites selected"
+msgstr "No websites selected"
+
+msgctxt "#30028"
+msgid "Stop current playback before starting diagnostics."
+msgstr "Stop current playback before starting diagnostics."
+
+msgctxt "#30029"
+msgid "Preparing tests..."
+msgstr "Preparing tests..."
+
+msgctxt "#30030"
+msgid "Writing report..."
+msgstr "Writing report..."
+
+msgctxt "#30031"
+msgid "No reports available"
+msgstr "No reports available"
+
+msgctxt "#30032"
+msgid "Choose export folder"
+msgstr "Choose export folder"
+
+msgctxt "#30033"
+msgid "Report exported"
+msgstr "Report exported"
+
+msgctxt "#30034"
+msgid "The report could not be exported."
+msgstr "The report could not be exported."
+
+msgctxt "#30035"
+msgid "The latest report has no failed websites."
+msgstr "The latest report has no failed websites."
+
+msgctxt "#30036"
+msgid "Test mode"
+msgstr "Test mode"
+
+msgctxt "#30037"
+msgid "This test visibly plays and seeks one video per website and may take several hours."
+msgstr "This test visibly plays and seeks one video per website and may take several hours."
+
+msgctxt "#30038"
+msgid "This test checks every website listing and first thumbnail and may take some time."
+msgstr "This test checks every website listing and first thumbnail and may take some time."
+
+msgctxt "#30039"
+msgid "AdultHideout is not installed."
+msgstr "AdultHideout is not installed."
+
+msgctxt "#30040"
+msgid "Unknown website"
+msgstr "Unknown website"
+
+msgctxt "#30041"
+msgid "Known external outages"
+msgstr "Known external outages"
+
+msgctxt "#30042"
+msgid "Fast screening..."
+msgstr "Fast screening..."
+
+msgctxt "#30043"
+msgid "Detailed check"
+msgstr "Detailed check"
+
+msgctxt "#30044"
+msgid "Runs a fast screen first, then inspects useful folders only for suspicious websites."
+msgstr "Runs a fast screen first, then inspects useful folders only for suspicious websites."

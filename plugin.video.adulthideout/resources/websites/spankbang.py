@@ -12,6 +12,7 @@ import xbmcplugin
 import html
 from resources.lib.base_website import BaseWebsite
 from resources.lib.lookup_info import choose_and_open, extract_html_items
+from resources.lib.resilient_http import _ipv4_call
 
 try:
     addon_path = xbmcaddon.Addon().getAddonInfo('path')
@@ -59,8 +60,8 @@ class Spankbang(BaseWebsite):
         self.model_sort_paths = {"Trending": "pornstars", "Alphabetical": "pornstars_alphabet"}
 
         self._scraper_ua = (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36"
+            "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:120.0) "
+            "Gecko/20100101 Firefox/120.0"
         )
         self.scraper = None
 
@@ -89,7 +90,9 @@ class Spankbang(BaseWebsite):
             self.logger.error("Cloudscraper library is not available.")
             return None
         try:
-            scraper = cloudscraper.create_scraper(browser={'custom': self._scraper_ua})
+            scraper = cloudscraper.create_scraper(
+                browser={'browser': 'firefox', 'platform': 'windows', 'mobile': False}
+            )
             scraper.headers.update({
                 'User-Agent': self._scraper_ua,
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -105,14 +108,14 @@ class Spankbang(BaseWebsite):
         # Cloudflare alternates between a legacy JS challenge (cloudscraper solves it)
         # and a stricter managed challenge (it can't) - a fresh session sometimes draws
         # the solvable one, so retry a couple of times with a new session on 403.
-        attempts = 5
+        attempts = 2
         last_error = ""
         for attempt in range(attempts):
             scraper = self.get_session()
             if not scraper:
                 return ""
             try:
-                response = scraper.get(url, timeout=20)
+                response = _ipv4_call(lambda: scraper.get(url, timeout=20))
                 if response.status_code == 403:
                     last_error = "403 Forbidden (Cloudflare challenge)"
                     with _SESSION_LOCK:

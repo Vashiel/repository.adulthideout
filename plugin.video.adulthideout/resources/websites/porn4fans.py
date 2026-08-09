@@ -10,11 +10,28 @@ import sys
 import hashlib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import xbmc
 import xbmcgui
 import xbmcplugin
 import xbmcvfs
+import requests
 
 from resources.lib.base_website import BaseWebsite
+from resources.lib.resilient_http import _ipv4_call, fetch_text
+
+
+class _IPv4Session:
+    def __init__(self, session):
+        self._session = session
+        self.headers = session.headers
+        self.cookies = session.cookies
+
+    def get(self, *args, **kwargs):
+        return _ipv4_call(lambda: self._session.get(*args, **kwargs))
+
+    def head(self, *args, **kwargs):
+        return _ipv4_call(lambda: self._session.head(*args, **kwargs))
+
 
 class Porn4Fans(BaseWebsite):
     def __init__(self, addon_handle, addon=None):
@@ -62,7 +79,7 @@ class Porn4Fans(BaseWebsite):
                 "Referer": self.base_url
             }
             req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with _ipv4_call(lambda: urllib.request.urlopen(req, timeout=10)) as resp:
                 data = resp.read()
                 
             if not data:
@@ -116,24 +133,27 @@ class Porn4Fans(BaseWebsite):
         if headers:
             req_headers.update(headers)
             
-        try:
-            req = urllib.request.Request(url, headers=req_headers, method=method)
-            if data:
-                if isinstance(data, dict):
-                    data_bytes = urllib.parse.urlencode(data).encode("utf-8")
-                else:
-                    data_bytes = data
-                req.data = data_bytes
-            with urllib.request.urlopen(req, timeout=20) as resp:
-                return resp.read().decode("utf-8", errors="replace")
-        except Exception as e:
-            self.logger.error(f"[porn4fans] Request failed: {e}")
+        if method != "GET" or data:
+            self.logger.error("[porn4fans] Unsupported request method: %s", method)
             return None
+        return fetch_text(
+            url,
+            headers=req_headers,
+            logger=self.logger,
+            timeout=20,
+            use_windows_curl_fallback=True,
+            prefer_ipv4=True,
+        )
 
     def _absolute(self, url):
         if not url:
             return ""
-        return urllib.parse.urljoin(self.base_url, html.unescape(url).strip())
+        absolute = urllib.parse.urljoin(self.base_url, html.unescape(url).strip())
+        parsed = urllib.parse.urlparse(absolute)
+        encoded_path = urllib.parse.quote(urllib.parse.unquote(parsed.path), safe="/:@")
+        return urllib.parse.urlunparse(
+            (parsed.scheme, parsed.netloc, encoded_path, parsed.params, parsed.query, parsed.fragment)
+        )
 
     def _clean(self, value):
         value = re.sub(r"<[^>]+>", " ", value or "")
@@ -434,7 +454,7 @@ class Porn4Fans(BaseWebsite):
                 "Range": "bytes=0-0",
             }
             req = urllib.request.Request(stream_url, headers=headers)
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with _ipv4_call(lambda: urllib.request.urlopen(req, timeout=15)) as resp:
                 content_type = resp.headers.get("Content-Type", "")
                 return "video" in content_type.lower()
         except Exception as exc:
@@ -492,11 +512,33 @@ class Porn4Fans(BaseWebsite):
             
         play_url = resolved["url"]
         headers = resolved.get("headers") or {}
-        if headers:
-            play_url = "{}|{}".format(play_url, urllib.parse.urlencode(headers))
-            
-        list_item = xbmcgui.ListItem(path=play_url)
-        list_item.setProperty("IsPlayable", "true")
-        list_item.setMimeType("video/mp4")
-        list_item.setContentLookup(False)
-        xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
+        try:
+            from resources.lib.proxy_utils import PlaybackGuard, ProxyController
+
+            session = requests.Session()
+            session.headers.update(headers)
+            controller = ProxyController(
+                play_url,
+                upstream_headers=headers,
+                session=_IPv4Session(session),
+                skip_resolve=True,
+            )
+            local_url = controller.start()
+            guard = PlaybackGuard(xbmc.Player(), xbmc.Monitor(), local_url, controller)
+            guard.start()
+
+            list_item = xbmcgui.ListItem(path=local_url)
+            list_item.setProperty("IsPlayable", "true")
+            list_item.setMimeType("video/mp4")
+            list_item.setContentLookup(False)
+            xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
+            guard.join()
+        except Exception as exc:
+            self.logger.warning("[porn4fans] IPv4 proxy failed: %s", exc)
+            if headers:
+                play_url = "{}|{}".format(play_url, urllib.parse.urlencode(headers))
+            list_item = xbmcgui.ListItem(path=play_url)
+            list_item.setProperty("IsPlayable", "true")
+            list_item.setMimeType("video/mp4")
+            list_item.setContentLookup(False)
+            xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)

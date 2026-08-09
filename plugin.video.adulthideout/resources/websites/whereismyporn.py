@@ -19,12 +19,18 @@ class WhereIsMyPornWebsite(BaseWebsite):
     def __init__(self, addon_handle):
         addon = xbmcaddon.Addon()
         name = "whereismyporn"
-        base_url = "https://whereismyporn.com/"
-        search_url = "https://whereismyporn.com/?s={}"
+        base_url = "https://moneypornvideo.com/"
+        search_url = "https://moneypornvideo.com/?s={}"
         super(WhereIsMyPornWebsite, self).__init__(
             name, base_url, search_url, addon_handle, addon=addon
         )
-        self.label = "WhereIsMyPorn"
+        self.label = "MoneyPornVideo"
+        self.site_domains = {
+            "moneypornvideo.com",
+            "www.moneypornvideo.com",
+            "whereismyporn.com",
+            "www.whereismyporn.com",
+        }
         self.headers = {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -93,7 +99,7 @@ class WhereIsMyPornWebsite(BaseWebsite):
 
         seen = set()
         pattern = re.compile(
-            r'<a[^>]+href=["\']([^"\']*/archives/category/[^"\']+)["\'][^>]*>(.*?)</a>',
+            r'<a[^>]+href=["\']([^"\']*/category/[^"\']+)["\'][^>]*>(.*?)</a>',
             re.IGNORECASE | re.DOTALL,
         )
         for href, label in pattern.findall(page):
@@ -107,7 +113,7 @@ class WhereIsMyPornWebsite(BaseWebsite):
         for slug in re.findall(r"\bcategory-([a-z0-9-]+)\b", page, re.IGNORECASE):
             if slug in ("post", "format-standard"):
                 continue
-            full_url = urllib.parse.urljoin(self.base_url, "/archives/category/" + slug)
+            full_url = urllib.parse.urljoin(self.base_url, "/category/" + slug + "/")
             if full_url in seen:
                 continue
             seen.add(full_url)
@@ -155,7 +161,10 @@ class WhereIsMyPornWebsite(BaseWebsite):
             if not link_match:
                 continue
             href = urllib.parse.urljoin(self.base_url, html.unescape(link_match.group(1)))
-            if "/archives/" not in href or "/archives/category/" in href:
+            parsed = urllib.parse.urlparse(href)
+            if parsed.netloc.lower() not in self.site_domains:
+                continue
+            if "/category/" in parsed.path or parsed.path in ("", "/"):
                 continue
 
             title = ""
@@ -198,7 +207,7 @@ class WhereIsMyPornWebsite(BaseWebsite):
                 link = "https:" + link
             link = urllib.parse.urljoin(self.base_url, link)
             host = urllib.parse.urlparse(link).netloc.lower()
-            if not host or "whereismyporn.com" in host:
+            if not host or host in self.site_domains:
                 continue
             if any(ad_host in host for ad_host in ("willingcease", "doubleclick", "google")):
                 continue

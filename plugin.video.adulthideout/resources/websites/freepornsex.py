@@ -38,28 +38,33 @@ class FreePornSex(BaseWebsite):
         if not blocks:
             blocks = re.split(r'(?=<div\b[^>]+class=["\'][^"\']*(?:post|latestPost)[^"\']*["\'])', content or "", flags=re.I)
         for block in blocks:
-            link = re.search(r'<a\b[^>]*href=["\'](https?://www\.freepornsex\.net/[^"\']+/)["\']', block, re.I)
-            image = re.search(r'<img\b[^>]*src=["\']([^"\']+)["\'][^>]*(?:alt|title)=["\']([^"\']+)', block, re.I)
-            if not image:
-                image = re.search(r'<img\b[^>]*(?:alt|title)=["\']([^"\']+)["\'][^>]*src=["\']([^"\']+)', block, re.I)
-                if image:
-                    thumb, title = image.group(2), image.group(1)
-                else:
-                    continue
-            else:
-                thumb, title = image.group(1), image.group(2)
-            if not link:
+            title_link = re.search(
+                r'<h2\b[^>]*class=["\'][^"\']*\btitle\b[^"\']*["\'][^>]*>\s*'
+                r'<a\b[^>]*href=["\'](https?://www\.freepornsex\.net/[^"\']+/)["\']'
+                r'[^>]*(?:title=["\']([^"\']+)["\'])?[^>]*>([\s\S]*?)</a>',
+                block,
+                re.I,
+            )
+            if not title_link:
                 continue
-            url = html.unescape(link.group(1))
+            image = re.search(r'<img\b[^>]*\bsrc=["\']([^"\']+)["\']', block, re.I)
+            if not image:
+                continue
+            url = html.unescape(title_link.group(1))
             if url in seen or any(part in url for part in ("/page/", "/wp-", "/images/")):
                 continue
             seen.add(url)
-            clean_title = html.unescape(title).strip()
-            thumb = html.unescape(thumb)
+            clean_title = self._clean_title(title_link.group(2) or title_link.group(3))
+            thumb = html.unescape(image.group(1))
             if thumb.startswith("http") and "|" not in thumb:
                 thumb += "|" + urllib.parse.urlencode({"User-Agent": self.ua, "Referer": self.base_url})
             items.append((clean_title, url, thumb))
         return items
+
+    @staticmethod
+    def _clean_title(value):
+        value = re.sub(r"<[^>]+>", " ", value or "")
+        return re.sub(r"\s+", " ", html.unescape(value)).strip()
 
     def process_content(self, url, page=1):
         if not url or url == "BOOTSTRAP":

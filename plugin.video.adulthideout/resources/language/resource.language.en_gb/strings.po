@@ -924,3 +924,135 @@ msgstr "Choose enabled resolvers"
 msgctxt "#30820"
 msgid "Enabled resolvers"
 msgstr "Enabled resolvers"
+
+msgctxt "#30821"
+msgid "AdultHideout Diagnostics"
+msgstr "AdultHideout Diagnostics"
+
+msgctxt "#30822"
+msgid "Test this website"
+msgstr "Test this website"
+
+msgctxt "#30823"
+msgid "AdultHideout Diagnostics is not installed. Install it now?"
+msgstr "AdultHideout Diagnostics is not installed. Install it now?"
+
+msgctxt "#30824"
+msgid "Open diagnostics"
+msgstr "Open diagnostics"
+
+msgctxt "#30825"
+msgid "Enable PervClips"
+msgstr "Enable PervClips"
+
+msgctxt "#30826"
+msgid "Website Collections"
+msgstr "Website Collections"
+
+msgctxt "#30827"
+msgid "Add to Collection..."
+msgstr "Add to Collection..."
+
+msgctxt "#30828"
+msgid "New Collection"
+msgstr "New Collection"
+
+msgctxt "#30829"
+msgid "Enter Collection Name"
+msgstr "Enter Collection Name"
+
+msgctxt "#30831"
+msgid "Added to Collection"
+msgstr "Added to '{}'"
+
+msgctxt "#30832"
+msgid "Error"
+msgstr "Error"
+
+msgctxt "#30833"
+msgid "Delete"
+msgstr "Delete"
+
+msgctxt "#30834"
+msgid "Delete collection '{}' ?"
+msgstr "Delete collection '{}' ?"
+
+msgctxt "#30835"
+msgid "Remove from Collection"
+msgstr "Remove from Collection"
+
+msgctxt "#30836"
+msgid "Delete Collection"
+msgstr "Delete Collection"
+
+msgctxt "#30837"
+msgid "Collection already exists"
+msgstr "Collection already exists"
+
+msgctxt "#30838"
+msgid "Collection name cannot be empty"
+msgstr "Collection name cannot be empty"
+
+msgctxt "#30839"
+msgid "Favorites"
+msgstr "Favorites"
+
+msgctxt "#30840"
+msgid "My Top Sites"
+msgstr "My Top Sites"
+
+msgctxt "#30841"
+msgid "Skin Integration"
+msgstr "Skin Integration"
+
+msgctxt "#30842"
+msgid "Enable Website Collections"
+msgstr "Enable Website Collections"
+
+msgctxt "#30843"
+msgid "Manage Website Collections"
+msgstr "Manage Website Collections"
+
+msgctxt "#30844"
+msgid "Installing diagnostics..."
+msgstr "Installing diagnostics..."
+
+msgctxt "#30845"
+msgid "Installation failed. Install AdultHideout Diagnostics from the AdultHideout Repository."
+msgstr "Installation failed. Install AdultHideout Diagnostics from the AdultHideout Repository."
+
+msgctxt "#30672"
+msgid "AdultHideout cannot write to the configured download folder."
+msgstr "AdultHideout cannot write to the configured download folder."
+
+msgctxt "#30673"
+msgid "Download storage"
+msgstr "Download storage"
+
+msgctxt "#30674"
+msgid "Choose another folder"
+msgstr "Choose another folder"
+
+msgctxt "#30675"
+msgid "Use Kodi-safe storage"
+msgstr "Use Kodi-safe storage"
+
+msgctxt "#30676"
+msgid "Cancel"
+msgstr "Cancel"
+
+msgctxt "#30677"
+msgid "Kodi-safe download storage selected."
+msgstr "Kodi-safe download storage selected."
+
+msgctxt "#30678"
+msgid "Kodi cannot write to this folder. Choose another folder or use Kodi-safe storage."
+msgstr "Kodi cannot write to this folder. Choose another folder or use Kodi-safe storage."
+
+msgctxt "#30679"
+msgid "Could not refresh the download link: {}"
+msgstr "Could not refresh the download link: {}"
+
+msgctxt "#30680"
+msgid "Interrupted download queued for continuation."
+msgstr "Interrupted download queued for continuation."

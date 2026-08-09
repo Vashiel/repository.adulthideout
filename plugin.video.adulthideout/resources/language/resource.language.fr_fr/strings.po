@@ -923,3 +923,135 @@ msgstr "Choisir les résolveurs actifs"
 msgctxt "#30820"
 msgid "Enabled resolvers"
 msgstr "Résolveurs actifs"
+
+msgctxt "#30821"
+msgid "AdultHideout Diagnostics"
+msgstr "Diagnostic AdultHideout"
+
+msgctxt "#30822"
+msgid "Test this website"
+msgstr "Tester ce site"
+
+msgctxt "#30823"
+msgid "AdultHideout Diagnostics is not installed. Install it now?"
+msgstr "AdultHideout Diagnostics n'est pas installé. L'installer maintenant ?"
+
+msgctxt "#30824"
+msgid "Open diagnostics"
+msgstr "Ouvrir le diagnostic"
+
+msgctxt "#30825"
+msgid "Enable PervClips"
+msgstr "Activer PervClips"
+
+msgctxt "#30826"
+msgid "Website Collections"
+msgstr "Collections de sites web"
+
+msgctxt "#30827"
+msgid "Add to Collection..."
+msgstr "Ajouter à la collection..."
+
+msgctxt "#30828"
+msgid "New Collection"
+msgstr "Nouvelle collection"
+
+msgctxt "#30829"
+msgid "Enter Collection Name"
+msgstr "Saisir le nom de la collection"
+
+msgctxt "#30831"
+msgid "Added to Collection"
+msgstr "Ajouté à '{}'"
+
+msgctxt "#30832"
+msgid "Error"
+msgstr "Erreur"
+
+msgctxt "#30833"
+msgid "Delete"
+msgstr "Supprimer"
+
+msgctxt "#30834"
+msgid "Delete collection '{}' ?"
+msgstr "Supprimer la collection '{}' ?"
+
+msgctxt "#30835"
+msgid "Remove from Collection"
+msgstr "Retirer de la collection"
+
+msgctxt "#30836"
+msgid "Delete Collection"
+msgstr "Supprimer la collection"
+
+msgctxt "#30837"
+msgid "Collection already exists"
+msgstr "La collection existe déjà"
+
+msgctxt "#30838"
+msgid "Collection name cannot be empty"
+msgstr "Le nom de la collection ne peut pas être vide"
+
+msgctxt "#30839"
+msgid "Favorites"
+msgstr "Favoris"
+
+msgctxt "#30840"
+msgid "My Top Sites"
+msgstr "Mes sites préférés"
+
+msgctxt "#30841"
+msgid "Skin Integration"
+msgstr "Intégration du skin"
+
+msgctxt "#30842"
+msgid "Enable Website Collections"
+msgstr "Activer les collections de sites web"
+
+msgctxt "#30843"
+msgid "Manage Website Collections"
+msgstr "Gérer les collections de sites web"
+
+msgctxt "#30844"
+msgid "Installing diagnostics..."
+msgstr "Installation du diagnostic..."
+
+msgctxt "#30845"
+msgid "Installation failed. Install AdultHideout Diagnostics from the AdultHideout Repository."
+msgstr "Échec de l'installation. Installez AdultHideout Diagnostics depuis le dépôt AdultHideout."
+
+msgctxt "#30672"
+msgid "AdultHideout cannot write to the configured download folder."
+msgstr "AdultHideout ne peut pas écrire dans le dossier de téléchargement configuré."
+
+msgctxt "#30673"
+msgid "Download storage"
+msgstr "Stockage des téléchargements"
+
+msgctxt "#30674"
+msgid "Choose another folder"
+msgstr "Choisir un autre dossier"
+
+msgctxt "#30675"
+msgid "Use Kodi-safe storage"
+msgstr "Utiliser le stockage sécurisé de Kodi"
+
+msgctxt "#30676"
+msgid "Cancel"
+msgstr "Annuler"
+
+msgctxt "#30677"
+msgid "Kodi-safe download storage selected."
+msgstr "Le stockage sécurisé de Kodi a été sélectionné."
+
+msgctxt "#30678"
+msgid "Kodi cannot write to this folder. Choose another folder or use Kodi-safe storage."
+msgstr "Kodi ne peut pas écrire dans ce dossier. Choisissez un autre dossier ou utilisez le stockage sécurisé de Kodi."
+
+msgctxt "#30679"
+msgid "Could not refresh the download link: {}"
+msgstr "Impossible d'actualiser le lien de téléchargement : {}"
+
+msgctxt "#30680"
+msgid "Interrupted download queued for continuation."
+msgstr "Le téléchargement interrompu a été remis en file d'attente."

@@ -10,6 +10,8 @@
     <setting id="global_quality" type="enum" label="30769" lvalues="30770|30771|30772|30773|30774|30775" default="0" />
     <setting id="clear_cache" type="action" label="30013" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/clear_cache.py)" />
     <setting id="reset_settings" type="action" label="30014" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/reset_settings.py)" />
+    <setting type="lsep" label="30821" />
+    <setting id="open_adulthideout_diagnostics" type="action" label="30824" action="RunPlugin(plugin://plugin.video.adulthideout/?mode=1&amp;action=run_diagnostics)" />
   </category>
   <category label="30810">
     <setting id="resolver_preferred" type="select" label="30776" values="Default|Hglink|Dood|StreamTape|TurboPlayers|Vidhide|Voe|MixDrop|Lulu|VTube|Vidello|Netu|MyDaddy|88z|TubexPlayer|WatchStreamHD|Bigwarp|Vsonic" default="0" />
@@ -36,6 +38,8 @@
   <category label="30807">
     <setting type="lsep" label="[B]CrazyShit[/B]" />
     <setting id="show_crazyshit" type="bool" label="30809" default="false" />
+    <setting type="lsep" label="[B]PervClips[/B]" />
+    <setting id="show_pervclips" type="bool" label="30825" default="false" />
     <setting type="action" label="30812" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/site_options.py)" />
     <setting id="crazyshit_disclaimer_accepted" type="bool" default="false" visible="false" />
     <setting type="lsep" label="30802" />
@@ -76,6 +80,10 @@
     <setting id="ashemaletube_sort_by" type="enum" label="30101" values="Trending|Date Added|Most Popular|Top Rated|Longest" default="0" visible="false" />
     <setting id="ashemaletube_pornstar_sort_by" type="enum" label="30102" values="User Favorites|Alphabet|Top Rated|Date Added|Most Videos|Most Galleries|Most Comments" default="0" visible="false" />
     <setting id="bdsmstreak_sort_by" type="enum" label="30004" values="Newest|Popular" default="0" visible="false" />
+    <setting id="bdsmvilla_sort_by" type="enum" label="30004" values="Latest|Best" default="0" visible="false" />
+    <setting id="bondagevalley_sort_by" type="enum" label="30004" values="Latest|Trending|Top" default="0" visible="false" />
+    <setting id="fetishpapa_sort_by" type="enum" label="30004" values="Latest|Most Popular|Top Rated|Longest" default="0" visible="false" />
+    <setting id="fetishshrine_sort_by" type="enum" label="30004" values="Latest|Most Popular|Top Rated|Longest" default="0" visible="false" />
     <setting id="beeg_sort_by" type="enum" label="30004" values="Newest|Popular|Top Rated" default="0" visible="false" />
     <setting id="camcaps_sort_by" type="enum" label="30004" values="Most Recent|Featured|Most Viewed|Top Rated|Top Favorites|Being Watched" default="0" visible="false" />
     <setting id="camgirlfap_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
@@ -212,6 +220,15 @@
     <setting id="xozilla_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated|Longest" default="0" visible="false" />
     <setting id="xxthots_sort_by" type="enum" label="30004" values="Latest|Top Rated|Most Viewed" default="0" visible="false" />
     <setting id="xxxtube_sort_by" type="enum" label="30004" values="Latest|Top Rated" default="0" visible="false" />
+    <setting id="amateur8_sort_by" type="enum" label="30004" values="Latest|Most Popular|Top Rated|Longest" default="0" visible="false" />
+    <setting id="analegg_sort_by" type="enum" label="30004" values="Latest|Most Popular|Top Rated|Longest" default="0" visible="false" />
+    <setting id="goperv_sort_by" type="enum" label="30004" values="Latest|Popular" default="0" visible="false" />
+    <setting id="hairydivas_sort_by" type="enum" label="30004" values="Latest|Popular" default="0" visible="false" />
+    <setting id="eroprofile_sort_by" type="enum" label="30004" values="Latest|Popular" default="0" visible="false" />
+    <setting id="ruleporn_sort_by" type="enum" label="30004" values="Latest|Most Popular|Top Rated" default="0" visible="false" />
+    <setting id="watchmygf_sort_by" type="enum" label="30004" values="Latest|Popular|Popular This Month|Longest" default="0" visible="false" />
+    <setting id="xoxporn_sort_by" type="enum" label="30004" values="Most Recent|Most Viewed|Best Rated" default="0" visible="false" />
+    <setting id="youramateurporn_sort_by" type="enum" label="30004" values="Latest|Top Rated|Most Viewed|Longest" default="0" visible="false" />
     <setting id="drtuber_content_type" type="text" default="straight" visible="false" />
     <setting id="drtuber_sort" type="text" default="newest" visible="false" />
     <setting id="drtuber_quality" type="text" default="all" visible="false" />
@@ -310,5 +327,9 @@
     <setting id="jdownloader_url" type="text" label="30666" default="http://127.0.0.1:9666" />
     <setting id="enable_ffmpeg_recorder" type="bool" default="false" visible="false" />
     <setting id="ffmpeg_download_folder" type="folder" default="" visible="false" />
+  </category>
+  <category label="30841">
+    <setting id="enable_website_collections" type="bool" label="30842" default="false" />
+    <setting type="action" label="30843" action="ActivateWindow(Videos,plugin://plugin.video.adulthideout/?mode=70&amp;action=collections_menu,return)" enable="eq(-1,true)" />
   </category>
 </settings>

@@ -1,0 +1,138 @@
+# Kodi Media Center language file
+msgid ""
+msgstr ""
+"Project-Id-Version: AdultHideout Diagnostics\n"
+"Language: de_DE\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgctxt "#30000"
+msgid "AdultHideout Diagnostics"
+msgstr "AdultHideout-Diagnose"
+
+msgctxt "#30001"
+msgid "Smart check all websites"
+msgstr "Alle Websites intelligent prüfen"
+
+msgctxt "#30002"
+msgid "Full playback check"
+msgstr "Vollständiger Wiedergabetest"
+
+msgctxt "#30003"
+msgid "Select websites"
+msgstr "Websites auswählen"
+
+msgctxt "#30004"
+msgid "Retest failed"
+msgstr "Fehler erneut testen"
+
+msgctxt "#30005"
+msgid "Previous reports"
+msgstr "Frühere Berichte"
+
+msgctxt "#30006"
+msgid "Export latest report"
+msgstr "Neuesten Bericht exportieren"
+
+msgctxt "#30007"
+msgid "Quick listing check all websites"
+msgstr "Alle Website-Listen schnell prüfen"
+
+msgctxt "#30020"
+msgid "Total"
+msgstr "Gesamt"
+
+msgctxt "#30021"
+msgid "Passed"
+msgstr "Bestanden"
+
+msgctxt "#30022"
+msgid "Warnings"
+msgstr "Warnungen"
+
+msgctxt "#30023"
+msgid "Failed"
+msgstr "Fehlgeschlagen"
+
+msgctxt "#30024"
+msgid "Timeouts"
+msgstr "Zeitüberschreitungen"
+
+msgctxt "#30025"
+msgid "Problems"
+msgstr "Probleme"
+
+msgctxt "#30026"
+msgid "Report"
+msgstr "Bericht"
+
+msgctxt "#30027"
+msgid "No websites selected"
+msgstr "Keine Websites ausgewählt"
+
+msgctxt "#30028"
+msgid "Stop current playback before starting diagnostics."
+msgstr "Beende die aktuelle Wiedergabe, bevor du die Diagnose startest."
+
+msgctxt "#30029"
+msgid "Preparing tests..."
+msgstr "Tests werden vorbereitet..."
+
+msgctxt "#30030"
+msgid "Writing report..."
+msgstr "Bericht wird geschrieben..."
+
+msgctxt "#30031"
+msgid "No reports available"
+msgstr "Keine Berichte vorhanden"
+
+msgctxt "#30032"
+msgid "Choose export folder"
+msgstr "Exportordner auswählen"
+
+msgctxt "#30033"
+msgid "Report exported"
+msgstr "Bericht exportiert"
+
+msgctxt "#30034"
+msgid "The report could not be exported."
+msgstr "Der Bericht konnte nicht exportiert werden."
+
+msgctxt "#30035"
+msgid "The latest report has no failed websites."
+msgstr "Der neueste Bericht enthält keine fehlgeschlagenen Websites."
+
+msgctxt "#30036"
+msgid "Test mode"
+msgstr "Testmodus"
+
+msgctxt "#30037"
+msgid "This test visibly plays and seeks one video per website and may take several hours."
+msgstr "Dieser Test spielt pro Website sichtbar ein Video ab, führt einen Seek aus und kann mehrere Stunden dauern."
+
+msgctxt "#30038"
+msgid "This test checks every website listing and first thumbnail and may take some time."
+msgstr "Dieser Test prüft die Auflistung und das erste Vorschaubild jeder Website und kann einige Zeit dauern."
+
+msgctxt "#30039"
+msgid "AdultHideout is not installed."
+msgstr "AdultHideout ist nicht installiert."
+
+msgctxt "#30040"
+msgid "Unknown website"
+msgstr "Unbekannte Website"
+
+msgctxt "#30041"
+msgid "Known external outages"
+msgstr "Bekannte externe Ausfälle"
+
+msgctxt "#30042"
+msgid "Fast screening..."
+msgstr "Schnelle Vorprüfung..."
+
+msgctxt "#30043"
+msgid "Detailed check"
+msgstr "Detailprüfung"
+
+msgctxt "#30044"
+msgid "Runs a fast screen first, then inspects useful folders only for suspicious websites."
+msgstr "Prüft zuerst alle Websites schnell und untersucht nur bei Auffälligkeiten geeignete Unterordner."

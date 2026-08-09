@@ -168,6 +168,8 @@ class JAVRate(BaseWebsite):
             "url": stream_url,
             "headers": self._headers(iframe_url, accept="*/*"),
             "extension": "m3u8",
+            "hls_proxy": True,
+            "preserve_query": True,
         }
 
     def play_video(self, url):

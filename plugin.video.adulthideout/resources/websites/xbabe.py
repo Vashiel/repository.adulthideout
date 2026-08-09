@@ -36,6 +36,10 @@ class XBabe(BaseWebsite):
         self._scraper = cloudscraper.create_scraper(
             browser={"browser": "chrome", "platform": "windows", "mobile": False}
         )
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Referer": "https://xbabe.com/"
+        }
 
     def make_request(self, url):
         try:
@@ -89,13 +93,16 @@ class XBabe(BaseWebsite):
             thumb = thumb.strip()
             if thumb.startswith("//"):
                 thumb = "https:" + thumb
+            elif not thumb.startswith("http"):
+                thumb = urllib.parse.urljoin(self.base_url, thumb)
 
             info = {"title": title, "plot": title}
             duration_seconds = self.convert_duration(duration.strip())
             if duration_seconds:
                 info["duration"] = duration_seconds
 
-            self.add_link(title, video_url, 4, thumb, self.fanart, info_labels=info)
+            thumb_url = thumb + "|User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36&Referer=https://xbabe.com/"
+            self.add_link(title, video_url, 4, thumb_url, self.fanart, info_labels=info)
 
         next_match = re.search(
             r'<a href="([^"]+)" class="next">Next',

@@ -1,0 +1,134 @@
+# Kodi Media Center language file
+msgid ""
+msgstr ""
+"Project-Id-Version: AdultHideout\n"
+"Language: it_IT\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgctxt "#30821"
+msgid "AdultHideout Diagnostics"
+msgstr "Diagnostica AdultHideout"
+
+msgctxt "#30823"
+msgid "AdultHideout Diagnostics is not installed. Install it now?"
+msgstr "AdultHideout Diagnostics non è installato. Installarlo ora?"
+
+msgctxt "#30824"
+msgid "Open diagnostics"
+msgstr "Apri diagnostica"
+
+msgctxt "#30825"
+msgid "Enable PervClips"
+msgstr "Abilita PervClips"
+
+msgctxt "#30826"
+msgid "Website Collections"
+msgstr "Raccolte di siti web"
+
+msgctxt "#30827"
+msgid "Add to Collection..."
+msgstr "Aggiungi alla raccolta..."
+
+msgctxt "#30828"
+msgid "New Collection"
+msgstr "Nuova raccolta"
+
+msgctxt "#30829"
+msgid "Enter Collection Name"
+msgstr "Inserisci il nome della raccolta"
+
+msgctxt "#30831"
+msgid "Added to Collection"
+msgstr "Aggiunto a '{}'"
+
+msgctxt "#30832"
+msgid "Error"
+msgstr "Errore"
+
+msgctxt "#30833"
+msgid "Delete"
+msgstr "Elimina"
+
+msgctxt "#30834"
+msgid "Delete collection '{}' ?"
+msgstr "Eliminare la raccolta '{}'?"
+
+msgctxt "#30835"
+msgid "Remove from Collection"
+msgstr "Rimuovi dalla raccolta"
+
+msgctxt "#30836"
+msgid "Delete Collection"
+msgstr "Elimina raccolta"
+
+msgctxt "#30837"
+msgid "Collection already exists"
+msgstr "La raccolta esiste già"
+
+msgctxt "#30838"
+msgid "Collection name cannot be empty"
+msgstr "Il nome della raccolta non può essere vuoto"
+
+msgctxt "#30839"
+msgid "Favorites"
+msgstr "Preferiti"
+
+msgctxt "#30840"
+msgid "My Top Sites"
+msgstr "I miei siti preferiti"
+
+msgctxt "#30841"
+msgid "Skin Integration"
+msgstr "Integrazione skin"
+
+msgctxt "#30842"
+msgid "Enable Website Collections"
+msgstr "Abilita raccolte di siti web"
+
+msgctxt "#30843"
+msgid "Manage Website Collections"
+msgstr "Gestisci raccolte di siti web"
+
+msgctxt "#30844"
+msgid "Installing diagnostics..."
+msgstr "Installazione della diagnostica..."
+
+msgctxt "#30845"
+msgid "Installation failed. Install AdultHideout Diagnostics from the AdultHideout Repository."
+msgstr "Installazione non riuscita. Installa AdultHideout Diagnostics dal repository AdultHideout."
+
+msgctxt "#30672"
+msgid "AdultHideout cannot write to the configured download folder."
+msgstr "AdultHideout non può scrivere nella cartella di download configurata."
+
+msgctxt "#30673"
+msgid "Download storage"
+msgstr "Archivio dei download"
+
+msgctxt "#30674"
+msgid "Choose another folder"
+msgstr "Scegli un'altra cartella"
+
+msgctxt "#30675"
+msgid "Use Kodi-safe storage"
+msgstr "Usa l'archivio sicuro di Kodi"
+
+msgctxt "#30676"
+msgid "Cancel"
+msgstr "Annulla"
+
+msgctxt "#30677"
+msgid "Kodi-safe download storage selected."
+msgstr "È stato selezionato l'archivio sicuro di Kodi."
+
+msgctxt "#30678"
+msgid "Kodi cannot write to this folder. Choose another folder or use Kodi-safe storage."
+msgstr "Kodi non può scrivere in questa cartella. Scegli un'altra cartella o usa l'archivio sicuro di Kodi."
+
+msgctxt "#30679"
+msgid "Could not refresh the download link: {}"
+msgstr "Impossibile aggiornare il link di download: {}"
+
+msgctxt "#30680"
+msgid "Interrupted download queued for continuation."
+msgstr "Il download interrotto è stato rimesso in coda per continuare."

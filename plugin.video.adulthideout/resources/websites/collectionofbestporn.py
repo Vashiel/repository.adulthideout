@@ -23,7 +23,7 @@ class CollectionOfBestPorn(BaseWebsite):
             addon=addon,
         )
         self.label = "CollectionOfBestPorn"
-        self.disabled = True
+        self.disabled = False
         self.ua = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         self.session = requests.Session()
@@ -55,6 +55,8 @@ class CollectionOfBestPorn(BaseWebsite):
             if response.status_code == 200:
                 return response.text
             self.logger.warning("CollectionOfBestPorn HTTP %s for %s", response.status_code, url)
+            if response.status_code >= 500:
+                return ""
         except Exception as exc:
             self.logger.warning("CollectionOfBestPorn request failed for %s: %s", url, exc)
             self.session = requests.Session()

@@ -116,32 +116,96 @@ class WordPressApiTube(BaseWebsite):
             })
         return items
 
+    def _html_listing_url(self, url, page):
+        parsed = urllib.parse.urlparse(url or self.base_url)
+        query = urllib.parse.parse_qs(parsed.query)
+        source = (query.get("ah_source") or [""])[0]
+        target = urllib.parse.urlparse(source or url or self.base_url)
+        target_query = urllib.parse.parse_qs(target.query)
+        for internal_key in ("ah_category", "ah_tag", "ah_source"):
+            target_query.pop(internal_key, None)
+        path = re.sub(r"/page/\d+/?$", "/", target.path or "/")
+        if page > 1:
+            path = path.rstrip("/") + "/page/{}/".format(page)
+        return urllib.parse.urlunparse(target._replace(
+            path=path,
+            query=urllib.parse.urlencode(target_query, doseq=True),
+        ))
+
+    def _html_video_items(self, url, page):
+        page_html = self._get(self._html_listing_url(url, page), referer=self.base_url)
+        items = []
+        seen = set()
+        for block in re.findall(
+            r'<article\b[^>]+class=["\'][^"\']*loop-video[^"\']*["\'][^>]*>([\s\S]*?)</article>',
+            page_html or "", re.IGNORECASE,
+        ):
+            link = re.search(
+                r'<a\b[^>]+href=["\']([^"\']+)["\'][^>]*(?:title=["\']([^"\']*)["\'])?',
+                block, re.IGNORECASE,
+            )
+            if not link:
+                continue
+            video_url = self._absolute(link.group(1))
+            if not video_url or video_url in seen:
+                continue
+            title = self._clean(link.group(2))
+            image = re.search(
+                r'<img\b[^>]+(?:data-src|src)=["\']([^"\']+)', block, re.IGNORECASE,
+            )
+            if not title and image:
+                image_tag = re.search(r'<img\b[^>]*>', block, re.IGNORECASE)
+                alt = re.search(r'\balt=["\']([^"\']+)', image_tag.group(0), re.IGNORECASE) if image_tag else None
+                title = self._clean(alt.group(1)) if alt else ""
+            if not title:
+                continue
+            seen.add(video_url)
+            thumb = self._absolute(image.group(1)) if image else self.icon
+            items.append({
+                "title": title,
+                "url": video_url,
+                "thumb": thumb,
+                "info": {"title": title, "plot": title},
+            })
+        next_page = page + 1
+        has_next = bool(re.search(
+            r'href=["\'][^"\']*/page/{}/'.format(next_page),
+            page_html or "", re.IGNORECASE,
+        ))
+        return items, has_next
+
     def process_content(self, url, page=1):
         url = self.base_url if not url or url == "BOOTSTRAP" else url
-        posts, headers = self._get_json(self._post_api_url(url, page), referer=self.base_url)
-        if posts is None:
-            self.notify_error("Could not load {} content".format(self.label))
-            self.end_directory("videos")
-            return
-
         if self.is_primary_listing_url(url):
             self.add_dir("Search", "", 5, self.icons.get("search", self.icon))
             self.add_dir("Categories", "WP_CATEGORIES", 8, self.icons.get("categories", self.icon))
             if getattr(self, "show_pornstars", False):
                 self.add_dir("Pornstars", "WP_TAGS", 9, self.icons.get("pornstars", self.icon))
 
-        items = self._video_items(posts)
+        posts, headers = self._get_json(self._post_api_url(url, page), referer=self.base_url)
+        has_next = False
+        if isinstance(posts, list):
+            items = self._video_items(posts)
+            try:
+                total_pages = int(headers.get("X-WP-TotalPages") or 0)
+            except (TypeError, ValueError):
+                total_pages = 0
+            has_next = bool(items and page < total_pages)
+        else:
+            items, has_next = self._html_video_items(url, page)
+
+        if not items:
+            self.notify_error("Could not load {} content".format(self.label))
+            self.end_directory("videos")
+            return
+
         for item in items:
             self.add_link(
                 item["title"], item["url"], 4, item["thumb"], self.fanart,
                 info_labels=item["info"],
             )
 
-        try:
-            total_pages = int(headers.get("X-WP-TotalPages") or 0)
-        except (TypeError, ValueError):
-            total_pages = 0
-        if items and page < total_pages:
+        if has_next:
             self.add_dir("Next Page", url, 2, self.icons.get("default", self.icon), page=page + 1)
         self.end_directory("videos")
 

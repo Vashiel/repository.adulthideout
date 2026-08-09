@@ -75,6 +75,7 @@ RESOLVERS = [
         "hosts": (
             "dood", "dooood", "dsvplay", "myvidplay", "playmogo.com",
             "dood.stream", "dood.li", "doodstream.link", "doodstream.co",
+            "d000d.com", "d0000d.com", "d0o0d.com", "do0od.com",
         ),
     },
     {

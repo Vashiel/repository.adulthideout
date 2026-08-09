@@ -72,6 +72,7 @@ class Pornktube(BaseWebsite):
             logger=self.logger,
             timeout=20,
             use_windows_curl_fallback=True,
+            prefer_ipv4=True,
         )
         if not content:
             self.notify_error("Failed to fetch URL")

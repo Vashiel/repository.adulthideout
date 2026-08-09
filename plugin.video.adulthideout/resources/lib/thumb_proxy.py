@@ -2,6 +2,7 @@
 """Small local proxy for protected thumbnail requests."""
 
 import os
+import io
 import queue
 import re
 import sys
@@ -13,6 +14,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import xbmc
 import xbmcgui
 import xbmcvfs
+
+from resources.lib.resilient_http import _ipv4_call
 
 
 PORT_PROPERTY = "AdultHideout.ThumbProxyPort"
@@ -40,16 +43,32 @@ ALLOWED_HOSTS = frozenset((
     "www.tickle.porn",
     "giantess.porn",
     "www.giantess.porn",
+    "c8611bde84.mjedge.net",
+    "www.amateur8.com",
+    "www.analegg.com",
+    "thumbs.hqmediago.com",
+    "static.hqmediago.com",
+    "icdn05.hairydivas.com",
+    "swingerpornfun.com",
+    "www.swingerpornfun.com",
+    "i0.wp.com",
 ))
 ALLOWED_PATH_PREFIXES = (
     "/_",
+    "/thumbnail/",
     "/contents/videos_screenshots/",
     "/avatar/",
     "/posts/",
     "/timthumb/",
     "/uploads/",
     "/wp-content/uploads/",
+    "/contents/categories/",
+    "/swingerpornfun.com/",
 )
+UNRESTRICTED_PATH_HOSTS = frozenset((
+    "thumbs.hqmediago.com",
+    "icdn05.hairydivas.com",
+))
 SESSION_COUNT = 4
 
 _vendor = os.path.join(os.path.dirname(__file__), "vendor")
@@ -118,7 +137,10 @@ def _valid_image_url(url):
     try:
         parsed = urllib.parse.urlsplit(url)
         hostname = (parsed.hostname or "").lower()
-        valid_path = parsed.path.startswith(ALLOWED_PATH_PREFIXES)
+        valid_path = (
+            hostname in UNRESTRICTED_PATH_HOSTS
+            or parsed.path.startswith(ALLOWED_PATH_PREFIXES)
+        )
         return (
             parsed.scheme == "https"
             and hostname in ALLOWED_HOSTS
@@ -148,12 +170,28 @@ def _valid_loadvid_segment(url):
 
 
 def _normalize_image(upstream, content_type):
-    """Correct a CDN MIME lie so Kodi selects its WebP decoder."""
+    """Return a Kodi-friendly image, converting disguised WebP in memory."""
     body = upstream.content
     is_mislabeled_webp = (
         content_type == "image/jpeg" and body.startswith(b"RIFF") and b"WEBP" in body[:16]
     )
-    return body, "image/webp" if is_mislabeled_webp else content_type
+    if not is_mislabeled_webp:
+        return body, content_type
+    try:
+        from PIL import Image, features
+
+        if not features.check("webp"):
+            return body, "image/webp"
+
+        source = io.BytesIO(body)
+        target = io.BytesIO()
+        with Image.open(source) as image:
+            image.convert("RGB").save(target, format="JPEG", quality=88)
+        return target.getvalue(), "image/jpeg"
+    except Exception:
+        # Android builds normally decode WebP directly; keep that fallback when
+        # Pillow is not part of the platform Python runtime.
+        return body, "image/webp"
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -189,6 +227,7 @@ class _Handler(BaseHTTPRequestHandler):
             self.send_error(400)
             return
         referer = params.get("r") or "https://www.85po.com/"
+        prefer_ipv4 = (urllib.parse.urlsplit(url).hostname or "").lower() == "i.pornktube.com"
 
         try:
             session = self.session_pool.get(timeout=5)
@@ -205,14 +244,16 @@ class _Handler(BaseHTTPRequestHandler):
             "Accept-Encoding": "identity",
         }
         try:
-            upstream = session.get(url, headers=headers, timeout=(5, 15))
+            request = lambda: session.get(url, headers=headers, timeout=(5, 15))
+            upstream = _ipv4_call(request) if prefer_ipv4 else request()
             content_type = upstream.headers.get("Content-Type", "").split(";", 1)[0].lower()
             if upstream.status_code != 200 or not content_type.startswith("image/"):
                 # CDN gated by the domain-wide cf_clearance cookie: obtain it once
                 # (serialized + shared across sessions), then retry the image.
                 upstream.close()
                 _ensure_clearance(session, referer)
-                upstream = session.get(url, headers=headers, timeout=(5, 15))
+                request = lambda: session.get(url, headers=headers, timeout=(5, 15))
+                upstream = _ipv4_call(request) if prefer_ipv4 else request()
                 content_type = upstream.headers.get("Content-Type", "").split(";", 1)[0].lower()
             with upstream:
                 if upstream.status_code != 200 or not content_type.startswith("image/"):

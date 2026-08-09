@@ -28,6 +28,17 @@ DEFAULT_SOURCES = [
     "yespornvip",
 ]
 
+SKIN_SEARCH_SOURCES = [
+    "eporner",
+    "pornhub",
+    "xvideos",
+    "xnxx",
+    "spankbang",
+    "tnaflix",
+    "hclips",
+    "txxx",
+]
+
 BROAD_RELIABLE_SOURCES = [
     "3movs", "allowflash", "area51", "ashemaletube", "avjoy",
     "blackporn24", "blowjobspro", "boundhub", "bravoporn", "camgirlfap",
@@ -354,6 +365,8 @@ class GlobalSearch:
         hidden = {str(value) for value in values if value}
         if self.addon.getSetting("show_crazyshit") != "true":
             hidden.add("crazyshit")
+        if self.addon.getSetting("show_pervclips") != "true":
+            hidden.add("pervclips")
         return hidden
 
     def _available_sources(self):
@@ -404,6 +417,8 @@ class GlobalSearch:
     def _search_mode_label(self, search_mode):
         if search_mode == "deep":
             return "Search All Sites"
+        if search_mode == "skin":
+            return "AdultHideout Search"
         return "Global Search"
 
     def _sources_for_search(self, query, search_mode):
@@ -411,6 +426,9 @@ class GlobalSearch:
         selected = self._selected_sources()
         if search_mode == "deep":
             return available
+        if search_mode == "skin":
+            available_set = set(available)
+            return [name for name in SKIN_SEARCH_SOURCES if name in available_set]
         return selected
 
     def _add_dir(self, label, action, icon=None, **params):
@@ -863,17 +881,18 @@ class GlobalSearch:
         start = (page - 1) * RESULTS_PER_PAGE
         end = start + RESULTS_PER_PAGE
 
-        self._add_refresh_item(query, page, search_mode=search_mode)
-        self._add_dir("{} [COLOR grey]{}[/COLOR]".format(
-            self.addon.getLocalizedString(30759) or "Filter & Sort Results", total
-        ), "configure_results", self.search_icon, query=query, search_mode=search_mode)
-        self._add_dir(self.addon.getLocalizedString(30732) or "Select multiple videos for Vault", "select_page_to_vault", self.search_icon,
-                      query=query, page=page, search_mode=search_mode)
-        if page > 1:
+        if search_mode != "skin":
+            self._add_refresh_item(query, page, search_mode=search_mode)
+            self._add_dir("{} [COLOR grey]{}[/COLOR]".format(
+                self.addon.getLocalizedString(30759) or "Filter & Sort Results", total
+            ), "configure_results", self.search_icon, query=query, search_mode=search_mode)
+            self._add_dir(self.addon.getLocalizedString(30732) or "Select multiple videos for Vault", "select_page_to_vault", self.search_icon,
+                          query=query, page=page, search_mode=search_mode)
+        if page > 1 and search_mode != "skin":
             self._add_page_item(query, page - 1, "[COLOR cyan]Previous Page[/COLOR] ({}/{})".format(page - 1, pages), search_mode=search_mode)
         for result in results[start:end]:
             self._add_cached_result(result)
-        if end < total:
+        if end < total and search_mode != "skin":
             self._add_page_item(query, page + 1, "[COLOR cyan]Next Page[/COLOR] ({}/{})".format(page + 1, pages), search_mode=search_mode)
         end_directory_with_view(self.addon_handle, self.addon)
 

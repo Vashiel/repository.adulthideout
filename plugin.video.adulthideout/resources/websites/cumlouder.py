@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import re
 import urllib.parse
@@ -18,6 +20,7 @@ except Exception:
     pass
 
 import cloudscraper
+
 
 class CumLouder(BaseWebsite):
     
@@ -40,14 +43,14 @@ class CumLouder(BaseWebsite):
         # Sorting Options
         self.sort_options = ["Newest", "Most Viewed"]
         self.sort_paths = {
-            "Newest": "/series/newest/?orderBy=n",
-            "Most Viewed": "/series/newest/?orderBy=v"
+            "Newest": "/porn-videos/?orderBy=n",
+            "Most Viewed": "/porn-videos/?orderBy=v"
         }
 
     def make_request(self, url):
         try:
             self.logger.info(f"Requesting: {url}")
-            response = self.scraper.get(url, timeout=15)
+            response = self.scraper.get(url, timeout=10)
             if response.status_code == 200:
                 return response.text
             else:
@@ -59,7 +62,6 @@ class CumLouder(BaseWebsite):
 
     def get_listing(self, url, html_content=None):
         if url == "BOOTSTRAP":
-            # get_start_url_and_label already handles sorting, but as fallback:
             url, _ = self.get_start_url_and_label()
 
         if html_content is None:
@@ -68,143 +70,76 @@ class CumLouder(BaseWebsite):
             return []
 
         videos = []
-        # Item pattern: <a class="muestra-escena" href="...">...<img ... data-src="..." ... alt="...">
-        item_pattern = r'<a[^>]*class="muestra-escena"[^>]*href="([^"]+)"[^>]*>.*?<img[^>]*data-src="([^"]+)"[^>]*alt="([^"]+)"'
-        
-        items = re.findall(item_pattern, html_content, re.DOTALL)
-        
-        for link, thumb, title in items:
-            if link.startswith('/'):
-                link = self.base_url + link
-                
-            if thumb.startswith('//'):
-                thumb = "https:" + thumb
-                
-            videos.append({
-                "title": html.unescape(title.strip()),
-                "url": link,
-                "thumb": thumb,
-                "duration": ""
-            })
+        pattern = re.compile(
+            r'<a\s+[^>]*href=["\'](https?://www\.cumlouder\.com/porn-video/[^"\']+|/porn-video/[^"\']+)["\'][^>]*>([\s\S]*?)</a>',
+            re.IGNORECASE
+        )
+        seen = set()
+        for match in pattern.finditer(html_content):
+            video_url = urllib.parse.urljoin(self.base_url, html.unescape(match.group(1)))
+            if video_url in seen:
+                continue
+            seen.add(video_url)
 
-        # Pagination
-        next_match = re.search(r'<a[^>]*class="btn-pagination"[^>]*href="([^"]+)"[^>]*>Next »</a>', html_content)
-        if next_match:
-            next_url = next_match.group(1)
-            if next_url.startswith('/'):
-                next_url = self.base_url + next_url
-            
-            videos.append({
-                "title": "Next Page >>",
-                "url": next_url,
-                "thumb": self.icons['default'],
-                "type": "next_page"
-            })
+            block = match.group(2)
+            img_match = re.search(r'<img\s+[^>]*src=["\']([^"\']+)["\']', block, re.IGNORECASE)
+            if not img_match:
+                img_match = re.search(r'<img\s+[^>]*data-src=["\']([^"\']+)["\']', block, re.IGNORECASE)
+            thumb = img_match.group(1) if img_match else self.icons['default']
 
-        self.logger.info(f"Found {len(videos)} videos")
+            title_match = re.search(r'alt=["\']([^"\']+)["\']', block, re.IGNORECASE)
+            if not title_match:
+                title_match = re.search(r'<h[1-6][^>]*>(.*?)</h[1-6]>', block, re.IGNORECASE | re.DOTALL)
+            title = html.unescape(title_match.group(1)).strip() if title_match else "CumLouder Video"
+
+            duration_match = re.search(r'class=["\']duration["\'][^>]*>(.*?)</span>', block, re.IGNORECASE | re.DOTALL)
+            duration = duration_match.group(1).strip() if duration_match else ""
+
+            label = f"{title} [COLOR lime]({duration})[/COLOR]" if duration else title
+            videos.append({"label": label, "url": video_url, "thumb": thumb, "info": {"title": title, "plot": title}})
         return videos
 
-    def get_categories(self):
-        url = self.base_url + "/categories/"
+    def process_content(self, url, page=1):
+        if not url or url == "BOOTSTRAP":
+            url, _ = self.get_start_url_and_label()
+
+        if url == "SEARCH_MENU":
+            self.add_dir("New Search", "SEARCH_EXEC", 5, self.icons['search'])
+            self.end_directory()
+            return
+
         html_content = self.make_request(url)
         if not html_content:
-            return []
+            self.notify_error("Failed to load page")
+            self.end_directory()
+            return
 
-        cats = []
-        # Pattern for categories based on HTML dump
-        cat_pattern = r'<a[^>]*class="[^"]*muestra-categoria[^"]*"[^>]*href="([^"]+)"[^>]*>.*?<img[^>]*data-src="([^"]+)"[^>]*alt="([^"]+)"'
-        
-        items = re.findall(cat_pattern, html_content, re.DOTALL)
-        for link, thumb, title in items:
-            if link.startswith('/'):
-                link = self.base_url + link
-            if thumb.startswith('//'):
-                thumb = "https:" + thumb
-                
-            cats.append({
-                "title": html.unescape(title.strip()),
-                "url": link,
-                "thumb": thumb
-            })
-            
-        return cats
+        videos = self.get_listing(url, html_content=html_content)
+        for v in videos:
+            self.add_link(v['label'], v['url'], 4, v['thumb'], self.fanart, info_tag=v['info'])
 
-    def resolve(self, url):
-        html_content = self.make_request(url)
-        if not html_content:
-            return None, None
-            
-        # Extract video URL
-        # var urlVideo = "https://...";
-        match = re.search(r"var\s+urlVideo\s*=\s*['\"]([^'\"]+)['\"]", html_content)
-        if match:
-            return match.group(1), url
-        return None, None
+        next_page_match = re.search(r'<a\s+[^>]*href=["\']([^"\']+)["\'][^>]*>Next\s*&raquo;</a>', html_content, re.IGNORECASE)
+        if next_page_match:
+            next_url = urllib.parse.urljoin(self.base_url, html.unescape(next_page_match.group(1)))
+            self.add_dir("Next Page >>", next_url, 2, self.icons['default'])
+
+        self.end_directory()
 
     def play_video(self, url):
-        resolved_url, referer = self.resolve(url)
-        if resolved_url:
-            ua = self.scraper.headers.get('User-Agent', '')
-            final_url = resolved_url + f"|User-Agent={urllib.parse.quote(ua)}&Referer={urllib.parse.quote(referer)}"
-            
-            li = xbmcgui.ListItem(path=final_url)
-            li.setMimeType('video/mp4')
-            li.setProperty('IsPlayable', 'true')
-            xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+        html_content = self.make_request(url)
+        if not html_content:
+            self.notify_error("Failed to load video page")
+            return
+
+        video_match = re.search(r'<source\s+[^>]*src=["\']([^"\']+)["\']', html_content, re.IGNORECASE)
+        if not video_match:
+            video_match = re.search(r'file:\s*["\']([^"\']+)["\']', html_content, re.IGNORECASE)
+
+        if video_match:
+            stream_url = html.unescape(video_match.group(1))
+            item = xbmcgui.ListItem(path=stream_url)
+            item.setProperty('IsPlayable', 'true')
+            item.setMimeType('video/mp4')
+            xbmcplugin.setResolvedUrl(self.addon_handle, True, item)
         else:
-            xbmcgui.Dialog().notification('AdultHideout', 'Could not resolve video URL', xbmcgui.NOTIFICATION_ERROR, 3000)
-            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
-
-    def search(self, query):
-        if not query:
-            return
-        tag_slug = urllib.parse.quote(query.lower().strip().replace(' ', '-'))
-        tag_url = f"{self.base_url}/tag/{tag_slug}/"
-        html_content = self.make_request(tag_url)
-        if html_content and 'muestra-escena' in html_content:
-            self.process_content(tag_url, html_content=html_content)
-            return
-
-        cats = self.get_categories()
-        query_lower = query.lower()
-        matched_cats = [c for c in cats if query_lower in c['title'].lower()]
-        if matched_cats:
-            for cat in matched_cats:
-                self.add_dir(cat['title'], cat['url'], 2, cat['thumb'])
-            self.end_directory("videos")
-            return
-
-        self.notify_error(f"No results for: {query}")
-        self.end_directory("videos")
-
-    def process_content(self, url, html_content=None):
-        # 1. Main Categories Page: No Search/Categories buttons
-        if url == "categories":
-            cats = self.get_categories()
-            for cat in cats:
-                self.add_dir(cat['title'], cat['url'], 2, cat['thumb'])
-            self.end_directory("videos")
-            return
-
-        # 2. All other pages: Show Search and Categories (except on sub-categories if those were to exist)
-        videos = self.get_listing(url, html_content=html_content)
-        
-        # Add navigation on every page (except categories handled above)
-        self.add_dir("Search", "", 5, self.icons['search'])
-        self.add_dir("Categories", "categories", 2, self.icons['categories'])
-
-        for v in videos:
-            if v.get('type') == 'next_page':
-                self.add_dir(v['title'], v['url'], 2, v.get('thumb', self.icons['default']))
-            else:
-                self.add_link(
-                    name=v['title'],
-                    url=v['url'],
-                    mode=4,
-                    icon=v.get('thumb'),
-                    fanart=self.fanart,
-                    info_labels={'plot': v['title']}
-                    # Context menu for sorting is added automatically by BaseWebsite.add_link
-                )
-
-        self.end_directory("videos")
+            self.notify_error("Video stream not found")

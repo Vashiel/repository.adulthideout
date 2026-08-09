@@ -1,9 +1,29 @@
 # -*- coding: utf-8 -*-
 import os
+import socket
 import ssl
 import subprocess
 import tempfile
+import threading
 import urllib.request
+
+
+_IPV4_LOCK = threading.Lock()
+
+
+def _ipv4_call(callback):
+    """Run one network call with IPv4 DNS results without changing global state permanently."""
+    with _IPV4_LOCK:
+        original = socket.getaddrinfo
+
+        def ipv4_only(*args, **kwargs):
+            return [entry for entry in original(*args, **kwargs) if entry[0] == socket.AF_INET]
+
+        socket.getaddrinfo = ipv4_only
+        try:
+            return callback()
+        finally:
+            socket.getaddrinfo = original
 
 
 def _log(logger, level, message):
@@ -14,7 +34,15 @@ def _log(logger, level, message):
         log_fn(message)
 
 
-def fetch_text(url, headers=None, scraper=None, logger=None, timeout=20, use_windows_curl_fallback=True):
+def fetch_text(
+    url,
+    headers=None,
+    scraper=None,
+    logger=None,
+    timeout=20,
+    use_windows_curl_fallback=True,
+    prefer_ipv4=False,
+):
     request_headers = {
         "User-Agent": "Mozilla/5.0",
         "Referer": url,
@@ -24,7 +52,8 @@ def fetch_text(url, headers=None, scraper=None, logger=None, timeout=20, use_win
 
     if scraper is not None:
         try:
-            response = scraper.get(url, timeout=timeout, headers=request_headers)
+            request = lambda: scraper.get(url, timeout=timeout, headers=request_headers)
+            response = _ipv4_call(request) if prefer_ipv4 else request()
             if response.status_code == 200:
                 return response.text
             _log(logger, "error", f"HTTP {response.status_code} for {url}")
@@ -36,7 +65,9 @@ def fetch_text(url, headers=None, scraper=None, logger=None, timeout=20, use_win
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
         req = urllib.request.Request(url, headers=request_headers)
-        with urllib.request.urlopen(req, timeout=timeout, context=ctx) as response:
+        request = lambda: urllib.request.urlopen(req, timeout=timeout, context=ctx)
+        response = _ipv4_call(request) if prefer_ipv4 else request()
+        with response:
             if 200 <= response.status < 300:
                 return response.read().decode("utf-8", errors="ignore")
             _log(logger, "error", f"urllib HTTP {response.status} for {url}")
@@ -68,6 +99,8 @@ def fetch_text(url, headers=None, scraper=None, logger=None, timeout=20, use_win
             tmp_path,
             url,
         ]
+        if prefer_ipv4:
+            command.insert(1, "--ipv4")
 
         startupinfo = None
         creationflags = 0

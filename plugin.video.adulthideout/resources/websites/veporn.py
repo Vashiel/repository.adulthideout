@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import html
+import json
 import os
 import re
 import sys
@@ -18,7 +19,7 @@ class Veporn(BaseWebsite):
         super().__init__(
             name="veporn",
             base_url="https://veporn.com",
-            search_url="https://veporn.com/?s={}",
+            search_url="https://veporn.com/search?q={}",
             addon_handle=addon_handle,
             addon=addon
         )
@@ -55,13 +56,13 @@ class Veporn(BaseWebsite):
         return None
 
     def process_content(self, url):
-        if url == "BOOTSTRAP":
-            url = self.base_url + "/"
+        if url in ("BOOTSTRAP", self.base_url, self.base_url + "/"):
+            url = self.base_url + "/videos"
 
         self.add_dir("Search", "", 5, self.icons.get("search", self.icon))
         self.add_dir(
             "Categories",
-            urllib.parse.urljoin(self.base_url, "/categories/"),
+            urllib.parse.urljoin(self.base_url, "/search"),
             8,
             self.icons.get("categories", self.icon),
         )
@@ -73,66 +74,81 @@ class Veporn(BaseWebsite):
         if not html_content:
             return self.end_directory("videos")
 
-        item_pattern = re.compile(
-            r'<article[^>]+class="[^"]*\bloop-post\b[^"]*\bvdeo\b[^"]*"[^>]*>(.*?)</article>',
-            re.IGNORECASE | re.DOTALL,
-        )
-
         seen = set()
-        for block in item_pattern.findall(html_content):
-            link_match = re.search(
-                r'<a[^>]+class="[^"]*\blka\b[^"]*"[^>]+href="([^"]+)"',
-                block,
-                re.IGNORECASE,
-            )
-            title_match = re.search(
-                r'<h2[^>]+class="[^"]*\bttl\b[^"]*"[^>]*>\s*([^<]+?)\s*</h2>',
-                block,
+        next_url = ""
+        if "/api/videos?" in url:
+            try:
+                payload = json.loads(html_content)
+            except (TypeError, ValueError):
+                payload = {}
+            for item in payload.get("data") or []:
+                self._add_api_item(item, seen)
+            cursor = payload.get("nextCursor")
+            if payload.get("hasMore") and cursor:
+                separator = "&" if "?" in url else "?"
+                next_url = url.split("&cursor=", 1)[0] + separator + urllib.parse.urlencode({"cursor": cursor})
+        else:
+            card_pattern = re.compile(
+                r'<a\b[^>]*class="[^"]*\bgroup\s+block\b[^"]*"[^>]*href="([^"]+)"[^>]*>'
+                r'(?:(?!</a>).)*?<img\b[^>]*alt="([^"]+)"[^>]*src="([^"]+)"[^>]*>'
+                r'(?:(?!</a>).)*?<span\b[^>]*>(\d{1,2}:\d{2}(?::\d{2})?)</span>',
                 re.IGNORECASE | re.DOTALL,
             )
-            thumb_match = re.search(
-                r'<img[^>]+(?:data-src|data-lazy-src|src)="([^"]+)"',
-                block,
-                re.IGNORECASE,
-            )
-            duration_match = re.search(
-                r'<i[^>]+fa-clock[^>]*></i>\s*([^<]+)',
-                block,
-                re.IGNORECASE | re.DOTALL,
-            )
+            for href, title, thumb, duration in card_pattern.findall(html_content):
+                video_url = urllib.parse.urljoin(self.base_url, html.unescape(href))
+                if video_url in seen:
+                    continue
+                seen.add(video_url)
+                clean_title = html.unescape(title).strip()
+                image_url = self._thumbnail_url(thumb)
+                info = {"title": clean_title, "plot": clean_title}
+                seconds = self.convert_duration(duration)
+                if seconds:
+                    info["duration"] = seconds
+                self.add_link(clean_title, video_url, 4, image_url, self.fanart, info_labels=info)
 
-            if not (link_match and title_match):
-                continue
+            cursor_match = re.search(r'initialCursor\\?":\\?"([^"\\]+)', html_content, re.I)
+            fetch_match = re.search(r'fetchUrl\\?":\\?"([^"\\]+)', html_content, re.I)
+            if cursor_match and fetch_match:
+                fetch_url = html.unescape(fetch_match.group(1)).replace("\\u0026", "&")
+                separator = "&" if "?" in fetch_url else "?"
+                next_url = urllib.parse.urljoin(
+                    self.base_url,
+                    fetch_url + separator + urllib.parse.urlencode({"cursor": cursor_match.group(1)}),
+                )
 
-            video_url = urllib.parse.urljoin(self.base_url, link_match.group(1).strip())
-            if video_url in seen:
-                continue
-            seen.add(video_url)
-
-            title = html.unescape(title_match.group(1).strip())
-            thumb = thumb_match.group(1).strip() if thumb_match else ""
-            if thumb.startswith("//"):
-                thumb = "https:" + thumb
-
-            info = {"title": title, "plot": title}
-            duration_seconds = self.convert_duration(
-                duration_match.group(1).strip() if duration_match else ""
-            )
-            if duration_seconds:
-                info["duration"] = duration_seconds
-
-            self.add_link(title, video_url, 4, thumb, self.fanart, info_labels=info)
-
-        next_match = re.search(
-            r'<a(?=[^>]*class="[^"]*\bnext\b[^"]*")(?=[^>]*href="([^"]+)")[^>]*>.*?(?:Next Page|Next)\b',
-            html_content,
-            re.IGNORECASE | re.DOTALL,
-        )
-        if next_match:
-            next_url = urllib.parse.urljoin(self.base_url, next_match.group(1))
+        if next_url:
             self.add_dir("Next Page", next_url, 2, self.icons.get("default", self.icon))
 
         self.end_directory("videos")
+
+    def _add_api_item(self, item, seen):
+        slug = str(item.get("slug") or "").strip()
+        title = html.unescape(str(item.get("title") or "")).strip()
+        if not slug or not title:
+            return
+        video_url = urllib.parse.urljoin(self.base_url + "/", slug)
+        if video_url in seen:
+            return
+        seen.add(video_url)
+        thumb = self._thumbnail_url(item.get("thumbnailUrl"))
+        info = {"title": title, "plot": html.unescape(str(item.get("description") or title)).strip()}
+        try:
+            duration = int(item.get("duration") or 0)
+        except (TypeError, ValueError):
+            duration = 0
+        if duration:
+            info["duration"] = duration
+        self.add_link(title, video_url, 4, thumb, self.fanart, info_labels=info)
+
+    def _thumbnail_url(self, value):
+        url = urllib.parse.urljoin(self.base_url, html.unescape(str(value or "")))
+        if url and "|" not in url:
+            url += "|" + urllib.parse.urlencode({
+                "User-Agent": "Mozilla/5.0",
+                "Referer": self.base_url + "/",
+            })
+        return url
 
     def process_categories(self, url):
         html_content = self.make_request(url)
@@ -140,35 +156,15 @@ class Veporn(BaseWebsite):
             return self.end_directory("videos")
 
         seen = set()
-        item_pattern = re.compile(
-            r'<div[^>]+class="[^"]*\bctgr\b[^"]*"[^>]*>.*?'
-            r'(?:<img[^>]+(?:data-src|data-lazy-src|src)="([^"]+)")?.*?'
-            r'<div[^>]+class="[^"]*\bttl\b[^"]*"[^>]*>\s*([^<]+?)\s*</div>.*?'
-            r'<a[^>]+class="[^"]*\blka\b[^"]*"[^>]+href="([^"]+)"',
-            re.IGNORECASE | re.DOTALL,
-        )
-
-        for thumb, title, cat_href in item_pattern.findall(html_content):
-            cat_url = urllib.parse.urljoin(self.base_url, cat_href.strip())
+        for cat_href, slug in re.findall(
+            r'<a\b[^>]*href="(/category/([^"/]+))"[^>]*>', html_content, re.I
+        ):
+            cat_url = urllib.parse.urljoin(self.base_url, cat_href)
             if cat_url in seen:
                 continue
             seen.add(cat_url)
-
-            title = html.unescape(title.strip())
-            thumb = thumb.strip() if thumb else self.icons.get("categories", self.icon)
-            if thumb.startswith("//"):
-                thumb = "https:" + thumb
-
-            self.add_dir(title, cat_url, 2, thumb)
-
-        next_match = re.search(
-            r'<a(?=[^>]*class="[^"]*\bnext\b[^"]*")(?=[^>]*href="([^"]+)")[^>]*>.*?(?:Next Page|Next)\b',
-            html_content,
-            re.IGNORECASE | re.DOTALL,
-        )
-        if next_match:
-            next_url = urllib.parse.urljoin(self.base_url, next_match.group(1))
-            self.add_dir("Next Page", next_url, 8, self.icons.get("default", self.icon))
+            title = urllib.parse.unquote(slug).replace("-", " ").title()
+            self.add_dir(title, cat_url, 2, self.icons.get("categories", self.icon))
 
         self.end_directory("videos")
 
@@ -194,6 +190,11 @@ class Veporn(BaseWebsite):
             if quality >= best_quality:
                 best_quality = quality
                 best_url = src
+
+        if not best_url:
+            content_match = re.search(r'contentUrl\\?"\s*:\s*\\?"(https?://[^"\\]+\.mp4)', html_content, re.I)
+            if content_match:
+                best_url = content_match.group(1).replace("\\/", "/")
 
         if not best_url:
             iframe_match = re.search(

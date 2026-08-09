@@ -1,0 +1,1 @@
+"""AdultHideout Diagnostics package."""

@@ -24,8 +24,8 @@ class Xtapes(BaseWebsite):
     def __init__(self, addon_handle, addon=None):
         super().__init__(
             name="xtapes",
-            base_url="https://ww3.xtapes.tw/",
-            search_url="https://ww3.xtapes.tw/?s={}",
+            base_url="https://xtapes.org/",
+            search_url="https://xtapes.org/?s={}",
             addon_handle=addon_handle,
             addon=addon,
         )
@@ -60,7 +60,13 @@ class Xtapes(BaseWebsite):
     def _absolute(self, url):
         if not url:
             return ""
-        return urllib.parse.urljoin(self.base_url, html.unescape(url).strip())
+        absolute = urllib.parse.urljoin(self.base_url, html.unescape(url).strip())
+        parsed = urllib.parse.urlparse(absolute)
+        if parsed.hostname and (parsed.hostname == "xtapes.tw" or parsed.hostname.endswith(".xtapes.tw")):
+            absolute = urllib.parse.urlunparse(
+                ("https", "xtapes.org", parsed.path, parsed.params, parsed.query, parsed.fragment)
+            )
+        return absolute
 
     def _clean(self, value):
         value = html.unescape(value or "")
@@ -121,7 +127,7 @@ class Xtapes(BaseWebsite):
             if not video_url or video_url in seen or not title:
                 continue
             parsed = urllib.parse.urlparse(video_url)
-            if not parsed.netloc.endswith("xtapes.tw"):
+            if parsed.hostname != "xtapes.org":
                 continue
             if len([part for part in parsed.path.split("/") if part]) < 2:
                 continue
@@ -218,7 +224,7 @@ class Xtapes(BaseWebsite):
             if not href or not title or href in seen:
                 continue
             parsed = urllib.parse.urlparse(href)
-            if not parsed.netloc.endswith("xtapes.tw") or "gay" in title.lower():
+            if parsed.hostname != "xtapes.org" or "gay" in title.lower():
                 continue
             seen.add(href)
             img_match = re.search(r"<img\b[^>]*>", block, re.IGNORECASE)
