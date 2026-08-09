@@ -99,6 +99,25 @@ def _run_internal(job, run_token, progress=None):
     if existing:
         headers["Range"] = "bytes={}-".format(existing)
     response = requests.get(job["stream_url"], headers=headers, stream=True, timeout=(20, 45), allow_redirects=True)
+    if existing and response.status_code == 416:
+        content_range = response.headers.get("Content-Range", "")
+        response.close()
+        try:
+            remote_size = int(content_range.rsplit("/", 1)[-1])
+        except (TypeError, ValueError):
+            remote_size = 0
+        if remote_size and existing == remote_size:
+            changes = {"downloaded": existing, "total": remote_size, "progress": 100, "speed": 0, "eta": 0}
+            download_manager.update_job_for_run(job["id"], run_token, **changes)
+            if progress:
+                progress.update(dict(job, **changes), 100)
+            return path
+
+        # The server rejected this resume offset. Keep the job usable by
+        # requesting the complete file again instead of failing permanently.
+        headers.pop("Range", None)
+        existing = 0
+        response = requests.get(job["stream_url"], headers=headers, stream=True, timeout=(20, 45), allow_redirects=True)
     response.raise_for_status()
     if existing and response.status_code != 206:
         existing = 0

@@ -1,3 +1,7 @@
+v. 1.0.20.2 "Beacon Hotfix 2" - 2026-08-09
+- **Android Downloads**: Completed files now transfer safely from Kodi's private staging storage to public Download or Video folders even when Android exposes them through different filesystems.
+- **Download Resume**: HTTP 416 responses now recognize already complete staging files or restart an invalid partial download cleanly without a permanent queue failure.
+
 v. 1.0.20.1 "Beacon Hotfix" - 2026-08-09
 - **Diagnostics Installation**: Replaced the duplicate AdultHideout confirmation with Kodi's native installation dialog and wait for Kodi's local add-on registry before launching the newly installed companion.
 - **Diagnostics Startup**: Isolated the Diagnostics application and worker imports from conflicting `resources` modules exposed by other Kodi add-ons.

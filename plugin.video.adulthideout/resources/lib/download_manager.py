@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import errno
 import json
 import importlib
 import os
@@ -827,7 +828,33 @@ def finalize_file(job, staging_file, run_token=""):
     else:
         parent = os.path.dirname(destination)
         os.makedirs(parent, exist_ok=True)
-        os.replace(staging_file, destination)
+        try:
+            os.replace(staging_file, destination)
+        except OSError as exc:
+            if exc.errno != errno.EXDEV:
+                raise
+
+            # Android commonly exposes Kodi's profile and public media folders
+            # through different filesystems. Copy into the destination folder
+            # first, verify it, then rename locally so incomplete files never
+            # appear under their final name.
+            transfer_file = "{}.{}.part".format(destination, job["id"])
+            try:
+                if os.path.exists(transfer_file):
+                    os.remove(transfer_file)
+                source_size = os.path.getsize(staging_file)
+                shutil.copyfile(staging_file, transfer_file)
+                if os.path.getsize(transfer_file) != source_size:
+                    raise RuntimeError("Completed download could not be verified after transfer")
+                os.replace(transfer_file, destination)
+                os.remove(staging_file)
+            except Exception:
+                try:
+                    if os.path.exists(transfer_file):
+                        os.remove(transfer_file)
+                except OSError:
+                    pass
+                raise
     write_metadata(job, destination)
     return destination
 

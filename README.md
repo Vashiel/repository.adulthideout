@@ -2,9 +2,9 @@
   <img src="repository.adulthideout/resources/fanart.jpg" alt="AdultHideout 10th Anniversary" width="100%">
 </p>
 
-<h1 align="center">AdultHideout 1.0.20.1</h1>
+<h1 align="center">AdultHideout 1.0.20.2</h1>
 <p align="center">
-  <strong>Beacon Hotfix</strong><br>
+  <strong>Beacon Hotfix 2</strong><br>
   A clearer view of everything AdultHideout has become.<br>
   Released August 9, 2026.
 </p>
@@ -13,7 +13,7 @@ AdultHideout began in **January 2016** as a small personal Kodi addon for one we
 
 **Beacon brings that larger AdultHideout back into focus.** Personal website collections, direct skin integration and platform-native diagnostics make its depth easier to reach without making the default experience heavier.
 
-**Hotfix 1.0.20.1** removes the duplicate Diagnostics installation prompt and isolates the Diagnostics application and worker from Python module conflicts caused by other Kodi add-ons. Diagnostics is updated to version 0.2.1.
+**Hotfix 1.0.20.2** keeps the Diagnostics repairs from 1.0.20.1 and fixes Android downloads that completed in Kodi's private staging storage but could not be transferred to a public Download or Video folder. Direct-file resume also recovers cleanly when a host rejects an obsolete or already complete byte range.
 
 ## Beacon: AdultHideout, Made Yours
 
