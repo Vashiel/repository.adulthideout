@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>AdultHideout Kodi Addon Repository</title>
+  <link href="https://vashiel.github.io/repository.adulthideout/"/>
+  <updated>2026-08-19T10:00:00Z</updated>
+  <id>https://vashiel.github.io/repository.adulthideout/</id>
+  <entry>
+    <title>AdultHideout Latest Release</title>
+    <link href="https://vashiel.github.io/repository.adulthideout/"/>
+    <id>https://vashiel.github.io/repository.adulthideout/</id>
+    <updated>2026-08-19T10:00:00Z</updated>
+    <summary>Offizieller Download und Repository-Updates für AdultHideout Kodi Addon.</summary>
+  </entry>
+</feed>
