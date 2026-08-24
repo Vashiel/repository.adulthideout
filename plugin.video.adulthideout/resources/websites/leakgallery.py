@@ -66,9 +66,12 @@ class LeakGallery(BaseWebsite):
     def _user_post_items(self, content):
         items = []
         seen = set()
+        content = html.unescape(content or "").replace('\\"', '"')
         pattern = re.compile(
-            r'"id":(\d+),"file_path":"([^"]+\.mp4)","is_video":true,'
-            r'"thumbnail_path":"([^"]+)"[\s\S]{0,600}?"profile":\{"username":"([^"]+)"',
+            r'"id"\s*:\s*(\d+)[\s\S]{0,120}?"file_path"\s*:\s*"([^"]+\.mp4)"'
+            r'[\s\S]{0,180}?"is_video"\s*:\s*true[\s\S]{0,180}?'
+            r'"thumbnail_path"\s*:\s*"([^"]+)"[\s\S]{0,600}?'
+            r'"profile"\s*:\s*\{[\s\S]{0,120}?"username"\s*:\s*"([^"]+)"',
             re.IGNORECASE,
         )
         for item_id, file_path, thumb_path, username in pattern.findall(content or ""):

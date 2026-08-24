@@ -4,6 +4,7 @@
 import logging
 import sys
 import os
+import gzip
 import json
 import re
 import urllib.parse
@@ -16,6 +17,28 @@ import html
 from resources.lib.view_utils import end_directory_with_view
 
 _ICON_PATH_CACHE = {}
+_PERFORMERS_CACHE = None
+
+def _get_performer_metadata(name):
+    global _PERFORMERS_CACHE
+    if _PERFORMERS_CACHE is None:
+        _PERFORMERS_CACHE = {}
+        try:
+            addon_path = xbmcaddon.Addon("plugin.video.adulthideout").getAddonInfo("path")
+            p_file = os.path.join(addon_path, "resources", "data", "star_index.json.gz")
+            if os.path.exists(p_file):
+                with gzip.open(p_file, "rt", encoding="utf-8") as f:
+                    payload = json.load(f)
+                    rows = payload.get("performers", []) + payload.get("website_metadata", [])
+                    for p in rows:
+                        n = p.get("name", "").strip().lower()
+                        if n:
+                            _PERFORMERS_CACHE[n] = p
+        except Exception:
+            pass
+
+    clean_name = re.sub(r'\[.*?\]', '', name).strip().lower()
+    return _PERFORMERS_CACHE.get(clean_name)
 
 class KodiLogHandler(logging.Handler):
     def emit(self, record):
@@ -201,14 +224,35 @@ class BaseWebsite:
         u = f"{sys.argv[0]}?url={urllib.parse.quote_plus(str(url))}&mode={mode}&name={urllib.parse.quote_plus(name_param or name)}&website={self.name}"
         if kwargs:
             for key, value in kwargs.items(): u += f"&{key}={urllib.parse.quote_plus(str(value))}"
-        
+
+        # Automatic central performer metadata enrichment across ALL websites
+        star_meta = _get_performer_metadata(name_param or name)
+        if star_meta:
+            if not info_labels:
+                info_labels = {}
+            if "plot" not in info_labels:
+                try:
+                    from resources.lib.performer_index import PerformerIndex
+                    info_labels["plot"] = PerformerIndex.format_static_plot(star_meta)
+                except Exception:
+                    pass
+            if "genre" not in info_labels and star_meta.get("tags"):
+                info_labels["genre"] = ", ".join(star_meta.get("tags", []))
+            if "country" not in info_labels and star_meta.get("country"):
+                info_labels["country"] = star_meta.get("country")
+            if "year" not in info_labels and star_meta.get("birth_year"):
+                try:
+                    info_labels["year"] = int(star_meta.get("birth_year"))
+                except Exception:
+                    pass
+            if star_meta.get("thumb") and (not icon or icon == self.icons.get('default', self.icon)):
+                icon = star_meta.get("thumb")
+
         liz = xbmcgui.ListItem(name)
-        liz.setArt({'thumb': icon, 'icon': icon, 'fanart': fanart})
-        
-        # --- NEUER, SICHERER BLOCK ---
+        liz.setArt({'thumb': icon, 'icon': icon, 'fanart': fanart, 'poster': icon})
+
         if info_labels:
             liz.setInfo('video', info_labels)
-        # --- ENDE ---
 
         context_menu = list(context_menu or [])
         try:
@@ -221,7 +265,7 @@ class BaseWebsite:
             self.logger.warning("Vault directory context failed: %s", exc)
         if context_menu:
             liz.addContextMenuItems(context_menu)
-            
+
         xbmcplugin.addDirectoryItem(handle=self.addon_handle, url=u, listitem=liz, isFolder=True)
 
     def video_art(self, icon, fanart=None):
@@ -263,7 +307,7 @@ class BaseWebsite:
                     ('Sort by...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_sort&website={self.name}&original_url={urllib.parse.quote_plus(current_url)})')
                 )
 
-        if mode == 4 and self.__class__.resolve_recording_stream is not BaseWebsite.resolve_recording_stream:
+        if mode == 4 and getattr(self.__class__, 'resolve_recording_stream', None) is not getattr(BaseWebsite, 'resolve_recording_stream', None) and getattr(self.__class__, 'resolve_recording_stream', None) is not None:
             try:
                 from resources.lib.download_manager import add_download_context
                 context_menu = add_download_context(self, context_menu, url, name, icon)
@@ -279,14 +323,21 @@ class BaseWebsite:
                 ))
             except Exception as exc:
                 self.logger.warning("Vault video context failed: %s", exc)
-        
-        if context_menu: 
+
+        if context_menu:
             liz.addContextMenuItems(context_menu)
-        
+
         xbmcplugin.addDirectoryItem(handle=self.addon_handle, url=u, listitem=liz, isFolder=False)
 
     def notify_error(self, message):
-        xbmcgui.Dialog().notification("Error", f"{self.name}: {message}", xbmcgui.NOTIFICATION_ERROR, 5000)
+        self.logger.warning(f"notify_error: {message}")
+        active_channel = xbmcgui.Window(10000).getProperty("AdultHideout.SmartChannel")
+        if active_channel:
+            # During 24/7 Smart Streams, auto-skip broken/unavailable streams silently
+            xbmc.log(f"[AdultHideout] Smart Stream active - skipping failed video ({self.name}: {message}) silently to next", xbmc.LOGINFO)
+            xbmc.executebuiltin("PlayerControl(Next)")
+            return
+        xbmcgui.Dialog().notification("Error", f"{self.name}: {message}", xbmcgui.NOTIFICATION_ERROR, 3000)
 
     def notify_info(self, message):
         xbmcgui.Dialog().notification("Info", message, xbmcgui.NOTIFICATION_INFO, 3000)
@@ -323,12 +374,6 @@ class BaseWebsite:
         elif action == 'edit_search_item': self.edit_query(query_to_edit=url)
         elif action == 'clear_history': self.clear_search_history()
 
-    def process_content(self, url, **kwargs):
-        raise NotImplementedError
-
-    def resolve_recording_stream(self, url):
-        return None
-
     def download_with_ffmpeg(self, original_url=None, title=None):
         from resources.lib.download_manager import enqueue_download
         enqueue_download(self, original_url, title=title)
@@ -352,6 +397,9 @@ class BaseWebsite:
 
     def play_video(self, url):
         raise NotImplementedError
+
+    def resolve_recording_stream(self, url):
+        return None
 
     def end_directory(self, content_type="videos"):
         end_directory_with_view(self.addon_handle, self.addon, content_type=content_type)

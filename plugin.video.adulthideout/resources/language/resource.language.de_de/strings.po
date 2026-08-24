@@ -941,8 +941,8 @@ msgid "Open diagnostics"
 msgstr "Diagnose öffnen"
 
 msgctxt "#30825"
-msgid "Enable PervClips"
-msgstr "PervClips aktivieren"
+msgid "Enable SpankBang"
+msgstr "SpankBang aktivieren"
 
 msgctxt "#30826"
 msgid "Website Collections"
@@ -1055,3 +1055,340 @@ msgstr "Der Download-Link konnte nicht erneuert werden: {}"
 msgctxt "#30680"
 msgid "Interrupted download queued for continuation."
 msgstr "Der unterbrochene Download wurde zum Fortsetzen eingereiht."
+
+msgctxt "#30850"
+msgid "Rate item"
+msgstr "Eintrag bewerten"
+
+
+msgctxt "#30851"
+msgid "Rating"
+msgstr "Bewertung"
+
+
+msgctxt "#30852"
+msgid "Rating saved: {}/10"
+msgstr "Bewertung gespeichert: {}/10"
+
+
+msgctxt "#30853"
+msgid "Clear rating"
+msgstr "Bewertung löschen"
+
+
+msgctxt "#30854"
+msgid "Sort Items"
+msgstr "Einträge sortieren"
+
+
+msgctxt "#30855"
+msgid "By Rating (Highest first)"
+msgstr "Nach Bewertung (Höchste zuerst)"
+
+
+msgctxt "#30856"
+msgid "By Date Added (Newest first)"
+msgstr "Nach Hinzugefügt (Neueste zuerst)"
+
+
+msgctxt "#30857"
+msgid "By Title (A-Z)"
+msgstr "Nach Titel (A-Z)"
+
+msgctxt "#30860"
+msgid "Smart Streams (Beta)"
+msgstr "Smart Streams (Beta)"
+
+
+msgctxt "#30861"
+msgid "Vault Favorites Shuffle (24/7)"
+msgstr "Vault-Favoriten Zufallsmix (24/7)"
+
+
+msgctxt "#30862"
+msgid "Trending & Top-Rated Mix"
+msgstr "Trending & Top-Bewertungen Mix"
+
+
+msgctxt "#30863"
+msgid "Mega Tube Shuffle (All Sites)"
+msgstr "Mega-Tube Zufallsmix (Alle Seiten)"
+
+
+msgctxt "#30864"
+msgid "Ultra HD 4K / 1080p Theater"
+msgstr "Ultra HD 4K / 1080p Kino"
+
+
+msgctxt "#30865"
+msgid "Hentai & Anime 24/7"
+msgstr "Hentai & Anime 24/7"
+
+
+msgctxt "#30866"
+msgid "JAV & Asian 24/7"
+msgstr "JAV & Asien 24/7"
+
+
+msgctxt "#30867"
+msgid "Trans / Shemale 24/7"
+msgstr "Trans / Shemale 24/7"
+
+
+msgctxt "#30868"
+msgid "Full Movies & Long Scenes"
+msgstr "Ganze Filme & Lange Szenen"
+
+
+msgctxt "#30869"
+msgid "Custom Smart Playlist..."
+msgstr "Eigene Smart-Wiedergabeliste..."
+
+
+msgctxt "#30870"
+msgid "Generating playlist ({} videos)..."
+msgstr "Erstelle Wiedergabeliste ({} Videos)..."
+
+
+msgctxt "#30871"
+msgid "Smart Playlist started ({} videos)"
+msgstr "Smart-Wiedergabeliste gestartet ({} Videos)"
+
+
+msgctxt "#30872"
+msgid "No videos found for this playlist"
+msgstr "Keine Videos für diese Wiedergabeliste gefunden"
+
+
+msgctxt "#30873"
+msgid "Select Playlist Size"
+msgstr "Anzahl der Videos wählen"
+
+
+msgctxt "#30874"
+msgid "Select Playlist Source"
+msgstr "Playlist-Quelle wählen"
+
+
+msgctxt "#30875"
+msgid "Play as Smart Playlist"
+msgstr "Als Smart-Playlist abspielen"
+
+msgctxt "#30876"
+msgid "Start 24/7 Auto-Play"
+msgstr "24/7 Endlos-Wiedergabe starten"
+
+
+msgctxt "#30877"
+msgid "Refresh Channel Videos"
+msgstr "Kanal-Videos aktualisieren"
+
+msgctxt "#30878"
+msgid "Browse Channel Videos"
+msgstr "Kanal-Videos durchsuchen"
+
+
+msgctxt "#30879"
+msgid "Long Scenes (20+ min)"
+msgstr "Lange Szenen (20+ Min)"
+
+
+msgctxt "#30880"
+msgid "Full Movies & Feature Films"
+msgstr "Spielfilme & Ganze Filme"
+
+
+msgctxt "#30881"
+msgid "Retro & Vintage Classic Movies"
+msgstr "Retro & Vintage Filmklassiker"
+
+
+msgctxt "#30882"
+msgid "Zapping to Live Channel..."
+msgstr "Schalte Live-Kanal ein..."
+
+msgctxt "#30883"
+msgid "Custom Smart Stream Builder"
+msgstr "Eigener Smart Stream Konfigurator"
+
+
+msgctxt "#30884"
+msgid "Enter Search Term (or leave empty)"
+msgstr "Suchbegriff eingeben (oder leer lassen)"
+
+
+msgctxt "#30885"
+msgid "Select Duration"
+msgstr "Dauer auswählen"
+
+
+msgctxt "#30886"
+msgid "Select Sources"
+msgstr "Quellen auswählen"
+
+
+msgctxt "#30887"
+msgid "Save as Custom Smart Stream"
+msgstr "Als eigenen Smart Stream speichern"
+
+
+msgctxt "#30888"
+msgid "Enter Name for Custom Stream"
+msgstr "Namen für eigenen Stream eingeben"
+
+
+msgctxt "#30889"
+msgid "Delete Custom Stream"
+msgstr "Eigenen Stream löschen"
+
+
+msgctxt "#30890"
+msgid "Delete All Custom Streams"
+msgstr "Alle eigenen Streams löschen"
+
+
+msgctxt "#30891"
+msgid "Delete all custom streams?"
+msgstr "Möchtest du wirklich alle eigenen Streams löschen?"
+
+msgctxt "#30900"
+msgid "Star Finder (Beta)"
+msgstr "Star Finder (Beta)"
+
+msgctxt "#30901"
+msgid "Search Performer..."
+msgstr "Darsteller suchen..."
+
+
+msgctxt "#30902"
+msgid "Popular & Trending Performers"
+msgstr "Trending Stars"
+
+
+msgctxt "#30903"
+msgid "Hall of Fame & Legends"
+msgstr "Hall of Fame & Legenden"
+
+
+msgctxt "#30904"
+msgid "A – Z Performer Index"
+msgstr "A – Z Darsteller-Index"
+
+
+msgctxt "#30905"
+msgid "Categories & Demographics"
+msgstr "Kategorien & Sparten"
+
+
+msgctxt "#30906"
+msgid "Favorite Performers"
+msgstr "Meine Lieblings-Darsteller"
+
+
+msgctxt "#30907"
+msgid "Performers with"
+msgstr "Darsteller mit"
+
+
+msgctxt "#30908"
+msgid "No performers found"
+msgstr "Keine Darsteller gefunden"
+
+
+msgctxt "#30909"
+msgid "Remove from Favorites"
+msgstr "Aus Favoriten entfernen"
+
+
+msgctxt "#30910"
+msgid "Add to Favorites"
+msgstr "Zu Favoriten hinzufügen"
+
+
+msgctxt "#30911"
+msgid "Start 24/7 Smart Stream"
+msgstr "24/7 Smart Stream starten"
+
+
+msgctxt "#30912"
+msgid "Search Across All 272 Websites"
+msgstr "Über alle 272 Webseiten suchen"
+
+
+msgctxt "#30913"
+msgid "No favorite performers saved yet"
+msgstr "Noch keine Favoriten gespeichert"
+
+
+msgctxt "#30914"
+msgid "added to favorites!"
+msgstr "zu Favoriten hinzugefügt!"
+
+
+msgctxt "#30915"
+msgid "removed from favorites!"
+msgstr "aus Favoriten entfernt!"
+
+msgctxt "#30916"
+msgid "Biography & Profile"
+msgstr "Biografie & Profil anzeigen"
+
+msgctxt "#30920"
+msgid "Pornstar Filter-Matrix / Star Finder"
+msgstr "Star-Finder Filter-Matrix"
+
+msgctxt "#30921"
+msgid "Show Filtered Performers"
+msgstr "Gefilterte Stars anzeigen"
+
+msgctxt "#30922"
+msgid "Start 24/7 Multi-Star Smart Stream"
+msgstr "24/7 Multi-Star Smart Stream starten"
+
+msgctxt "#30923"
+msgid "Global Search for Filtered Stars"
+msgstr "Global Search für alle gefilterten Stars"
+
+msgctxt "#30924"
+msgid "Reset Filter Matrix"
+msgstr "Filter-Matrix zurücksetzen"
+
+msgctxt "#30925"
+msgid "Gender"
+msgstr "Geschlecht"
+
+msgctxt "#30926"
+msgid "Ethnicity & Origin"
+msgstr "Ethnizität & Herkunft"
+
+msgctxt "#30927"
+msgid "Height"
+msgstr "Körpergröße"
+
+msgctxt "#30928"
+msgid "Cup Size & Bust"
+msgstr "Körbchengröße & Oberweite"
+
+msgctxt "#30929"
+msgid "Hair Color"
+msgstr "Haarfarbe"
+
+msgctxt "#30930"
+msgid "Eye Color"
+msgstr "Augenfarbe"
+
+msgctxt "#30931"
+msgid "Body Build"
+msgstr "Körperbau"
+
+msgctxt "#30932"
+msgid "Career Era / Decade"
+msgstr "Karriere-Ära / Jahrzehnt"
+
+msgctxt "#30933"
+msgid "All"
+msgstr "Alle"
+
+msgctxt "#30934"
+msgid "Performers matching your filter"
+msgstr "Darsteller passend zu deinem Filter"

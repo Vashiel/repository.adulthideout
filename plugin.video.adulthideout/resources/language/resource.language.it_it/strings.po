@@ -18,8 +18,8 @@ msgid "Open diagnostics"
 msgstr "Apri diagnostica"
 
 msgctxt "#30825"
-msgid "Enable PervClips"
-msgstr "Abilita PervClips"
+msgid "Enable SpankBang"
+msgstr "Abilita SpankBang"
 
 msgctxt "#30826"
 msgid "Website Collections"
@@ -132,3 +132,271 @@ msgstr "Impossibile aggiornare il link di download: {}"
 msgctxt "#30680"
 msgid "Interrupted download queued for continuation."
 msgstr "Il download interrotto è stato rimesso in coda per continuare."
+
+msgctxt "#30850"
+msgid "Rate item"
+msgstr "Valuta elemento"
+
+
+msgctxt "#30851"
+msgid "Rating"
+msgstr "Valutazione"
+
+
+msgctxt "#30852"
+msgid "Rating saved: {}/10"
+msgstr "Valutazione salvata: {}/10"
+
+
+msgctxt "#30853"
+msgid "Clear rating"
+msgstr "Cancella valutazione"
+
+
+msgctxt "#30854"
+msgid "Sort Items"
+msgstr "Ordina elementi"
+
+
+msgctxt "#30855"
+msgid "By Rating (Highest first)"
+msgstr "Per valutazione (Più alta prima)"
+
+
+msgctxt "#30856"
+msgid "By Date Added (Newest first)"
+msgstr "Per data di aggiunta (Più recente prima)"
+
+
+msgctxt "#30857"
+msgid "By Title (A-Z)"
+msgstr "Per titolo (A-Z)"
+
+msgctxt "#30860"
+msgid "Smart Streams (Beta)"
+msgstr "Smart Streams (Beta)"
+
+
+msgctxt "#30861"
+msgid "Vault Favorites Shuffle (24/7)"
+msgstr "Casuale preferiti del Vault (24/7)"
+
+
+msgctxt "#30862"
+msgid "Trending & Top-Rated Mix"
+msgstr "Mix tendenze e più votati"
+
+
+msgctxt "#30863"
+msgid "Mega Tube Shuffle (All Sites)"
+msgstr "Mega mix di tubi (Tutti i siti)"
+
+
+msgctxt "#30864"
+msgid "Ultra HD 4K / 1080p Theater"
+msgstr "Cinema Ultra HD 4K / 1080p"
+
+
+msgctxt "#30865"
+msgid "Hentai & Anime 24/7"
+msgstr "Hentai e Anime 24/7"
+
+
+msgctxt "#30866"
+msgid "JAV & Asian 24/7"
+msgstr "JAV e Asiatico 24/7"
+
+
+msgctxt "#30867"
+msgid "Trans / Shemale 24/7"
+msgstr "Trans / Shemale 24/7"
+
+
+msgctxt "#30868"
+msgid "Full Movies & Long Scenes"
+msgstr "Film completi e scene lunghe"
+
+
+msgctxt "#30869"
+msgid "Custom Smart Playlist..."
+msgstr "Playlist intelligente personalizzata..."
+
+
+msgctxt "#30870"
+msgid "Generating playlist ({} videos)..."
+msgstr "Generazione playlist ({} video)..."
+
+
+msgctxt "#30871"
+msgid "Smart Playlist started ({} videos)"
+msgstr "Playlist intelligente avviata ({} video)"
+
+
+msgctxt "#30872"
+msgid "No videos found for this playlist"
+msgstr "Nessun video trovato per questa playlist"
+
+
+msgctxt "#30873"
+msgid "Select Playlist Size"
+msgstr "Seleziona dimensione playlist"
+
+
+msgctxt "#30874"
+msgid "Select Playlist Source"
+msgstr "Seleziona sorgente playlist"
+
+
+msgctxt "#30875"
+msgid "Play as Smart Playlist"
+msgstr "Riproduci come playlist intelligente"
+
+msgctxt "#30876"
+msgid "Start 24/7 Auto-Play"
+msgstr "Avvia riproduzione continua 24/7"
+
+
+msgctxt "#30877"
+msgid "Refresh Channel Videos"
+msgstr "Aggiorna video del canale"
+
+msgctxt "#30878"
+msgid "Browse Channel Videos"
+msgstr "Sfoglia i video del canale"
+
+
+msgctxt "#30879"
+msgid "Long Scenes (20+ min)"
+msgstr "Scene lunghe (20+ min)"
+
+
+msgctxt "#30880"
+msgid "Full Movies & Feature Films"
+msgstr "Film interi e lungometraggi"
+
+
+msgctxt "#30881"
+msgid "Retro & Vintage Classic Movies"
+msgstr "Film classici retrò e vintage"
+
+
+msgctxt "#30882"
+msgid "Zapping to Live Channel..."
+msgstr "Sintonizzazione canale live in corso..."
+
+msgctxt "#30883"
+msgid "Custom Smart Stream Builder"
+msgstr "Configuratore Smart Stream personalizzato"
+
+
+msgctxt "#30884"
+msgid "Enter Search Term (or leave empty)"
+msgstr "Inserisci termine di ricerca (o lascia vuoto)"
+
+
+msgctxt "#30885"
+msgid "Select Duration"
+msgstr "Seleziona durata"
+
+
+msgctxt "#30886"
+msgid "Select Sources"
+msgstr "Seleziona sorgenti"
+
+
+msgctxt "#30887"
+msgid "Save as Custom Smart Stream"
+msgstr "Salva come Smart Stream personalizzato"
+
+
+msgctxt "#30888"
+msgid "Enter Name for Custom Stream"
+msgstr "Inserisci nome per lo stream personalizzato"
+
+
+msgctxt "#30889"
+msgid "Delete Custom Stream"
+msgstr "Elimina Smart Stream personalizzato"
+
+msgctxt "#30900"
+msgid "Star Finder (Beta)"
+msgstr "Star Finder (Beta)"
+
+
+msgctxt "#30901"
+msgid "Search Performer..."
+msgstr "Cerca attore..."
+
+
+msgctxt "#30902"
+msgid "Popular & Trending Performers"
+msgstr "Attori popolari e di tendenza"
+
+
+msgctxt "#30903"
+msgid "Hall of Fame & Legends"
+msgstr "Hall of Fame e Leggende"
+
+
+msgctxt "#30904"
+msgid "A – Z Performer Index"
+msgstr "Indice A – Z degli attori"
+
+
+msgctxt "#30905"
+msgid "Categories & Demographics"
+msgstr "Categorie e sezioni"
+
+
+msgctxt "#30906"
+msgid "Favorite Performers"
+msgstr "I miei attori preferiti"
+
+
+msgctxt "#30907"
+msgid "Performers with"
+msgstr "Attori con"
+
+
+msgctxt "#30908"
+msgid "No performers found"
+msgstr "Nessun attore trovato"
+
+
+msgctxt "#30909"
+msgid "Remove from Favorites"
+msgstr "Rimuovi dai preferiti"
+
+
+msgctxt "#30910"
+msgid "Add to Favorites"
+msgstr "Aggiungi ai preferiti"
+
+
+msgctxt "#30911"
+msgid "Start 24/7 Smart Stream"
+msgstr "Avvia Smart Stream 24/7"
+
+
+msgctxt "#30912"
+msgid "Search Across All 272 Websites"
+msgstr "Cerca in tutti i 272 siti web"
+
+
+msgctxt "#30913"
+msgid "No favorite performers saved yet"
+msgstr "Nessun attore preferito salvato"
+
+
+msgctxt "#30914"
+msgid "added to favorites!"
+msgstr "aggiunto ai preferiti!"
+
+
+msgctxt "#30915"
+msgid "removed from favorites!"
+msgstr "rimosso dai preferiti!"
+
+msgctxt "#30916"
+msgid "Biography & Profile"
+msgstr "Visualizza biografia e profilo"

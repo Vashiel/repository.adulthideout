@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 
+import http.cookiejar
+import json
 import re
 import urllib.parse
 import urllib.request
@@ -33,8 +35,10 @@ class HypnotubeWebsite(BaseWebsite):
             "Most Discussed": "/most-discussed/",
             "Longest": "/longest/"
         }
-        self.cookie_jar = urllib.request.HTTPCookieProcessor()
-        self.opener = urllib.request.build_opener(self.cookie_jar)
+        self.cookie_jar = http.cookiejar.CookieJar()
+        self.opener = urllib.request.build_opener(
+            urllib.request.HTTPCookieProcessor(self.cookie_jar)
+        )
 
     def get_headers(self, url=None):
         return {
@@ -55,13 +59,65 @@ class HypnotubeWebsite(BaseWebsite):
             try:
                 request = urllib.request.Request(url, data=encoded_post_data, headers=headers, method='POST' if encoded_post_data else 'GET')
                 with self.opener.open(request, timeout=60) as response:
-                    return response.read().decode('utf-8', errors='ignore'), response.geturl()
+                    content = response.read().decode('utf-8', errors='ignore')
+                    final_url = response.geturl()
+                if '/age-gate' in urllib.parse.urlparse(final_url).path:
+                    return self._complete_age_gate(
+                        final_url, url, headers, encoded_post_data
+                    )
+                return content, final_url
             except Exception as e:
                 self.logger.error(f"Error fetching {url} (attempt {attempt + 1}/{max_retries}): {e}")
                 if attempt < max_retries - 1:
                     xbmc.sleep(retry_wait)
         self.notify_error(f"Failed to fetch URL: {url}")
         return None, url
+
+    def _complete_age_gate(self, gate_url, original_url, headers, original_data=None):
+        """Complete Hypnotube's public age/location gate in the same cookie session."""
+        try:
+            payload = json.dumps({
+                "timeZone": "UTC",
+                "languages": ["en-US", "en"],
+            }).encode("utf-8")
+            gate_headers = dict(headers)
+            gate_headers.update({
+                "Accept": "application/json, text/plain, */*",
+                "Content-Type": "application/json",
+                "Origin": self.base_url,
+                "Referer": gate_url,
+            })
+            request = urllib.request.Request(
+                gate_url,
+                data=payload,
+                headers=gate_headers,
+                method="POST",
+            )
+            with self.opener.open(request, timeout=30) as response:
+                result = json.loads(response.read().decode("utf-8", errors="ignore"))
+
+            redirect = result.get("redirect") if isinstance(result, dict) else None
+            if not redirect or result.get("blocked") or result.get("escalate"):
+                self.logger.warning("Hypnotube age gate did not grant access")
+                return None, original_url
+
+            follow_headers = self.get_headers(gate_url)
+            request = urllib.request.Request(
+                original_url,
+                data=original_data,
+                headers=follow_headers,
+                method="POST" if original_data else "GET",
+            )
+            with self.opener.open(request, timeout=60) as response:
+                content = response.read().decode("utf-8", errors="ignore")
+                final_url = response.geturl()
+            if "/age-gate" in urllib.parse.urlparse(final_url).path:
+                self.logger.warning("Hypnotube age gate cookie was not accepted")
+                return None, original_url
+            return content, final_url
+        except Exception as exc:
+            self.logger.error(f"Hypnotube age gate failed: {exc}")
+            return None, original_url
 
     def process_content(self, url):
         if not url or url == "BOOTSTRAP":

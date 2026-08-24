@@ -281,7 +281,7 @@ class _UrllibUpstream:
         if self._head_failed:
             xbmc.log("[AHProxy-urllib] Skipping HEAD request due to previous failure. Using GET Range 0-1.", xbmc.LOGDEBUG)
             return self._make_head_via_get(extra, timeout)
-            
+
         req = self._build_request(self.url, extra)
         req.get_method = lambda: 'HEAD'
         xbmc.log(f"[AHProxy-urllib] HEAD {self.url[:120]}", xbmc.LOGDEBUG)
@@ -965,9 +965,9 @@ class _ProxyHandler(BaseHTTPRequestHandler):
                     m0 = re.match(r'bytes=(\d+)-', rng)
                     if m0:
                         range_start = int(m0.group(1))
-                allow_padding = (range_start == 0)
+                allow_padding = (range_start != 0)
                 if not allow_padding:
-                    xbmc.log("[AHProxy] Mid-file range, keep-alive padding disabled", xbmc.LOGDEBUG)
+                    xbmc.log("[AHProxy] Initial request (byte 0), keep-alive padding disabled to protect codec probing", xbmc.LOGDEBUG)
 
                 while waited < MAX_WAIT:
                     if getattr(self.server, '_shutting_down', False):
@@ -1290,16 +1290,16 @@ class PlaybackGuard(threading.Thread):
 
         while not self.monitor.abortRequested():
             elapsed = time.time() - start_ts
-            proxy_active = self.ctrl.is_active(15.0) if hasattr(self.ctrl, 'is_active') else False
-            
+            proxy_active = self.ctrl.is_active(8.0) if hasattr(self.ctrl, 'is_active') else False
+
             if elapsed > MAX_STARTUP_WAIT:
                 xbmc.log(f"[AHProxy] Timed out waiting for target: {self.target} (elapsed {elapsed:.0f}s)", xbmc.LOGWARNING)
                 break
-                
-            # Wenn wir nach 30 Sekunden noch keine Wiedergabe haben UND der Proxy
-            # seit 15 Sekunden keine Daten mehr geliefert hat, brechen wir ab.
-            if elapsed > 30 and not proxy_active:
-                xbmc.log(f"[AHProxy] Proxy inactive for 15s during startup wait, giving up (elapsed {elapsed:.0f}s)", xbmc.LOGWARNING)
+
+            # Wenn wir nach 12 Sekunden noch keine Wiedergabe haben UND der Proxy
+            # seit 8 Sekunden keine Daten mehr geliefert hat, brechen wir ab.
+            if elapsed > 12 and not proxy_active:
+                xbmc.log(f"[AHProxy] Proxy inactive for 8s during startup wait, giving up (elapsed {elapsed:.0f}s)", xbmc.LOGWARNING)
                 break
 
             if hasattr(self.player, 'isPlayingVideo') and self.player.isPlayingVideo():
@@ -1328,7 +1328,28 @@ class PlaybackGuard(threading.Thread):
             return
 
         while not self.monitor.abortRequested():
-            if hasattr(self.player, 'isPlayingVideo') and not self.player.isPlayingVideo():
+            playing = hasattr(self.player, 'isPlayingVideo') and self.player.isPlayingVideo()
+
+            if not playing:
+                # Player stopped — give Kodi up to 3 seconds to start the next
+                # playlist item before killing the proxy. During 24/7 Smart Stream
+                # transitions, Kodi closes the old player and opens the new one
+                # in rapid succession; the proxy for the *new* video may already
+                # be running. Killing it prematurely causes Kodi's curl to hang
+                # on the dead localhost for 30-60 seconds.
+                grace_end = time.time() + 3.0
+                while time.time() < grace_end and not self.monitor.abortRequested():
+                    if hasattr(self.player, 'isPlayingVideo') and self.player.isPlayingVideo():
+                        break
+                    self.monitor.waitForAbort(0.3)
+                # Re-check after grace
+                if hasattr(self.player, 'isPlayingVideo') and self.player.isPlayingVideo():
+                    try:
+                        current_file = self.player.getPlayingFile() if hasattr(self.player, 'getPlayingFile') else ""
+                    except Exception:
+                        current_file = ""
+                    if (self.target == current_file) or (self.target and current_file and (self.target in current_file or current_file in self.target)):
+                        continue  # Still our target, keep guarding
                 break
             
             try:
@@ -1336,9 +1357,10 @@ class PlaybackGuard(threading.Thread):
             except Exception:
                 current_file = ""
             
-            if current_file != self.target:
-                xbmc.log(f"[AHProxy] Player switched to {current_file}, stopping proxy for {self.target}", xbmc.LOGINFO)
-                break
+            if current_file and current_file != self.target:
+                if not (self.target and current_file and (self.target in current_file or current_file in self.target)):
+                    xbmc.log(f"[AHProxy] Player switched to {current_file}, stopping proxy for {self.target}", xbmc.LOGINFO)
+                    break
                 
             if time.time() - start_ts > self.idle_timeout:
                 break
@@ -1385,6 +1407,8 @@ class _HlsProxyHandler(BaseHTTPRequestHandler):
         try:
             if parsed.path in ("/playlist.m3u8", "/resource", "/resource.ts"):
                 url = query.get("url", [""])[0]
+                if parsed.path == "/playlist.m3u8" and not url:
+                    url = getattr(self.controller, "master_url", "")
                 if not url:
                     self.send_error(400, "Missing URL")
                     return
@@ -1399,6 +1423,7 @@ class _HlsProxyHandler(BaseHTTPRequestHandler):
                 if res.content.startswith(b"#EXTM3U"):
                     playlist = res.content.decode("utf-8", "replace")
                     lines = []
+                    previous_tag = ""
                     for line in playlist.splitlines():
                         if line.strip() and not line.startswith("#"):
                             resource_url = urllib.parse.urljoin(url, line.strip())
@@ -1410,7 +1435,8 @@ class _HlsProxyHandler(BaseHTTPRequestHandler):
                                         parsed_resource._replace(query=parent_query)
                                     )
                             resource_file = urllib.parse.urlparse(resource_url).path.lower()
-                            if resource_file.endswith(".m3u8"):
+                            is_variant = previous_tag.startswith("#EXT-X-STREAM-INF")
+                            if resource_file.endswith(".m3u8") or is_variant:
                                 resource_path = "/playlist.m3u8"
                             elif resource_file.endswith((".ts", ".webp")):
                                 resource_path = "/resource.ts"
@@ -1424,6 +1450,8 @@ class _HlsProxyHandler(BaseHTTPRequestHandler):
                                 "&ext=.ts" if resource_path == "/resource.ts" else "",
                             )
                         lines.append(line)
+                        if line.startswith("#"):
+                            previous_tag = line
                     content = "\n".join(lines).encode("utf-8")
                     self.send_response(200)
                     self.send_header("Content-Type", "application/vnd.apple.mpegurl")
@@ -1502,6 +1530,21 @@ class HlsProxyController:
         return (time.time() - self.last_activity) < idle_seconds
 
     def start(self):
+        try:
+            response = self.session.get(self.master_url, headers=self.headers, timeout=10)
+            response.raise_for_status()
+            text = response.content.decode("utf-8", "replace")
+            if "#EXT-X-STREAM-INF" in text:
+                variants = [
+                    urllib.parse.urljoin(self.master_url, line.strip())
+                    for line in text.splitlines()
+                    if line.strip() and not line.startswith("#")
+                ]
+                if variants:
+                    self.master_url = variants[-1]
+        except Exception as exc:
+            xbmc.log(f"[AHHlsProxy] Master flatten skipped: {exc}", xbmc.LOGDEBUG)
+
         def _handler_factory(controller_obj):
             class _H(_HlsProxyHandler):
                 controller = controller_obj
@@ -1512,10 +1555,17 @@ class HlsProxyController:
             self.port = self.httpd.server_port
         self.thread = threading.Thread(target=self.httpd.serve_forever, name="AHHlsProxyThread", daemon=True)
         self.thread.start()
-        self.local_url = "http://{}:{}/playlist.m3u8?url={}".format(
-            self.host, self.port, urllib.parse.quote_plus(self.master_url)
-        )
+        self.local_url = "http://{}:{}/playlist.m3u8".format(self.host, self.port)
         xbmc.log(f"[AHHlsProxy] Started on {self.local_url}", xbmc.LOGINFO)
+        try:
+            probe = urllib.request.urlopen(self.local_url, timeout=5)
+            prefix = probe.read(7)
+            probe.close()
+            if prefix != b"#EXTM3U":
+                raise ValueError("invalid playlist response")
+        except Exception as exc:
+            self.stop()
+            raise RuntimeError("HLS proxy self-test failed: {}".format(exc))
         return self.local_url
 
     def stop(self, timeout=1.0):

@@ -1,7 +1,18 @@
 # -*- coding: utf-8 -*-
 import html
+import os
 import re
+import sys
 import urllib.parse
+
+import xbmcaddon
+
+addon_path = xbmcaddon.Addon().getAddonInfo("path")
+vendor_path = os.path.join(addon_path, "resources", "lib", "vendor")
+if vendor_path not in sys.path:
+    sys.path.insert(0, vendor_path)
+
+import cloudscraper
 
 from resources.lib.resolvers import resolver
 from resources.websites.xopenload import XopenloadWebsite
@@ -19,6 +30,7 @@ class XXVideossWebsite(XopenloadWebsite):
         self.directory_source_url = self.base_url + "/"
         self.show_studios = False
         self.proxy_resolved_streams = True
+        self.session = cloudscraper.create_scraper(browser={"custom": self.ua})
 
     def _get_sort_index(self):
         return 0
@@ -26,10 +38,13 @@ class XXVideossWebsite(XopenloadWebsite):
     def _extract_videos(self, page_html):
         items = []
         for block in re.findall(r'<article\b[\s\S]*?</article>', page_html, re.I):
+            opening = re.match(r'<article\b[^>]*>', block, re.I)
+            if opening and re.search(r'\bclass=["\'][^"\']*\bsticky\b', opening.group(0), re.I):
+                continue
             link = re.search(r'<a[^>]+href=["\']([^"\']+)', block, re.I)
             image = re.search(r'<img[^>]+src=["\']([^"\']+)["\'][^>]+alt=["\']([^"\']+)', block, re.I)
             if link and image:
-                title = self._clean(image.group(2))
+                title = self._clean(image.group(2)).replace("\u2013", "-").replace("\u2014", "-")
                 items.append({"title": title, "url": html.unescape(link.group(1)), "thumb": html.unescape(image.group(1)), "info": {"title": title}})
         return items
 

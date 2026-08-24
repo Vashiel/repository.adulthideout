@@ -389,27 +389,49 @@ class Tnaflix(BaseWebsite):
         if not content:
             return self.notify_error("Failed to load video page")
 
-        config_match = re.search(r'flashvars\.config\s*=\ "([^"]+)"', content)
+        video_file = None
+
+        # 1. Check legacy flashvars / XML config
+        config_match = re.search(r'flashvars\.config\s*=\s*["\']([^"\']+)["\']', content)
         if not config_match:
             config_match = re.search(r'config:\s*["\']([^"\']+)["\']', content)
 
-        video_file = None
         if config_match:
             cfg_url = config_match.group(1)
             cfg_url = html.unescape(cfg_url)
+            if not cfg_url.startswith('http'):
+                cfg_url = urllib.parse.urljoin(url, cfg_url)
             cfg_content = self.make_request(cfg_url, headers=headers)
             if cfg_content:
                 file_match = re.search(r'<videoLink>([^<]+)</videoLink>', cfg_content)
                 if file_match:
                     video_file = file_match.group(1)
 
+        # 2. Check HTML5 <source> tag
         if not video_file:
             video_match = re.search(r'<source[^>]+src="([^"]+\.mp4[^"]*)"', content)
             if video_match:
                 video_file = video_match.group(1)
 
+        # 3. Check direct MP4 stream links embedded in JS / JSON (excluding preview trailers)
+        if not video_file:
+            mp4_candidates = re.findall(r'https?://[^\s"\'<>]+\.mp4[^\s"\'<>]*', content)
+            valid_candidates = [html.unescape(u) for u in mp4_candidates if 'trailer.mp4' not in u.lower()]
+            if valid_candidates:
+                def qual_score(u):
+                    if '1080p' in u: return 5
+                    if '720p' in u: return 4
+                    if '480p' in u: return 3
+                    if '360p' in u: return 2
+                    if '240p' in u: return 1
+                    return 0
+                valid_candidates.sort(key=qual_score, reverse=True)
+                video_file = valid_candidates[0]
+
         if video_file:
             video_file = html.unescape(video_file)
+            if "|" not in video_file:
+                video_file += "|User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)&Referer=https://www.tnaflix.com/"
             item = xbmcgui.ListItem(path=video_file)
             item.setProperty('IsPlayable', 'true')
             item.setMimeType('video/mp4')

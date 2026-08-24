@@ -1,10 +1,15 @@
 #!/usr/bin/env python
 
+import gzip
+import http.cookiejar
 import os
 import re
+import ssl
 import sys
 import threading
 import urllib.parse
+import urllib.request
+import zlib
 import xbmc
 import xbmcaddon
 import xbmcgui
@@ -21,16 +26,6 @@ try:
         sys.path.insert(0, vendor_path)
 except Exception as e:
     xbmc.log(f"[AdultHideout] Vendor path inject failed in spankbang.py: {e}", xbmc.LOGERROR)
-
-try:
-    import cloudscraper
-    _HAS_CF = True
-except Exception as e:
-    xbmc.log(f"[Spankbang] cloudscraper import failed: {e}", xbmc.LOGERROR)
-    _HAS_CF = False
-
-_SESSION_CACHE = None
-_SESSION_LOCK = threading.Lock()
 
 
 class Spankbang(BaseWebsite):
@@ -59,78 +54,42 @@ class Spankbang(BaseWebsite):
         self.model_sort_options = ["Trending", "Alphabetical"]
         self.model_sort_paths = {"Trending": "pornstars", "Alphabetical": "pornstars_alphabet"}
 
-        self._scraper_ua = (
-            "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:120.0) "
-            "Gecko/20100101 Firefox/120.0"
+        self.cookie_jar = http.cookiejar.CookieJar()
+        self.ssl_ctx = ssl.create_default_context()
+        self.opener = urllib.request.build_opener(
+            urllib.request.HTTPCookieProcessor(self.cookie_jar),
+            urllib.request.HTTPSHandler(context=self.ssl_ctx)
         )
-        self.scraper = None
+        self._headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Upgrade-Insecure-Requests': '1',
+        }
 
         self._set_orientation_cookie()
 
-    def get_session(self):
-        """
-        Cloudflare's managed challenge on spankbang.com blocks plain urllib/requests
-        (some regions, e.g. Germany, get a stricter bot-check tied to age-verification
-        rules). cloudscraper solves it; a global cache reuses the session across calls.
-        """
-        global _SESSION_CACHE
-
-        with _SESSION_LOCK:
-            if self.scraper:
-                return self.scraper
-            if _SESSION_CACHE:
-                self.scraper = _SESSION_CACHE
-                return self.scraper
-            self.scraper = self._new_session()
-            _SESSION_CACHE = self.scraper
-            return self.scraper
-
-    def _new_session(self):
-        if not _HAS_CF:
-            self.logger.error("Cloudscraper library is not available.")
-            return None
-        try:
-            scraper = cloudscraper.create_scraper(
-                browser={'browser': 'firefox', 'platform': 'windows', 'mobile': False}
-            )
-            scraper.headers.update({
-                'User-Agent': self._scraper_ua,
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-            })
-            return scraper
-        except Exception as e:
-            self.logger.error(f"Failed to create scraper session: {e}")
-            return None
-
     def _get_html(self, url):
-        global _SESSION_CACHE
-        # Cloudflare alternates between a legacy JS challenge (cloudscraper solves it)
-        # and a stricter managed challenge (it can't) - a fresh session sometimes draws
-        # the solvable one, so retry a couple of times with a new session on 403.
-        attempts = 2
-        last_error = ""
-        for attempt in range(attempts):
-            scraper = self.get_session()
-            if not scraper:
-                return ""
-            try:
-                response = _ipv4_call(lambda: scraper.get(url, timeout=20))
-                if response.status_code == 403:
-                    last_error = "403 Forbidden (Cloudflare challenge)"
-                    with _SESSION_LOCK:
-                        self.scraper = None
-                        _SESSION_CACHE = None
-                    continue
-                response.raise_for_status()
-                return response.text
-            except Exception as e:
-                last_error = str(e)
-                with _SESSION_LOCK:
-                    self.scraper = None
-                    _SESSION_CACHE = None
-        self.logger.error(f"Fehler beim Abrufen der URL {url}: {last_error}")
-        return ""
+        req = urllib.request.Request(url, headers=self._headers)
+        try:
+            with self.opener.open(req, timeout=15) as resp:
+                data = resp.read()
+                encoding = resp.info().get('Content-Encoding', '')
+                if encoding == 'gzip':
+                    data = gzip.decompress(data)
+                elif encoding == 'deflate':
+                    try:
+                        data = zlib.decompress(data)
+                    except Exception:
+                        data = zlib.decompress(data, -zlib.MAX_WBITS)
+                return data.decode('utf-8', errors='ignore')
+        except Exception as e:
+            self.logger.error(f"Fehler beim Abrufen der URL {url}: {e}")
+            return ""
 
     def _set_orientation_cookie(self):
         try:
@@ -491,20 +450,31 @@ class Spankbang(BaseWebsite):
             stream_data_str = stream_data_match.group(1)
             self.logger.info(f"Spankbang: Found stream_data: {stream_data_str[:300]}")
             
+            # Prioritize adaptive HLS m3u8 for buffer-free, unthrottled streaming
             m3u8_match = re.search(r"'m3u8'\s*:\s*\[\s*'([^']+)'", stream_data_str)
-            if m3u8_match:
+            if m3u8_match and m3u8_match.group(1).startswith('http'):
                 best_url = m3u8_match.group(1)
-                self.logger.info(f"Spankbang: Found m3u8: {best_url}")
-            
-            if not best_url:
-                qualities = ['1080p', '720p', '480p', '360p', '240p']
+                self.logger.info(f"Spankbang: Selected adaptive HLS m3u8: {best_url}")
+            else:
+                qualities = ['720p', '1080p', '480p', '320p', '240p']
                 for quality in qualities:
                     quality_match = re.search(rf"'{quality}'\s*:\s*\[\s*'([^']+)'", stream_data_str)
-                    if quality_match:
+                    if quality_match and quality_match.group(1).startswith('http'):
                         best_url = quality_match.group(1)
-                        self.logger.info(f"Spankbang: Found {quality}: {best_url}")
+                        self.logger.info(f"Spankbang: Selected direct MP4 ({quality}): {best_url}")
                         break
         
+        if not best_url:
+            mp4s = re.findall(r'"(https?://[^"]+(?:vdownload|cdn|sb-cd)[^"]+\.mp4[^"]*)"', html_content)
+            if not mp4s:
+                mp4s = re.findall(r'"(https?://[^"]+\d{3,4}p\.mp4[^"]*)"', html_content)
+            if mp4s:
+                def get_quality(u):
+                    match = re.search(r'(\d{3,4})p', u)
+                    return int(match.group(1)) if match else 0
+                best_url = sorted(list(set(mp4s)), key=get_quality, reverse=True)[0]
+                self.logger.info(f"Spankbang: Found direct fallback mp4: {best_url}")
+
         if not best_url:
             hls_url_match = re.search(r"['\"]?(https?://[^'\"\\s]+\.m3u8[^'\"\\s]*)['\"]?", html_content)
             if hls_url_match:
@@ -516,23 +486,18 @@ class Spankbang(BaseWebsite):
             if video_src_match:
                 best_url = video_src_match.group(1)
                 self.logger.info(f"Spankbang: Found video src: {best_url}")
-        
-        if not best_url:
-            mp4s = re.findall(r'"(https?://[^"]+(?:vdownload|cdn|sb-cd)[^"]+\.mp4[^"]*)"', html_content)
-            if not mp4s:
-                mp4s = re.findall(r'"(https?://[^"]+\d{3,4}p\.mp4[^"]*)"', html_content)
-            if mp4s:
-                def get_quality(u):
-                    match = re.search(r'(\d{3,4})p', u)
-                    return int(match.group(1)) if match else 0
-                best_url = sorted(list(set(mp4s)), key=get_quality, reverse=True)[0]
-                self.logger.info(f"Spankbang: Found mp4: {best_url}")
 
         if not best_url:
             self.notify_error("No playable video streams found.")
             return
         
         best_url = best_url.replace('\\/', '/').replace('\\u0026', '&')
+
+        # Attach HTTP Headers for Kodi video player
+        ua = self._headers.get('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0')
+        ref = self.base_url
+        if '|' not in best_url:
+            best_url = f"{best_url}|Referer={urllib.parse.quote_plus(ref)}&User-Agent={urllib.parse.quote_plus(ua)}"
             
         play_item = xbmcgui.ListItem(path=best_url)
         

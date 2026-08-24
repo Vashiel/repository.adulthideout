@@ -158,6 +158,13 @@ class PornHD3X(BaseWebsite):
             time.sleep(1)
         return None
 
+    def search(self, query):
+        if not query:
+            return
+        # This route treats '+' as a literal character and returns 404.
+        search_url = self.search_url.format(urllib.parse.quote(query.strip(), safe=''))
+        self.process_content(search_url, query=query)
+
     def _slug_to_thumb(self, slug):
         """
         Derive thumbnail URL from a movie slug.

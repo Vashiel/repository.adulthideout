@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
+import socket
 import urllib.parse
 import xbmc
 
@@ -38,13 +39,65 @@ def _unpack_packed_js(html):
 
 def _hglink_to_hanerix(url):
     parsed = urllib.parse.urlparse(url)
-    if "hglink.to" not in parsed.netloc:
+    if parsed.netloc.lower() not in ("hglink.to", "www.hglink.to", "hgcloud.to", "www.hgcloud.to"):
         return url
 
     path = parsed.path
     if path.startswith("/e/"):
         return urllib.parse.urlunparse(("https", "hanerix.com", path, "", parsed.query, parsed.fragment))
     return url
+
+
+def _streams_from_html(html, page_url):
+    unpacked = _unpack_packed_js(html)
+    if not unpacked:
+        return []
+    links_match = re.search(r"var\s+links\s*=\s*\{([\s\S]*?)\};\s*jwplayer", unpacked)
+    if not links_match:
+        return []
+    links = {}
+    for key, value in re.findall(r'"([^"]+)"\s*:\s*"([^"]*)"', links_match.group(1)):
+        if value:
+            links[key] = value.replace("\\/", "/")
+    return [
+        urllib.parse.urljoin(page_url, links[key])
+        for key in ("hls3", "hls2", "hls4") if links.get(key)
+    ]
+
+
+def _playlist_hosts_resolve(stream_url, headers):
+    if not _host_resolves(stream_url):
+        return False
+    master = resolver_utils.http_get(stream_url, headers=headers)
+    if not master or "#EXTM3U" not in master[:64]:
+        return False
+    media_url = ""
+    for line in master.splitlines():
+        if line.strip() and not line.startswith("#"):
+            media_url = urllib.parse.urljoin(stream_url, line.strip())
+            break
+    if not media_url or not _host_resolves(media_url):
+        return False
+    if "#EXT-X-STREAM-INF" not in master:
+        return True
+    media = resolver_utils.http_get(media_url, headers=headers)
+    if not media or "#EXTM3U" not in media[:64]:
+        return False
+    for line in media.splitlines():
+        if line.strip() and not line.startswith("#"):
+            return _host_resolves(urllib.parse.urljoin(media_url, line.strip()))
+    return False
+
+
+def _host_resolves(url):
+    host = urllib.parse.urlparse(url).hostname
+    if not host:
+        return False
+    try:
+        socket.getaddrinfo(host, 443, socket.AF_UNSPEC, socket.SOCK_STREAM)
+        return True
+    except OSError:
+        return False
 
 
 def resolve(url, referer="", headers=None):
@@ -58,35 +111,32 @@ def resolve(url, referer="", headers=None):
     if headers:
         request_headers.update(headers)
 
-    html = resolver_utils.http_get(page_url, headers=request_headers)
-    if not html:
-        xbmc.log("[AdultHideout][hglink] Empty player page", xbmc.LOGWARNING)
-        return "", {}
-
-    unpacked = _unpack_packed_js(html)
-    if not unpacked:
-        xbmc.log("[AdultHideout][hglink] Packed player script not found", xbmc.LOGWARNING)
-        return "", {}
-
-    links_match = re.search(r"var\s+links\s*=\s*\{([\s\S]*?)\};\s*jwplayer", unpacked)
-    if not links_match:
-        xbmc.log("[AdultHideout][hglink] links object not found", xbmc.LOGWARNING)
-        return "", {}
-
-    links_body = links_match.group(1)
-    links = {}
-    for key, value in re.findall(r'"([^"]+)"\s*:\s*"([^"]*)"', links_body):
-        if value:
-            links[key] = value.replace("\\/", "/")
-
-    stream_url = links.get("hls4") or links.get("hls3") or links.get("hls2")
-    if not stream_url:
-        xbmc.log("[AdultHideout][hglink] No HLS stream found", xbmc.LOGWARNING)
-        return "", {}
-
-    stream_url = urllib.parse.urljoin(page_url, stream_url)
-    xbmc.log("[AdultHideout][hglink] Final stream URL: {}".format(stream_url), xbmc.LOGINFO)
-    return stream_url, {
-        "User-Agent": request_headers["User-Agent"],
-        "Referer": page_url,
-    }
+    for attempt in range(4):
+        separator = "&" if "?" in page_url else "?"
+        attempt_url = page_url if not attempt else "{}{}_ah_retry={}".format(page_url, separator, attempt)
+        html = resolver_utils.http_get(attempt_url, headers=request_headers)
+        stream_urls = _streams_from_html(html, page_url) if html else []
+        stream_url = next(
+            (candidate for candidate in stream_urls
+             if _playlist_hosts_resolve(candidate, request_headers)), ""
+        )
+        if stream_url:
+            xbmc.log(
+                "[AdultHideout][hglink] Final stream URL after {} attempt(s): {}".format(
+                    attempt + 1, stream_url
+                ),
+                xbmc.LOGINFO,
+            )
+            return stream_url, {
+                "User-Agent": request_headers["User-Agent"],
+                "Referer": page_url,
+            }
+        if stream_urls:
+            xbmc.log(
+                "[AdultHideout][hglink] Skipping unresolved CDN host (attempt {})".format(
+                    attempt + 1
+                ),
+                xbmc.LOGWARNING,
+            )
+    xbmc.log("[AdultHideout][hglink] No reachable HLS stream found", xbmc.LOGWARNING)
+    return "", {}

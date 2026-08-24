@@ -8,6 +8,7 @@
     <setting id="main_menu_website_content_filter" type="text" default="" visible="false" />
     <setting id="main_menu_website_type_filter" type="text" default="" visible="false" />
     <setting id="global_quality" type="enum" label="30769" lvalues="30770|30771|30772|30773|30774|30775" default="0" />
+    <setting id="vault_sort_by" type="text" default="date" visible="false" />
     <setting id="clear_cache" type="action" label="30013" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/clear_cache.py)" />
     <setting id="reset_settings" type="action" label="30014" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/reset_settings.py)" />
     <setting type="lsep" label="30821" />
@@ -38,8 +39,8 @@
   <category label="30807">
     <setting type="lsep" label="[B]CrazyShit[/B]" />
     <setting id="show_crazyshit" type="bool" label="30809" default="false" />
-    <setting type="lsep" label="[B]PervClips[/B]" />
-    <setting id="show_pervclips" type="bool" label="30825" default="false" />
+    <setting id="show_swingerpornfun" type="bool" default="false" visible="false" />
+    <setting id="show_vintagepornfun" type="bool" default="false" visible="false" />
     <setting type="action" label="30812" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/site_options.py)" />
     <setting id="crazyshit_disclaimer_accepted" type="bool" default="false" visible="false" />
     <setting type="lsep" label="30802" />
@@ -161,7 +162,6 @@
     <setting id="sexvid_sort_by" type="enum" label="30004" values="Latest|Top Rated|Longest|Most Commented|Most Favourited" default="0" visible="false" />
     <setting id="tokyomotion_sort_by" type="enum" label="30004" values="Most Recent|Most Viewed|Top Rated|Longest|Being Watched" default="0" visible="false" />
     <setting id="zeenite_sort_by" type="enum" label="30004" values="Latest Updates|Most Popular" default="0" visible="false" />
-    <setting id="collectionofbestporn_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated|Longest" default="0" visible="false" />
     <setting id="yourlust_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="xxbrits_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="pornxp_sort_by" type="enum" label="30004" values="Latest|New Releases|HD|Most Watched" default="0" visible="false" />
@@ -199,13 +199,11 @@
     <setting id="luxuretv_sort_by" type="enum" label="30004" values="Newest|Top Rated|Most Viewed|Longest|Most Discussed" default="0" visible="false" />
     <setting id="mangoporn_sort_by" type="enum" label="30004" values="Latest|Trending|Ratings" default="0" visible="false" />
     <setting id="missav_video_sort_by" type="enum" label="30004" values="New Releases|Recent Update|Most Viewed Today|Most Viewed by Week|Most Viewed by Month" default="0" visible="false" />
-    <setting id="motherless_sort_by" type="enum" label="30004" values="Newest|Being Watched Now|Favorites|Most Viewed|Most Commented|Popular|Archived|Random Video" default="0" visible="false" />
     <setting id="myporntape_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated|Longest|Most Commented|Most Favourited" default="0" visible="false" />
     <setting id="noodlemagazine_sort_by" type="enum" label="30004" values="Now|Popular Recent|Popular Day|Popular Week|Popular Month" default="0" visible="false" />
     <setting id="porntn_sort_by" type="enum" label="30004" default="0" values="Trending|Latest|Most Viewed|Top Rated|Longest" visible="false" />
     <setting id="porcore_sort_by" type="enum" label="30004" default="0" values="Newest|Most Viewed|Top Rated" visible="false" />
     <setting id="rule34video_sort_order" type="enum" label="30004" values="Newest|Most Viewed|Top Rated|Longest|Random" default="0" visible="false" />
-    <setting id="rule34world_sort_by" type="enum" label="30004" values="Latest|Highest Rated|Hot" default="0" visible="false" />
     <setting id="spankbang_sort_by" type="enum" label="30004" values="Recommended|Trending|Upcoming|New|Popular" default="0" visible="false" />
     <setting id="spankbang_model_sort" type="enum" label="Model Sort" values="Trending|Alphabetical" default="0" visible="false" />
     <setting id="spankingtube_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
@@ -236,6 +234,8 @@
     <setting id="avjoy_sort_by" type="number" default="0" visible="false" />
     <setting id="darknessporn_sort_by" type="number" default="0" visible="false" />
     <setting id="fullxcinema_sort_by" type="number" default="0" visible="false" />
+    <setting id="hdshemalez_sort_by" type="number" default="0" visible="false" />
+    <setting id="vintagepornfun_sort_by" type="number" default="0" visible="false" />
     <setting id="archivebate_filter_gender" type="number" default="0" visible="false" />
     <setting id="archivebate_filter_sort" type="number" default="0" visible="false" />
     <setting id="xopenload_sort_by" type="number" default="0" visible="false" />
@@ -330,6 +330,6 @@
   </category>
   <category label="30841">
     <setting id="enable_website_collections" type="bool" label="30842" default="false" />
-    <setting type="action" label="30843" action="ActivateWindow(Videos,plugin://plugin.video.adulthideout/?mode=70&amp;action=collections_menu,return)" enable="eq(-1,true)" />
+    <setting type="action" label="30843" action="RunPlugin(plugin://plugin.video.adulthideout/?mode=70&amp;action=manage_dialog)" enable="eq(-1,true)" />
   </category>
 </settings>

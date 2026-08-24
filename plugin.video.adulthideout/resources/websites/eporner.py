@@ -11,6 +11,7 @@ import xbmcgui
 import xbmcplugin
 import xbmcaddon
 from resources.lib.base_website import BaseWebsite
+from resources.lib.proxy_utils import HlsProxyController, PlaybackGuard, ProxyController
 
 try:
     addon_path = xbmcaddon.Addon().getAddonInfo('path')
@@ -140,17 +141,21 @@ class Eporner(BaseWebsite):
                     else:
                         query = parts[-1]
 
+        query = urllib.parse.unquote_plus(query)
+
         saved_sort_idx = self.addon.getSetting(f'{self.name}_sort_by') or '0'
         try: sort_idx = int(saved_sort_idx)
         except Exception: sort_idx = 0
         if sort_idx >= len(self.sort_options): sort_idx = 0
-        sort_key = self.sort_options[sort_idx]
+        sort_key = "Longest" if getattr(self, "adult_hideout_full_movie_mode", False) else self.sort_options[sort_idx]
         
         saved_gay_idx = self.addon.getSetting('eporner_gay_filter') or '0'
         saved_qual_idx = self.addon.getSetting('eporner_quality_filter') or '0'
         saved_dur_idx = self.addon.getSetting('eporner_min_duration') or '0'
         try: dur_idx = int(saved_dur_idx)
         except Exception: dur_idx = 0
+        if getattr(self, "adult_hideout_full_movie_mode", False):
+            dur_idx = 0
 
         try: qual_idx = int(saved_qual_idx)
         except Exception: qual_idx = 0
@@ -342,7 +347,7 @@ class Eporner(BaseWebsite):
             except Exception: pass
         hash_val = ''.join(parts)
 
-        json_url = f'{self.base_url}xhr/video/{vid}?hash={hash_val}&domain=www.eporner.com&fallback=false&embed=true&supportedFormats=dash,hls,mp4'
+        json_url = f'{self.base_url}xhr/video/{vid}?hash={hash_val}&domain=www.eporner.com&fallback=false&embed=false&supportedFormats=dash,hls,mp4'
         xhr_headers = {'X-Requested-With': 'XMLHttpRequest', 'Referer': url, 'User-Agent': self.ua}
         
         api_content = self.make_request(json_url, headers=xhr_headers)
@@ -357,6 +362,8 @@ class Eporner(BaseWebsite):
 
             pref_map = {0: "1080p", 1: "720p", 2: "1080p", 3: "4K"}
             target_qual = pref_map.get(qual_idx, "1080p")
+
+            headers_str = urllib.parse.urlencode({'User-Agent': self.ua, 'Referer': url})
 
             # Primary: Try HLS adaptive stream with target resolution selection
             hls_sources = data.get('sources', {}).get('hls', {})
@@ -374,18 +381,20 @@ class Eporner(BaseWebsite):
                     if variant_url:
                         stream_url = variant_url
 
-                item = xbmcgui.ListItem(path=stream_url)
+                play_path = f"{stream_url}|{headers_str}"
+                item = xbmcgui.ListItem(path=play_path)
                 item.setProperty('IsPlayable', 'true')
                 item.setMimeType('application/x-mpegURL')
                 item.setProperty('inputstream', 'inputstream.adaptive')
                 item.setProperty('inputstream.adaptive.manifest_type', 'hls')
+                item.setContentLookup(False)
                 xbmcplugin.setResolvedUrl(self.addon_handle, True, item)
                 return
 
             # Fallback: MP4 direct stream selection
             stream_url = None
             sources = data.get('sources', {}).get('mp4', {})
-            if isinstance(sources, dict):
+            if isinstance(sources, dict) and sources:
                 priority = []
                 if target_qual == "4K":
                     priority = ['2160p', '1440p', '1080p', '720p', '480p']
@@ -394,7 +403,7 @@ class Eporner(BaseWebsite):
                 elif target_qual == "720p":
                     priority = ['720p', '1080p', '480p', '360p']
                 else:
-                    priority = ['1080p', '720p', '1440p', '2160p', '480p']
+                    priority = ['1080p', '720p', '480p', '360p']
 
                 for p in priority:
                     for label, s_info in sources.items():
@@ -410,12 +419,15 @@ class Eporner(BaseWebsite):
                         stream_url = mp4_urls[0]
 
             if stream_url:
-                item = xbmcgui.ListItem(path=stream_url)
+                play_path = f"{stream_url}|{headers_str}"
+                item = xbmcgui.ListItem(path=play_path)
                 item.setProperty('IsPlayable', 'true')
                 item.setMimeType('video/mp4')
+                item.setContentLookup(False)
                 xbmcplugin.setResolvedUrl(self.addon_handle, True, item)
-            else:
-                self.notify_error("Stream URL not found")
+                return
+
+            self.notify_error("Stream URL not found")
         except Exception as exc:
             self.logger.error(f"[Eporner] Play error: {exc}")
             self.notify_error("Failed to parse video sources")

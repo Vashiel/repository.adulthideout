@@ -15,7 +15,13 @@ import xbmc
 import xbmcgui
 import xbmcvfs
 
-from resources.lib.resilient_http import _ipv4_call
+try:
+    from resources.lib.resilient_http import _ipv4_call
+except ImportError:
+    try:
+        from resilient_http import _ipv4_call
+    except ImportError:
+        _ipv4_call = None
 
 
 PORT_PROPERTY = "AdultHideout.ThumbProxyPort"
@@ -52,6 +58,8 @@ ALLOWED_HOSTS = frozenset((
     "swingerpornfun.com",
     "www.swingerpornfun.com",
     "i0.wp.com",
+    "iafd.com",
+    "www.iafd.com",
 ))
 ALLOWED_PATH_PREFIXES = (
     "/_",

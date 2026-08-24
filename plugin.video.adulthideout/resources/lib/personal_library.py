@@ -355,15 +355,23 @@ class PersonalLibrary:
         xbmc.executebuiltin("Container.Refresh")
 
     def delete_collection(self, collection_id):
+        xbmc.log(f"[AdultHideout][Vault] delete_collection called for collection_id='{collection_id}'", xbmc.LOGINFO)
         data = load_library()
         collection = next((item for item in data["collections"] if item["id"] == collection_id and not item.get("system")), None)
-        if not collection or not xbmcgui.Dialog().yesno(_text(30700, "Vault"), _text(30727, "Delete collection '{}' ?", collection.get("name", ""))):
+        if not collection:
+            xbmc.log(f"[AdultHideout][Vault] Collection '{collection_id}' not found or is system collection", xbmc.LOGWARNING)
+            return
+        if not xbmcgui.Dialog().yesno(_text(30700, "Vault"), _text(30727, "Delete collection '{}' ?", collection.get("name", ""))):
+            xbmc.log(f"[AdultHideout][Vault] User cancelled deletion of collection '{collection.get('name')}'", xbmc.LOGINFO)
             return
         data["collections"] = [item for item in data["collections"] if item["id"] != collection_id]
         for item in data["items"]:
             item["collections"] = [value for value in item.get("collections", []) if value != collection_id]
         data["items"] = [item for item in data["items"] if item.get("collections")]
         save_library(data)
+        xbmc.log(f"[AdultHideout][Vault] Successfully deleted collection '{collection.get('name')}' and updated vault.json", xbmc.LOGINFO)
+        if xbmcgui:
+            xbmcgui.Dialog().notification(_text(30700, "Vault"), f"Collection '{collection.get('name')}' deleted", xbmcgui.NOTIFICATION_INFO, 2000)
         xbmc.executebuiltin("Container.Refresh")
 
     def show_backup_menu(self):
@@ -406,7 +414,7 @@ class PersonalLibrary:
         if xbmcgui.Dialog().yesno(_text(30700, "Vault"), _text(30725, "Replace the current Vault with this backup?")):
             save_library(restored)
             xbmcgui.Dialog().notification(_text(30700, "Vault"), _text(30722, "Backup restored"), xbmcgui.NOTIFICATION_INFO, 3000)
-            xbmc.executebuiltin("Container.Update({},replace)".format(self._url("root")))
+            xbmc.executebuiltin("Container.Refresh")
             return
         self.show_backup_menu()
 

@@ -67,14 +67,21 @@ class Milfzr(BaseWebsite):
 
     def _items(self, content):
         items, seen = [], set()
-        blocks = re.findall(r'<div id="post-\d+" class="item\b[^>]*>([\s\S]*?)</div>\s*</div>', content or "", re.I)
+        blocks = re.findall(
+            r'<article\b[^>]*class=["\'][^"\']*video-card[^"\']*["\'][^>]*>([\s\S]*?)</article>',
+            content or "", re.I,
+        )
+        if not blocks:
+            blocks = re.findall(r'<div id="post-\d+" class="item\b[^>]*>([\s\S]*?)</div>\s*</div>', content or "", re.I)
         for block in blocks:
             link_match = re.search(r'href=["\'](https://milfzr\.com/[^"\']+)["\']', block, re.I)
             if not link_match:
                 continue
             item_url = link_match.group(1)
             
-            title_match = re.search(r'title=["\']([^"\']+)["\']', block, re.I)
+            title_match = re.search(r'<a\b[^>]*class=["\'][^"\']*video-thumb-wrap[^"\']*["\'][^>]*title=["\']([^"\']+)', block, re.I)
+            if not title_match:
+                title_match = re.search(r'title=["\']([^"\']+)["\']', block, re.I)
             title = self._clean(title_match.group(1) if title_match else "")
             if not title or item_url in seen:
                 continue
@@ -106,7 +113,7 @@ class Milfzr(BaseWebsite):
         for title, item_url, thumb, info in items:
             self.add_link(title, item_url, 4, thumb, self.fanart, info_labels=info)
             
-        if re.search(r'href=["\'][^"\']*/page/{}/?["\']'.format(page + 1), content, re.I) or re.search(r'[&?]paged={}\b'.format(page + 1), content, re.I):
+        if re.search(r'href=["\'][^"\']*/page/{}/?["\']'.format(page + 1), content, re.I) or re.search(r'[?&](?:paged|page)={}\b'.format(page + 1), content, re.I):
             self.add_dir("Next Page", url, 2, self.icons.get("default", self.icon), page=page + 1)
         self.end_directory("videos")
 

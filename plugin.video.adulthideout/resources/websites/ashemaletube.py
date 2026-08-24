@@ -132,9 +132,7 @@ class AshemaletubeWebsite(BaseWebsite):
             )
             if content and "Just a moment" not in content and "cf-browser-verification" not in content:
                 return content
-            if attempt < max_retries - 1:
-                xbmc.sleep(retry_wait)
-        xbmcgui.Dialog().notification('AdultHideout Error', f"Failed to fetch: {url}", xbmcgui.NOTIFICATION_ERROR)
+        self.logger.warning(f"AShemaleTube: Failed to fetch {url}")
         return ""
 
     def apply_video_sort(self, url):

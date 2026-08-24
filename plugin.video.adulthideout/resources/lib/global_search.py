@@ -3,8 +3,12 @@
 
 import json
 import os
+import re
 import time
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import threading
 
 import xbmc
 import xbmcaddon
@@ -13,6 +17,26 @@ import xbmcplugin
 import xbmcvfs
 
 from resources.lib.view_utils import end_directory_with_view
+from resources.lib.smart_playlists import parse_duration_seconds, matches_duration, DEDICATED_MOVIE_SOURCES
+
+_THREAD_LOCAL = threading.local()
+_ORIGINAL_ADD_DIR_ITEM = xbmcplugin.addDirectoryItem
+_ORIGINAL_END_OF_DIR = xbmcplugin.endOfDirectory
+
+def _global_capture_add(handle, url, listitem, isFolder=False, totalItems=0):
+    captured = getattr(_THREAD_LOCAL, "captured", None)
+    if captured is not None:
+        captured.append((url, listitem, isFolder))
+        return True
+    return _ORIGINAL_ADD_DIR_ITEM(handle, url, listitem, isFolder, totalItems)
+
+def _global_capture_end(handle, succeeded=True, updateListing=False, cacheToDisc=True):
+    if getattr(_THREAD_LOCAL, "captured", None) is not None:
+        return None
+    return _ORIGINAL_END_OF_DIR(handle, succeeded, updateListing, cacheToDisc)
+
+xbmcplugin.addDirectoryItem = _global_capture_add
+xbmcplugin.endOfDirectory = _global_capture_end
 
 
 DEFAULT_SOURCES = [
@@ -90,16 +114,23 @@ SOURCE_PRESETS = [
         "thisvid", "voyeurhit", "watchporn", "upornia",
     ]),
     ("full_movies", "Full Movies / Longform", [
-        "fullxcinema", "freeomovie", "familypornhd", "pornobae",
-        "premiumporn", "javhdporn", "javsubbed", "missav",
+        "filmadult", "streamporn", "freeomovie", "pornobae", "fullxcinema", "fullporner",
+        "superporn", "trannyvideosxxx", "tubepornclassic", "watchxxxfree",
+        "yourdailypornvideos", "allpornstream", "pornmz", "pandamovies", "bananamovies",
+        "darknessporn",
+        "pornhoarder", "pornhd3x", "netfapx", "xtapes", "porngo", "javhdporn", "javsubbed",
+        "javguru", "missav", "eporner", "pornhub", "xvideos", "xnxx",
+        "spankbang", "tnaflix", "xhamster", "hqporner", "txxx",
+        "inporn", "mangoporn", "milffox", "okxxx", "pussyspace", "xmoviesforyou",
+        "hdshemalez", "vintagepornfun",
     ]),
     ("jav_asian", "JAV / Asian", [
-        "javhdporn", "javsubbed", "missav", "vjav", "pornmz",
+        "avjoy", "javhdporn", "javsubbed", "missav", "vjav", "pornmz",
         "tubepornclassic", "xvideos", "xhamster",
     ]),
     ("trans", "Trans / Shemale", [
-        "ashemaletube", "shemalez", "txxx", "xnxx", "xhamster", "spankbang",
-        "pornslash", "erome", "rule34video",
+        "shemalez", "tnaflix", "ashemaletube", "pornhub", "eporner",
+        "txxx", "xnxx", "xvideos", "xhamster", "spankbang",
     ]),
     ("gay", "Gay", [
         "eporner", "xhamster", "xnxx", "spankbang", "txxx", "pornslash",
@@ -147,7 +178,7 @@ PROFILE_OVERRIDES = {
 }
 
 RESULTS_PER_PAGE = 40
-PLAYLIST_SAFE_CACHE_VERSION = "playlist-safe-v6-simple"
+PLAYLIST_SAFE_CACHE_VERSION = "playlist-safe-v7-duration"
 UNSTABLE_PLAYLIST_SOURCES = {
     "analdin",
     "anysex",
@@ -290,8 +321,75 @@ class GlobalSearch:
         state["result_options"] = all_options
         self._save_state(state)
 
+    def _matches_query_strictly(self, label, query):
+        if not query or not label:
+            return True
+        clean_label = re.sub(r'\[.*?\]', ' ', str(label)).lower()
+        clean_label = re.sub(r'[-_.]+', ' ', clean_label)
+        clean_label = ' ' + ' '.join(clean_label.split()) + ' '
+
+        clean_query = str(query).strip().lower()
+        clean_query = re.sub(r'[-_.]+', ' ', clean_query)
+        clean_query = ' '.join(clean_query.split())
+        if not clean_query:
+            return True
+
+        pattern = r'\b' + re.escape(clean_query) + r'\b'
+        return bool(re.search(pattern, clean_label, re.IGNORECASE))
+
+    def _relevance_score(self, query, label):
+        def normalize(value):
+            value = re.sub(r'\[/?COLOR[^\]]*\]', ' ', str(value), flags=re.IGNORECASE)
+            return ' '.join(re.sub(r'[^a-z0-9]+', ' ', value.lower()).split())
+
+        clean_query = normalize(query)
+        clean_label = normalize(label)
+        if not clean_query or not clean_label:
+            return 0
+        if clean_label == clean_query:
+            return 10000
+
+        position = clean_label.find(clean_query)
+        score = 0
+        if position >= 0:
+            score += 5000
+            score += max(0, 500 - position)
+            if position == 0:
+                score += 1000
+
+        query_tokens = clean_query.split()
+        label_tokens = clean_label.split()
+        matched_tokens = sum(1 for token in query_tokens if token in label_tokens)
+        score += matched_tokens * 300
+        score += int((matched_tokens / float(max(1, len(query_tokens)))) * 1000)
+        score -= max(0, len(label_tokens) - len(query_tokens)) * 5
+        return score
+
     def _display_results(self, query, results, search_mode="selected"):
         displayed = list(results or [])
+
+        # Enforce exact word/token matching for query
+        if query:
+            displayed = [r for r in displayed if self._matches_query_strictly(r.get("label", ""), query)]
+
+        # Duration filter for full_movies search mode (>= 70 min)
+        if search_mode in ("full_movies", "full_movies_trans", "filmography_movies", "filmography_movies_trans"):
+            filtered = []
+            for r in displayed:
+                source = r.get("source", "")
+                label = r.get("label", "")
+                duration_str = r.get("duration", "") or label
+                if matches_duration(duration_str, "movies", label, source=source):
+                    filtered.append(r)
+                    continue
+                if search_mode.startswith("filmography_movies") and source in DEDICATED_MOVIE_SOURCES:
+                    duration = parse_duration_seconds(duration_str)
+                    clean_label = re.sub(r'\[/?COLOR[^\]]*\]', '', str(label), flags=re.IGNORECASE)
+                    normalize = lambda value: re.sub(r'[^a-z0-9]+', ' ', str(value).lower()).strip()
+                    if duration == 0 and normalize(clean_label) == normalize(query):
+                        filtered.append(r)
+            displayed = filtered
+
         options = self._result_options(query, search_mode)
         sources = options.get("sources")
         if isinstance(sources, list) and sources:
@@ -301,7 +399,13 @@ class GlobalSearch:
         if text_filter:
             displayed = [result for result in displayed if text_filter in str(result.get("label") or "").lower()]
         sort_order = options.get("sort", "relevance")
-        if sort_order == "title":
+        if sort_order == "relevance":
+            displayed.sort(key=lambda result: (
+                -self._relevance_score(query, result.get("label", "")),
+                str(result.get("label") or "").lower(),
+                self._source_label(result.get("source", "")).lower(),
+            ))
+        elif sort_order == "title":
             displayed.sort(key=lambda result: str(result.get("label") or "").lower())
         elif sort_order == "source":
             displayed.sort(key=lambda result: (self._source_label(result.get("source", "")).lower(), str(result.get("label") or "").lower()))
@@ -325,9 +429,13 @@ class GlobalSearch:
         if not isinstance(entry, dict):
             return None
         results = entry.get("results")
+        if not results:
+            return None
         return self._filter_results(results) if isinstance(results, list) else None
 
     def _save_results(self, query, results, search_mode="selected", sources=None):
+        if not results:
+            return
         state = self._load_state()
         cache = state.get("result_cache")
         if not isinstance(cache, dict):
@@ -429,6 +537,24 @@ class GlobalSearch:
         if search_mode == "skin":
             available_set = set(available)
             return [name for name in SKIN_SEARCH_SOURCES if name in available_set]
+
+        # Direct genre / preset support (e.g. straight, trans, jav_asian, gay)
+        preset_map = {p[0]: p[2] for p in SOURCE_PRESETS}
+        if search_mode in ("full_movies_trans", "filmography_movies_trans"):
+            available_set = set(available)
+            combined = preset_map.get("full_movies", []) + preset_map.get("trans", [])
+            result = []
+            for name in combined:
+                if name in available_set and name not in result:
+                    result.append(name)
+            return result
+        if search_mode == "filmography_movies":
+            available_set = set(available)
+            return [name for name in preset_map.get("full_movies", []) if name in available_set]
+        if search_mode in preset_map:
+            available_set = set(available)
+            return [name for name in preset_map[search_mode] if name in available_set]
+
         return selected
 
     def _add_dir(self, label, action, icon=None, **params):
@@ -740,23 +866,46 @@ class GlobalSearch:
 
     def _capture_site_search(self, site, query):
         captured = []
-        original_add = xbmcplugin.addDirectoryItem
-        original_end = xbmcplugin.endOfDirectory
+        _THREAD_LOCAL.captured = captured
 
-        def capture_add(handle, url, listitem, isFolder=False, totalItems=0):
-            captured.append((url, listitem, isFolder))
-            return True
+        # Also hook instance methods directly for maximum reliability and speed
+        def custom_add_link(name, url, mode=4, icon=None, fanart=None,
+                            context_menu=None, info_labels=None, **kwargs):
+            icon = icon or getattr(site, "icon", "")
+            fanart = fanart or getattr(site, "fanart", "")
+            u = f"{sys_argv0()}?url={urllib.parse.quote_plus(str(url))}&mode={mode}&name={urllib.parse.quote_plus(str(name))}&website={getattr(site, 'name', '')}"
+            liz = xbmcgui.ListItem(str(name))
+            art = site.video_art(icon, fanart) if hasattr(site, "video_art") else {"thumb": icon, "icon": icon}
+            liz.setArt(art)
+            liz.setProperty("IsPlayable", "true")
+            if info_labels:
+                liz.setInfo("video", info_labels)
+                duration = info_labels.get("duration", "") if isinstance(info_labels, dict) else ""
+                if duration not in (None, ""):
+                    liz.setProperty("AdultHideout.Duration", str(duration))
+            captured.append((u, liz, False))
 
-        def capture_end(handle, succeeded=True, updateListing=False, cacheToDisc=True):
-            return None
+        def custom_add_dir(name, url, mode=2, icon=None, fanart=None,
+                           is_folder=True, **kwargs):
+            icon = icon or getattr(site, "icon", "")
+            u = f"{sys_argv0()}?url={urllib.parse.quote_plus(str(url))}&mode={mode}&name={urllib.parse.quote_plus(str(name))}&website={getattr(site, 'name', '')}"
+            liz = xbmcgui.ListItem(str(name))
+            liz.setArt({"thumb": icon, "icon": icon})
+            captured.append((u, liz, True))
 
-        xbmcplugin.addDirectoryItem = capture_add
-        xbmcplugin.endOfDirectory = capture_end
+        site.add_link = custom_add_link
+        site.add_dir = custom_add_dir
+        site.end_directory = lambda *args, **kwargs: None
+        site.notify_error = lambda *args, **kwargs: None
+        site.notify_info = lambda *args, **kwargs: None
+
         try:
             site.search(query)
+        except Exception as exc:
+            self.logger("Search failed on {}: {}".format(getattr(site, "name", "unknown"), exc), xbmc.LOGWARNING)
         finally:
-            xbmcplugin.addDirectoryItem = original_add
-            xbmcplugin.endOfDirectory = original_end
+            _THREAD_LOCAL.captured = None
+
         return captured
 
     def _apply_profile_overrides(self, profile):
@@ -796,18 +945,28 @@ class GlobalSearch:
 
     def _result_from_item(self, source_name, url, source_item, is_folder=False):
         art = {}
+        duration = ""
         if source_item:
             art = {
                 "thumb": source_item.getArt("thumb"),
                 "icon": source_item.getArt("icon") or source_item.getArt("thumb"),
+                "poster": source_item.getArt("poster") or source_item.getArt("thumb"),
+                "landscape": source_item.getArt("landscape") or source_item.getArt("thumb"),
                 "fanart": source_item.getArt("fanart") or self.fanart,
             }
+            duration = source_item.getProperty("AdultHideout.Duration") or ""
+            if not duration:
+                try:
+                    duration = source_item.getVideoInfoTag().getDuration() or ""
+                except Exception:
+                    duration = ""
         return {
             "source": source_name,
             "url": url,
             "label": source_item.getLabel() if source_item else "Video",
             "art": art,
             "is_folder": bool(is_folder),
+            "duration": duration,
         }
 
     def _is_video_result(self, url, source_item, is_folder):
@@ -822,15 +981,18 @@ class GlobalSearch:
         except Exception:
             return False
 
-    def _add_cached_result(self, result):
+    def _add_cached_result(self, result, skin_search=False):
         source = result.get("source", "")
         label = "[COLOR yellow][{}][/COLOR] {}".format(self._source_label(source), result.get("label") or "Video")
         item = xbmcgui.ListItem(label)
         art = result.get("art") if isinstance(result.get("art"), dict) else {}
+        thumb = art.get("thumb") or self._source_icon(source)
         item.setArt({
-            "thumb": art.get("thumb") or self._source_icon(source),
-            "icon": art.get("icon") or art.get("thumb") or self._source_icon(source),
-            "fanart": art.get("fanart") or self.fanart,
+            "thumb": thumb,
+            "icon": art.get("icon") or thumb,
+            "poster": art.get("poster") or thumb,
+            "landscape": art.get("landscape") or thumb,
+            "fanart": thumb if skin_search else (art.get("fanart") or self.fanart),
         })
         is_folder = bool(result.get("is_folder"))
         if not is_folder:
@@ -891,7 +1053,7 @@ class GlobalSearch:
         if page > 1 and search_mode != "skin":
             self._add_page_item(query, page - 1, "[COLOR cyan]Previous Page[/COLOR] ({}/{})".format(page - 1, pages), search_mode=search_mode)
         for result in results[start:end]:
-            self._add_cached_result(result)
+            self._add_cached_result(result, skin_search=search_mode == "skin")
         if end < total and search_mode != "skin":
             self._add_page_item(query, page + 1, "[COLOR cyan]Next Page[/COLOR] ({}/{})".format(page + 1, pages), search_mode=search_mode)
         end_directory_with_view(self.addon_handle, self.addon)
@@ -1017,52 +1179,73 @@ class GlobalSearch:
         max_results_per_site = 12
         self.logger("Global search mode '{}' profile '{}' using sources: {}".format(search_mode, profile, ", ".join(sources)))
         progress = xbmcgui.DialogProgress()
-        progress.create(self._search_mode_label(search_mode), "Searching {} sources".format(len(sources)))
-        added = 0
-        failed = []
+        progress.create(self._search_mode_label(search_mode), "Searching {} sources...".format(len(sources)))
+
         cache_results = []
+        failed = []
         started = time.time()
-        try:
-            for index, source in enumerate(sources):
-                if progress.iscanceled():
-                    break
-                percent = int((index / float(max(1, len(sources)))) * 100)
-                progress.update(percent, "Searching {}".format(self._source_label(source)))
-                previous_settings = self._apply_profile_overrides(profile)
-                try:
-                    site = self.loader(source) if self.loader else None
-                    if not site:
-                        failed.append(source)
-                        continue
-                    captured = self._capture_site_search(site, query)
-                except Exception as exc:
-                    self.logger("{} failed: {}".format(source, exc), xbmc.LOGWARNING)
-                    failed.append(source)
-                    continue
-                finally:
-                    self._restore_profile_overrides(previous_settings)
-                site_added = 0
-                non_video_skipped = 0
+        previous_profile_settings = self._apply_profile_overrides(profile)
+
+        def fetch_source(src):
+            try:
+                site = self.loader(src) if self.loader else None
+                if site is not None:
+                    site.adult_hideout_full_movie_mode = search_mode in (
+                        "full_movies", "full_movies_trans", "filmography_movies", "filmography_movies_trans"
+                    )
+                captured = self._capture_site_search(site, query)
+
+                site_items = []
                 for url, listitem, is_folder in captured:
                     if not self._is_video_result(url, listitem, is_folder):
-                        non_video_skipped += 1
                         continue
-                    cache_results.append(self._result_from_item(source, url, listitem, is_folder=False))
-                    added += 1
-                    site_added += 1
-                    if site_added >= max_results_per_site:
+                    item_label = listitem.getLabel() if listitem else ""
+                    if query and not self._matches_query_strictly(item_label, query):
+                        continue
+                    if (search_mode.startswith("filmography_movies")
+                            and hasattr(site, "validate_search_result")):
+                        query_args = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+                        target_url = (query_args.get("url") or [""])[0]
+                        if not target_url or not site.validate_search_result(target_url):
+                            self.logger("Skipping unavailable movie mirror from {}: {}".format(src, item_label))
+                            continue
+                    site_items.append(self._result_from_item(src, url, listitem, is_folder=False))
+                    if len(site_items) >= max_results_per_site:
                         break
-                self.logger("Global search source '{}' captured {} video items ({} non-video entries skipped)".format(
-                    source, site_added, non_video_skipped
-                ))
+                return src, site_items, None
+            except Exception as exc:
+                return src, [], str(exc)
+
+        try:
+            completed_count = 0
+            with ThreadPoolExecutor(max_workers=min(10, len(sources))) as executor:
+                future_map = {executor.submit(fetch_source, s): s for s in sources}
+                for future in as_completed(future_map):
+                    if progress.iscanceled():
+                        break
+                    completed_count += 1
+                    percent = int((completed_count / float(max(1, len(sources)))) * 100)
+                    src = future_map[future]
+                    progress.update(percent, "Searching {}".format(self._source_label(src)))
+                    try:
+                        source_name, items, err = future.result()
+                        if err:
+                            self.logger("{} failed: {}".format(source_name, err), xbmc.LOGWARNING)
+                            failed.append(source_name)
+                        else:
+                            cache_results.extend(items)
+                    except Exception as e:
+                        failed.append(src)
         finally:
+            self._restore_profile_overrides(previous_profile_settings)
             progress.close()
-        if added == 0:
+
+        if not cache_results:
             xbmcgui.Dialog().notification("Global Search", "No results found", xbmcgui.NOTIFICATION_INFO, 3000)
         if failed:
             self.logger("Skipped/failed sources: {}".format(", ".join(failed)), xbmc.LOGWARNING)
         self._save_results(query, cache_results, search_mode=search_mode, sources=sources)
-        self.logger("Global search '{}' ({}) returned {} results in {:.1f}s".format(query, search_mode, added, time.time() - started))
+        self.logger("Global search '{}' ({}) returned {} results in {:.1f}s".format(query, search_mode, len(cache_results), time.time() - started))
         self._render_results_page(query, self._display_results(query, cache_results, search_mode=search_mode), page, search_mode=search_mode)
 
 

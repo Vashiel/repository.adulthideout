@@ -19,11 +19,8 @@ REPORT_SCHEMA_VERSION = 2
 
 # External outages are reported separately and never sent into the repair loop.
 KNOWN_EXTERNAL_ISSUES = {
-    "motherless": "Motherless is currently unavailable.",
-    "goporn": "GoPorn server is currently unresponsive.",
-    "deflr": "Deflr server is currently unresponsive.",
-    "pervclips": "PervClips is currently protected by Cloudflare.",
-    "collectionofbestporn": "CollectionOfBestPorn is currently disabled.",
+    "swingerpornfun": "The website currently serves a managed Cloudflare challenge to Kodi.",
+    "vintagepornfun": "The website currently serves a managed Cloudflare challenge to Kodi.",
 }
 
 ADDON = xbmcaddon.Addon(ADDON_ID)
@@ -123,12 +120,18 @@ def execute_jsonrpc(method, params=None):
 
 
 def get_directory(url):
-    result = execute_jsonrpc("Files.GetDirectory", {
+    params = {
         "directory": url,
         "media": "video",
         "properties": ["title", "thumbnail", "fanart", "duration"],
-    })
-    return result.get("files") or []
+    }
+    result = execute_jsonrpc("Files.GetDirectory", params)
+    files = result.get("files") or []
+    if not files:
+        time.sleep(0.5)
+        result = execute_jsonrpc("Files.GetDirectory", params)
+        files = result.get("files") or []
+    return files
 
 
 def is_video_item(item):
@@ -263,13 +266,20 @@ def inspect_listing(site, verify_thumbnail=True, deep=False):
                 queue.extend((child, depth + 1) for child in useful_child_folders(child_items))
 
     folders = [item for item in root_items if is_folder_item(item)]
-    first_video = videos[0] if videos else None
-    thumbnail_url = thumbnail_from_item(first_video or {})
-    thumbnail = (
-        probe_thumbnail(thumbnail_url)
-        if verify_thumbnail and thumbnail_url
-        else {"status": "present" if thumbnail_url else "missing"}
-    )
+    thumbnail = {"status": "missing"}
+    if videos:
+        for attempt, video in enumerate(videos[:3], start=1):
+            thumbnail_url = thumbnail_from_item(video)
+            if not thumbnail_url:
+                continue
+            thumbnail = (
+                probe_thumbnail(thumbnail_url)
+                if verify_thumbnail
+                else {"status": "present"}
+            )
+            thumbnail["attempts"] = attempt
+            if thumbnail.get("status") not in ("missing", "failed"):
+                break
 
     status = "PASS"
     messages = []

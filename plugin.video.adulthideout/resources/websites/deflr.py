@@ -37,6 +37,10 @@ class DEFLR(WordPressApiTube):
                 stream_url = data.get("l") or ""
             except (TypeError, ValueError, UnicodeDecodeError):
                 poster = ""
+        if poster and "media.xhot.cloud" in poster:
+            poster = poster.replace("https://", "http://")
+        if stream_url and "media.xhot.cloud" in stream_url:
+            stream_url = stream_url.replace("https://", "http://")
         duration = 0
         if stream_url:
             try:
@@ -89,4 +93,6 @@ class DEFLR(WordPressApiTube):
             return None
         if not stream_url or ".m3u8" not in stream_url.lower():
             return None
+        if "media.xhot.cloud" in stream_url:
+            stream_url = stream_url.replace("https://", "http://")
         return {"url": stream_url, "headers": self._headers(url, "*/*"), "extension": "m3u8"}

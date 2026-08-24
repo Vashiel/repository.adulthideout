@@ -450,13 +450,14 @@ class XHamster(BaseWebsite):
             return (vdata, thumbnail)
 
         results = []
-        with ThreadPoolExecutor(max_workers=15) as executor:
-            futures = [executor.submit(download_thumb_for_video, vdata) for vdata in video_data]
-            for future in as_completed(futures):
-                try:
-                    results.append(future.result())
-                except:
-                    pass
+        if not getattr(self, 'adult_hideout_background_harvest', False):
+            with ThreadPoolExecutor(max_workers=6) as executor:
+                futures = [executor.submit(download_thumb_for_video, vdata) for vdata in video_data]
+                for future in as_completed(futures):
+                    try:
+                        results.append(future.result())
+                    except Exception:
+                        pass
 
         results_dict = {r[0]['page_url']: r for r in results}
         for vdata in video_data:

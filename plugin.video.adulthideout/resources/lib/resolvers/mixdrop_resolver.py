@@ -4,6 +4,17 @@ import xbmc
 from resources.lib.resolvers import resolver_utils
 
 
+def _base_n(num, base):
+    chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    if num == 0:
+        return "0"
+    value = ""
+    while num:
+        num, remainder = divmod(num, base)
+        value = chars[remainder] + value
+    return value
+
+
 def _unpack_packer(html_text):
     match = re.search(
         r"eval\(function\(p,a,c,k,e,d\)\{.*?\}\('(.*?)',(\d+),(\d+),'(.*?)'\.split\('\|'\),0,\{\}\)\)",
@@ -22,7 +33,8 @@ def _unpack_packer(html_text):
     unpacked = payload
     for idx in range(count - 1, -1, -1):
         if idx < len(words) and words[idx]:
-            unpacked = re.sub(r"\b{}\b".format(re.escape(str(idx))), words[idx], unpacked)
+            token = _base_n(idx, base)
+            unpacked = re.sub(r"\b{}\b".format(re.escape(token)), words[idx], unpacked)
     return unpacked
 
 

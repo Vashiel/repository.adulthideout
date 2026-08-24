@@ -116,13 +116,37 @@ class FamilyPornHD(BaseWebsite):
             r"<article\b[^>]*>([\s\S]*?)</article>", page_html, re.IGNORECASE
         )
         for art in articles:
+            # Current King theme: the post URL is carried by entry-image-link
+            # and the thumbnail is lazy-loaded through data-king-img-src.
+            current_link = re.search(
+                r'<a\b[^>]*class=["\'][^"\']*entry-image-link[^"\']*["\'][^>]*href=["\']([^"\']+)',
+                art, re.IGNORECASE,
+            ) or re.search(
+                r'<a\b[^>]*href=["\']([^"\']+)["\'][^>]*class=["\'][^"\']*entry-image-link',
+                art, re.IGNORECASE,
+            )
+            current_title = re.search(
+                r'<h[1-6]\b[^>]*class=["\'][^"\']*entry-title[^"\']*["\'][^>]*>[\s\S]*?<a\b[^>]*>([\s\S]*?)</a>',
+                art, re.IGNORECASE,
+            )
+            if current_link:
+                video_url = self._absolute(current_link.group(1))
+                title = self._clean(current_title.group(1)) if current_title else ""
+                if not title:
+                    slug = urllib.parse.urlparse(video_url).path.strip("/").rsplit("/", 1)[-1]
+                    title = self._clean(slug.replace("-", " ").title())
+            else:
+                video_url = ""
+                title = ""
             # Method 1: Bimber g1-frame anchor — title attr + href
-            title_match = re.search(
+            title_match = None if current_link else re.search(
                 r'<a[^>]+title="((?:[^"\\]|\\.)*)"\s*[^>]+href="'
                 r'(https?://familypornhd\.com/(?!category/|tag/|author/|page/|reaction/)[^"]+)"',
                 art, re.IGNORECASE
             )
-            if title_match:
+            if current_link:
+                pass
+            elif title_match:
                 title = self._clean(title_match.group(1))
                 video_url = self._absolute(title_match.group(2).strip())
             else:
@@ -153,7 +177,7 @@ class FamilyPornHD(BaseWebsite):
 
             # Thumbnail: first wp-content img inside this article
             thumb_match = re.search(
-                r'<img\b[^>]+src="(https?://familypornhd\.com/wp-content/[^"\']+)"',
+                r'(?:data-king-img-src|data-src|src)=["\'](https?://familypornhd\.com/wp-content/[^"\']+)',
                 art, re.IGNORECASE
             )
             thumb = thumb_match.group(1) if thumb_match else self.icon

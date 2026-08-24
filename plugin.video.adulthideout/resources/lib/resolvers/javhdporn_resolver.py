@@ -200,28 +200,32 @@ class ImageStripHandler(BaseHTTPRequestHandler):
         target_url = base64.b64decode(qs['url'][0]).decode('utf-8')
         headers = {
             'User-Agent': UA,
-            'Referer': 'https://streamhls.click/'
+            'Referer': 'https://video.javhdporn.net/'
         }
         
         try:
-            resp = requests.get(target_url, headers=headers, stream=True, timeout=15)
-            self.send_response(200)
-            self.send_header('Content-Type', 'video/mp2t')
+            scraper = _make_scraper()
+            resp = scraper.get(target_url, headers=headers, stream=True, timeout=15)
+            self.send_response(resp.status_code)
+            for k, v in resp.headers.items():
+                if k.lower() in ('content-type', 'content-length', 'accept-ranges'):
+                    self.send_header(k, v)
             self.send_header('Connection', 'close')
             self.end_headers()
             
-            first_chunk = resp.raw.read(1024)
-            ts_start = -1
-            for i in range(len(first_chunk) - 188):
-                if first_chunk[i] == 0x47 and first_chunk[i+188] == 0x47:
-                    ts_start = i
-                    break
+            # Check for TikTok .image header if streamhls.click
+            if "streamhls.click" in target_url:
+                first_chunk = resp.raw.read(1024)
+                ts_start = -1
+                for i in range(len(first_chunk) - 188):
+                    if first_chunk[i] == 0x47 and first_chunk[i+188] == 0x47:
+                        ts_start = i
+                        break
+                if ts_start != -1:
+                    self.wfile.write(first_chunk[ts_start:])
+                else:
+                    self.wfile.write(first_chunk)
             
-            if ts_start != -1:
-                self.wfile.write(first_chunk[ts_start:])
-            else:
-                self.wfile.write(first_chunk)
-                
             while True:
                 chunk = resp.raw.read(32768)
                 if not chunk:
@@ -280,7 +284,16 @@ def rewrite_playlist(master_url, headers, proxy_base_url):
     
     new_lines = []
     for line in resp_idx.text.splitlines():
-        if line.startswith("#") or not line.strip():
+        if line.startswith("#EXT-X-KEY"):
+            def rep_uri(match):
+                k_url = match.group(1)
+                if not k_url.startswith("http"):
+                    k_url = urllib.parse.urljoin(best_index_url, k_url)
+                b64 = base64.b64encode(k_url.encode('utf-8')).decode('utf-8')
+                return f'URI="{proxy_base_url}/?url={b64}"'
+            rewritten_key = re.sub(r'URI="([^"]+)"', rep_uri, line)
+            new_lines.append(rewritten_key)
+        elif line.startswith("#") or not line.strip():
             new_lines.append(line)
         else:
             seg_url = line.strip()
@@ -290,13 +303,20 @@ def rewrite_playlist(master_url, headers, proxy_base_url):
             b64_url = base64.b64encode(seg_url.encode('utf-8')).decode('utf-8')
             new_lines.append("{}/?url={}".format(proxy_base_url, b64_url))
             
+    temp_dir = None
     try:
-        temp_dir = xbmc.translatePath('special://temp')
-    except:
+        import xbmcvfs
+        temp_dir = xbmcvfs.translatePath('special://temp')
+    except Exception:
+        try:
+            temp_dir = xbmc.translatePath('special://temp')
+        except Exception:
+            pass
+    if not temp_dir or not os.path.isdir(str(temp_dir)):
         temp_dir = tempfile.gettempdir()
         
     local_m3u8 = os.path.join(temp_dir, "javhdporn_rewritten.m3u8")
-    with open(local_m3u8, "w") as f:
+    with open(local_m3u8, "w", encoding="utf-8") as f:
         f.write("\n".join(new_lines))
         
     return local_m3u8

@@ -17,7 +17,7 @@ from resources.lib.resilient_http import fetch_text
 
 class MilfFox(BaseWebsite):
     def __init__(self, addon_handle, addon=None):
-        super().__init__("milffox", "https://www.milffox.com/", "https://www.milffox.com/search/?q={}", addon_handle, addon)
+        super().__init__("milffox", "https://www.milffox.com/", "https://www.milffox.com/search/?f=1&q={}", addon_handle, addon)
         self.label = "MilfFox"
         self.icon = os.path.join(self.addon.getAddonInfo("path"), "resources", "logos", "milffox.png")
         self.icons["default"] = self.icon

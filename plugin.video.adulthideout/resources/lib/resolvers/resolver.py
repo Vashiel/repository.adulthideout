@@ -66,7 +66,7 @@ RESOLVERS = [
         "key": "hglink",
         "setting": "resolver_enable_hglink",
         "module": hglink_resolver,
-        "hosts": ("hglink.to", "hanerix.com"),
+        "hosts": ("hglink.to", "hanerix.com", "hgcloud.to"),
     },
     {
         "key": "doodstream",

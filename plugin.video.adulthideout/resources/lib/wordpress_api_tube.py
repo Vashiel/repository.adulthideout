@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import html
+import base64
 import os
 import re
 import urllib.parse
@@ -41,7 +42,7 @@ class WordPressApiTube(BaseWebsite):
 
     def _get(self, url, referer=None):
         try:
-            response = self.session.get(url, headers=self._headers(referer), timeout=20)
+            response = self._request(url, referer=referer, timeout=20)
             if response.status_code == 200:
                 return response.text
             self.logger.warning("[%s] HTTP %s for %s", self.name, response.status_code, url)
@@ -49,9 +50,34 @@ class WordPressApiTube(BaseWebsite):
             self.logger.warning("[%s] Request failed for %s: %s", self.name, url, exc)
         return ""
 
+    def _request(self, url, referer=None, timeout=25):
+        headers = self._headers(referer)
+        response = self.session.get(url, headers=headers, timeout=timeout)
+        body = response.text or ""
+        if response.status_code == 200 and "Checking your browser before accessing" in body:
+            token = ""
+            encoded = re.search(r"innerHTML\s*=\s*window\.atob\(['\"]([^'\"]+)", body, re.I)
+            if encoded:
+                try:
+                    form = base64.b64decode(encoded.group(1)).decode("utf-8", "replace")
+                    token_match = re.search(r'name=["\']antibot["\'][^>]*value=["\']([^"\']+)', form, re.I)
+                    token = token_match.group(1) if token_match else ""
+                except Exception:
+                    token = ""
+            if token:
+                post_headers = self._headers(url)
+                response = self.session.post(
+                    url,
+                    data={"antibot": token, "submit": "Click to continue"},
+                    headers=post_headers,
+                    timeout=timeout,
+                    allow_redirects=True,
+                )
+        return response
+
     def _get_json(self, url, referer=None):
         try:
-            response = self.session.get(url, headers=self._headers(referer), timeout=25)
+            response = self._request(url, referer=referer, timeout=25)
             if response.status_code == 200:
                 return response.json(), response.headers
             self.logger.warning("[%s] API HTTP %s for %s", self.name, response.status_code, url)

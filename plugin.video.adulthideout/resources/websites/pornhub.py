@@ -29,7 +29,7 @@ class PornhubWebsite(BaseWebsite):
         super().__init__(
             name=self.config["name"],
             base_url=self.config["base_url"],
-            search_url="",
+            search_url="https://www.pornhub.com/video/search?search={}",
             addon_handle=addon_handle
         )
         

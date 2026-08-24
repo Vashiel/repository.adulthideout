@@ -198,13 +198,13 @@ class PervClipsWebsite(BaseWebsite):
             },
             1: {
                 0: ("/tube/gay/", "PervClips - Gay"),
-                1: ("/tube/gay/top-rated/", "PervClips - Gay Top Rated"),
-                2: ("/tube/gay/most-popular/", "PervClips - Gay Most Popular")
+                1: ("/tube/categories/gay/top-rated/", "PervClips - Gay Top Rated"),
+                2: ("/tube/categories/gay/most-viewed/", "PervClips - Gay Most Popular")
             },
             2: {
                 0: ("/tube/shemale/", "PervClips - Trans"),
-                1: ("/tube/shemale/top-rated/", "PervClips - Trans Top Rated"),
-                2: ("/tube/shemale/most-popular/", "PervClips - Trans Most Popular")
+                1: ("/tube/shemale/", "PervClips - Trans"),
+                2: ("/tube/shemale/", "PervClips - Trans")
             }
         }
         

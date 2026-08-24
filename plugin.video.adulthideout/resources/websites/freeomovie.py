@@ -31,6 +31,7 @@ except ImportError:
 
 from resources.lib.base_website import BaseWebsite
 from resources.lib.resolvers import resolver
+from resources.lib.proxy_utils import PlaybackGuard, ProxyController
 
 # Keys returned by resolvers that are Kodi ListItem properties,
 # NOT HTTP headers.  Must never be appended to the URL via |pipe.
@@ -283,6 +284,23 @@ class freeomovie(BaseWebsite):
                 else:
                     http_headers[k] = v
 
+            playback_guard = None
+            if any(host in resolved_host.lower() for host in ("myvidplay", "playmogo", "dood")):
+                proxy_session = requests.Session()
+                proxy_session.headers.update(http_headers)
+                controller = ProxyController(
+                    stream_url,
+                    upstream_headers=http_headers,
+                    session=proxy_session,
+                    skip_resolve=True,
+                    probe_size=True,
+                )
+                stream_url = controller.start()
+                http_headers = {}
+                playback_guard = PlaybackGuard(xbmc.Player(), xbmc.Monitor(), stream_url, controller)
+                playback_guard.start()
+                xbmc.log("[freeomovie] Dood/MyVidPlay stream routed through Range proxy", xbmc.LOGINFO)
+
             # Build ListItem — only append real HTTP headers to URL
             play_url = self._append_headers(stream_url, http_headers)
             li = xbmcgui.ListItem(path=play_url)
@@ -298,6 +316,8 @@ class freeomovie(BaseWebsite):
                 li.setMimeType('application/vnd.apple.mpegurl')
                 
             xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+            if playback_guard is not None:
+                playback_guard.join()
         else:
             self.notify_error("No working stream found.")
 
@@ -364,6 +384,29 @@ class freeomovie(BaseWebsite):
             if l not in clean_links:
                 clean_links.append(l)
         return clean_links
+
+    def validate_search_result(self, url):
+        """Reject film-search entries whose currently published mirrors are unusable."""
+        page_html = self._http_get(url)
+        if not page_html:
+            return False
+        for link in self._extract_iframes(page_html):
+            host = (urllib.parse.urlparse(link).hostname or "").lower()
+            # MixDrop now requires an interactive reCAPTCHA before exposing the
+            # media URL, which a dependency-free Kodi resolver cannot complete.
+            if "mixdrop" in host or "mxdrop" in host or "miixdrop" in host:
+                continue
+            if "streamtape" in host:
+                try:
+                    response = requests.get(link, headers=self._headers, timeout=5, allow_redirects=True)
+                    if response.status_code == 200 and "video not found" not in response.text.lower():
+                        return True
+                except Exception:
+                    pass
+                continue
+            if resolver.resolver_entry_for_url(link):
+                return True
+        return False
 
     def _normalize_thumb(self, thumb):
         if not thumb: return self.icon

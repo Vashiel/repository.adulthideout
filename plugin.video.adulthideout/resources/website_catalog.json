@@ -11,6 +11,7 @@
       "trans": [
         "ashemaletube",
         "eporner",
+        "hdshemalez",
         "pornslash",
         "shemalez",
         "tgtsporn",
@@ -46,8 +47,7 @@
         "vjav"
       ],
       "rule34": [
-        "rule34video",
-        "rule34world"
+        "rule34video"
       ],
       "fetish": [
         "analegg",
@@ -143,12 +143,16 @@
       "resolver": [
         "allpornstream",
         "darknessporn",
+        "filmadult",
+        "hdshemalez",
         "hstream",
         "hypnoporn",
         "iceporncasting",
         "javguru",
         "noodlemagazine",
         "sextb",
+        "streamporn",
+        "vintagepornfun",
         "watchxxxfree",
         "xopenload",
         "xxxfiles",
@@ -313,10 +317,6 @@
       "catalog_id": 199,
       "introduced": "1.0.17"
     },
-    "collectionofbestporn": {
-      "catalog_id": 177,
-      "introduced": "1.0.16"
-    },
     "cosplayporntube": {
       "catalog_id": 253,
       "introduced": "1.0.19"
@@ -425,6 +425,10 @@
       "catalog_id": 269,
       "introduced": "1.0.20"
     },
+    "filmadult": {
+      "catalog_id": 280,
+      "introduced": "1.0.21"
+    },
     "footstockings": {
       "catalog_id": 251,
       "introduced": "1.0.19"
@@ -477,10 +481,6 @@
       "catalog_id": 272,
       "introduced": "1.0.20"
     },
-    "goporn": {
-      "catalog_id": 59,
-      "introduced": "1.0.6"
-    },
     "hairydivas": {
       "catalog_id": 273,
       "introduced": "1.0.20"
@@ -504,6 +504,10 @@
     "hdporn92": {
       "catalog_id": 218,
       "introduced": "1.0.18"
+    },
+    "hdshemalez": {
+      "catalog_id": 282,
+      "introduced": "1.0.21"
     },
     "hdzog": {
       "catalog_id": 100,
@@ -684,10 +688,6 @@
     "morehardporn": {
       "catalog_id": 214,
       "introduced": "1.0.18"
-    },
-    "motherless": {
-      "catalog_id": 7,
-      "introduced": "0.9.81-beta1"
     },
     "movie4days": {
       "catalog_id": 192,
@@ -937,10 +937,6 @@
       "catalog_id": 24,
       "introduced": "1.0.1"
     },
-    "rule34world": {
-      "catalog_id": 238,
-      "introduced": "1.0.19"
-    },
     "ruleporn": {
       "catalog_id": 276,
       "introduced": "1.0.20"
@@ -1000,6 +996,10 @@
     "speedporn": {
       "catalog_id": 124,
       "introduced": "1.0.10"
+    },
+    "streamporn": {
+      "catalog_id": 281,
+      "introduced": "1.0.21"
     },
     "stripchat": {
       "catalog_id": 183,
@@ -1096,6 +1096,10 @@
     "vikiporn": {
       "catalog_id": 4,
       "introduced": "0.9.81-beta1"
+    },
+    "vintagepornfun": {
+      "catalog_id": 283,
+      "introduced": "1.0.21"
     },
     "viralxxxporn": {
       "catalog_id": 182,

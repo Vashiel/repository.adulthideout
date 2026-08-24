@@ -13,16 +13,16 @@ class PandaMoviesWebsite(XopenloadWebsite):
     HOST_PRIORITY = ["voe.sx", "mixdrop", "lulustream", "doodstream", "doply.net"]
     SORT_OPTIONS = ["Latest", "Most Viewed"]
     SORT_PATHS = {
-        "Latest": "/movies",
+        "Latest": "/",
         "Most Viewed": "/most-viewed",
     }
 
     def __init__(self, addon_handle, addon=None):
         super().__init__(addon_handle, addon)
         self.name = "pandamovies"
-        self.base_url = "https://pandamovies.pw/xxx"
+        self.base_url = "https://pandamovies.pw"
         self.search_url = self.base_url + "/?s={}"
-        self.directory_source_url = self.base_url + "/movies"
+        self.directory_source_url = self.base_url + "/"
 
     def _get_sort_index(self):
         try:
@@ -44,7 +44,7 @@ class PandaMoviesWebsite(XopenloadWebsite):
     def _extract_directory(self, page_html, directory):
         entries = []
         seen = set()
-        pattern = r'<a\s+[^>]*href=["\'](https?://pandamovies\.pw/xxx/{}/[^"\']+)["\'][^>]*>([\s\S]*?)</a>'.format(directory)
+        pattern = r'<a\s+[^>]*href=["\'](https?://pandamovies\.pw/{}/[^"\']+)["\'][^>]*>([\s\S]*?)</a>'.format(directory)
         for target, label_html in re.findall(pattern, page_html, re.IGNORECASE):
             target = html.unescape(target).rstrip("/")
             label = self._clean(re.sub(r"<[^>]+>", " ", label_html))

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 import re
 import sys
 import urllib.parse
@@ -14,6 +15,7 @@ import xbmcgui
 import xbmcplugin
 import xbmcaddon
 from resources.lib.base_website import BaseWebsite
+from resources.lib.proxy_utils import HlsProxyController, PlaybackGuard, ProxyController
 
 try:
     addon_path = xbmcaddon.Addon().getAddonInfo('path')
@@ -143,9 +145,9 @@ class Xnxx(BaseWebsite):
                     path = f"/search/{query_str}"
             else:
                 if content_idx == 1:
-                    base_browse = "/gay"
+                    base_browse = "/search/gay"
                 elif content_idx == 2:
-                    base_browse = "/shemale"
+                    base_browse = "/search/trans"
                 else:
                     base_browse = "/search/hits"
 
@@ -309,10 +311,31 @@ class Xnxx(BaseWebsite):
             stream_url = low_url.group(1)
 
         if stream_url:
-            item = xbmcgui.ListItem(path=stream_url)
+            if stream_url.endswith('.m3u8'):
+                controller = HlsProxyController(
+                    stream_url,
+                    headers=headers,
+                    session=self.session,
+                    preserve_query=True,
+                )
+                mime_type = 'application/x-mpegURL'
+            else:
+                controller = ProxyController(
+                    stream_url,
+                    upstream_headers=headers,
+                    session=self.session,
+                    skip_resolve=True,
+                    probe_size=True,
+                    use_urllib=False,
+                )
+                mime_type = 'video/mp4'
+            local_url = controller.start()
+            item = xbmcgui.ListItem(path=local_url)
             item.setProperty('IsPlayable', 'true')
-            item.setMimeType('video/mp4' if not stream_url.endswith('.m3u8') else 'application/x-mpegURL')
+            item.setMimeType(mime_type)
+            item.setContentLookup(False)
             xbmcplugin.setResolvedUrl(self.addon_handle, True, item)
+            PlaybackGuard(xbmc.Player(), xbmc.Monitor(), local_url, controller).start()
         else:
             self.notify_error("Could not find video stream URL")
 

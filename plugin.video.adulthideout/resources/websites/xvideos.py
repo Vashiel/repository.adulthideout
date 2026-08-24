@@ -13,6 +13,7 @@ import xbmcplugin
 import sys
 from resources.lib.base_website import BaseWebsite
 from resources.lib.lookup_info import choose_and_open, extract_html_items
+from resources.lib.proxy_utils import HlsProxyController, PlaybackGuard, ProxyController
 
 class XvideosWebsite(BaseWebsite):
     config = {
@@ -457,25 +458,38 @@ class XvideosWebsite(BaseWebsite):
             high_mp4 = re.search(r"html5player\.setVideoUrlHigh\('(.+?)'\)", content)
             low_mp4 = re.search(r"html5player\.setVideoUrlLow\('(.+?)'\)", content)
             
-            li = xbmcgui.ListItem()
-            li.setProperty('IsPlayable', 'true')
-            
+            controller = None
             if hls_url:
                 path = hls_url.group(1)
-                li.setPath(path)
-                li.setMimeType('application/vnd.apple.mpegurl')
-                li.setContentLookup(False)
-                if xbmc.getCondVisibility('System.HasAddon(inputstream.adaptive)'):
-                    li.setProperty('inputstream', 'inputstream.adaptive')
-                    li.setProperty('inputstream.adaptive.manifest_type', 'hls')
+                controller = HlsProxyController(
+                    path,
+                    headers={'User-Agent': self.ua, 'Referer': url},
+                    session=self.session,
+                    preserve_query=True,
+                )
+                mime_type = 'application/vnd.apple.mpegurl'
             elif high_mp4:
                 path = high_mp4.group(1)
-                li.setPath(path)
-                li.setMimeType('video/mp4')
+                controller = ProxyController(
+                    path,
+                    upstream_headers={'User-Agent': self.ua, 'Referer': url},
+                    session=self.session,
+                    skip_resolve=True,
+                    probe_size=True,
+                    use_urllib=False,
+                )
+                mime_type = 'video/mp4'
             elif low_mp4:
                 path = low_mp4.group(1)
-                li.setPath(path)
-                li.setMimeType('video/mp4')
+                controller = ProxyController(
+                    path,
+                    upstream_headers={'User-Agent': self.ua, 'Referer': url},
+                    session=self.session,
+                    skip_resolve=True,
+                    probe_size=True,
+                    use_urllib=False,
+                )
+                mime_type = 'video/mp4'
             else:
                 lowered = content.lower()
                 if any(marker in lowered for marker in ("premium", "login", "video has been deleted", "video not found", "no longer available")):
@@ -484,8 +498,14 @@ class XvideosWebsite(BaseWebsite):
                     self.notify_error("No video stream found")
                 xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
                 return
-            
+
+            local_url = controller.start()
+            li = xbmcgui.ListItem(path=local_url)
+            li.setProperty('IsPlayable', 'true')
+            li.setMimeType(mime_type)
+            li.setContentLookup(False)
             xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+            PlaybackGuard(xbmc.Player(), xbmc.Monitor(), local_url, controller).start()
         else:
             self.notify_error("Failed to load video page")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())

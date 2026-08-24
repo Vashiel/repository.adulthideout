@@ -1,0 +1,70 @@
+{
+  "shard_prefix_length": 1,
+  "shards": {
+    "0": {
+      "sha256": "8be98a96eb50fd92f6b954fc0cbc127370c874c452e33bbaba837107c74e2b06",
+      "size": 178090
+    },
+    "1": {
+      "sha256": "a32edf6664495a2f75960aa76854a6ca89c70ce2ac067a5f59b143f2edfcbb0d",
+      "size": 203741
+    },
+    "2": {
+      "sha256": "e0a3d1a5f8a62ab5ef3f0c821ab2845e866e437d0a3146254364b92b6e87b9ec",
+      "size": 187758
+    },
+    "3": {
+      "sha256": "58f8a9fc07f792373cd676abc391c359d55d2d07981485b7be0605c631fbc936",
+      "size": 150533
+    },
+    "4": {
+      "sha256": "0275ee6a860215d2499760de985c028cc6b0b6128faa6357834a2af4d5f60a56",
+      "size": 146307
+    },
+    "5": {
+      "sha256": "348e0988ce343b4f7dc5c11251189ef116452a52c2137c01f2c778e56934d99f",
+      "size": 145188
+    },
+    "6": {
+      "sha256": "6b94e0dfbe1c35b36bded53b85504dc90865ef9cce68c472773aa47e84396461",
+      "size": 166739
+    },
+    "7": {
+      "sha256": "7810a78e63306a4d02d21168bc7c7ecbc227ae36c868ab179cff198c2d60d31e",
+      "size": 183365
+    },
+    "8": {
+      "sha256": "04efa3ac88bcb954deb03d4e8fce345e7d67fa214ca10922e47df49c81172304",
+      "size": 188758
+    },
+    "9": {
+      "sha256": "af91b8d6dc2f774c8ecbbaf813566de85a1726d9e59150d753b3025bdb78889d",
+      "size": 157838
+    },
+    "a": {
+      "sha256": "d121e83c9d3da6e9cc376b47e0d367a44565d5413144df7433d34ea28a7f4fdf",
+      "size": 171935
+    },
+    "b": {
+      "sha256": "f810aaa2a175ae5682a2b82b8bc29670aa059bbb2037c110834c3fb3e58e20d8",
+      "size": 157195
+    },
+    "c": {
+      "sha256": "caeebe70167908bb3cbd0ee68f484f3740e4f9ce2d69cfb95d95f486b7fea15d",
+      "size": 155170
+    },
+    "d": {
+      "sha256": "9eda6047dd297bf49154b065458ee6ac7ed2d5882f8ec671dc8173efec7c5a95",
+      "size": 153300
+    },
+    "e": {
+      "sha256": "5aa8f369f9e288b2ca0a3acedf2fa15d8b3986f13872477e9e69bc7bb92adfec",
+      "size": 148005
+    },
+    "f": {
+      "sha256": "6fc18d2fff019734f96f4cbf378ab81e4c7c2f7056e3432161856af851781b31",
+      "size": 150443
+    }
+  },
+  "version": 1
+}

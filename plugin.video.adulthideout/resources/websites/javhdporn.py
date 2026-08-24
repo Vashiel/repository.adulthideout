@@ -259,10 +259,10 @@ class JavhdpornWebsite(BaseWebsite):
         proxy_ctrl = None
         local_m3u8_path = None
         
-        # If it's a streamhls.click stream, it might use TikTok .image chunks
-        if stream_url and "m3u8" in stream_url and "streamhls.click" in stream_url:
+        # If it's an m3u8 stream (maxstream.org, streamhls.click, etc.), proxy it for TLS & AES-128 keys
+        if stream_url and "m3u8" in stream_url:
             try:
-                self.logger.info("JavHDPorn: Processing streamhls.click playlist...")
+                self.logger.info("JavHDPorn: Processing HLS playlist via local proxy...")
                 from resources.lib.resolvers.javhdporn_resolver import rewrite_playlist, TiktokImageProxy
                 
                 proxy_ctrl = TiktokImageProxy()

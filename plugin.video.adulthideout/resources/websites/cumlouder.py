@@ -28,7 +28,7 @@ class CumLouder(BaseWebsite):
         super().__init__(
             name="cumlouder",
             base_url="https://www.cumlouder.com",
-            search_url="https://www.cumlouder.com/search/?q={}",
+            search_url="https://www.cumlouder.com/porn-videos/{}/",
             addon_handle=addon_handle,
             addon=addon
         )
@@ -43,8 +43,8 @@ class CumLouder(BaseWebsite):
         # Sorting Options
         self.sort_options = ["Newest", "Most Viewed"]
         self.sort_paths = {
-            "Newest": "/porn-videos/?orderBy=n",
-            "Most Viewed": "/porn-videos/?orderBy=v"
+            "Newest": "/series/newest/",
+            "Most Viewed": "/series/popular/"
         }
 
     def make_request(self, url):
@@ -71,29 +71,44 @@ class CumLouder(BaseWebsite):
 
         videos = []
         pattern = re.compile(
-            r'<a\s+[^>]*href=["\'](https?://www\.cumlouder\.com/porn-video/[^"\']+|/porn-video/[^"\']+)["\'][^>]*>([\s\S]*?)</a>',
-            re.IGNORECASE
+            r'(<a\b[^>]*class=["\'][^"\']*\bmuestra-escena\b[^"\']*["\'][^>]*>)([\s\S]*?)</a>',
+            re.IGNORECASE,
         )
         seen = set()
         for match in pattern.finditer(html_content):
-            video_url = urllib.parse.urljoin(self.base_url, html.unescape(match.group(1)))
+            opening, block = match.groups()
+            href_match = re.search(r'href=["\']([^"\']+)', opening, re.IGNORECASE)
+            if not href_match or "/porn-video/" not in href_match.group(1):
+                continue
+            video_url = urllib.parse.urljoin(
+                self.base_url, html.unescape(href_match.group(1))
+            )
             if video_url in seen:
                 continue
             seen.add(video_url)
 
-            block = match.group(2)
-            img_match = re.search(r'<img\s+[^>]*src=["\']([^"\']+)["\']', block, re.IGNORECASE)
-            if not img_match:
-                img_match = re.search(r'<img\s+[^>]*data-src=["\']([^"\']+)["\']', block, re.IGNORECASE)
+            img_match = re.search(
+                r'<img\b[^>]*data-src=["\']([^"\']+)["\']', block, re.IGNORECASE
+            ) or re.search(
+                r'<img\b[^>]*src=["\']([^"\']+)["\']', block, re.IGNORECASE
+            )
             thumb = img_match.group(1) if img_match else self.icons['default']
 
-            title_match = re.search(r'alt=["\']([^"\']+)["\']', block, re.IGNORECASE)
-            if not title_match:
-                title_match = re.search(r'<h[1-6][^>]*>(.*?)</h[1-6]>', block, re.IGNORECASE | re.DOTALL)
-            title = html.unescape(title_match.group(1)).strip() if title_match else "CumLouder Video"
+            title_match = re.search(
+                r'<img\b[^>]*alt=["\']([^"\']+)["\']', block, re.IGNORECASE
+            ) or re.search(
+                r'<h[1-6][^>]*>(.*?)</h[1-6]>', block, re.IGNORECASE | re.DOTALL
+            )
+            title = html.unescape(
+                re.sub(r'<[^>]+>', '', title_match.group(1))
+            ).strip() if title_match else "CumLouder Video"
 
-            duration_match = re.search(r'class=["\']duration["\'][^>]*>(.*?)</span>', block, re.IGNORECASE | re.DOTALL)
-            duration = duration_match.group(1).strip() if duration_match else ""
+            duration_match = re.search(
+                r'class=["\']minutos["\'][^>]*>[\s\S]*?(\d{1,2}:\d{2})(?:\s*[mh])?\s*</span>',
+                block,
+                re.IGNORECASE,
+            )
+            duration = duration_match.group(1) if duration_match else ""
 
             label = f"{title} [COLOR lime]({duration})[/COLOR]" if duration else title
             videos.append({"label": label, "url": video_url, "thumb": thumb, "info": {"title": title, "plot": title}})
@@ -116,11 +131,21 @@ class CumLouder(BaseWebsite):
 
         videos = self.get_listing(url, html_content=html_content)
         for v in videos:
-            self.add_link(v['label'], v['url'], 4, v['thumb'], self.fanart, info_tag=v['info'])
+            self.add_link(v['label'], v['url'], 4, v['thumb'], self.fanart, info_labels=v['info'])
 
-        next_page_match = re.search(r'<a\s+[^>]*href=["\']([^"\']+)["\'][^>]*>Next\s*&raquo;</a>', html_content, re.IGNORECASE)
-        if next_page_match:
-            next_url = urllib.parse.urljoin(self.base_url, html.unescape(next_page_match.group(1)))
+        parsed_path = urllib.parse.urlparse(url).path.rstrip("/")
+        page_match = re.search(r"/(\d+)$", parsed_path)
+        current_page = int(page_match.group(1)) if page_match else 1
+        next_url = None
+        for href, number in re.findall(
+            r'<a\b[^>]*class=["\'][^"\']*btn-pagination[^"\']*["\'][^>]*href=["\']([^"\']+)["\'][^>]*>\s*(\d+)\s*</a>',
+            html_content,
+            re.IGNORECASE,
+        ):
+            if int(number) == current_page + 1:
+                next_url = urllib.parse.urljoin(self.base_url, html.unescape(href))
+                break
+        if next_url:
             self.add_dir("Next Page >>", next_url, 2, self.icons['default'])
 
         self.end_directory()

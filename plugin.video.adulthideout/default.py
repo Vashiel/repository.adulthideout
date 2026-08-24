@@ -29,11 +29,12 @@ FANART_PATH = os.path.join(LOGOS_DIR, 'fanart.jpg')
 DEFAULT_ICON_PATH = os.path.join(LOGOS_DIR, 'icon.png')
 VAULT_ICON_PATH = os.path.join(LOGOS_DIR, 'vault.png')
 VIEW_SERVICE_PATH = os.path.join(ADDON_PATH, 'resources', 'lib', 'view_service.py')
-VIEW_SERVICE_VERSION = "20"
+VIEW_SERVICE_VERSION = "35"
 DIAGNOSTICS_ADDON_ID = "script.adulthideout.kvat"
 OPT_IN_WEBSITE_SETTINGS = {
     "crazyshit": "show_crazyshit",
-    "pervclips": "show_pervclips",
+    "swingerpornfun": "show_swingerpornfun",
+    "vintagepornfun": "show_vintagepornfun",
 }
 
 MAIN_MENU_SORT_KEYS = ("az", "za", "newest", "category")
@@ -455,10 +456,35 @@ def build_main_menu_fast():
         isFolder=True,
     )
 
+    smart_streams_item = xbmcgui.ListItem(label="[COLOR yellow]{}[/COLOR]".format(ADDON.getLocalizedString(30860) or "Smart Streams (Beta)"))
+    smart_streams_icon = os.path.join(LOGOS_DIR, "smart_streams.png")
+    if not os.path.exists(smart_streams_icon):
+        smart_streams_icon = DEFAULT_ICON_PATH
+    smart_streams_item.setArt(get_main_menu_art(smart_streams_icon))
+    smart_streams_item.addContextMenuItems(get_website_menu_context(download_menu_command))
+    xbmcplugin.addDirectoryItem(
+        handle=ADDON_HANDLE,
+        url=f"{sys.argv[0]}?mode=50",
+        listitem=smart_streams_item,
+        isFolder=True,
+    )
+
+    performers_item = xbmcgui.ListItem(label="[COLOR yellow]{}[/COLOR]".format(ADDON.getLocalizedString(30900) or "Star Finder (Beta)"))
+    performers_icon = os.path.join(LOGOS_DIR, "star_finder.png")
+    if not os.path.exists(performers_icon):
+        performers_icon = DEFAULT_ICON_PATH
+    performers_item.setArt(get_main_menu_art(performers_icon))
+    performers_item.addContextMenuItems(get_website_menu_context(download_menu_command))
+    xbmcplugin.addDirectoryItem(
+        handle=ADDON_HANDLE,
+        url=f"{sys.argv[0]}?mode=60",
+        listitem=performers_item,
+        isFolder=True,
+    )
+
     show_downloads = ADDON.getSetting("show_download_manager") == "true"
     try:
-        from resources.lib.download_manager import has_active_downloads, start_next_download
-        start_next_download()
+        from resources.lib.download_manager import has_active_downloads
         if not show_downloads:
             show_downloads = has_active_downloads()
     except Exception as exc:
@@ -484,6 +510,22 @@ def build_main_menu_fast():
             handle=ADDON_HANDLE,
             url=f"{sys.argv[0]}?mode=32",
             listitem=offline_item,
+            isFolder=True,
+        )
+
+    if ADDON.getSetting("enable_website_collections") == "true":
+        collections_item = xbmcgui.ListItem(label="[COLOR yellow]{}[/COLOR]".format(
+            localized(30826, "Website Collections")
+        ))
+        collections_icon = os.path.join(LOGOS_DIR, "collections.png")
+        if not os.path.exists(collections_icon):
+            collections_icon = DEFAULT_ICON_PATH
+        collections_item.setArt(get_main_menu_art(collections_icon))
+        collections_item.addContextMenuItems(get_website_menu_context(download_menu_command))
+        xbmcplugin.addDirectoryItem(
+            handle=ADDON_HANDLE,
+            url=f"{sys.argv[0]}?mode=70&action=collections_menu",
+            listitem=collections_item,
             isFolder=True,
         )
 
@@ -550,7 +592,7 @@ def build_main_menu_fast():
         else:
             log("No website files found (.py)!", xbmc.LOGWARNING)
 
-    end_directory_with_view(ADDON_HANDLE, ADDON)
+    end_directory_with_view(ADDON_HANDLE, ADDON, content_type="files")
 
 def load_single_website(website_name):
     if ADDON_PATH not in sys.path:
@@ -614,6 +656,76 @@ def handle_website_collections(params):
             "My Top Sites": localized(30840, "My Top Sites"),
         }
         return labels.get(name, name)
+
+    if action == 'manage_dialog':
+        while True:
+            collections = mgr.get_collections()
+            col_names = list(collections.keys())
+            dialog_options = [
+                f"{collection_label(name)} [COLOR gray]({len(collections[name])} Websites)[/COLOR]"
+                for name in col_names
+            ] + ["[COLOR yellow]+ " + localized(30828, "New Collection") + "[/COLOR]"]
+            selected = xbmcgui.Dialog().select(localized(30826, "Website Collections"), dialog_options)
+            if selected == -1:
+                return
+            if selected == len(col_names):
+                kb = xbmc.Keyboard("", localized(30829, "Enter Collection Name"))
+                kb.doModal()
+                if kb.isConfirmed() and kb.getText().strip():
+                    new_name = kb.getText().strip()
+                    ok, msg = mgr.create_collection(new_name)
+                    if ok:
+                        xbmcgui.Dialog().notification(
+                            localized(30826, "Website Collections"),
+                            localized(30831, "Added to Collection").format(new_name),
+                            xbmcgui.NOTIFICATION_INFO,
+                            2000,
+                        )
+                    else:
+                        message_id = 30837 if msg == "exists" else 30838
+                        xbmcgui.Dialog().notification(
+                            localized(30832, "Error"),
+                            localized(message_id, "Collection already exists" if msg == "exists" else "Collection name cannot be empty"),
+                            xbmcgui.NOTIFICATION_ERROR,
+                            2500,
+                        )
+                continue
+
+            chosen_col = col_names[selected]
+            while True:
+                site_ids = list(mgr.get_collection_sites(chosen_col))
+                site_labels = [get_website_label(site_id) for site_id in site_ids]
+                sub_options = [
+                    "{} [COLOR gray]- {}[/COLOR]".format(label, localized(30835, "Remove from Collection"))
+                    for label in site_labels
+                ]
+                sub_options.append(
+                    "[COLOR red]{} '{}'[/COLOR]".format(localized(30836, "Delete Collection"), collection_label(chosen_col))
+                )
+                sub_sel = xbmcgui.Dialog().select(collection_label(chosen_col), sub_options)
+                if sub_sel == -1:
+                    break
+                if sub_sel < len(site_ids):
+                    if xbmcgui.Dialog().yesno(
+                        localized(30835, "Remove from Collection"),
+                        site_labels[sub_sel],
+                        collection_label(chosen_col),
+                    ):
+                        mgr.remove_site(chosen_col, site_ids[sub_sel])
+                    continue
+                if xbmcgui.Dialog().yesno(
+                    localized(30833, "Delete"),
+                    localized(30834, "Delete collection '{}'?").format(chosen_col),
+                ):
+                    mgr.delete_collection(chosen_col)
+                    xbmcgui.Dialog().notification(
+                        localized(30826, "Website Collections"),
+                        "Collection '{}' deleted".format(collection_label(chosen_col)),
+                        xbmcgui.NOTIFICATION_INFO,
+                        2000,
+                    )
+                    break
+        return
 
     if action == 'add_to_collection':
         site_id = params.get('site') or params.get('website')
@@ -766,16 +878,9 @@ def handle_routing():
     
     log(f"Routing: mode={mode}, website={website_name}, action={action}")
 
-    if mode == '70' or action in ('collections_menu', 'view_collection', 'add_to_collection', 'remove_from_collection', 'create_collection', 'delete_collection'):
+    if mode == '70':
         handle_website_collections(params)
         return
-
-    if mode is None:
-        try:
-            from resources.lib.official_source import verify_and_warn
-            verify_and_warn(ADDON, show_dialog=True)
-        except Exception as exc:
-            log(f"Official source check failed unexpectedly: {exc}", xbmc.LOGWARNING)
 
     if mode is None and action != 'direct_search':
         build_main_menu_fast()
@@ -808,7 +913,9 @@ def handle_routing():
     if website_name == 'global_search' or mode in ('20', '21') or action == 'direct_search':
         from resources.lib.global_search import GlobalSearch
         global_search = GlobalSearch(ADDON_HANDLE, addon=ADDON, loader=load_single_website, logger=log)
-        if action == 'direct_search' or params.get('direct_query') or params.get('q'):
+        # Action URLs also carry query=, so only mode 21 and explicit skin
+        # searches may enter the result runner before action dispatch.
+        if action == 'direct_search' or params.get('direct_query') or params.get('q') or (mode == '21' and params.get('query')):
             query = params.get('query') or params.get('direct_query') or params.get('q') or ''
             if len(query.strip()) < 3:
                 xbmcplugin.endOfDirectory(ADDON_HANDLE, succeeded=True, cacheToDisc=False)
@@ -887,6 +994,16 @@ def handle_routing():
         PersonalLibrary(ADDON_HANDLE, sys.argv[0]).handle(params.get('action'), params)
         return
 
+    if mode == '50':
+        from resources.lib.smart_playlists import SmartPlaylists
+        SmartPlaylists(ADDON_HANDLE, sys.argv[0], ADDON).handle(params.get('action'), params)
+        return
+
+    if mode == '60':
+        from resources.lib.performer_index import PerformerIndex
+        PerformerIndex(ADDON_HANDLE, sys.argv[0], ADDON).handle(params.get('action'), params)
+        return
+
     if mode == '31':
         from resources.lib import download_manager
         from resources.lib import offline_library
@@ -937,7 +1054,22 @@ def handle_routing():
         )
         
     elif mode == '4':
-        target_website.play_video(url)
+        try:
+            target_website.play_video(url)
+        except Exception as exc:
+            log(f"Error playing video on {website_name}: {exc}", xbmc.LOGERROR)
+            active_channel = xbmcgui.Window(10000).getProperty("AdultHideout.SmartChannel")
+            if active_channel:
+                log(f"[AdultHideout] Smart Channel '{active_channel}' active: skipping broken video silently to next", xbmc.LOGINFO)
+    elif mode == '3':
+        try:
+            if hasattr(target_website, 'process_categories'):
+                target_website.process_categories(url)
+            else:
+                target_website.process_content(url)
+        except Exception as exc:
+            log(f"Error processing categories on {website_name}: {exc}", xbmc.LOGERROR)
+            xbmcplugin.endOfDirectory(ADDON_HANDLE, succeeded=False)
 
     elif mode == '30':
         from resources.lib.download_manager import enqueue_download
@@ -953,7 +1085,35 @@ def handle_routing():
         target_website.show_search_menu()
         
     elif mode == '6':
-        target_website.handle_search_entry(url, mode, target_website.name, action)
+        if action == 'direct_site_search':
+            query = (
+                params.get('query')
+                or params.get('q')
+                or params.get('search')
+                or params.get('searchterm')
+                or url
+                or ''
+            ).strip()
+            original_add = xbmcplugin.addDirectoryItem
+
+            def video_only_add(*args, **kwargs):
+                listitem = kwargs.get('listitem')
+                if listitem is None and len(args) > 2:
+                    listitem = args[2]
+                is_folder = kwargs.get('isFolder', kwargs.get('is_folder'))
+                if is_folder is None and len(args) > 3:
+                    is_folder = args[3]
+                if is_folder:
+                    return True
+                return original_add(*args, **kwargs)
+
+            xbmcplugin.addDirectoryItem = video_only_add
+            try:
+                target_website.search(query)
+            finally:
+                xbmcplugin.addDirectoryItem = original_add
+        else:
+            target_website.handle_search_entry(url, mode, target_website.name, action)
         
     elif mode == '7':
         original_url = params.get('original_url') or params.get('url')
