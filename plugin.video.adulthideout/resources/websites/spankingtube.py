@@ -21,7 +21,7 @@ class SpankingTube(KVSTubeWebsite):
     video_path_markers = ("/video/",)
     category_path_markers = ("/categories/", "/videos/", "/tags/")
     next_page_full_count = 20
-    use_playback_proxy = True
+    use_playback_proxy = False
 
     def __init__(self, addon_handle, addon=None):
         super().__init__(

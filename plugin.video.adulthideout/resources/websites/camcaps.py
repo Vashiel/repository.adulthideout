@@ -166,8 +166,8 @@ class CamcapsWebsite(BaseWebsite):
     def __init__(self, addon_handle, addon=None):
         super().__init__(
             name="camcaps",
-            base_url="https://camcaps.io",
-            search_url="https://camcaps.io/search/videos/{}",
+            base_url="https://camcaps.tv",
+            search_url="https://camcaps.tv/search/videos/{}",
             addon_handle=addon_handle,
             addon=addon,
         )
@@ -252,7 +252,11 @@ class CamcapsWebsite(BaseWebsite):
     def _absolute(self, url):
         if not url:
             return ""
-        return urllib.parse.urljoin(self.base_url, html.unescape(url.strip()))
+        clean = html.unescape(url.strip())
+        if clean.startswith("//"):
+            clean = "https:" + clean
+        abs_url = urllib.parse.urljoin(self.base_url, clean)
+        return re.sub(r"^https?://camcaps\.(?:ac|io|to)/", "https://camcaps.tv/", abs_url)
 
     def _extract_next_url(self, html_content):
         matches = re.findall(r'href=["\']([^"\']*page=\d+[^"\']*)["\']', html_content, re.IGNORECASE)
@@ -294,7 +298,7 @@ class CamcapsWebsite(BaseWebsite):
             return 2
         if "player.camcaps.io" in host:
             return 3
-        if "camcaps.io" in host or "camcaps.tv" in host or "camcaps.to" in host:
+        if "camcaps.ac" in host or "camcaps.io" in host or "camcaps.tv" in host or "camcaps.to" in host:
             return 8
         if "vidello.net" in host or "playmogo" in host:
             return 9
@@ -308,7 +312,7 @@ class CamcapsWebsite(BaseWebsite):
             listing_html = html_content[listing_start:listing_end if listing_end > listing_start else len(html_content)]
 
         blocks = re.findall(
-            r'(<a href=["\'](?:https?://camcaps\.(?:io|tv|to))?/video/\d+/[^"\']+["\'].*?<span class="content-title">.*?</span>.*?</div>\s*</div>\s*</div>)',
+            r'(<a href=["\'](?:https?://camcaps\.(?:io|tv|to|ac))?/video/\d+/[^"\']+["\'].*?<span class="content-title">.*?</span>.*?</div>\s*</div>\s*</div>)',
             listing_html,
             re.IGNORECASE | re.DOTALL,
         )
@@ -316,9 +320,9 @@ class CamcapsWebsite(BaseWebsite):
         seen = set()
 
         for block in blocks:
-            url_match = re.search(r'<a href=["\']((?:https?://camcaps\.(?:io|tv|to))?/video/\d+/[^"\']+)["\']', block, re.IGNORECASE)
+            url_match = re.search(r'<a href=["\']((?:https?://camcaps\.(?:io|tv|to|ac))?/video/\d+/[^"\']+)["\']', block, re.IGNORECASE)
             title_match = re.search(r'<span class="content-title">\s*(.*?)\s*</span>', block, re.IGNORECASE | re.DOTALL)
-            thumb_match = re.search(r'<img[^>]+src=["\']([^"\']+)["\'][^>]+class=["\'][^"\']*img-responsive', block, re.IGNORECASE)
+            thumb_match = re.search(r'<img[^>]+(?:data-src|data-original|src)=["\']([^"\']+)["\']', block, re.IGNORECASE)
             duration_match = re.search(r'<div class="duration">\s*([0-9:]+)\s*</div>', block, re.IGNORECASE)
             views_match = re.search(r'<span class="content-views">\s*([^<]+)', block, re.IGNORECASE)
 
@@ -358,12 +362,12 @@ class CamcapsWebsite(BaseWebsite):
                 re.IGNORECASE | re.DOTALL,
             ):
                 url_match = re.search(
-                    r'<a\b[^>]*href=["\']((?:https?://camcaps\.(?:io|tv|to))?/video/\d+/[^"\']+)["\']',
+                    r'<a\b[^>]*href=["\']((?:https?://camcaps\.(?:io|tv|to|ac))?/video/\d+/[^"\']+)["\']',
                     block,
                     re.IGNORECASE,
                 )
                 title_match = re.search(r'<h3\b[^>]*>(.*?)</h3>', block, re.IGNORECASE | re.DOTALL)
-                thumb_match = re.search(r'<img\b[^>]*src=["\']([^"\']+)["\']', block, re.IGNORECASE)
+                thumb_match = re.search(r'<img\b[^>]+(?:data-src|data-original|src)=["\']([^"\']+)["\']', block, re.IGNORECASE)
                 if not url_match or not title_match:
                     continue
 
@@ -411,7 +415,7 @@ class CamcapsWebsite(BaseWebsite):
         for embed_url in embeds:
             parsed = urllib.parse.urlparse(embed_url)
             host = parsed.netloc.lower()
-            if host.endswith(("camcaps.io", "camcaps.tv", "camcaps.to")) and parsed.path.startswith("/embed/"):
+            if host.endswith(("camcaps.ac", "camcaps.io", "camcaps.tv", "camcaps.to")) and parsed.path.startswith("/embed/"):
                 continue
             real_hosts.append(host)
 
@@ -719,7 +723,7 @@ class CamcapsWebsite(BaseWebsite):
 
         for candidate in list(candidates):
             parsed = urllib.parse.urlparse(candidate)
-            if parsed.netloc.lower().endswith(("camcaps.io", "camcaps.tv", "camcaps.to")) and parsed.path.startswith("/embed/"):
+            if parsed.netloc.lower().endswith(("camcaps.ac", "camcaps.io", "camcaps.tv", "camcaps.to")) and parsed.path.startswith("/embed/"):
                 camcaps_embed_html = self.make_request(candidate, referer=url)
                 for nested_url in self._extract_iframe_urls(camcaps_embed_html, candidate):
                     add_candidate(nested_url)

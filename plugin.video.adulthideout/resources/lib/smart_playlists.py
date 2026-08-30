@@ -156,6 +156,11 @@ CHANNEL_POOLS = {
     "retro": [
         ("vintagepornfun", None),
         ("tubepornclassic", None),
+        ("myclassicp", None),
+        ("retropornarchives", None),
+        ("retroporngallery", None),
+        ("vintagehunterporn", None),
+        ("vintageworldp", None),
         ("spankbang", "https://spankbang.com/s/vintage/"),
         ("eporner", "https://www.eporner.com/search/vintage/"),
     ],
@@ -220,7 +225,7 @@ LENGTH_OPTIONS = [
 
 POOL_OPTIONS = [
     ("top_tubes", "Top-Tubes (Mainstream Mix)"),
-    ("all", "Alle 272 Webseiten (Mega Shuffle)"),
+    ("all", "All Enabled Websites (Mega Shuffle)"),
     ("vault", "Nur Vault-Favoriten"),
     ("4k", "Ultra HD 4K Theater"),
     ("long", "Lange Szenen (20+ min)"),
@@ -732,15 +737,35 @@ class SmartPlaylists:
         except Exception:
             return ["spankbang", "pornhub", "xhamster", "eporner", "xvideos"]
 
+        try:
+            hidden = set(json.loads(self.addon.getSetting("hidden_websites") or "[]"))
+        except (TypeError, ValueError):
+            hidden = set()
+
+        def enabled(sites):
+            result = []
+            websites_dir = os.path.join(self.addon_path, "resources", "websites")
+            for site in sites:
+                if site in hidden:
+                    continue
+                if site == "crazyshit" and self.addon.getSetting("show_crazyshit") != "true":
+                    continue
+                if os.path.isfile(os.path.join(websites_dir, "{}.py".format(site))):
+                    result.append(site)
+            return sorted(set(result))
+
         if category:
             taxonomy = catalog.get("taxonomy", {})
             content = taxonomy.get("content", {})
             types = taxonomy.get("types", {})
             sites = content.get(category, []) or types.get(category, [])
             if sites:
-                return sites
+                return enabled(sites)
 
-        return catalog.get("websites", ["spankbang", "pornhub", "xhamster"])
+        sites = catalog.get("sites", {})
+        if isinstance(sites, dict):
+            sites = sites.keys()
+        return enabled(sites) or ["spankbang", "pornhub", "xhamster"]
 
     def _get_fast_seed(self, channel):
         """Quickly harvests 8-12 videos across primary scrapers for instant 1-click playback."""
@@ -854,7 +879,11 @@ class SmartPlaylists:
             if channel == "movies":
                 preferred_names = ("eporner", "xhamster", "spankbang", "xvideos", "tnaflix", "xnxx")
                 preferred = [entry for entry in available if entry[0] in preferred_names]
-                selected = preferred[:6] if preferred else available[:6]
+                # Keep one proven source for startup reliability, then vary the
+                # remaining movie sources on every explicit channel start.
+                selected = random.sample(preferred, 1) if preferred else []
+                remaining = [entry for entry in available if entry not in selected]
+                selected.extend(random.sample(remaining, min(5, len(remaining))))
             else:
                 selected = random.sample(available, min(4, len(available))) if available else [("spankbang", None)]
             seed_res = []
@@ -1081,6 +1110,13 @@ class SmartPlaylists:
 
     def zap_channel(self, channel, force_refresh=False):
         """1-Click Instant Smart Stream Start: Starts Video 1 in 0.5s and populates playlist in background."""
+        # Every explicit channel start is a new session. Do not reuse results
+        # from the previous visit; only background refills may extend a session.
+        global _CHANNEL_CACHE
+        for cache_key in list(_CHANNEL_CACHE):
+            if cache_key.startswith("{}_p".format(channel)):
+                _CHANNEL_CACHE.pop(cache_key, None)
+        force_refresh = True
         xbmcgui.Dialog().notification(
             _text(30860, "Smart Streams (Beta)"),
             "Playlist wird geladen... Bitte warten...",
@@ -1095,6 +1131,7 @@ class SmartPlaylists:
             seed_videos = all_videos
         else:
             seed_videos = self._get_fast_seed(channel)
+            random.shuffle(seed_videos)
             if not seed_videos:
                 seed_videos = self._get_channel_videos(channel, force_refresh=True)[:4]
 

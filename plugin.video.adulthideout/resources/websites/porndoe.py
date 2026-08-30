@@ -476,23 +476,22 @@ class PornDoe(BaseWebsite):
                     best = sorted(free, key=lambda x: x.get('height', 0), reverse=True)
                     return best[0].get('link')
 
-                # PornDoe's HLS CDN currently returns 403 to Kodi/inputstream.
-                # The signed MP4 URLs from the same API are playable, so prefer
-                # them and only keep HLS as a last-resort fallback.
-                mp4_link = get_best_link(sources.get('mp4', []))
-                if mp4_link:
-                    play_url = mp4_link
+                # PornDoe's CDN77 serves active streams via HLS (.m3u8) and returns
+                # HTTP 403 on static MP4 links. Prioritize HLS and fallback to MP4/DEO.
+                hls_link = get_best_link(sources.get('hls', []))
+                if hls_link:
+                    play_url = hls_link
+                    is_hls = True
+
+                if not play_url:
+                    mp4_link = get_best_link(sources.get('mp4', []))
+                    if mp4_link:
+                        play_url = mp4_link
 
                 if not play_url:
                     deo_link = get_best_link(sources.get('deo', []))
                     if deo_link:
                         play_url = deo_link
-
-                if not play_url:
-                    hls_link = get_best_link(sources.get('hls', []))
-                    if hls_link:
-                        play_url = hls_link
-                        is_hls = True
 
             if not play_url and 'age_gate' in payload:
                 self.notify_error("PornDoe: Age Gate still active. Please try again.")
@@ -505,8 +504,7 @@ class PornDoe(BaseWebsite):
 
         if play_url:
             dl_ua = hdr['User-Agent']
-            playback_controller = None
-            if is_hls:
+            if is_hls or '.m3u8' in play_url:
                 encoded_headers = "|" + urllib.parse.urlencode({
                     "User-Agent": dl_ua,
                     "Referer": self.base_url + "/",
@@ -514,38 +512,8 @@ class PornDoe(BaseWebsite):
                     "Accept": "*/*",
                 })
                 final_play_url = play_url + encoded_headers
-            else:
-                try:
-                    playback_controller = ProxyController(
-                        upstream_url=play_url,
-                        upstream_headers={
-                            "User-Agent": dl_ua,
-                            "Referer": self.base_url + "/",
-                            "Origin": self.base_url,
-                            "Accept": "*/*",
-                            "Accept-Encoding": "identity",
-                            "Accept-Language": "en-US,en;q=0.9",
-                            "Connection": "keep-alive",
-                        },
-                        cookies=self._cookie_header(),
-                        use_urllib=True,
-                        probe_size=True,
-                    )
-                    final_play_url = playback_controller.start()
-                except Exception as exc:
-                    self.logger.warning(f"PornDoe: internal proxy failed, falling back direct: {exc}")
-                    encoded_headers = "|" + urllib.parse.urlencode({
-                        "User-Agent": dl_ua,
-                        "Referer": self.base_url + "/",
-                        "Origin": self.base_url,
-                        "Accept": "*/*",
-                    })
-                    final_play_url = play_url + encoded_headers
-
-            li = xbmcgui.ListItem(path=final_play_url)
-            li.setProperty("IsPlayable", "true")
-
-            if is_hls:
+                li = xbmcgui.ListItem(path=final_play_url)
+                li.setProperty("IsPlayable", "true")
                 li.setMimeType("application/vnd.apple.mpegurl")
                 try:
                     li.setProperty("inputstream", "inputstream.adaptive")
@@ -559,9 +527,45 @@ class PornDoe(BaseWebsite):
                                    }))
                 except Exception:
                     pass
-            else:
-                li.setMimeType("video/mp4")
+                li.setContentLookup(False)
+                self.logger.info(f"PornDoe Resolved HLS URL: {play_url}")
+                xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+                return
 
+            # MP4 fallback
+            playback_controller = None
+            try:
+                playback_controller = ProxyController(
+                    upstream_url=play_url,
+                    upstream_headers={
+                        "User-Agent": dl_ua,
+                        "Referer": self.base_url + "/",
+                        "Origin": self.base_url,
+                        "Accept": "*/*",
+                        "Accept-Encoding": "identity",
+                        "Accept-Language": "en-US,en;q=0.9",
+                        "Connection": "keep-alive",
+                    },
+                    cookies=self._cookie_header(),
+                    session=self.scraper,
+                    use_urllib=False,
+                    skip_resolve=True,
+                    probe_size=True,
+                )
+                final_play_url = playback_controller.start()
+            except Exception as exc:
+                self.logger.warning(f"PornDoe: internal proxy failed, falling back direct: {exc}")
+                encoded_headers = "|" + urllib.parse.urlencode({
+                    "User-Agent": dl_ua,
+                    "Referer": self.base_url + "/",
+                    "Origin": self.base_url,
+                    "Accept": "*/*",
+                })
+                final_play_url = play_url + encoded_headers
+
+            li = xbmcgui.ListItem(path=final_play_url)
+            li.setProperty("IsPlayable", "true")
+            li.setMimeType("video/mp4")
             li.setContentLookup(False)
             self.logger.info(f"PornDoe Resolved URL: {play_url}")
             xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
@@ -571,6 +575,3 @@ class PornDoe(BaseWebsite):
             self.logger.error(f"PornDoe: No Stream URL Found for {url}.")
             self.notify_error("PornDoe: No Stream URL Found.")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
-
-
-

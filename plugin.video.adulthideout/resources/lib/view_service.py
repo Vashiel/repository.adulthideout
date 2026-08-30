@@ -4,6 +4,7 @@ import os
 import sys
 import time
 import threading
+import json
 
 # Ensure addon root directory and lib directory are in sys.path
 _curr_file = os.path.abspath(__file__)
@@ -37,7 +38,7 @@ except ImportError:
 
 RUNNING_PROPERTY = "AdultHideout.ViewServiceRunning"
 VERSION_PROPERTY = "AdultHideout.ViewServiceVersion"
-SERVICE_VERSION = "35"
+SERVICE_VERSION = "40"
 PENDING_SECONDS = 60
 STALL_TIMEOUT_SECONDS = 6.0
 
@@ -195,6 +196,46 @@ class SmartPlayerMonitor(xbmc.Player):
         self.av_started = False
         self.recover_at = None
         self.skip_requested = False
+        self.history_entry = None
+        self.history_position = 0
+        self.history_duration = 0
+
+    def _begin_history(self):
+        if self.history_entry:
+            return
+        if ADDON.getSetting("enable_playback_history") != "true":
+            return
+        window = xbmcgui.Window(10000)
+        raw = window.getProperty("AdultHideout.PendingHistory")
+        window.clearProperty("AdultHideout.PendingHistory")
+        if not raw or window.getProperty("AdultHideout.SmartChannel"):
+            return
+        try:
+            self.history_entry = json.loads(raw)
+        except Exception:
+            self.history_entry = None
+        self.history_position = 0
+        self.history_duration = 0
+
+    def _capture_history_position(self):
+        if not self.history_entry:
+            return
+        try:
+            self.history_position = self.getTime()
+            self.history_duration = self.getTotalTime()
+        except Exception:
+            pass
+
+    def _save_history(self):
+        if not self.history_entry:
+            return
+        self._capture_history_position()
+        try:
+            from resources.lib.playback_history import update_entry
+        except ImportError:
+            from playback_history import update_entry
+        update_entry(self.history_entry, self.history_position, self.history_duration)
+        self.history_entry = None
 
     def onAVStarted(self):
         global _STOPPED_SINCE
@@ -205,6 +246,7 @@ class SmartPlayerMonitor(xbmc.Player):
         self.last_playback_time = -999
         self.stuck_since = None
         self.grace_until = time.time() + 6.0
+        self._begin_history()
         if xbmcgui.Window(10000).getProperty("AdultHideout.SmartChannel"):
             xbmc.executebuiltin("ActivateWindow(fullscreenvideo)")
         self._check_and_refill()
@@ -268,6 +310,8 @@ class SmartPlayerMonitor(xbmc.Player):
             _STOPPED_SINCE = None
             return
 
+        self._save_history()
+
         # A stop after AV playback began is an explicit user stop.
         window = xbmcgui.Window(10000)
         window.clearProperty("AdultHideout.SmartChannel")
@@ -287,6 +331,7 @@ class SmartPlayerMonitor(xbmc.Player):
         self.recover_at = time.time() + 1.0
         _STOPPED_SINCE = None
         self._check_and_refill()
+        self._save_history()
 
 
 def run():
@@ -314,6 +359,8 @@ def run():
         last_refill_check = 0
         last_stall_check = 0
         last_channel_name = ""
+        last_view_request = ""
+        pending_view_attempts = []
 
         while not monitor.abortRequested():
             monitor._mark_pending_if_changed()
@@ -334,6 +381,23 @@ def run():
 
             now = time.time()
             active_channel = window.getProperty("AdultHideout.SmartChannel")
+
+            # The plugin signals only after endOfDirectory(), so these retries
+            # cannot run against the empty container shown while playback is
+            # closing. Repeating briefly also outlasts Kodi restoring an older
+            # path-specific List/Shift/Wide List value.
+            view_request = window.getProperty("AdultHideout.PendingViewRequest")
+            if view_request and view_request != last_view_request:
+                last_view_request = view_request
+                pending_view_attempts = [now + 0.15, now + 0.55, now + 1.1]
+            if pending_view_attempts and now >= pending_view_attempts[0]:
+                if addon_container_active and not settings_visible:
+                    view_mode = apply_view_mode(_current_addon(), reason="directory_complete")
+                    _log("applied website view {} after directory completion".format(view_mode))
+                pending_view_attempts.pop(0)
+
+            if player_monitor.isPlaying() and not active_channel:
+                player_monitor._capture_history_position()
 
             if active_channel and player_monitor.isPlaying():
                 _STOPPED_SINCE = None

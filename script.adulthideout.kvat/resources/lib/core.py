@@ -2,8 +2,10 @@ import json
 import os
 import platform
 import re
+import socket
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -19,6 +21,11 @@ REPORT_SCHEMA_VERSION = 2
 
 # External outages are reported separately and never sent into the repair loop.
 KNOWN_EXTERNAL_ISSUES = {
+    "czechvideo": "The former video website is currently unavailable; czechvideo.org now serves unrelated editorial content.",
+    "hentaimama": "The website currently serves a managed Cloudflare challenge to Kodi.",
+    "hqporner": "The website currently serves a managed Cloudflare challenge to Kodi.",
+    "ogporn": "The website currently does not respond reliably.",
+    "saintporn": "The website currently returns HTTP 503.",
     "swingerpornfun": "The website currently serves a managed Cloudflare challenge to Kodi.",
     "vintagepornfun": "The website currently serves a managed Cloudflare challenge to Kodi.",
 }
@@ -34,6 +41,38 @@ URL_RE = re.compile(r"https?://([^/\s|]+)(?:[^\s]*)?", re.IGNORECASE)
 SECRET_RE = re.compile(
     r"(?i)\b(authorization|cookie|token|signature|sig|key|password)\s*[:=]\s*([^&,;\s]+)"
 )
+
+
+def install_dns_retry(retries=7, delay=0.3):
+    if os.name != "nt" or getattr(socket, "_ah_diagnostics_retry", False):
+        return
+    original_getaddrinfo = socket.getaddrinfo
+    cache = {}
+
+    def getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+        key = (str(host or "").lower(), port, family, type, proto, flags)
+        last_error = None
+        for attempt in range(retries):
+            try:
+                result = original_getaddrinfo(host, port, family, type, proto, flags)
+                if result:
+                    cache[key] = result
+                return result
+            except socket.gaierror as exc:
+                last_error = exc
+                if getattr(exc, "errno", None) not in (11001, 11002):
+                    raise
+                if attempt < retries - 1:
+                    time.sleep(delay * (attempt + 1))
+        if key in cache:
+            return cache[key]
+        raise last_error
+
+    socket.getaddrinfo = getaddrinfo
+    socket._ah_diagnostics_retry = True
+
+
+install_dns_retry()
 
 
 def now_iso():
@@ -215,9 +254,24 @@ def probe_thumbnail(url):
                 "Accept-Encoding": "identity",
             }
             headers.update(supplied_headers)
-            request = urllib.request.Request(request_source, headers=headers)
-            with urllib.request.urlopen(request, timeout=10) as response:
-                data = response.read(128)
+            last_error = None
+            for attempt in range(3):
+                try:
+                    request = urllib.request.Request(request_source, headers=headers)
+                    with urllib.request.urlopen(request, timeout=10) as response:
+                        data = response.read(128)
+                    if data:
+                        break
+                except urllib.error.HTTPError as exc:
+                    last_error = exc
+                    if exc.code < 500 and exc.code != 429:
+                        raise
+                except urllib.error.URLError as exc:
+                    last_error = exc
+                if attempt < 2:
+                    time.sleep(0.4 * (attempt + 1))
+            if not data and last_error is not None:
+                raise last_error
         if not data:
             return {"status": "failed", "error": "empty response"}
         if isinstance(data, str):

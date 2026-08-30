@@ -189,14 +189,16 @@ def install(retries=7, delay=0.35):
                 return result
             except socket.gaierror as exc:
                 last_error = exc
-                if getattr(exc, "errno", None) != 11002:
+                if getattr(exc, "errno", None) not in (11001, 11002):
                     raise
                 if attempt >= int(retries):
                     cached = _cached_result(host, family, type, proto)
                     if cached:
                         return cached
                     raise
-                _log("retrying DNS for {} after getaddrinfo 11002 ({}/{})".format(host, attempt, retries))
+                _log("retrying DNS for {} after getaddrinfo {} ({}/{})".format(
+                    host, getattr(exc, "errno", "unknown"), attempt, retries
+                ))
                 time.sleep(float(delay) * attempt)
         raise last_error
 

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import importlib
 import time
 import urllib.parse
 import urllib.error
@@ -7,71 +8,56 @@ import urllib.request
 import xbmc
 import xbmcaddon
 
-from resources.lib.resolvers import bigwarp_resolver
-from resources.lib.resolvers import avseeks_resolver
-from resources.lib.resolvers import dirtyvideo_resolver
-from resources.lib.resolvers import doodstream_resolver
-from resources.lib.resolvers import eightyeightz_resolver
-from resources.lib.resolvers import hglink_resolver
-from resources.lib.resolvers import gupload_resolver
-from resources.lib.resolvers import lulustream_resolver
-from resources.lib.resolvers import loadvid_resolver
-from resources.lib.resolvers import mixdrop_resolver
-from resources.lib.resolvers import mydaddy_resolver
 from resources.lib.resolvers import resolver_utils
-from resources.lib.resolvers import streamtape_resolver
-from resources.lib.resolvers import turboplayers_resolver
-from resources.lib.resolvers import vidhide_resolver
-from resources.lib.resolvers import vidello_resolver
-from resources.lib.resolvers import voesx_resolver
-from resources.lib.resolvers import vtube_resolver
-from resources.lib.resolvers import tubexplayer_resolver
-from resources.lib.resolvers import upload18_resolver
-from resources.lib.resolvers import watchstreamhd_resolver
-from resources.lib.resolvers import vsonic_resolver
 
 
 RESOLVERS = [
     {
+        "key": "recordplay",
+        "setting": "",
+        "module": "recordplay_resolver",
+        "hosts": ("recordplay.biz", "playrecord.biz"),
+    },
+    {
         "key": "loadvid",
         "setting": "",
-        "module": loadvid_resolver,
+        "module": "loadvid_resolver",
         "hosts": ("loadvid.com",),
     },
     {
         "key": "upload18",
         "setting": "",
-        "module": upload18_resolver,
+        "module": "upload18_resolver",
         "hosts": ("upload18.org",),
     },
     {
         "key": "avseeks",
         "setting": "",
-        "module": avseeks_resolver,
+        "module": "avseeks_resolver",
         "hosts": ("av.seeks.cloud",),
     },
     {
         "key": "gupload",
         "setting": "",
-        "module": gupload_resolver,
+        "module": "gupload_resolver",
         "hosts": ("gupload.xyz",),
     },
     {
         "key": "vsonic",
         "setting": "resolver_enable_vsonic",
-        "module": vsonic_resolver,
+        "module": "vsonic_resolver",
         "hosts": ("vsonic.click", "vsonic"),
     },
     {
         "key": "hglink",
         "setting": "resolver_enable_hglink",
-        "module": hglink_resolver,
+        "module": "hglink_resolver",
         "hosts": ("hglink.to", "hanerix.com", "hgcloud.to"),
     },
     {
         "key": "doodstream",
         "setting": "resolver_enable_doodstream",
-        "module": doodstream_resolver,
+        "module": "doodstream_resolver",
         "hosts": (
             "dood", "dooood", "dsvplay", "myvidplay", "playmogo.com",
             "dood.stream", "dood.li", "doodstream.link", "doodstream.co",
@@ -81,19 +67,19 @@ RESOLVERS = [
     {
         "key": "streamtape",
         "setting": "resolver_enable_streamtape",
-        "module": streamtape_resolver,
+        "module": "streamtape_resolver",
         "hosts": ("streamtape", "stape"),
     },
     {
         "key": "turboplayers",
         "setting": "resolver_enable_turboplayers",
-        "module": turboplayers_resolver,
+        "module": "turboplayers_resolver",
         "hosts": ("turboplayers.xyz", "turboviplay.com"),
     },
     {
         "key": "vidhide",
         "setting": "resolver_enable_vidhide",
-        "module": vidhide_resolver,
+        "module": "vidhide_resolver",
         "hosts": (
             "vidhide.com", "vidhidepre.com", "minochinos.com",
             "callistanise.com", "sunflowercreativeworks.cyou", "ryderjet.com",
@@ -103,7 +89,7 @@ RESOLVERS = [
     {
         "key": "voe",
         "setting": "resolver_enable_voe",
-        "module": voesx_resolver,
+        "module": "voesx_resolver",
         "hosts": (
             "voe.sx", "voe-unblock", "voeunblock", "un-block-voe",
             "v-o-e-unblock", "audaciousdefaulthouse.com",
@@ -114,43 +100,43 @@ RESOLVERS = [
     {
         "key": "mixdrop",
         "setting": "resolver_enable_mixdrop",
-        "module": mixdrop_resolver,
+        "module": "mixdrop_resolver",
         "hosts": ("mixdrop", "m1xdrop", "mxdrop", "miiixdrop"),
     },
     {
         "key": "mydaddy",
         "setting": "resolver_enable_mydaddy",
-        "module": mydaddy_resolver,
+        "module": "mydaddy_resolver",
         "hosts": ("mydaddy.cc", "mydaddy", "myxstudio.top"),
     },
     {
         "key": "88z",
         "setting": "resolver_enable_88z",
-        "module": eightyeightz_resolver,
+        "module": "eightyeightz_resolver",
         "hosts": ("88z.io",),
     },
     {
         "key": "lulustream",
         "setting": "resolver_enable_lulustream",
-        "module": lulustream_resolver,
+        "module": "lulustream_resolver",
         "hosts": ("lulu", "lulustream", "luluvdo"),
     },
     {
         "key": "vtube",
         "setting": "resolver_enable_vtube",
-        "module": vtube_resolver,
+        "module": "vtube_resolver",
         "hosts": ("vtube.to", "vtplay.net", "vtbe.net", "vtbe.to", "vtube.network"),
     },
     {
         "key": "vidello",
         "setting": "resolver_enable_vidello",
-        "module": vidello_resolver,
+        "module": "vidello_resolver",
         "hosts": ("vidello.net",),
     },
     {
         "key": "dirtyvideo",
         "setting": "resolver_enable_dirtyvideo",
-        "module": dirtyvideo_resolver,
+        "module": "dirtyvideo_resolver",
         "hosts": (
             "dirtyvideo.fun", "dirtyvideo", "netu.ac", "netu.tv", "netu.to",
             "waaw.ac", "waaw.tv", "waaw.to", "hqq.ac", "hqq.tv", "hqq.to",
@@ -159,19 +145,19 @@ RESOLVERS = [
     {
         "key": "bigwarp",
         "setting": "resolver_enable_bigwarp",
-        "module": bigwarp_resolver,
+        "module": "bigwarp_resolver",
         "hosts": ("bigwarp", "bgwp"),
     },
     {
         "key": "tubexplayer",
         "setting": "resolver_enable_tubexplayer",
-        "module": tubexplayer_resolver,
+        "module": "tubexplayer_resolver",
         "hosts": ("tubexplayer.com", "tubexplayer"),
     },
     {
         "key": "watchstreamhd",
         "setting": "resolver_enable_watchstreamhd",
-        "module": watchstreamhd_resolver,
+        "module": "watchstreamhd_resolver",
         "hosts": ("watchstreamhd.com", "watchstreamhd", "video-mart.com", "videostreamingworld.com"),
     },
 ]
@@ -397,8 +383,10 @@ def resolve(url, referer="", headers=None):
             )
             return "", {}
 
-        selected_module = entry["module"]
         try:
+            selected_module = importlib.import_module(
+                "resources.lib.resolvers.{}".format(entry["module"])
+            )
             xbmc.log(
                 "[AdultHideout][resolver] Executing custom resolver {} ({}) for {}".format(
                     selected_module.__name__, entry["key"], url
@@ -409,9 +397,10 @@ def resolve(url, referer="", headers=None):
             return resolved_url, resolved_headers
         except Exception as e:
             import traceback
+            module_name = "resources.lib.resolvers.{}".format(entry["module"])
             xbmc.log(
                 "[AdultHideout][resolver] Error in custom resolver {}: {}\n{}".format(
-                    selected_module.__name__, e, traceback.format_exc()
+                    module_name, e, traceback.format_exc()
                 ),
                 xbmc.LOGERROR,
             )

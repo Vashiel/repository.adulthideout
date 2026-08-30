@@ -59,8 +59,6 @@ class EuroXXX(BaseWebsite):
             title = html.unescape(link.group(2))
             label = "{} [COLOR lime]({})[/COLOR]".format(title, duration.group(1)) if duration else title
             thumb = html.unescape(image.group(1))
-            if thumb.lower().endswith(".avif"):
-                thumb = thumb[:-5] + ".jpg"
             thumb = build_thumb_url(thumb, referer=self.base_url)
             items.append((label, title, link.group(1), thumb))
         return items

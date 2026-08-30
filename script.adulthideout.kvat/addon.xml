@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="script.adulthideout.kvat" name="AdultHideout Diagnostics" version="0.2.2" provider-name="Vashiel">
+<addon id="script.adulthideout.kvat" name="AdultHideout Diagnostics" version="0.2.3" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="plugin.video.adulthideout" version="1.0.20"/>
@@ -8,6 +8,8 @@
         <provides>executable</provides>
     </extension>
     <extension point="xbmc.addon.metadata">
+        <news>v. 0.2.3 - 2026-08-30
+Improved thumbnail verification during temporary DNS and gateway failures and separated confirmed external website outages from actionable AdultHideout failures.</news>
         <summary lang="en_GB">Platform-native diagnostics for AdultHideout</summary>
         <summary lang="de_DE">Plattformnahe Diagnose fuer AdultHideout</summary>
         <summary lang="es_ES">Diagnóstico nativo para AdultHideout</summary>

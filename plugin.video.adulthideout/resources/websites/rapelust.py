@@ -5,6 +5,7 @@ import re
 import urllib.parse
 import json
 import html as html_module
+import time
 import xbmc
 import xbmcgui
 import xbmcplugin
@@ -77,11 +78,17 @@ class Rapelust(BaseWebsite):
         try:
             if _HAS_CF:
                 scraper = cloudscraper.create_scraper(browser={'custom': headers['User-Agent']})
-                if method == 'GET':
-                    r = scraper.get(url, headers=headers, timeout=20)
-                else:
-                    r = scraper.post(url, data=data, headers=headers, timeout=20)
-                return r
+                last_error = None
+                for attempt in range(3):
+                    try:
+                        if method == 'GET':
+                            return scraper.get(url, headers=headers, timeout=(7, 20))
+                        return scraper.post(url, data=data, headers=headers, timeout=(7, 20))
+                    except Exception as exc:
+                        last_error = exc
+                        if attempt < 2:
+                            time.sleep(0.5 * (attempt + 1))
+                raise last_error
             else:
                 xbmc.log("Rapelust: Cloudscraper missing", xbmc.LOGERROR)
                 return None
@@ -100,7 +107,9 @@ class Rapelust(BaseWebsite):
         self.add_dir("Search", "SEARCH", 5, self.icons['search'])
              
         r = self.make_request(url)
-        if not r: return
+        if not r:
+            self.end_directory()
+            return
         html = r.text
         
         items = []

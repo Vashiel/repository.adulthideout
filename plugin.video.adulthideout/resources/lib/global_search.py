@@ -80,10 +80,11 @@ BROAD_RELIABLE_SOURCES = [
     "premiumporn", "punishbang", "punishworld", "pussyspace",
     "rapelust", "redtube", "rule34video", "sextb", "shameless",
     "shemalez", "shesfreaky", "shooshtime", "spankbang", "speedporn",
-    "sunporno", "superporn", "sxyprn", "tgtsporn", "thepornbang",
+    "sunporno", "superporn", "swingerpornfun", "sxyprn", "tgtsporn", "thepornbang",
     "theyarehuge", "thisvid", "thumbzilla", "tnaflix", "trendyporn",
     "tube8", "tubepornclassic", "tubev", "txxx", "upornia",
-    "veporn", "vikiporn", "vjav", "voyeurhit", "watchporn",
+    "veporn", "vikiporn", "vintagepornfun", "myclassicp", "retropornarchives",
+    "retroporngallery", "vintagehunterporn", "vintageworldp", "vjav", "voyeurhit", "watchporn",
     "whereismyporn", "wowxxx", "xbabe", "xcafe", "xhamster",
     "xmoviesforyou", "xnxx", "xopenload", "xtapes", "xvideos",
     "xxthots", "xxxfiles", "xxxtube", "yespornvip", "youjizz",
@@ -91,6 +92,7 @@ BROAD_RELIABLE_SOURCES = [
 ]
 
 SOURCE_PRESETS = [
+    ("mega_shuffle", "Mega Shuffle (All Sites)", []),
     ("balanced", "Balanced Top Sites", DEFAULT_SOURCES),
     ("broad_reliable", "Broad Reliable Sites", BROAD_RELIABLE_SOURCES),
     ("playlist_safe", "Playlist Safe", [
@@ -122,10 +124,11 @@ SOURCE_PRESETS = [
         "javguru", "missav", "eporner", "pornhub", "xvideos", "xnxx",
         "spankbang", "tnaflix", "xhamster", "hqporner", "txxx",
         "inporn", "mangoporn", "milffox", "okxxx", "pussyspace", "xmoviesforyou",
-        "hdshemalez", "vintagepornfun",
+        "hdshemalez", "vintagepornfun", "myclassicp", "retropornarchives",
+        "retroporngallery", "vintagehunterporn", "vintageworldp",
     ]),
     ("jav_asian", "JAV / Asian", [
-        "avjoy", "javhdporn", "javsubbed", "missav", "vjav", "pornmz",
+        "asianviralhub", "avjoy", "javhdporn", "javsubbed", "missav", "vjav", "pornmz",
         "tubepornclassic", "xvideos", "xhamster",
     ]),
     ("trans", "Trans / Shemale", [
@@ -147,6 +150,47 @@ SOURCE_PRESETS = [
     ("cams", "Cam / Clips", [
         "chaturbate", "camgirlfap", "archivebate", "camcaps", "erome",
         "motherless", "thisvid",
+    ]),
+    ("lesbian", "Lesbian", [
+        "yourlesbians", "lesbianporn8", "pornhub", "xvideos", "xnxx",
+        "xhamster", "spankbang", "eporner", "tnaflix",
+    ]),
+    ("mature_milf", "MILF / Mature", [
+        "milfporn8", "milffox", "familypornhd", "pornhub", "xvideos",
+        "xnxx", "xhamster", "spankbang", "eporner",
+    ]),
+    ("pov", "POV", [
+        "85po", "eporner", "pornhub", "xvideos", "xnxx", "xhamster",
+        "spankbang", "tnaflix", "hclips",
+    ]),
+    ("anal", "Anal", [
+        "analegg", "eporner", "pornhub", "xvideos", "xnxx", "xhamster",
+        "spankbang", "tnaflix", "txxx",
+    ]),
+    ("oral", "Oral / Blowjob", [
+        "blowjobspro", "eporner", "pornhub", "xvideos", "xnxx",
+        "xhamster", "spankbang", "tnaflix",
+    ]),
+    ("voyeur", "Voyeur / Public", [
+        "voyeurhit", "thisvid", "erome", "xhamster", "spankbang",
+        "xvideos", "xnxx", "eporner",
+    ]),
+    ("vintage", "Vintage / Classic", [
+        "tubepornclassic", "vintagepornfun", "myclassicp", "retropornarchives",
+        "retroporngallery", "vintagehunterporn", "vintageworldp", "pornhoarder", "fullxcinema",
+        "eporner", "xhamster", "xvideos",
+    ]),
+    ("feet", "Feet / Stockings", [
+        "feet9", "footstockings", "fetishshrine", "fetishpapa", "heavyfetish",
+        "spankbang", "xhamster",
+    ]),
+    ("femdom_bondage", "Femdom / Bondage", [
+        "femdomvc", "boundhub", "bestbondagevideos", "bondagevalley",
+        "bdsmvilla", "bdsmstreak", "punishworld", "punishbang", "hcbdsm",
+    ]),
+    ("creator_leaks", "Creator / Fan Content", [
+        "fapello", "notfans", "latestleaks", "leakgallery", "erome",
+        "eroprofile", "balbums", "porn4fans",
     ]),
 ]
 
@@ -633,7 +677,7 @@ class GlobalSearch:
         current = self._selected_profile()
         available = set(self._available_sources())
         for key, label, sources in SOURCE_PRESETS:
-            valid = [source for source in sources if source in available]
+            valid = sorted(available) if key == "mega_shuffle" else [source for source in sources if source in available]
             marker = "[COLOR lime][x][/COLOR] " if key == current else "[ ] "
             self._add_dir("{}{} [COLOR yellow]{} sources[/COLOR]".format(marker, label, len(valid)), "apply_preset", self.search_icon, profile=key)
         self._add_dir("[COLOR cyan]Combine Presets[/COLOR]", "combine_presets", self.search_icon)
@@ -647,7 +691,7 @@ class GlobalSearch:
         available = set(self._available_sources())
         for key, _, sources in SOURCE_PRESETS:
             if key == profile:
-                chosen = [source for source in sources if source in available]
+                chosen = sorted(available) if key == "mega_shuffle" else [source for source in sources if source in available]
                 if chosen:
                     state = self._load_state()
                     state["profile"] = key
@@ -661,7 +705,7 @@ class GlobalSearch:
         available = set(self._available_sources())
         usable = []
         for key, label, sources in SOURCE_PRESETS:
-            valid = [source for source in sources if source in available]
+            valid = sorted(available) if key == "mega_shuffle" else [source for source in sources if source in available]
             if valid:
                 usable.append((key, label, valid))
         if not usable:

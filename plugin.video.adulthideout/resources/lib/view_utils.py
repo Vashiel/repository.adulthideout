@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import xbmc
+import xbmcgui
 import xbmcplugin
 import xbmcvfs
 import os
@@ -61,10 +62,12 @@ def end_directory_with_view(addon_handle, addon, content_type="videos"):
         if xbmcplugin:
             xbmcplugin.endOfDirectory(addon_handle)
 
-    try:
-        if content_type == "videos" and xbmc:
+    if content_type == "videos":
+        try:
             _, view_mode = get_view_selection(addon)
-            if view_mode:
-                xbmc.executebuiltin(f"Container.SetViewMode({view_mode})")
-    except Exception:
-        pass
+            xbmcgui.Window(10000).setProperty(
+                "AdultHideout.PendingViewRequest",
+                "{}:{}".format(time.time(), view_mode),
+            )
+        except Exception:
+            pass

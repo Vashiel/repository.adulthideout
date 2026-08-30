@@ -81,68 +81,42 @@ def http_get(url, headers=None, retries=2, sleep=0.4, timeout=15):
     xbmc.log("[AdultHideout][resolver_utils] HTTP GET failed: {}".format(last_exc), xbmc.LOGERROR)
     return ""
 
+
 def unpack_js(p, a, c, k):
+    if not p:
+        return ""
     import re
-    def _repl(match):
-        val = match.group(0)
-        try:
-            base_a_val = int(val, a) if a > 0 else int(val)
-            if base_a_val < c:
-                base_c_index_str = _int2base(base_a_val, c) if c > 0 else str(base_a_val)
-                try:
-                    k_list = k if isinstance(k, list) else []
-                    base_c_index = int(base_c_index_str) if base_c_index_str.isdigit() else -1
-
-                    if 0 <= base_c_index < len(k_list) and k_list[base_c_index]:
-                        return k_list[base_c_index]
-                    else:
-                        return val
-                except ValueError:
-                    return val
-            else:
-                return _int2base(base_a_val, a) if a > 0 else str(base_a_val)
-        except ValueError:
-            return val
-
-    def _int2base(x, base):
-        if base < 2:
-            if base == 0: return '0'
-            if base == 1: return '1' * x
-            return str(x)
-
-        charset = "0123456789abcdefghijklmnopqrstuvwxyz"
-        if x < 0: sign = -1
-        elif x == 0: return charset[0]
-        else: sign = 1
-        x *= sign
-        digits = []
-        while x:
-            digits.append(charset[x % base])
-            x //= base
-        if sign < 0:
-            digits.append('-')
-        digits.reverse()
-        return ''.join(digits)
-
     if not isinstance(k, list):
         if isinstance(k, str):
             k = k.split('|')
         else:
-            logger.error("[resolver_utils] unpack_js: k is neither string nor list.")
+            xbmc.log("[AdultHideout][resolver_utils] unpack_js: k is neither string nor list.", xbmc.LOGERROR)
             return p
 
-    pattern = r'\b\w+\b'
+    def _repl(match):
+        word = match.group(0)
+        try:
+            if not 2 <= a <= 36:
+                return word
+            val = int(word, a)
+            if 0 <= val < len(k) and k[val]:
+                return k[val]
+        except (TypeError, ValueError):
+            pass
+        return word
+
     try:
-        unpacked = re.sub(pattern, _repl, p)
-        return unpacked
+        return re.sub(r'\b\w+\b', _repl, p)
     except Exception as e:
-        logger.error("[resolver_utils] unpack_js failed during substitution: %s", e)
+        xbmc.log("[AdultHideout][resolver_utils] unpack_js failed during substitution: {}".format(e), xbmc.LOGERROR)
         return p
+
 
 def notify(message, icon=xbmcgui.NOTIFICATION_INFO, time_ms=3000):
     xbmc.log("[AdultHideout][resolver_utils] {}".format(message), xbmc.LOGINFO)
     if _SHOW_NOTIFICATION:
         xbmcgui.Dialog().notification("Resolver", message, icon, time_ms)
+
 
 def resolve_generic(embed_url, referer, headers):
     headers = dict(headers or {})

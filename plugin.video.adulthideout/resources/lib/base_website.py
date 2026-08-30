@@ -17,10 +17,28 @@ import html
 from resources.lib.view_utils import end_directory_with_view
 
 _ICON_PATH_CACHE = {}
+_NON_PERFORMER_KEYWORDS = {
+    "categories", "search", "top rated", "trending", "channels", "models", "pornstars",
+    "tags", "filter", "sort by", "next page", "prev page", "all", "latest", "most viewed",
+    "popular", "hd", "4k", "full movies", "smart streams", "vault", "history", "downloads",
+    "collections", "settings", "home", "back", "next page >>", "<< prev page", "play all",
+}
 _PERFORMERS_CACHE = None
 
 def _get_performer_metadata(name):
     global _PERFORMERS_CACHE
+    if not name:
+        return None
+    clean_name = re.sub(r'\[.*?\]', '', name).strip().lower()
+    if (
+        not clean_name
+        or len(clean_name) < 3
+        or len(clean_name) > 40
+        or clean_name in _NON_PERFORMER_KEYWORDS
+        or clean_name.startswith(("sort", "next", "prev", "page", ">>", "<<", "play all"))
+    ):
+        return None
+
     if _PERFORMERS_CACHE is None:
         _PERFORMERS_CACHE = {}
         try:
@@ -37,7 +55,6 @@ def _get_performer_metadata(name):
         except Exception:
             pass
 
-    clean_name = re.sub(r'\[.*?\]', '', name).strip().lower()
     return _PERFORMERS_CACHE.get(clean_name)
 
 class KodiLogHandler(logging.Handler):
@@ -53,6 +70,8 @@ class KodiLogHandler(logging.Handler):
         xbmc.log(self.format(record), levels.get(record.levelno, xbmc.LOGINFO))
 
 class BaseWebsite:
+    supports_uploader_lookup = False
+    uploader_lookup_patterns = ()
     def __init__(self, name, base_url, search_url, addon_handle, addon=None):
         self.name = name
         self.base_url = base_url
@@ -272,8 +291,8 @@ class BaseWebsite:
         effective_fanart = icon if self.addon.getSetting('use_video_thumbs_as_fanart') == 'true' else (fanart or self.fanart)
         return {'thumb': icon, 'icon': icon, 'poster': icon, 'fanart': effective_fanart}
 
-    def add_link(self, name, url, mode, icon, fanart, context_menu=None, info_labels=None):
-        u = f"{sys.argv[0]}?url={urllib.parse.quote_plus(url)}&mode={mode}&name={urllib.parse.quote_plus(name)}&website={self.name}"
+    def add_link(self, name, url, mode, icon, fanart, context_menu=None, info_labels=None, uploader_name=None, uploader_url=None):
+        u = f"{sys.argv[0]}?url={urllib.parse.quote_plus(url)}&mode={mode}&name={urllib.parse.quote_plus(name)}&website={self.name}&thumbnail={urllib.parse.quote_plus(icon or '')}&fanart={urllib.parse.quote_plus(fanart or '')}"
         liz = xbmcgui.ListItem(name)
         art = self.video_art(icon, fanart)
         effective_fanart = art['fanart']
@@ -324,10 +343,100 @@ class BaseWebsite:
             except Exception as exc:
                 self.logger.warning("Vault video context failed: %s", exc)
 
+        if mode == 4 and (uploader_url or self.supports_uploader_lookup):
+            target = uploader_url or url
+            label = self.addon.getLocalizedString(30942) or "More from this uploader"
+            if uploader_name:
+                label = "{}: {}".format(label, uploader_name)
+            context_menu.append((
+                label,
+                "RunPlugin({}?mode=7&action=more_from_uploader&website={}&original_url={})".format(
+                    sys.argv[0],
+                    urllib.parse.quote_plus(self.name),
+                    urllib.parse.quote_plus(target),
+                ),
+            ))
+
         if context_menu:
             liz.addContextMenuItems(context_menu)
 
         xbmcplugin.addDirectoryItem(handle=self.addon_handle, url=u, listitem=liz, isFolder=False)
+
+    def _load_uploader_page(self, url):
+        for method_name in ("make_request", "_get_html", "_get"):
+            method = getattr(self, method_name, None)
+            if not callable(method):
+                continue
+            try:
+                content = method(url)
+                if isinstance(content, bytes):
+                    content = content.decode("utf-8", "ignore")
+                if content:
+                    return content
+            except Exception as exc:
+                self.logger.debug("Uploader lookup via %s failed: %s", method_name, exc)
+        return ""
+
+    def more_from_uploader(self, original_url=None):
+        if not original_url:
+            return self.notify_info("No uploader information available")
+
+        self.logger.info("Uploader lookup source: %s", original_url)
+
+        path = urllib.parse.urlparse(original_url).path.lower()
+        profile_markers = (
+            "/profiles/", "/profile/", "/channels/", "/channel/",
+            "/members/", "/member/", "/users/", "/user/", "/author/",
+            "/uploader/",
+        )
+        if any(marker in path for marker in profile_markers):
+            return self._open_uploader_listing(original_url)
+
+        content = self._load_uploader_page(original_url)
+        if not content:
+            return self.notify_error("Could not load uploader information")
+
+        patterns = self.uploader_lookup_patterns or (
+            (r'href=["\']([^"\']*/profiles/[^"\']+)["\'][^>]*>(.*?)</a>', 1, 2),
+            (r'href=["\']([^"\']*/channels/[^"\']+)["\'][^>]*>(.*?)</a>', 1, 2),
+            (r'href=["\']([^"\']*/[^"\']*/channel/[^"\']+/)["\'][^>]*>(.*?)</a>', 1, 2),
+            (r'href=["\']([^"\']*/members/[^"\']+)["\'][^>]*>(.*?)</a>', 1, 2),
+            (r'href=["\']([^"\']*/(?:users?|profile|author|uploader)/[^"\']+)["\'][^>]*>(.*?)</a>', 1, 2),
+        )
+        candidates = []
+        seen = set()
+        for pattern, url_group, label_group in patterns:
+            for match in re.finditer(pattern, content, re.IGNORECASE | re.DOTALL):
+                href = match.group(url_group)
+                raw_label = match.group(label_group)
+                href = href.replace("\\/", "/")
+                target = urllib.parse.urljoin(self.base_url, html.unescape(href))
+                if target in seen:
+                    continue
+                label = re.sub(r"<[^>]+>", " ", raw_label)
+                label = re.sub(r"\s+", " ", html.unescape(label)).strip()
+                if not label:
+                    label = urllib.parse.unquote(target.rstrip("/").split("/")[-1])
+                seen.add(target)
+                candidates.append((label, target))
+
+        if not candidates:
+            return self.notify_info("No uploader information available")
+
+        # The first site-specific match belongs to the current video's main
+        # uploader. Later matches commonly come from recommendation cards.
+        return self._open_uploader_listing(candidates[0][1])
+
+    def _open_uploader_listing(self, target_url):
+        self.logger.info("Opening uploader profile: %s", target_url)
+        plugin_url = (
+            "{}?mode=2&website={}&url={}".format(
+                sys.argv[0],
+                urllib.parse.quote_plus(self.name),
+                urllib.parse.quote_plus(target_url),
+            )
+        )
+        xbmc.executebuiltin("Container.Update({})".format(plugin_url))
 
     def notify_error(self, message):
         self.logger.warning(f"notify_error: {message}")

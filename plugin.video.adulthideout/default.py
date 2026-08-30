@@ -29,12 +29,17 @@ FANART_PATH = os.path.join(LOGOS_DIR, 'fanart.jpg')
 DEFAULT_ICON_PATH = os.path.join(LOGOS_DIR, 'icon.png')
 VAULT_ICON_PATH = os.path.join(LOGOS_DIR, 'vault.png')
 VIEW_SERVICE_PATH = os.path.join(ADDON_PATH, 'resources', 'lib', 'view_service.py')
-VIEW_SERVICE_VERSION = "35"
+VIEW_SERVICE_VERSION = "40"
 DIAGNOSTICS_ADDON_ID = "script.adulthideout.kvat"
 OPT_IN_WEBSITE_SETTINGS = {
     "crazyshit": "show_crazyshit",
-    "swingerpornfun": "show_swingerpornfun",
-    "vintagepornfun": "show_vintagepornfun",
+}
+TEMPORARILY_UNAVAILABLE_WEBSITES = {
+    "czechvideo",
+    "hentaimama",
+    "hqporner",
+    "ogporn",
+    "saintporn",
 }
 
 MAIN_MENU_SORT_KEYS = ("az", "za", "newest", "category")
@@ -145,6 +150,14 @@ def migrate_legacy_website_visibility(modules):
             hidden.add(name)
     save_hidden_websites(hidden)
     ADDON.setSetting("website_visibility_migrated", "true")
+
+def migrate_atlas_unavailable_websites():
+    if ADDON.getSetting("atlas_unavailable_sites_migrated") == "true":
+        return
+    hidden = get_hidden_websites()
+    hidden.update(TEMPORARILY_UNAVAILABLE_WEBSITES)
+    save_hidden_websites(hidden)
+    ADDON.setSetting("atlas_unavailable_sites_migrated", "true")
 
 def is_website_hidden(name):
     opt_in_setting = OPT_IN_WEBSITE_SETTINGS.get(name)
@@ -267,6 +280,8 @@ def get_website_taxonomy(name):
 def _read_filter_setting(setting_id, allowed):
     try:
         values = json.loads(ADDON.getSetting(setting_id) or "[]")
+        if not isinstance(values, list):
+            values = []
     except (TypeError, ValueError):
         values = []
     return [value for value in values if value in allowed]
@@ -469,6 +484,25 @@ def build_main_menu_fast():
         isFolder=True,
     )
 
+    if ADDON.getSetting("enable_playback_history") == "true":
+        try:
+            from resources.lib.playback_history import load_history
+            history_items = load_history()
+        except Exception:
+            history_items = []
+        if history_items:
+            history_item = xbmcgui.ListItem(label="[COLOR yellow]{}[/COLOR]".format(
+                ADDON.getLocalizedString(30940) or "Continue Watching"
+            ))
+            history_icon = os.path.join(LOGOS_DIR, "history.png")
+            history_item.setArt(get_main_menu_art(history_icon if os.path.exists(history_icon) else DEFAULT_ICON_PATH))
+            xbmcplugin.addDirectoryItem(
+                handle=ADDON_HANDLE,
+                url=f"{sys.argv[0]}?mode=80",
+                listitem=history_item,
+                isFolder=True,
+            )
+
     performers_item = xbmcgui.ListItem(label="[COLOR yellow]{}[/COLOR]".format(ADDON.getLocalizedString(30900) or "Star Finder (Beta)"))
     performers_icon = os.path.join(LOGOS_DIR, "star_finder.png")
     if not os.path.exists(performers_icon):
@@ -534,17 +568,57 @@ def build_main_menu_fast():
         if filename.endswith('.py') and filename != '__init__.py'
     ]
     migrate_legacy_website_visibility(website_modules)
-    website_modules = [name for name in website_modules if not is_website_hidden(name)]
-    website_modules = [name for name in website_modules if website_matches_filters(name)]
-    category_mode = get_main_menu_sort_index() == 3
-    for module_raw_name in sort_website_modules(website_modules):
-        
+    migrate_atlas_unavailable_websites()
+
+    enable_collections = (ADDON.getSetting("enable_website_collections") == "true")
+    selected_content, selected_types = get_active_website_filters()
+    hidden_sites = get_hidden_websites()
+
+    # Pre-filter modules efficiently without redundant IPC or taxonomy calls
+    filtered_modules = []
+    for name in website_modules:
+        opt_in_setting = OPT_IN_WEBSITE_SETTINGS.get(name)
+        if opt_in_setting and ADDON.getSetting(opt_in_setting) != "true":
+            continue
+        if name in hidden_sites:
+            continue
+        if selected_content or selected_types:
+            content, source_types = get_website_taxonomy(name)
+            if selected_content and not (set(content) & set(selected_content)):
+                continue
+            if selected_types and not (set(source_types) & set(selected_types)):
+                continue
+        filtered_modules.append(name)
+
+    sort_idx = get_main_menu_sort_index()
+    category_mode = (sort_idx == 3)
+    sorted_modules = sort_website_modules(filtered_modules)
+
+    # Pre-localize context menu actions once outside loop
+    sort_label = localized(30778, "Sort websites...")
+    filter_label = localized(30779, "Filter websites...")
+    dl_mgr_label = localized(30733, "Open Download Manager")
+    hide_label = localized(30800, "Hide website")
+    add_col_label = localized(30827, "Add to Collection...")
+
+    base_context = [
+        (sort_label, "RunPlugin({}?mode=1&action=select_main_menu_sort)".format(sys.argv[0])),
+        (filter_label, "RunPlugin({}?mode=1&action=select_main_menu_filters)".format(sys.argv[0])),
+        (dl_mgr_label, download_menu_command),
+    ]
+
+    cat_labels = {}
+    if category_mode:
+        for cat_key, lbl_id in CONTENT_LABEL_IDS.items():
+            cat_labels[cat_key] = localized(lbl_id, cat_key.title())
+
+    for module_raw_name in sorted_modules:
         label = get_website_label(module_raw_name)
         if category_mode:
             category = get_primary_category(module_raw_name)
-            category_label = localized(CONTENT_LABEL_IDS[category], category.title())
+            category_label = cat_labels.get(category, category.title())
             label = "[COLOR gray]{}[/COLOR]  {}".format(category_label, label)
-        
+
         icon_name = f"{module_raw_name}.png"
         fallback_name = f"{module_raw_name.replace('_', '-')}.png"
         if icon_name in available_logos:
@@ -554,17 +628,17 @@ def build_main_menu_fast():
         else:
             icon_path = DEFAULT_ICON_PATH
 
-        context_menu = get_website_menu_context(download_menu_command)
-        if ADDON.getSetting("enable_website_collections") == "true":
+        context_menu = list(base_context)
+        if enable_collections:
             context_menu.insert(0, (
-                localized(30827, "Add to Collection..."),
+                add_col_label,
                 "RunPlugin({}?mode=70&action=add_to_collection&site={})".format(
                     sys.argv[0],
                     urllib.parse.quote_plus(module_raw_name),
                 ),
             ))
-        context_menu.insert(3, (
-            localized(30800, "Hide website"),
+        context_menu.insert(3 if enable_collections else 2, (
+            hide_label,
             "RunPlugin({}?mode=1&action=hide_website&target={})".format(
                 sys.argv[0],
                 urllib.parse.quote_plus(module_raw_name),
@@ -577,11 +651,11 @@ def build_main_menu_fast():
 
         url_params = f"?mode=2&website={module_raw_name}&url=BOOTSTRAP"
         url = f"{sys.argv[0]}{url_params}"
-        
+
         li = xbmcgui.ListItem(label=label)
         li.setArt(get_main_menu_art(icon_path))
         li.addContextMenuItems(context_menu)
-        
+
         xbmcplugin.addDirectoryItem(handle=ADDON_HANDLE, url=url, listitem=li, isFolder=True)
         found_any = True
 
@@ -592,12 +666,15 @@ def build_main_menu_fast():
         else:
             log("No website files found (.py)!", xbmc.LOGWARNING)
 
-    end_directory_with_view(ADDON_HANDLE, ADDON, content_type="files")
+    # Website entries expose complete video artwork metadata. Advertising the
+    # directory as videos keeps Estuary's List, Poster, Wide List, Wall and
+    # Fanart views available instead of restricting the menu to file views.
+    end_directory_with_view(ADDON_HANDLE, ADDON, content_type="videos")
 
 def load_single_website(website_name):
     if ADDON_PATH not in sys.path:
         sys.path.insert(0, ADDON_PATH)
-        
+
     from resources.lib.base_website import BaseWebsite
 
     try:
@@ -610,7 +687,7 @@ def load_single_website(website_name):
         log(f"ImportError for {website_name}, trying fallback search.", xbmc.LOGWARNING)
 
     target_clean = website_name.replace('-', '').replace('_', '').lower()
-    
+
     if os.path.exists(WEBSITES_DIR):
         for filename in os.listdir(WEBSITES_DIR):
             if filename.endswith('.py') and filename != '__init__.py':
@@ -624,7 +701,7 @@ def load_single_website(website_name):
                                 return cls(ADDON_HANDLE)
                     except Exception as e:
                         log(f"Error loading fallback module {filename}: {e}", xbmc.LOGERROR)
-    
+
     return None
 
 def call_with_item_count(target_website, callback):
@@ -875,11 +952,22 @@ def handle_routing():
     mode = params.get('mode')
     website_name = params.get('website')
     action = params.get('action')
-    
+
     log(f"Routing: mode={mode}, website={website_name}, action={action}")
 
     if mode == '70':
         handle_website_collections(params)
+        return
+
+    if mode == '80':
+        from resources.lib.playback_history import show
+        show(ADDON_HANDLE, sys.argv[0], action=action, params=params)
+        return
+
+    if mode == '90':
+        from resources.lib.cam_favorites import handle
+        handle(params)
+        xbmcplugin.endOfDirectory(ADDON_HANDLE, succeeded=True, updateListing=False, cacheToDisc=False)
         return
 
     if mode is None and action != 'direct_search':
@@ -1023,7 +1111,7 @@ def handle_routing():
     target_website = None
     if website_name:
         target_website = load_single_website(website_name)
-    
+
     if not target_website:
         log(f"Could not load website module for: {website_name}", xbmc.LOGERROR)
         notify_user(f"Module not found: {website_name}")
@@ -1035,7 +1123,7 @@ def handle_routing():
     original_url = params.get('url')
 
     websites_with_internal_bootstrap = ['drtuber', 'cumlouder', 'pornhat']
-    
+
     if url == 'BOOTSTRAP' and mode == '2' and website_name not in websites_with_internal_bootstrap:
         if hasattr(target_website, 'get_start_url_and_label'):
              url, _ = target_website.get_start_url_and_label()
@@ -1044,7 +1132,7 @@ def handle_routing():
 
     if mode == '2':
         page = int(params.get('page', '1'))
-        
+
         # Safe call: check if process_content supports 'page' argument
         call_with_item_count(
             target_website,
@@ -1052,9 +1140,17 @@ def handle_routing():
             if 'page' in inspect.signature(target_website.process_content).parameters
             else target_website.process_content(url)
         )
-        
+
     elif mode == '4':
         try:
+            if ADDON.getSetting("enable_playback_history") == "true" and not xbmcgui.Window(10000).getProperty("AdultHideout.SmartChannel"):
+                xbmcgui.Window(10000).setProperty("AdultHideout.PendingHistory", json.dumps({
+                    "url": sys.argv[0] + sys.argv[2],
+                    "title": params.get("name", "Video"),
+                    "website": website_name or "",
+                    "thumbnail": params.get("thumbnail", ""),
+                    "fanart": params.get("fanart", ""),
+                }, ensure_ascii=False))
             target_website.play_video(url)
         except Exception as exc:
             log(f"Error playing video on {website_name}: {exc}", xbmc.LOGERROR)
@@ -1080,10 +1176,10 @@ def handle_routing():
             thumbnail=params.get('thumbnail', ''),
         )
         xbmcplugin.endOfDirectory(ADDON_HANDLE, succeeded=True, updateListing=False, cacheToDisc=False)
-        
+
     elif mode == '5':
         target_website.show_search_menu()
-        
+
     elif mode == '6':
         if action == 'direct_site_search':
             query = (
@@ -1114,11 +1210,11 @@ def handle_routing():
                 xbmcplugin.addDirectoryItem = original_add
         else:
             target_website.handle_search_entry(url, mode, target_website.name, action)
-        
+
     elif mode == '7':
         original_url = params.get('original_url') or params.get('url')
         filter_type = params.get('filter_type')
-        
+
         if action and hasattr(target_website, action):
             try:
                 if action in ('download_with_ffmpeg', 'record_with_ffmpeg'):
@@ -1132,13 +1228,13 @@ def handle_routing():
         else:
             notify_user("Action not supported or implemented")
         xbmcplugin.endOfDirectory(ADDON_HANDLE, succeeded=True, updateListing=False, cacheToDisc=False)
-            
+
     elif mode == '8':
         if hasattr(target_website, 'process_categories'):
             call_with_item_count(target_website, lambda: target_website.process_categories(url))
         else:
             xbmcplugin.endOfDirectory(ADDON_HANDLE)
-            
+
     elif mode == '9':
         if hasattr(target_website, 'process_pornstars'):
             call_with_item_count(target_website, lambda: target_website.process_pornstars(url))
@@ -1146,19 +1242,19 @@ def handle_routing():
             call_with_item_count(target_website, lambda: target_website.process_actresses_list(url))
         else:
             xbmcplugin.endOfDirectory(ADDON_HANDLE)
-            
+
     elif mode == '10':
         if hasattr(target_website, 'process_channels'):
             call_with_item_count(target_website, lambda: target_website.process_channels(url))
         else:
             xbmcplugin.endOfDirectory(ADDON_HANDLE)
-            
+
     elif mode == '11':
         if hasattr(target_website, 'process_collections'):
             call_with_item_count(target_website, lambda: target_website.process_collections(url))
         else:
             xbmcplugin.endOfDirectory(ADDON_HANDLE)
-            
+
     else:
         xbmcplugin.endOfDirectory(ADDON_HANDLE)
 

@@ -136,6 +136,19 @@ class BalbumsWebsite(BaseWebsite):
             self.add_dir("[COLOR blue]Next Page >>[/COLOR]", next_url, 2, self.icon, self.fanart)
         self.logger.info("[Balbums] Found %s albums", count)
 
+    VIDEO_EXTENSIONS = ('.mp4', '.m4v', '.mkv', '.webm', '.mov', '.avi', '.wmv', '.flv', '.ts', '.m3u8')
+    NON_VIDEO_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.zip', '.rar', '.7z', '.tar', '.gz', '.pdf', '.txt')
+
+    def _is_video_url(self, url):
+        if not url:
+            return False
+        path = urllib.parse.urlparse(url).path.lower()
+        if any(path.endswith(ext) for ext in self.NON_VIDEO_EXTENSIONS):
+            return False
+        if any(path.endswith(ext) for ext in self.VIDEO_EXTENSIONS):
+            return True
+        return False
+
     def _extract_media(self, content):
         urls = re.findall(r'var\s+jsCDN\s*=\s*["\']([^"\']+)', content, re.I)
         urls += re.findall(r'<source[^>]+src=["\']([^"\']+)', content, re.I)
@@ -143,18 +156,61 @@ class BalbumsWebsite(BaseWebsite):
         result = []
         for url in urls:
             url = html.unescape(url).replace(r"\/", "/").replace("\\/", "/").strip()
-            if url.startswith("https://") and url not in result and (".mp4" in url or "/storage/" in url):
-                result.append(url)
+            if url.startswith("https://") and url not in result:
+                if self._is_video_url(url):
+                    result.append(url)
         return result
 
-    def _extract_file_links(self, content):
-        links = re.findall(r'href=["\']((?:https?://bunkr\.cr)?/f/[A-Za-z0-9]+)["\']', content, re.I)
-        result = []
-        for link in links:
-            full = urllib.parse.urljoin("https://bunkr.cr/", html.unescape(link))
-            if full not in result:
-                result.append(full)
-        return result
+    def _extract_file_items(self, content, album_url):
+        title_match = re.search(r'<h1[^>]*>(.*?)</h1>|property=["\']og:title["\'][^>]+content=["\']([^"\']+)', content, re.I | re.S)
+        album_title = next((html.unescape(value).strip() for value in title_match.groups() if value), "Bunkr Album") if title_match else "Bunkr Album"
+
+        card_pattern = re.compile(
+            r'<div\b[^>]*class="[^"]*theItem[^"]*"[^>]*title="([^"]*)"[^>]*>([\s\S]*?)href=["\']((?:https?://bunkr\.cr)?/f/[A-Za-z0-9]+)["\']',
+            re.I
+        )
+
+        cards = []
+        for match in card_pattern.finditer(content):
+            filename = html.unescape(match.group(1)).strip()
+            inner = match.group(2)
+            slug_url = urllib.parse.urljoin("https://bunkr.cr/", html.unescape(match.group(3)))
+
+            is_video = False
+            if 'type-Video' in inner or 'type-video' in inner:
+                is_video = True
+            elif any(filename.lower().endswith(ext) for ext in self.VIDEO_EXTENSIONS):
+                is_video = True
+
+            thumb_match = re.search(r'(?:src|data-src)=["\']([^"\']+)["\']', inner)
+            thumb = html.unescape(thumb_match.group(1)) if thumb_match else ''
+            if thumb and not thumb.startswith('http'):
+                thumb = urllib.parse.urljoin("https://bunkr.cr/", thumb)
+            if '/images/file.svg' in thumb or '/images/image.svg' in thumb:
+                thumb = ''
+
+            cards.append({
+                'title': filename or f"{album_title} - Video {len(cards)+1}",
+                'url': slug_url,
+                'is_video': is_video,
+                'thumb': thumb or self.icon
+            })
+
+        if not cards:
+            links = re.findall(r'href=["\']((?:https?://bunkr\.cr)?/f/[A-Za-z0-9]+)["\']', content, re.I)
+            seen = set()
+            for link in links:
+                full = urllib.parse.urljoin("https://bunkr.cr/", html.unescape(link))
+                if full not in seen:
+                    seen.add(full)
+                    cards.append({
+                        'title': f"{album_title} - Video {len(cards)+1}",
+                        'url': full,
+                        'is_video': True,
+                        'thumb': self.icon
+                    })
+
+        return album_title, cards
 
     def _sign_media_url(self, media_url):
         if not media_url or "token=" in media_url:
@@ -188,48 +244,92 @@ class BalbumsWebsite(BaseWebsite):
         thumb_match = re.search(r'var\s+videoCoverUrl\s*=\s*["\']([^"\']+)', file_content, re.I)
         thumb = html.unescape(thumb_match.group(1)).replace(r"\/", "/").replace("\\/", "/") if thumb_match else self.icon
         thumb = urllib.parse.urljoin(file_url, thumb)
+
+        # 1. Direct extracted media
         extracted = self._extract_media(file_content)
         if extracted:
             return [(self._sign_media_url(media_url), thumb) for media_url in extracted]
+
+        # 2. Download button with API endpoint
+        dl_match = re.search(r'id=["\']download-btn["\'][^>]*data-id=["\']([^"\']+)["\']', file_content, re.I)
+        if not dl_match:
+            dl_match = re.search(r'href=["\'](?:https?://dl\.bunkr\.cr)?/file/(\d+)["\']', file_content, re.I)
+
+        if dl_match:
+            file_id = dl_match.group(1)
+            api_url = 'https://dl.bunkr.cr/api/_001_v2'
+            try:
+                session = getattr(self, "_session", None) or getattr(self, "session", None)
+                api_resp = session.post(
+                    api_url,
+                    headers={
+                        **self.get_headers(file_url),
+                        'Referer': f'https://dl.bunkr.cr/file/{file_id}',
+                        'Origin': 'https://dl.bunkr.cr',
+                        'Content-Type': 'application/json'
+                    },
+                    json={'id': file_id},
+                    timeout=10
+                )
+                if api_resp.status_code == 200:
+                    meta = api_resp.json()
+                    media_base = meta.get('mediafiles', '')
+                    media_path = meta.get('path', '')
+                    if media_base and media_path:
+                        full_media = media_base + media_path
+                        if self._is_video_url(full_media):
+                            signed = self._sign_media_url(full_media)
+                            return [(signed, thumb)]
+            except Exception as exc:
+                self.logger.warning("[Balbums] DL API resolution failed: %s", exc)
+
         return None
 
     def process_album(self, content, album_url):
-        title_match = re.search(r'<h1[^>]*>(.*?)</h1>|property=["\']og:title["\'][^>]+content=["\']([^"\']+)', content, re.I | re.S)
-        album_title = next((html.unescape(value).strip() for value in title_match.groups() if value), "Bunkr Album") if title_match else "Bunkr Album"
-        action_url = "%s?mode=7&action=play_album&website=%s&original_url=%s" % (
-            sys.argv[0], self.name, urllib.parse.quote_plus(album_url)
-        )
-        action_item = xbmcgui.ListItem("[COLOR green]Play All Videos[/COLOR]")
-        action_item.setArt({"thumb": self.icon, "icon": self.icon, "fanart": self.fanart})
-        xbmcplugin.addDirectoryItem(
-            handle=self.addon_handle,
-            url=action_url,
-            listitem=action_item,
-            isFolder=False,
-        )
-        
-        file_links = self._extract_file_links(content)
-        if file_links:
-            for index, file_url in enumerate(file_links, 1):
-                title = "%s - File %d" % (album_title, index)
-                self.add_link(html.unescape(title), file_url, 4, self.icon, self.fanart)
-            self.logger.info("[Balbums] Rendered %s files in album instantly", len(file_links))
+        album_title, items = self._extract_file_items(content, album_url)
+        video_items = [x for x in items if x['is_video']]
+
+        if video_items:
+            action_url = "%s?mode=7&action=play_album&website=%s&original_url=%s" % (
+                sys.argv[0], self.name, urllib.parse.quote_plus(album_url)
+            )
+            action_item = xbmcgui.ListItem(f"[COLOR green]Play All Videos ({len(video_items)})[/COLOR]")
+            action_item.setArt({"thumb": self.icon, "icon": self.icon, "fanart": self.fanart})
+            xbmcplugin.addDirectoryItem(
+                handle=self.addon_handle,
+                url=action_url,
+                listitem=action_item,
+                isFolder=False,
+            )
+
+            for index, item in enumerate(video_items, 1):
+                title = item['title']
+                thumb = item['thumb'] or self.icon
+                self.add_link(html.unescape(title), item['url'], 4, thumb, self.fanart)
+            self.logger.info("[Balbums] Rendered %s video files in album", len(video_items))
         else:
-            media = self._extract_media(content)
-            for index, url in enumerate(media, 1):
-                title = album_title if len(media) == 1 else "%s - Video %d" % (album_title, index)
-                signed = self._sign_media_url(url)
-                self.add_link(html.unescape(title), signed, 4, self.icon, self.fanart)
+            info_item = xbmcgui.ListItem("[COLOR red]No video files found in this album (contains images/archives)[/COLOR]")
+            info_item.setArt({"thumb": self.icon, "icon": self.icon, "fanart": self.fanart})
+            xbmcplugin.addDirectoryItem(
+                handle=self.addon_handle,
+                url="",
+                listitem=info_item,
+                isFolder=False,
+            )
+            self.logger.info("[Balbums] Album contains 0 video files (skipped non-video files)")
 
     def play_video(self, url):
-        target_stream = url
+        target_stream = None
         if "/f/" in url or "bunkr.cr" in url:
             file_results = self._fetch_single_file(url)
-            if file_results and file_results[0]:
+            if file_results and file_results[0] and file_results[0][0]:
                 target_stream = file_results[0][0]
+        elif url.startswith("http") and not url.startswith("https://bunkr.cr/"):
+            target_stream = self._sign_media_url(url)
 
-        if not target_stream or not target_stream.startswith("http"):
+        if not target_stream or not target_stream.startswith("http") or target_stream.startswith("https://bunkr.cr/"):
             self.notify_error("Could not resolve video stream")
+            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
             return
 
         session = getattr(self, "_session", None) or getattr(self, "session", None)
@@ -252,47 +352,53 @@ class BalbumsWebsite(BaseWebsite):
 
     def play_album(self, url):
         content = self.make_request(url)
-        if content:
-            file_links = self._extract_file_links(content)
-            if file_links:
-                self._playlist_for_albums(file_links, "files")
-            else:
-                self._playlist_for_albums([url], "album")
+        if not content:
+            self.notify_error("Failed to load album")
+            return
+
+        album_title, items = self._extract_file_items(content, url)
+        video_urls = [x['url'] for x in items if x['is_video']]
+        if not video_urls:
+            self.notify_error("No video files found in album")
+            return
+
+        self._playlist_for_albums(video_urls, "files")
 
     def _playlist_for_albums(self, items, label):
         playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
         playlist.clear()
         progress = xbmcgui.DialogProgress()
-        progress.create("Balbums", "Loading album items...")
+        progress.create("Balbums", "Loading album videos...")
         added = 0
         total = len(items)
         session = getattr(self, "_session", None) or getattr(self, "session", None)
         for index, item_url in enumerate(items):
             if progress.iscanceled():
                 break
-            progress.update(int(index * 100 / max(1, total)), "Loading file %d of %d..." % (index + 1, total))
+            progress.update(int(index * 100 / max(1, total)), "Loading video %d of %d..." % (index + 1, total))
             if "/f/" in item_url:
                 res = self._fetch_single_file(item_url)
-                if res and res[0]:
+                if res and res[0] and res[0][0]:
                     media_url, thumb = res[0]
-                    controller = ProxyController(
-                        media_url,
-                        upstream_headers={
-                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                            "Referer": "https://bunkr.cr/",
-                        },
-                        session=session,
-                        skip_resolve=True,
-                    )
-                    play_url = controller.start()
-                    listItem = xbmcgui.ListItem(f"Video {index + 1}")
-                    listItem.setProperty("IsPlayable", "true")
-                    listItem.setMimeType("video/mp4")
-                    if thumb:
-                        listItem.setArt({"thumb": thumb, "icon": thumb})
-                    listItem.setPath(play_url)
-                    playlist.add(url=play_url, listitem=listItem)
-                    added += 1
+                    if media_url.startswith("http") and not media_url.startswith("https://bunkr.cr/"):
+                        controller = ProxyController(
+                            media_url,
+                            upstream_headers={
+                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                                "Referer": "https://bunkr.cr/",
+                            },
+                            session=session,
+                            skip_resolve=True,
+                        )
+                        play_url = controller.start()
+                        listItem = xbmcgui.ListItem(f"Video {index + 1}")
+                        listItem.setProperty("IsPlayable", "true")
+                        listItem.setMimeType("video/mp4")
+                        if thumb:
+                            listItem.setArt({"thumb": thumb, "icon": thumb})
+                        listItem.setPath(play_url)
+                        playlist.add(url=play_url, listitem=listItem)
+                        added += 1
             else:
                 content = self.make_request(item_url)
                 if not content:
@@ -321,7 +427,7 @@ class BalbumsWebsite(BaseWebsite):
             self.logger.info("[Balbums] Playing playlist with %s videos", added)
             xbmc.Player().play(playlist)
         else:
-            self.notify_error("No videos found")
+            self.notify_error("No playable videos found")
 
     def play_all_from_here(self, packed_url):
         if not packed_url or "|" not in packed_url:

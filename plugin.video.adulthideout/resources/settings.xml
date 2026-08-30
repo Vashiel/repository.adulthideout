@@ -4,6 +4,7 @@
     <setting id="max_retry_attempts" type="enum" label="30011" values="1|2|3|4|5|6|7|8|9|10" default="2" />
     <setting id="viewtype" type="enum" label="30012" values="List|Poster|Wide List|Wall|Fanart" default="2" />
     <setting id="use_video_thumbs_as_fanart" type="bool" label="30015" default="false" />
+    <setting id="enable_playback_history" type="bool" label="30941" default="false" />
     <setting id="main_menu_website_sort" type="enum" label="30003" values="A-Z|Z-A|Newest Websites|Category" default="0" visible="false" />
     <setting id="main_menu_website_content_filter" type="text" default="" visible="false" />
     <setting id="main_menu_website_type_filter" type="text" default="" visible="false" />
@@ -11,6 +12,7 @@
     <setting id="vault_sort_by" type="text" default="date" visible="false" />
     <setting id="clear_cache" type="action" label="30013" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/clear_cache.py)" />
     <setting id="reset_settings" type="action" label="30014" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/reset_settings.py)" />
+    <setting id="complete_backup_restore" type="action" label="30943" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/backup_restore.py)" />
     <setting type="lsep" label="30821" />
     <setting id="open_adulthideout_diagnostics" type="action" label="30824" action="RunPlugin(plugin://plugin.video.adulthideout/?mode=1&amp;action=run_diagnostics)" />
   </category>
@@ -39,8 +41,6 @@
   <category label="30807">
     <setting type="lsep" label="[B]CrazyShit[/B]" />
     <setting id="show_crazyshit" type="bool" label="30809" default="false" />
-    <setting id="show_swingerpornfun" type="bool" default="false" visible="false" />
-    <setting id="show_vintagepornfun" type="bool" default="false" visible="false" />
     <setting type="action" label="30812" action="RunScript(special://home/addons/plugin.video.adulthideout/resources/site_options.py)" />
     <setting id="crazyshit_disclaimer_accepted" type="bool" default="false" visible="false" />
     <setting type="lsep" label="30802" />
@@ -48,6 +48,8 @@
     <setting type="action" label="30803" action="RunPlugin(plugin://plugin.video.adulthideout/?mode=1&amp;action=restore_all_websites)" />
     <setting id="hidden_websites" type="text" default="" visible="false" />
     <setting id="website_visibility_migrated" type="bool" default="false" visible="false" />
+    <setting id="atlas_unavailable_sites_migrated" type="bool" default="false" visible="false" />
+    <setting id="asianviralhub_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="ashemaletube_pf_country" type="enum" label="30500" values="Any|Argentina|Australia|Austria|Brazil|Canada|Chile|China|Colombia|Czechia|France|Germany|Hong Kong|Hungary|Indonesia|Italy|Japan|Malaysia|Mexico|Netherlands|Peru|Philippines|Poland|Romania|Russia|Spain|Switzerland|Thailand|United Kingdom|United States|Venezuela" default="0" visible="false" />
     <setting id="ashemaletube_pf_penis" type="enum" label="30501" values="Any|Small|Medium|Big" default="0" visible="false" />
     <setting id="ashemaletube_pf_breast" type="enum" label="30502" values="Any|Small|Medium|Big|Natural" default="0" visible="false" />
@@ -61,11 +63,15 @@
     <setting id="erome_content_type" type="enum" label="   Content" values="All|Straight|Gay|Trans|Hentai" default="0" enable="eq(-2,true)" visible="false" />
     <setting id="freeomovie_autoplay_hoster" type="bool" label="30131" default="true" visible="false" />
     <setting id="abxxx_sort_by" type="enum" label="30004" values="Latest|Most Popular|Top Rated" default="0" visible="false" />
+    <setting id="123av_sort_by" type="enum" label="30004" values="New|Hot|Recent" default="0" visible="false" />
     <setting id="8kporner_sort_by" type="enum" label="30004" values="Latest|Trending|Top Rated" default="0" visible="false" />
     <setting id="one43porn_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="mygoodporn_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="porneec_sort_by" type="enum" label="30004" values="Newest|Best|Most Viewed|Longest" default="0" visible="false" />
     <setting id="pornmike_sort_by" type="enum" label="30004" values="Newest|Most Viewed|Top Rated" default="0" visible="false" />
+    <setting id="pornavhd_sort_by" type="enum" label="30004" values="Newest|Best|Most Viewed|Longest|Random" default="0" visible="false" />
+    <setting id="internetchicks_sort_by" type="enum" label="30004" values="Latest|Trending" default="0" visible="false" />
+    <setting id="thothub_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated|Longest" default="0" visible="false" />
     <setting id="allowflash_sort_by" type="enum" label="30004" values="Newest|Trending" default="0" visible="false" />
     <setting id="cosplayporntube_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="cumdrinkingclips_sort_by" type="enum" label="30004" values="Newest|Best|Most Viewed|Longest" default="0" visible="false" />

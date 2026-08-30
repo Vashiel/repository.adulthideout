@@ -7,6 +7,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from http.server import BaseHTTPRequestHandler
 from socketserver import TCPServer, ThreadingMixIn
 
@@ -25,6 +26,7 @@ class ChaturbateWebsite(BaseWebsite):
     HLS_URL = "https://chaturbate.com/get_edge_hls_url_ajax/"
     LIST_PREFIX = "CHB_LIST:"
     SEARCH_PREFIX = "CHB_SEARCH:"
+    FAVORITES_PREFIX = "CAM_FAVORITES:"
 
     def __init__(self, addon_handle, addon=None):
         super().__init__(
@@ -487,13 +489,15 @@ class ChaturbateWebsite(BaseWebsite):
                 "title": username,
                 "plot": self._room_plot(room),
             }
+            from resources.lib import cam_favorites
+            room_context = list(context_menu) + cam_favorites.context_menu(self.name, username, username, room_url, thumb)
             self.add_link(
                 self._room_title(room),
                 room_url,
                 4,
                 thumb,
                 self.fanart,
-                context_menu=context_menu,
+                context_menu=room_context,
                 info_labels=info,
             )
             added += 1
@@ -513,6 +517,10 @@ class ChaturbateWebsite(BaseWebsite):
         self.end_directory("videos")
 
     def process_content(self, url, page=1):
+        if url and url.startswith(self.FAVORITES_PREFIX):
+            from resources.lib import cam_favorites
+            cam_favorites.show(self, url[len(self.FAVORITES_PREFIX):] or "root")
+            return
         context = self._extract_context(url)
         if context["kind"] == "room":
             self.end_directory("videos")
@@ -521,6 +529,8 @@ class ChaturbateWebsite(BaseWebsite):
         context_menu = self._build_context_menu()
         self.add_dir("Search", "", 5, self.icons.get("search", self.icon), context_menu=context_menu)
         self.add_dir("Categories", self.LIST_PREFIX + "categories", 8, self.icons.get("categories", self.icon), context_menu=context_menu)
+        if page == 1:
+            self.add_dir(self.addon.getLocalizedString(30957) or "Cam Favorites", self.FAVORITES_PREFIX + "root", 2, self.icon, context_menu=context_menu)
 
         payload = self._request_json(
             self.API_URL,
@@ -544,6 +554,39 @@ class ChaturbateWebsite(BaseWebsite):
         if not query:
             return
         self.process_content(self.SEARCH_PREFIX + urllib.parse.quote_plus(query.strip()), page=1)
+
+    def get_cam_favorite_status(self, entries):
+        result = {}
+        usernames = []
+        for entry in entries:
+            username = (entry.get("username") or "").strip()
+            if username:
+                usernames.append(username)
+
+        def fetch(username):
+            payload = self._request_json(self.API_URL, params={"limit": 5, "offset": 0, "keywords": username}, referer=self.base_url + "/") or {}
+            for room in payload.get("rooms") or []:
+                room_name = (room.get("username") or "").strip()
+                if room_name.lower() == username.lower():
+                    return username.lower(), room
+            return username.lower(), None
+
+        with ThreadPoolExecutor(max_workers=min(6, max(1, len(usernames)))) as executor:
+            futures = [executor.submit(fetch, username) for username in usernames]
+            for future in as_completed(futures):
+                key, room = future.result()
+                if room:
+                    result[key] = room
+        return result
+
+    def add_cam_favorite_model(self, room):
+        username = (room.get("username") or "").strip()
+        room_url = "{}/{}/".format(self.base_url.rstrip("/"), username)
+        thumb = (room.get("img") or self.icon).strip()
+        from resources.lib import cam_favorites
+        self.add_link(self._room_title(room), room_url, 4, thumb, self.fanart,
+                      context_menu=cam_favorites.context_menu(self.name, username, username, room_url, thumb),
+                      info_labels={"title": username, "plot": self._room_plot(room)})
 
     def _resolve_hls(self, username):
         room_url = "{}/{}/".format(self.base_url.rstrip("/"), username)
@@ -917,6 +960,11 @@ class ChaturbateWebsite(BaseWebsite):
         return "http://127.0.0.1:{}/master.m3u8".format(port)
 
     def play_video(self, url):
+        try:
+            from resources.lib import cam_favorites
+            cam_favorites.touch(self.name, urllib.parse.urlparse(url).path.strip("/").split("/")[0])
+        except Exception:
+            pass
         parsed = urllib.parse.urlparse(url)
         path = parsed.path.strip("/")
         username = path.split("/")[0] if path else ""

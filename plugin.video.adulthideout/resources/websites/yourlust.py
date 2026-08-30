@@ -165,7 +165,8 @@ class YourLust(BaseWebsite):
             },
             cookies=self.session.cookies.get_dict() if self.session else None,
             session=self.session,
-            use_urllib=True,
+            use_urllib=False,
+            skip_resolve=True,
             probe_size=True,
         )
         local_url = controller.start()
@@ -178,4 +179,3 @@ class YourLust(BaseWebsite):
         li.setMimeType('video/mp4')
         li.setContentLookup(False)
         xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
-        guard.join()

@@ -1,16 +1,23 @@
 # -*- coding: utf-8 -*-
 import re
 import xbmc
+# -*- coding: utf-8 -*-
+import re
+import xbmc
 import urllib.parse
+import requests
 from resources.lib.resolvers import resolver_utils
 
 def resolve(url, referer=None, headers=None):
     xbmc.log(f"[AdultHideout][streamtape] Resolving: {url}", xbmc.LOGINFO)
     
-    import cloudscraper
-    scraper = cloudscraper.create_scraper(
-        browser={"browser": "chrome", "platform": "windows", "desktop": True}
-    )
+    try:
+        import cloudscraper
+        scraper = cloudscraper.create_scraper(
+            browser={"browser": "chrome", "platform": "windows", "desktop": True}
+        )
+    except Exception:
+        scraper = requests.Session()
     
     try:
         # Standardize URL (must be /e/ for embed)

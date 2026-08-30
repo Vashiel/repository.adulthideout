@@ -14,13 +14,13 @@ AdultHideout does not host videos. It organizes publicly available listings and 
 
 ## Current Release
 
-**AdultHideout 1.0.21 "Watchtower"** was released on **August 24, 2026**.
+**AdultHideout 1.0.22 "Atlas"** was released on **August 30, 2026**.
 
-Watchtower introduces **Star Finder (Beta)** with 25,000 performer profiles, **Smart Streams (Beta)** for continuous custom channels, stricter full-movie discovery, Vault ratings and Vault TV, improved skin-search artwork, broader diagnostics and substantial playback and website repairs.
+Atlas adds **Complete Backup & Restore**, optional **Continue Watching**, account-free **Cam Favorites**, public **PornHub Playlists**, Mega Shuffle, richer website views and eleven new sources. It also strengthens Smart Streams, exact-uploader navigation, persistent Kodi views and catalog-wide diagnostics.
 
-The name **Watchtower** reflects what this release does: it looks across a catalog that has become too large to manage one page or one website at a time. Star Finder surveys performers and film relationships, Smart Streams keep watching and refilling their channels, and diagnostics help watch over the health of hundreds of sources.
+The name **Atlas** reflects what this release does: AdultHideout has grown into a world of hundreds of sources and personal paths through them. Atlas makes that world easier to navigate, preserve and revisit.
 
-**[Read the complete Watchtower release story and technical highlights](docs/releases/1.0.21-watchtower.md)**
+**[Read the complete Atlas release story and technical highlights](docs/releases/1.0.22-atlas.md)**
 
 ## What AdultHideout Can Do
 
@@ -79,7 +79,7 @@ AdultHideout has grown beyond what a single README can explain. The official **[
 - **Issues:** [Bug reports and feature requests](https://github.com/Vashiel/repository.adulthideout/issues)
 - **Discussions:** [Announcements and community discussion](https://github.com/Vashiel/repository.adulthideout/discussions)
 - **Changelog:** [Complete release history](plugin.video.adulthideout/changelog.txt)
-- **Release notes:** [Watchtower 1.0.21](docs/releases/1.0.21-watchtower.md)
+- **Release notes:** [Atlas 1.0.22](docs/releases/1.0.22-atlas.md)
 
 ## Disclaimer
 

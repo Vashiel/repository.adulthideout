@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import re
+import json
 import urllib.parse
 import urllib.request
 from http.cookiejar import CookieJar
@@ -16,6 +17,12 @@ from resources.lib.lookup_info import choose_and_open, extract_html_items
 from resources.lib.proxy_utils import HlsProxyController, PlaybackGuard, ProxyController
 
 class XvideosWebsite(BaseWebsite):
+    supports_uploader_lookup = True
+    uploader_lookup_patterns = ((
+        r'"uploader":"([^"]+)"\s*,\s*"uploader_url":"([^"]+)"',
+        2,
+        1,
+    ),)
     config = {
         "name": "xvideos",
         "base_url": "https://xvideos.com",
@@ -43,6 +50,11 @@ class XvideosWebsite(BaseWebsite):
             "gay": ["AI", "ASMR"],
             "shemale": ["AI", "ASMR", "Ebony", "Interracial", "Asian", "Indian", "Latin", "Euro"], # Added some likely targets for Shemale
         }
+        self.ua = self.get_headers().get("User-Agent", "Mozilla/5.0")
+        # Proxy controllers create their own compatible session when None is
+        # supplied. Keeping this explicit avoids relying on an attribute that
+        # older XVideos implementations happened to initialize elsewhere.
+        self.session = None
 
 
     def get_start_url_and_label(self):
@@ -236,6 +248,11 @@ class XvideosWebsite(BaseWebsite):
         parsed_url = urllib.parse.urlparse(url)
         query_params = urllib.parse.parse_qs(parsed_url.query)
 
+        if self._is_uploader_profile_url(parsed_url.path):
+            self._process_uploader_profile(url)
+            self.end_directory()
+            return
+
         if "filter_options" in url:
             self.addon.openSettings()
             category = self.addon.getSetting(f"{self.config['name']}_category") or "Straight"
@@ -294,6 +311,85 @@ class XvideosWebsite(BaseWebsite):
             self.notify_error("Failed to load content")
 
         self.end_directory()
+
+    def _is_uploader_profile_url(self, path):
+        clean = (path or "").strip("/")
+        if not clean:
+            return False
+        parts = clean.split("/")
+        if parts[0].lower() in ("profiles", "channels") and len(parts) >= 2:
+            return True
+        reserved = {
+            "c", "tags", "popular-tags", "gay", "shemale", "video",
+            "videos", "search", "profileslist", "channels-index",
+        }
+        return len(parts) == 1 and parts[0].lower() not in reserved and not parts[0].lower().startswith("video.")
+
+    def _process_uploader_profile(self, profile_url):
+        profile_html = self.make_request(profile_url)
+        match = re.search(
+            r'"id_user"\s*:\s*(\d+)\s*,\s*"username"\s*:\s*"([^"]+)"',
+            profile_html or "",
+            re.IGNORECASE,
+        )
+        if not match:
+            self.notify_info("No public uploader videos found")
+            return
+
+        user_id, username = match.groups()
+        orientation = self.addon.getSetting("xvideos_category") or "Straight"
+        orientation = orientation.lower()
+        if orientation not in ("straight", "gay", "shemale"):
+            orientation = "straight"
+        endpoint = "{}profiles/{}/feed/{}".format(
+            self.base_url.rstrip("/") + "/",
+            urllib.parse.quote(username),
+            orientation,
+        )
+        payload = urllib.parse.urlencode({
+            "feedSettings[contentType]": "7",
+            "feedSettings[showFreePremium]": "1",
+            "mainCats[]": orientation,
+        }).encode("ascii")
+        headers = self.get_headers(profile_url, is_json=True)
+        headers["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8"
+        try:
+            request = urllib.request.Request(endpoint, data=payload, headers=headers)
+            with urllib.request.urlopen(request, timeout=25) as response:
+                data = json.loads(response.read().decode("utf-8", "ignore"))
+        except Exception as exc:
+            self.logger.warning("XVideos uploader feed failed: %s", exc)
+            self.notify_error("Could not load uploader videos")
+            return
+
+        seen = set()
+        count = 0
+        for group in (data.get("data") or {}).get("content", []):
+            for video in group.get("v") or []:
+                video_user = str(video.get("ui") or "")
+                video_profile = str(video.get("p") or "").lower()
+                if video_user != str(user_id) and video_profile != username.lower():
+                    continue
+                video_url = urllib.parse.urljoin(self.base_url, str(video.get("u") or ""))
+                if not video_url or video_url in seen:
+                    continue
+                seen.add(video_url)
+                title = html.unescape(str(video.get("tf") or video.get("t") or username))
+                duration = str(video.get("d") or "").strip()
+                label = "{} [COLOR lime]({})[/COLOR]".format(title, duration) if duration else title
+                thumb = html.unescape(str(video.get("i") or video.get("il") or "")).replace("\\/", "/")
+                self.add_link(
+                    label,
+                    video_url,
+                    4,
+                    thumb,
+                    self.fanart,
+                    uploader_name=username,
+                    uploader_url=profile_url,
+                )
+                count += 1
+        if not count:
+            self.notify_info("No public uploader videos found")
 
     def add_basic_dirs(self, current_url, cat_value, is_category_page=False):
         context_menu = [

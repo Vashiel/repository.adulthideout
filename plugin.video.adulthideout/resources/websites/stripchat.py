@@ -18,6 +18,7 @@ class StripchatWebsite(BaseWebsite):
     LIST_PREFIX = "STRIPCHAT_LIST:"
     PLAY_PREFIX = "STRIPCHAT_PLAY:"
     PAGE_SIZE = 40
+    FAVORITES_PREFIX = "CAM_FAVORITES:"
 
     def __init__(self, addon_handle, addon=None):
         super().__init__(
@@ -141,12 +142,15 @@ class StripchatWebsite(BaseWebsite):
         plot = topic or username
         if languages:
             plot += "\nLanguages: {}".format(languages)
+        from resources.lib import cam_favorites
+        thumb = self._thumbnail(model)
         self.add_link(
             label,
             self._play_token(model),
             4,
-            self._thumbnail(model),
+            thumb,
             self.fanart,
+            context_menu=cam_favorites.context_menu(self.name, username, username, self.base_url + urllib.parse.quote(username), thumb),
             info_labels={"title": username, "plot": plot, "genre": "Live Cam"},
         )
         return True
@@ -155,6 +159,10 @@ class StripchatWebsite(BaseWebsite):
         return self.LIST_PREFIX + "all", "Stripchat"
 
     def process_content(self, url, page=1):
+        if url and url.startswith(self.FAVORITES_PREFIX):
+            from resources.lib import cam_favorites
+            cam_favorites.show(self, url[len(self.FAVORITES_PREFIX):] or "root")
+            return
         if not url or url == "BOOTSTRAP":
             url = self.LIST_PREFIX + "all"
         filter_name = url.split(":", 1)[1] if url.startswith(self.LIST_PREFIX) else "all"
@@ -162,6 +170,7 @@ class StripchatWebsite(BaseWebsite):
         if page == 1:
             self.add_dir("Search", "", 5, self.icons.get("search", self.icon))
             self.add_dir("Categories", self.name, 8, self.icons.get("categories", self.icon))
+            self.add_dir(self.addon.getLocalizedString(30957) or "Cam Favorites", self.FAVORITES_PREFIX + "root", 2, self.icon)
 
         models, total = self._filtered_models(filter_name, page)
         added = sum(1 for model in models if self._add_model(model))
@@ -205,6 +214,22 @@ class StripchatWebsite(BaseWebsite):
         if not matches:
             self.notify_error("No matching public Stripchat rooms found")
         self.end_directory("videos")
+
+    def get_cam_favorite_status(self, entries):
+        wanted = {(entry.get("username") or "").lower() for entry in entries}
+        result = {}
+        for offset in range(0, 1000, 200):
+            batch, _total = self._request_models(200, offset)
+            for model in batch:
+                username = (model.get("username") or "").lower()
+                if username in wanted and model.get("status") in (None, "public") and self._stream_url(model):
+                    result[username] = model
+            if wanted.issubset(result) or len(batch) < 200:
+                break
+        return result
+
+    def add_cam_favorite_model(self, model):
+        self._add_model(model)
 
     def _decode_play_token(self, value):
         token = value[len(self.PLAY_PREFIX) :]
@@ -268,6 +293,11 @@ class StripchatWebsite(BaseWebsite):
         payload = self._decode_play_token(url) if url.startswith(self.PLAY_PREFIX) else {}
         stream_url = payload.get("url") or ""
         username = payload.get("username") or ""
+        try:
+            from resources.lib import cam_favorites
+            cam_favorites.touch(self.name, username)
+        except Exception:
+            pass
         if not stream_url:
             self.notify_error("Stripchat room is no longer public")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())

@@ -2,13 +2,13 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>AdultHideout Kodi Addon Repository</title>
   <link href="https://vashiel.github.io/repository.adulthideout/"/>
-  <updated>2026-08-19T10:00:00Z</updated>
+  <updated>2026-08-30T12:00:00Z</updated>
   <id>https://vashiel.github.io/repository.adulthideout/</id>
   <entry>
-    <title>AdultHideout Latest Release</title>
+    <title>AdultHideout 1.0.22 Atlas</title>
     <link href="https://vashiel.github.io/repository.adulthideout/"/>
     <id>https://vashiel.github.io/repository.adulthideout/</id>
-    <updated>2026-08-19T10:00:00Z</updated>
-    <summary>Offizieller Download und Repository-Updates für AdultHideout Kodi Addon.</summary>
+    <updated>2026-08-30T12:00:00Z</updated>
+    <summary>Atlas adds Complete Backup and Restore, Continue Watching, Cam Favorites, public playlists, eleven websites and catalog-wide reliability improvements.</summary>
   </entry>
 </feed>

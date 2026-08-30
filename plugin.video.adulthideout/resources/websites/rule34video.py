@@ -126,6 +126,12 @@ class _Rule34VideoRangeProxy:
                 response.close()
 
 class Rule34video(BaseWebsite):
+    supports_uploader_lookup = True
+    uploader_lookup_patterns = ((
+        r'Uploaded by[\s\S]{0,500}?href="([^"]*/members/[^"]+)"[\s\S]{0,300}?alt="([^"]+)"',
+        1,
+        2,
+    ),)
     def __init__(self, addon_handle, addon=None):
         super().__init__(
             name='rule34video',

@@ -10,6 +10,8 @@ import urllib.request
 import urllib.error
 from http.cookiejar import CookieJar
 
+import requests
+
 import xbmc
 import xbmcaddon
 import xbmcgui
@@ -19,6 +21,12 @@ from resources.lib.base_website import BaseWebsite
 from resources.lib.lookup_info import choose_and_open, extract_html_items
 
 class PornhubWebsite(BaseWebsite):
+    supports_uploader_lookup = True
+    uploader_lookup_patterns = ((
+        r'videoUploaderBlock[\s\S]{0,800}?usernameWrap[\s\S]{0,300}?<a[^>]+href="([^"]+)"[^>]*>([^<]+)',
+        1,
+        2,
+    ),)
     config = {
         "name": "pornhub",
         "base_url": "https://www.pornhub.com",
@@ -40,6 +48,15 @@ class PornhubWebsite(BaseWebsite):
         )
         urllib.request.install_opener(self.opener)
         self._set_age_cookie()
+        self.playlist_session = requests.Session()
+        self.playlist_session.headers.update(self.get_headers(self.base_url + '/playlists'))
+        self.playlist_session.cookies.update({
+            'age_verified': '1',
+            'accessAgeDisclaimerPH': '1',
+            'accessAgeDisclaimerUK': '1',
+            'accessPH': '1',
+            'platform': 'pc',
+        })
 
         self.sorting_options = ["Newest", "Most Viewed", "Top Rated"]
         self.sorting_paths = {
@@ -221,7 +238,11 @@ class PornhubWebsite(BaseWebsite):
         parsed_url = urllib.parse.urlparse(url)
         path = parsed_url.path
 
-        if '/pornstar/' in path or '/model/' in path:
+        if path.rstrip('/') == '/playlists':
+            self.process_public_playlists(url)
+        elif re.match(r'^/playlist/\d+/?$', path):
+            self.process_public_playlist(url)
+        elif '/pornstar/' in path or '/model/' in path:
             self.process_video_list(url)
         elif '/pornstars' in path:
             self.process_pornstars(url)
@@ -231,6 +252,7 @@ class PornhubWebsite(BaseWebsite):
             if hasattr(self, 'add_dir'):
                 self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], name_param=self.name)
                 self.add_dir('Categories', f"{self.base_url}/categories", 2, self.icons['categories'])
+                self.add_dir(self.addon.getLocalizedString(30963) or 'Public Playlists', f"{self.base_url}/playlists", 2, self.icons['default'])
                 
                 pornstars_url = f"{self.base_url}/pornstars"
                 self.add_dir(
@@ -247,6 +269,190 @@ class PornhubWebsite(BaseWebsite):
 
         if hasattr(self, 'end_directory'):
             self.end_directory()
+
+    def _thumb_with_headers(self, thumb, referer=None):
+        thumb = html.unescape(thumb or '').replace('\\/', '/')
+        if not thumb or thumb.startswith('data:'):
+            return self.icon
+        if thumb.startswith('//'):
+            thumb = 'https:' + thumb
+        if '|' not in thumb:
+            thumb += '|User-Agent={}&Referer={}'.format(
+                urllib.parse.quote(self.get_headers().get('User-Agent', 'Mozilla/5.0')),
+                urllib.parse.quote(referer or (self.base_url + '/')),
+            )
+        return thumb
+
+    def _playlist_cards(self, content):
+        cards = []
+        seen = set()
+        pattern = r'<li\s+id="playlist_(\d+)"\s+class="full-width">(.*?)(?=<li\s+id="playlist_|</ul>)'
+        for match in re.finditer(pattern, content or '', re.IGNORECASE | re.DOTALL):
+            playlist_id, block = match.group(1), match.group(2)
+            if playlist_id in seen:
+                continue
+            title_match = re.search(
+                r'data-label="playlist_title"[\s\S]{0,300}?title="([^"]+)"', block, re.IGNORECASE
+            )
+            if not title_match:
+                continue
+            thumb_match = re.search(r'<img[^>]+(?:data-image|data-src|data-thumb_url)="(https?://[^"]+)"', block, re.IGNORECASE)
+            count_match = re.search(r'<span\s+class="number"><span>([^<]+)</span>\s*videos', block, re.IGNORECASE)
+            uploader_match = re.search(r'class="usernameLink"[^>]*>([^<]+)</a>', block, re.IGNORECASE)
+            seen.add(playlist_id)
+            cards.append({
+                'id': playlist_id,
+                'title': html.unescape(title_match.group(1)).strip(),
+                'thumb': html.unescape(thumb_match.group(1)) if thumb_match else self.icon,
+                'count': html.unescape(count_match.group(1)).strip() if count_match else '',
+                'uploader': html.unescape(uploader_match.group(1)).strip() if uploader_match else '',
+            })
+        return cards
+
+    def _playlist_request(self, url, referer=None, ajax=False):
+        headers = self.get_headers(referer or (self.base_url + '/playlists'))
+        if ajax:
+            headers['Accept'] = 'application/json, text/plain, */*'
+            headers['X-Requested-With'] = 'XMLHttpRequest'
+        candidates = [url]
+        parsed = urllib.parse.urlparse(url)
+        if parsed.netloc == 'www.pornhub.com':
+            candidates.append(parsed._replace(netloc='www.pornhub.org').geturl())
+        for candidate in candidates:
+            try:
+                response = self.playlist_session.get(candidate, headers=headers, timeout=15)
+                if response.status_code == 200 and response.text:
+                    return response.text
+                self.logger.warning('Pornhub playlist HTTP %s for %s', response.status_code, candidate)
+            except requests.RequestException as exc:
+                self.logger.warning('Pornhub playlist request failed for %s: %s', candidate, exc)
+        return ''
+
+    def process_public_playlists(self, url):
+        content = self._playlist_request(url, referer=self.base_url + '/playlists')
+        if not content:
+            return
+        cards = self._playlist_cards(content)
+        for card in cards:
+            label = card['title']
+            if card['count']:
+                label += ' [COLOR lime]({} videos)[/COLOR]'.format(card['count'])
+            playlist_url = '{}/playlist/{}'.format(self.base_url, card['id'])
+            plot = 'Public PornHub playlist'
+            if card['uploader']:
+                plot += '\nCreated by: {}'.format(card['uploader'])
+            self.add_dir(
+                label, playlist_url, 2,
+                self._thumb_with_headers(card['thumb'], url), self.fanart,
+                info_labels={'title': card['title'], 'plot': plot},
+            )
+        next_match = re.search(r'<link\s+rel="next"\s+href="([^"]+)"', content, re.IGNORECASE)
+        if not next_match:
+            next_match = re.search(r'<li\s+class="page_next">[\s\S]*?<a[^>]+href="([^"]+)"', content, re.IGNORECASE)
+        if next_match:
+            self.add_dir('[COLOR blue]Next Page >>>>[/COLOR]', urllib.parse.urljoin(url, html.unescape(next_match.group(1))), 2, self.icons['default'])
+
+    def _playlist_page_data(self, playlist_url):
+        parsed = urllib.parse.urlparse(playlist_url)
+        params = urllib.parse.parse_qs(parsed.query)
+        try:
+            page = max(1, int(params.get('page', ['1'])[0]))
+        except (ValueError, TypeError):
+            page = 1
+        clean_url = parsed._replace(query='').geturl()
+        content = self._playlist_request(clean_url, referer=self.base_url + '/playlists')
+        if not content:
+            return '', [], 0
+        meta_match = re.search(r'PLAYLIST_VIEW\s*=\s*(\{.*?\})\s*;', content, re.DOTALL)
+        meta = {}
+        if meta_match:
+            try:
+                meta = json.loads(meta_match.group(1))
+            except (ValueError, TypeError):
+                pass
+        total = int(meta.get('video_count') or 0)
+        title = html.unescape(str(meta.get('title') or 'Public Playlist'))
+        page_content = content
+        if page > 1:
+            lazy_match = re.search(r'lazyloadUrl\s*=\s*"([^"]+)"', content)
+            if not lazy_match:
+                return title, [], total
+            chunk_url = urllib.parse.urljoin(clean_url, html.unescape(lazy_match.group(1)))
+            separator = '&' if '?' in chunk_url else '?'
+            page_content = self._playlist_request(chunk_url + separator + 'page={}'.format(page), referer=clean_url, ajax=True)
+        else:
+            list_match = re.search(r'<ul[^>]+id="videoPlaylist"[^>]*>(.*?)</ul>', content, re.IGNORECASE | re.DOTALL)
+            page_content = list_match.group(1) if list_match else ''
+        return title, self._playlist_video_cards(page_content, clean_url), total
+
+    def _playlist_video_cards(self, content, referer):
+        videos = []
+        seen = set()
+        chunks = re.split(r'(?=<li\b[^>]*class="[^"]*videoBox)', content or '', flags=re.IGNORECASE)
+        for block in chunks:
+            key_match = re.search(r'data-video-vkey="([^"]+)"', block, re.IGNORECASE)
+            if not key_match:
+                key_match = re.search(r'href="[^"]*viewkey=([^"&]+)', block, re.IGNORECASE)
+            if not key_match or key_match.group(1) in seen:
+                continue
+            viewkey = html.unescape(key_match.group(1))
+            title_match = re.search(r'href="[^"]*viewkey=[^"]+"\s+title="([^"]+)"', block, re.IGNORECASE)
+            thumb_match = re.search(r'<img[^>]+(?:data-image|data-src|data-thumb_url)="(https?://[^"]+)"', block, re.IGNORECASE)
+            duration_match = re.search(r'<var\s+class="duration">([^<]+)</var>', block, re.IGNORECASE)
+            if not title_match:
+                continue
+            seen.add(viewkey)
+            videos.append({
+                'viewkey': viewkey,
+                'title': html.unescape(title_match.group(1)).strip(),
+                'thumb': self._thumb_with_headers(thumb_match.group(1) if thumb_match else '', referer),
+                'duration': duration_match.group(1).strip() if duration_match else '',
+            })
+        return videos
+
+    def process_public_playlist(self, url):
+        title, videos, total = self._playlist_page_data(url)
+        if not videos:
+            self.notify_error(self.addon.getLocalizedString(30965) or 'No public playlist videos found')
+            return
+        play_label = self.addon.getLocalizedString(30964) or 'Play this playlist page'
+        self.add_dir('[COLOR green]{}[/COLOR]'.format(play_label), url, 7, self.icons['default'], action='play_public_playlist')
+        for video in videos:
+            label = video['title']
+            if video['duration']:
+                label += ' [COLOR lime]({})[/COLOR]'.format(video['duration'])
+            video_url = '{}/view_video.php?viewkey={}'.format(self.base_url, video['viewkey'])
+            self.add_link(label, video_url, 4, video['thumb'], self.fanart,
+                          info_labels={'title': video['title'], 'duration': video['duration'], 'plot': title})
+        parsed = urllib.parse.urlparse(url)
+        params = urllib.parse.parse_qs(parsed.query)
+        page = max(1, int(params.get('page', ['1'])[0]))
+        page_size = 36 if page == 1 else 40
+        consumed = 36 + max(0, page - 1) * 40
+        if len(videos) >= page_size and (not total or consumed < total):
+            params['page'] = [str(page + 1)]
+            next_url = parsed._replace(query=urllib.parse.urlencode(params, doseq=True)).geturl()
+            self.add_dir('[COLOR blue]Next Page >>>>[/COLOR]', next_url, 2, self.icons['default'])
+
+    def play_public_playlist(self, original_url=None):
+        _title, videos, _total = self._playlist_page_data(original_url or '')
+        if not videos:
+            self.notify_error(self.addon.getLocalizedString(30965) or 'No public playlist videos found')
+            return
+        playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
+        playlist.clear()
+        for video in videos:
+            target = '{}?mode=4&website={}&url={}&name={}&thumbnail={}'.format(
+                sys.argv[0], self.name,
+                urllib.parse.quote_plus('{}/view_video.php?viewkey={}'.format(self.base_url, video['viewkey'])),
+                urllib.parse.quote_plus(video['title']),
+                urllib.parse.quote_plus(video['thumb']),
+            )
+            item = xbmcgui.ListItem(video['title'])
+            item.setArt({'thumb': video['thumb'], 'icon': video['thumb'], 'fanart': self.fanart})
+            item.setProperty('IsPlayable', 'true')
+            playlist.add(target, item)
+        xbmc.Player().play(playlist)
 
     def process_video_list(self, current_url):
         parsed = urllib.parse.urlparse(current_url)

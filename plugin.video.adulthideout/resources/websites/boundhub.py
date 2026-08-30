@@ -354,6 +354,8 @@ class BoundHub(BaseWebsite):
                     {'Referer': url, 'User-Agent': headers['User-Agent']},
                     cookies=scraper.cookies,
                     session=scraper,
+                    use_urllib=False,
+                    skip_resolve=True,
                     host="127.0.0.1",
                     port=0
                 )

@@ -29,6 +29,12 @@ except Exception as e:
 
 
 class Spankbang(BaseWebsite):
+    supports_uploader_lookup = True
+    uploader_lookup_patterns = ((
+        r'href="(/[^"]*/channel/[^"]+/)"[^>]*>([^<]+)',
+        1,
+        2,
+    ),)
     def __init__(self, addon_handle):
         super().__init__(
             name='spankbang',

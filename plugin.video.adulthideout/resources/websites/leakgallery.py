@@ -7,10 +7,12 @@ import re
 import urllib.parse
 
 import requests
+import xbmc
 import xbmcgui
 import xbmcplugin
 
 from resources.lib.base_website import BaseWebsite
+from resources.lib.proxy_utils import PlaybackGuard, ProxyController
 from resources.lib.resilient_http import fetch_text
 
 
@@ -81,7 +83,13 @@ class LeakGallery(BaseWebsite):
             seen.add(stream)
             username = html.unescape(username)
             title = "{} #{}".format(username, item_id)
-            items.append((title, stream, self._cdn_url(thumb_path)))
+            items.append((
+                title,
+                stream,
+                self._cdn_url(thumb_path),
+                username,
+                "{}{}/Videos".format(self.base_url, urllib.parse.quote(username)),
+            ))
         return items
 
     def _profile_video_items(self, content):
@@ -122,6 +130,8 @@ class LeakGallery(BaseWebsite):
                     title,
                     stream,
                     self._cdn_url(media.get("thumbnail_path")),
+                    username,
+                    "{}{}/Videos".format(self.base_url, urllib.parse.quote(username)),
                 ))
         return items
 
@@ -130,30 +140,90 @@ class LeakGallery(BaseWebsite):
         bootstrap = self._get(bootstrap_url)
         token_match = re.search(r'"APP_TOKEN":"([^"]+)"', bootstrap or "")
         if not token_match:
-            return self._user_post_items(bootstrap), False
+            return self._user_post_items(bootstrap), False, None
 
         headers = self._headers(bootstrap_url, accept="application/json")
         headers.update({
             "X-App-Token": token_match.group(1),
             "Origin": self.base_url.rstrip("/"),
         })
+        # LeakGallery paginates mixed image/video groups. A valid API page can
+        # contain no videos at all, so advance to the next video-bearing page
+        # instead of presenting an empty Kodi directory.
         try:
-            response = self.session.get(
-                self.api_url.format(max(1, int(page))),
-                headers=headers,
-                timeout=20,
-            )
-            if response.status_code == 200:
+            api_page = max(0, int(page) - 1)
+        except (TypeError, ValueError):
+            api_page = 0
+        for candidate_page in range(api_page, api_page + 6):
+            try:
+                response = self.session.get(
+                    self.api_url.format(candidate_page),
+                    headers=headers,
+                    timeout=20,
+                )
+                if response.status_code != 200:
+                    continue
                 data = response.json()
-                return self._api_video_items(data), bool(data.get("content"))
-        except (TypeError, ValueError, json.JSONDecodeError):
-            pass
-        except Exception as exc:
-            self.logger.warning("LeakGallery API request failed: %s", exc)
-        return self._user_post_items(bootstrap), False
+                items = self._api_video_items(data)
+                if items:
+                    return items, bool(data.get("content")), candidate_page + 2
+                if not data.get("content"):
+                    break
+            except (TypeError, ValueError, json.JSONDecodeError):
+                continue
+            except Exception as exc:
+                self.logger.warning("LeakGallery API request failed: %s", exc)
+        return self._user_post_items(bootstrap), False, None
+
+    def _add_navigation(self):
+        entries = (
+            ("Search", "", 5, self.icons["search"]),
+            ("Discover", self.base_url + "discover", 2, self.icon),
+            ("Trending", self.base_url + "trending-medias/Day", 2, self.icon),
+            ("Most Liked", self.base_url + "most-liked", 2, self.icon),
+            ("Random", self.base_url + "random/medias", 2, self.icon),
+            ("Models", self.base_url + "new-models", 2, self.icons["pornstars"]),
+            ("Categories", self.base_url + "tags", 2, self.icons["categories"]),
+        )
+        for label, target, mode, icon in entries:
+            self.add_dir(label, target, mode, icon)
+
+    def _add_categories(self, content):
+        seen = set()
+        for href, raw_label in re.findall(
+            r'<a[^>]+href=["\'](/tag/[^"\']+)["\'][^>]*>([\s\S]*?)</a>',
+            content or "",
+            re.IGNORECASE,
+        ):
+            label = re.sub(r"<[^>]+>", " ", raw_label)
+            label = re.sub(r"\s+", " ", html.unescape(label)).strip()
+            target = urllib.parse.urljoin(self.base_url, href)
+            if label and target not in seen:
+                seen.add(target)
+                self.add_dir(label, target, 2, self.icons["categories"])
+
+    def _add_models(self, content):
+        seen = set()
+        for href, raw_label in re.findall(
+            r'<a[^>]+href=["\']/([A-Za-z0-9._-]+)["\'][^>]*>([\s\S]*?)</a>',
+            content or "",
+            re.IGNORECASE,
+        ):
+            label = re.sub(r"<[^>]+>", " ", raw_label)
+            label = re.sub(r"\s+", " ", html.unescape(label)).strip()
+            if not label.lower().startswith("new "):
+                continue
+            label = label[4:].strip()
+            target = "{}{}/Videos".format(self.base_url, urllib.parse.quote(href))
+            if label and target not in seen:
+                seen.add(target)
+                self.add_dir(label, target, 2, self.icons["pornstars"])
 
     def _add_items(self, items):
-        for title, stream, thumb in items:
+        for entry in items:
+            title, stream, thumb = entry[:3]
+            uploader_name = entry[3] if len(entry) > 3 else None
+            uploader_url = entry[4] if len(entry) > 4 else None
             self.add_link(
                 title,
                 stream,
@@ -161,6 +231,8 @@ class LeakGallery(BaseWebsite):
                 thumb,
                 self.fanart,
                 info_labels={"title": title, "plot": title},
+                uploader_name=uploader_name,
+                uploader_url=uploader_url,
             )
 
     def process_content(self, url, page=1):
@@ -169,11 +241,21 @@ class LeakGallery(BaseWebsite):
         is_user_posts = (
             urllib.parse.urlparse(url).path.rstrip("/").lower() == "/user-posts"
         )
+        path = urllib.parse.urlparse(url).path.rstrip("/").lower()
         if page == 1 and is_user_posts:
-            self.add_dir("Search", "", 5, self.icons["search"])
+            self._add_navigation()
+        if path == "/tags":
+            self._add_categories(self._get(url))
+            self.end_directory("videos")
+            return
+        if path in ("/new-models", "/trending-profiles/day"):
+            self._add_models(self._get(url))
+            self.end_directory("videos")
+            return
         has_more = False
+        next_page = None
         if is_user_posts:
-            items, has_more = self._user_posts_page(page)
+            items, has_more, next_page = self._user_posts_page(page)
         else:
             content = self._get(url)
             if "/videos" in urllib.parse.urlparse(url).path.lower():
@@ -182,7 +264,7 @@ class LeakGallery(BaseWebsite):
                 items = self._user_post_items(content)
         self._add_items(items)
         if items and has_more:
-            self.add_dir("Next Page", url, 2, self.icon, page=page + 1)
+            self.add_dir("Next Page", url, 2, self.icon, page=next_page or page + 1)
         if not items:
             self.notify_error("No public LeakGallery videos found")
         self.end_directory("videos")
@@ -253,9 +335,21 @@ class LeakGallery(BaseWebsite):
             self.notify_error("Could not resolve LeakGallery stream")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
-        self._warm_stream(resolved["url"])
-        item = xbmcgui.ListItem(path=resolved["url"])
-        item.setProperty("IsPlayable", "true")
-        item.setMimeType("video/mp4")
-        item.setContentLookup(False)
-        xbmcplugin.setResolvedUrl(self.addon_handle, True, item)
+        try:
+            controller = ProxyController(
+                resolved["url"],
+                upstream_headers=resolved.get("headers") or {},
+                session=self.session,
+                probe_size=True,
+            )
+            play_url = controller.start()
+            PlaybackGuard(xbmc.Player(), xbmc.Monitor(), play_url, controller).start()
+            item = xbmcgui.ListItem(path=play_url)
+            item.setProperty("IsPlayable", "true")
+            item.setMimeType("video/mp4")
+            item.setContentLookup(False)
+            xbmcplugin.setResolvedUrl(self.addon_handle, True, item)
+        except Exception as exc:
+            self.logger.error("LeakGallery proxy playback failed: %s", exc)
+            self.notify_error("LeakGallery playback failed")
+            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())

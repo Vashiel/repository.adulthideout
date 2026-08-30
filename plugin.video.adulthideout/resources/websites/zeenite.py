@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import html
+import os
 import re
 import sys
 import urllib.parse
@@ -13,12 +14,23 @@ from resources.lib.base_website import BaseWebsite
 from resources.lib.proxy_utils import PlaybackGuard, ProxyController
 from resources.lib.resilient_http import fetch_text
 
+_VENDOR_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "lib", "vendor"))
+if _VENDOR_DIR not in sys.path:
+    sys.path.insert(0, _VENDOR_DIR)
+try:
+    import cloudscraper
+except ImportError:
+    cloudscraper = None
+
 
 class Zeenite(BaseWebsite):
     def __init__(self, addon_handle, addon=None):
         super().__init__("zeenite", "https://zeenite.com/", "https://zeenite.com/search/{}/", addon_handle, addon)
         self.label = "Zeenite"
-        self.session = requests.Session()
+        self.session = (
+            cloudscraper.create_scraper(browser={"browser": "chrome", "platform": "windows", "desktop": True})
+            if cloudscraper else requests.Session()
+        )
         self.ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
         self.sort_options = ["Latest Updates", "Most Popular"]
         self.sort_paths = {

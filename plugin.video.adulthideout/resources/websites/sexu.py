@@ -105,12 +105,12 @@ class Sexu(BaseWebsite):
     def _render_video_list(self, content):
         pattern = (
             r'<div class="item thumb_item" data-id="(\d+)">\s*'
-            r'<a class="item__main" href="(/\d+/)" title="([^"]+)">.*?'
-            r'src="([^"]+\.webp)".*?'
+            r'<a class="item__main" href="(/\d+/)"[^>]*>.*?'
+            r'<img[^>]+src="([^"]+\.webp)"[^>]+alt="([^"]+)".*?'
             r'<div class="item__counter">([\d:]+)</div>'
         )
         seen = set()
-        for video_id, video_path, title, thumb, duration in re.findall(pattern, content, re.DOTALL):
+        for video_id, video_path, thumb, title, duration in re.findall(pattern, content, re.DOTALL):
             if video_id in seen:
                 continue
             seen.add(video_id)
@@ -181,7 +181,18 @@ class Sexu(BaseWebsite):
         if not stream_url and sources:
             stream_url = sources[-1].get("src")
         if not stream_url:
-            stream_url = config.get("hlsUrl")
+            content_url_match = re.search(
+                r'["\']contentUrl["\']\s*:\s*["\'](https?://[^"\']+\.mp4[^"\']*)["\']',
+                content,
+                re.I,
+            )
+            if content_url_match:
+                stream_url = content_url_match.group(1)
+
+        if not stream_url:
+            direct_v_match = re.search(r'(https?://v\.sexu\.com/key=[^\s"\'<>]+\.mp4)', content, re.I)
+            if direct_v_match:
+                stream_url = direct_v_match.group(1)
 
         if not stream_url:
             self.notify_error("Could not find a playable video stream.")
@@ -231,4 +242,3 @@ class Sexu(BaseWebsite):
         li.setContentLookup(False)
 
         xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
-        guard.join()

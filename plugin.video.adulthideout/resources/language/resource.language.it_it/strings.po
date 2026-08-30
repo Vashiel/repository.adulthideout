@@ -400,3 +400,106 @@ msgstr "rimosso dai preferiti!"
 msgctxt "#30916"
 msgid "Biography & Profile"
 msgstr "Visualizza biografia e profilo"
+msgctxt "#30940"
+msgid "Continue Watching"
+msgstr "Continua a guardare"
+
+msgctxt "#30941"
+msgid "Enable local playback history"
+msgstr "Abilita cronologia di riproduzione locale"
+
+msgctxt "#30942"
+msgid "More from this uploader"
+msgstr "Altri video di questo utente"
+
+msgctxt "#30943"
+msgid "Complete Backup / Restore"
+msgstr "Backup completo / Ripristino"
+
+msgctxt "#30944"
+msgid "Export complete backup"
+msgstr "Esporta backup completo"
+
+msgctxt "#30945"
+msgid "Restore complete backup"
+msgstr "Ripristina backup completo"
+
+msgctxt "#30946"
+msgid "Choose backup folder"
+msgstr "Scegli cartella di backup"
+
+msgctxt "#30947"
+msgid "Choose backup file"
+msgstr "Scegli file di backup"
+
+msgctxt "#30948"
+msgid "Complete backup exported"
+msgstr "Backup completo esportato"
+
+msgctxt "#30949"
+msgid "Complete backup restored"
+msgstr "Backup completo ripristinato"
+
+msgctxt "#30950"
+msgid "Invalid backup file"
+msgstr "File di backup non valido"
+
+msgctxt "#30951"
+msgid "Replace the backed-up AdultHideout data and settings?"
+msgstr "Sostituire i dati e le impostazioni AdultHideout salvati?"
+
+msgctxt "#30952"
+msgid "Reopen AdultHideout to apply all restored settings."
+msgstr "Riapri AdultHideout per applicare tutte le impostazioni."
+
+msgctxt "#30953"
+msgid "Add to Cam Favorites"
+msgstr "Aggiungi ai preferiti cam"
+
+msgctxt "#30954"
+msgid "Remove from Cam Favorites"
+msgstr "Rimuovi dai preferiti cam"
+
+msgctxt "#30955"
+msgid "Added to Cam Favorites"
+msgstr "Aggiunto ai preferiti cam"
+
+msgctxt "#30956"
+msgid "Removed from Cam Favorites"
+msgstr "Rimosso dai preferiti cam"
+
+msgctxt "#30957"
+msgid "Cam Favorites"
+msgstr "Preferiti cam"
+
+msgctxt "#30958"
+msgid "Online"
+msgstr "Online"
+
+msgctxt "#30959"
+msgid "Offline"
+msgstr "Offline"
+
+msgctxt "#30960"
+msgid "Recently Seen"
+msgstr "Visti di recente"
+
+msgctxt "#30961"
+msgid "Currently offline"
+msgstr "Attualmente offline"
+
+msgctxt "#30962"
+msgid "No Cam Favorites in this group"
+msgstr "Nessun preferito cam in questo gruppo"
+
+msgctxt "#30963"
+msgid "Public Playlists"
+msgstr "Playlist pubbliche"
+
+msgctxt "#30964"
+msgid "Play this playlist page"
+msgstr "Riproduci questa pagina della playlist"
+
+msgctxt "#30965"
+msgid "No public playlist videos found"
+msgstr "Nessun video trovato nella playlist pubblica"

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.21" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.22" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.requests" version="2.25.1"/>
@@ -12,8 +12,8 @@
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
-v. 1.0.21 "Watchtower" - 2026-08-24
-Introduced Star Finder (Beta) with 25,000 performer profiles and Smart Streams (Beta) with continuous custom channels; expanded verified full-movie discovery; added Vault ratings and Vault TV; added four websites; improved direct skin search, diagnostics, playback resilience and website reliability, including FamilyPornHD, Milfzr, WatchXXXFree and XNXX; temporarily disabled two Cloudflare-blocked sources while retaining manual opt-in; removed discontinued sources.
+v. 1.0.22 "Atlas" - 2026-08-30
+Added Cam Favorites, PornHub public playlists, Complete Backup &amp; Restore, Continue Watching, Mega Shuffle and richer website views; expanded Smart Streams and uploader navigation; added eleven websites; restored persistent Wall and other selected views; repaired difficult listing, artwork, playback and DNS paths; and made Diagnostics more accurate across the 287-source catalog.
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>
@@ -70,7 +70,7 @@ https://github.com/Vashiel/repository.adulthideout
   </extension>
 </addon>
 
-<addon id="script.adulthideout.kvat" name="AdultHideout Diagnostics" version="0.2.2" provider-name="Vashiel">
+<addon id="script.adulthideout.kvat" name="AdultHideout Diagnostics" version="0.2.3" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="plugin.video.adulthideout" version="1.0.20"/>
@@ -79,6 +79,8 @@ https://github.com/Vashiel/repository.adulthideout
         <provides>executable</provides>
     </extension>
     <extension point="xbmc.addon.metadata">
+        <news>v. 0.2.3 - 2026-08-30
+Improved thumbnail verification during temporary DNS and gateway failures and separated confirmed external website outages from actionable AdultHideout failures.</news>
         <summary lang="en_GB">Platform-native diagnostics for AdultHideout</summary>
         <summary lang="de_DE">Plattformnahe Diagnose fuer AdultHideout</summary>
         <summary lang="es_ES">Diagnóstico nativo para AdultHideout</summary>
