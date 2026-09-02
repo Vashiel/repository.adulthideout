@@ -61,14 +61,15 @@ Website titles and metadata remain in the language supplied by each source.
 
 ## Installation
 
-1. In Kodi, open **Settings → File manager → Add source**.
-2. Enter `https://vashiel.github.io/repository.adulthideout/` and name it `AdultHideout`.
-3. Open **Add-ons → Install from zip file** and install `repository.adulthideout-1.0.5.zip`.
-4. Select **Install from repository → AdultHideout Repository**.
-5. Install **AdultHideout** from **Video add-ons**.
-6. Optional: install **AdultHideout Diagnostics** from **Program add-ons**.
+Install the **AdultHideout Repository** first so Kodi can receive AdultHideout and future updates normally.
 
-Direct repository download: [repository.adulthideout-1.0.5.zip](https://github.com/Vashiel/repository.adulthideout/raw/master/repository.adulthideout-1.0.5.zip)
+- **Kodi File Manager (recommended):** Add `https://vashiel.github.io/repository.adulthideout/` as a source, install `repository.adulthideout-1.0.5.zip`, then install AdultHideout from the new repository.
+- **Direct ZIP:** Download [repository.adulthideout-1.0.5.zip](https://github.com/Vashiel/repository.adulthideout/raw/master/repository.adulthideout-1.0.5.zip), open **Add-ons → Install from zip file**, and select it.
+- **Fire TV / Android TV:** Open Downloader and enter shortcode **`9480267`** (or `aftv.news/9480267`), then install the downloaded repository ZIP in Kodi.
+
+Kodi may require **Unknown sources** to be enabled before installing the repository. The illustrated steps, update instructions and troubleshooting are available in the **[complete Installation guide](https://github.com/Vashiel/repository.adulthideout/wiki/Installation)**.
+
+After adding the repository, install **AdultHideout** from **Video add-ons**. The optional **AdultHideout Diagnostics** companion is available under **Program add-ons**.
 
 ## Help And Documentation
 
