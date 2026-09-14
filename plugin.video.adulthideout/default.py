@@ -29,18 +29,12 @@ FANART_PATH = os.path.join(LOGOS_DIR, 'fanart.jpg')
 DEFAULT_ICON_PATH = os.path.join(LOGOS_DIR, 'icon.png')
 VAULT_ICON_PATH = os.path.join(LOGOS_DIR, 'vault.png')
 VIEW_SERVICE_PATH = os.path.join(ADDON_PATH, 'resources', 'lib', 'view_service.py')
-VIEW_SERVICE_VERSION = "40"
+VIEW_SERVICE_VERSION = "41"
 DIAGNOSTICS_ADDON_ID = "script.adulthideout.kvat"
 OPT_IN_WEBSITE_SETTINGS = {
     "crazyshit": "show_crazyshit",
 }
-TEMPORARILY_UNAVAILABLE_WEBSITES = {
-    "czechvideo",
-    "hentaimama",
-    "hqporner",
-    "ogporn",
-    "saintporn",
-}
+TEMPORARILY_UNAVAILABLE_WEBSITES = set()
 
 MAIN_MENU_SORT_KEYS = ("az", "za", "newest", "category")
 CONTENT_FILTER_KEYS = ("general", "trans", "hentai", "jav", "rule34", "fetish", "live", "creator")
@@ -63,6 +57,8 @@ TYPE_LABEL_IDS = {
 }
 WEBSITE_LABEL_OVERRIDES = {
     "giantessporn": "Giantess Porn",
+    "homemoviestube": "HomeMoviesTube",
+    "porno24": "Porno24",
     "tickleporn": "Tickle Porn",
 }
 WEBSITE_CATALOG_PATH = os.path.join(RESOURCES_DIR, "website_catalog.json")
@@ -158,6 +154,18 @@ def migrate_atlas_unavailable_websites():
     hidden.update(TEMPORARILY_UNAVAILABLE_WEBSITES)
     save_hidden_websites(hidden)
     ADDON.setSetting("atlas_unavailable_sites_migrated", "true")
+
+
+def migrate_recovered_websites():
+    if ADDON.getSetting("recovered_websites_migrated") == "true":
+        return
+    hidden = get_hidden_websites()
+    hidden.difference_update({
+        "hentaimama", "hqporner", "ogporn", "saintporn",
+        "swingerpornfun", "vintagepornfun",
+    })
+    save_hidden_websites(hidden)
+    ADDON.setSetting("recovered_websites_migrated", "true")
 
 def is_website_hidden(name):
     opt_in_setting = OPT_IN_WEBSITE_SETTINGS.get(name)
@@ -569,6 +577,7 @@ def build_main_menu_fast():
     ]
     migrate_legacy_website_visibility(website_modules)
     migrate_atlas_unavailable_websites()
+    migrate_recovered_websites()
 
     enable_collections = (ADDON.getSetting("enable_website_collections") == "true")
     selected_content, selected_types = get_active_website_filters()

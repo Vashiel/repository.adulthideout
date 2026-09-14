@@ -4,6 +4,7 @@
 import html
 import re
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor
 
 from resources.lib.resolvers import resolver
 from resources.lib.thumb_proxy import build_thumb_url
@@ -28,6 +29,29 @@ class SwingerPornFun(WordPressApiTube):
         items, has_next = super()._html_video_items(url, page)
         for item in items:
             item["thumb"] = build_thumb_url(item.get("thumb"), referer=self.base_url)
+
+        # Recent posts can contain only BYSE, whose mandatory browser
+        # attestation cannot be completed by Kodi. Keep entries that expose at
+        # least one resolver-backed mirror instead of listing dead videos.
+        def playable(item):
+            try:
+                content = self._get(item.get("url"), referer=url)
+                for value in re.findall(r'<iframe\b[^>]+src=["\']([^"\']+)', content or "", re.IGNORECASE):
+                    embed = html.unescape(value).strip()
+                    if embed.startswith("//"):
+                        embed = "https:" + embed
+                    else:
+                        embed = urllib.parse.urljoin(item.get("url") or url, embed)
+                    if resolver.resolver_entry_for_url(embed):
+                        return True
+            except Exception:
+                pass
+            return False
+
+        if items:
+            with ThreadPoolExecutor(max_workers=min(8, len(items))) as pool:
+                keep = list(pool.map(playable, items))
+            items = [item for item, supported in zip(items, keep) if supported]
         return items, has_next
 
     def resolve_recording_stream(self, url):

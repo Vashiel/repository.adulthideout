@@ -17,6 +17,7 @@ class BDSMVilla(KVSTubeWebsite):
     video_path_markers = ("/video/",)
     category_path_markers = ("/category/",)
     use_playback_proxy = True
+    use_urllib_proxy = False
     next_page_full_count = 24
 
     def __init__(self, addon_handle, addon=None):

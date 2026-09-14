@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.22" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.23" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.requests" version="2.25.1"/>
@@ -11,8 +11,8 @@
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
-v. 1.0.22 "Atlas" - 2026-08-30
-Added Cam Favorites, PornHub public playlists, Complete Backup &amp; Restore, Continue Watching, Mega Shuffle and richer website views; expanded Smart Streams and uploader navigation; added eleven websites; restored persistent Wall and other selected views; repaired difficult listing, artwork, playback and DNS paths; and made Diagnostics more accurate across the 287-source catalog.
+v. 1.0.23 "Lifeline" - 2026-09-14
+Re-enabled six recovered websites after fresh listing, artwork, playback and seek tests; repaired HentaiMama, OGPorn, SwingerPornFun, Porn7 and BDSM Villa; added HomeMoviesTube and Porno24 with corrected artwork and faster playback startup; expanded Stripchat language filtering; removed CzechVideo and unavailable XoxPorn; and replaced stale Diagnostics exclusions with real testing.
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>

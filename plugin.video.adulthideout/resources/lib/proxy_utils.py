@@ -879,11 +879,37 @@ class _ProxyHandler(BaseHTTPRequestHandler):
                 if rsp is None:
                     raise RuntimeError("Upstream thread returned no response")
 
-                # First-Byte-Check (nur urllib-Upstream)
+                # Some CDNs advertise ranges but return the complete file.
+                # Opt-in callers can still expose a correct local 206 response.
                 first_chunk = b""
+                if (rng and getattr(rsp, "status_code", 0) == 200
+                        and getattr(self.upstream, "emulate_ignored_ranges", False)):
+                    match = re.match(r"bytes=(\d+)-(\d*)", rng)
+                    total = getattr(rsp, "total_size", None) or getattr(self.upstream, "total_size", None)
+                    if match and total:
+                        start = int(match.group(1))
+                        end = int(match.group(2)) if match.group(2) else total - 1
+                        remaining = start
+                        for chunk in rsp.iter_content(chunk_size=PROXY_CHUNK):
+                            if not chunk:
+                                continue
+                            if remaining >= len(chunk):
+                                remaining -= len(chunk)
+                                continue
+                            first_chunk = chunk[remaining:]
+                            remaining = 0
+                            break
+                        if remaining:
+                            raise RuntimeError("Upstream ended before emulated range start")
+                        rsp.status_code = 206
+                        rsp.headers["Content-Range"] = "bytes {}-{}/{}".format(start, end, total)
+                        rsp.headers["Content-Length"] = str(end - start + 1)
+                        xbmc.log("[AHProxy] Emulating ignored upstream Range: {}".format(rng), xbmc.LOGINFO)
+
+                # First-Byte-Check (nur urllib-Upstream)
                 if (isinstance(self.upstream, _UrllibUpstream)
                         and getattr(rsp, "status_code", 0) in (200, 206)
-                        and hasattr(rsp, "probe_first_chunk")):
+                        and hasattr(rsp, "probe_first_chunk") and not first_chunk):
                     probed = None
                     for probe_timeout in (5.0, 6.0):
                         if getattr(self.server, '_shutting_down', False):
@@ -1191,6 +1217,7 @@ class ProxyController:
         probe_size=True,
         fast_wait=None,
         include_origin=True,
+        emulate_ignored_ranges=False,
     ):
         if use_urllib:
             self.up = _UrllibUpstream(
@@ -1208,6 +1235,7 @@ class ProxyController:
                 skip_resolve=skip_resolve,
             )
         self.up.include_origin = bool(include_origin)
+        self.up.emulate_ignored_ranges = bool(emulate_ignored_ranges)
         self.host = host
         self.port = port
         if fast_wait is not None:

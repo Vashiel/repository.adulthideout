@@ -13,7 +13,9 @@
                 "vintagehunterporn",
                 "vintagepornfun",
                 "vintageworldp",
-                "xhamster"
+                "xhamster",
+                "homemoviestube",
+                "porno24"
             ],
             "trans": [
                 "ashemaletube",
@@ -119,7 +121,6 @@
                 "thothub",
                 "watchmygf",
                 "xfreehd",
-                "xoxporn",
                 "youramateurporn"
             ]
         },
@@ -150,8 +151,9 @@
                 "thothub",
                 "watchmygf",
                 "xfreehd",
-                "xoxporn",
-                "youramateurporn"
+                "youramateurporn",
+                "homemoviestube",
+                "porno24"
             ],
             "live": [
                 "chaturbate",
@@ -360,10 +362,6 @@
         "cumlouder": {
             "catalog_id": 104,
             "introduced": "1.0.7"
-        },
-        "czechvideo": {
-            "catalog_id": 224,
-            "introduced": "1.0.18"
         },
         "daftporn": {
             "catalog_id": 21,
@@ -1249,10 +1247,6 @@
             "catalog_id": 113,
             "introduced": "1.0.9"
         },
-        "xoxporn": {
-            "catalog_id": 278,
-            "introduced": "1.0.20"
-        },
         "xozilla": {
             "catalog_id": 180,
             "introduced": "1.0.17"
@@ -1328,6 +1322,14 @@
         "zeenite": {
             "catalog_id": 154,
             "introduced": "1.0.15"
+        },
+        "homemoviestube": {
+            "catalog_id": 295,
+            "introduced": "1.0.23"
+        },
+        "porno24": {
+            "catalog_id": 297,
+            "introduced": "1.0.23"
         }
     }
 }

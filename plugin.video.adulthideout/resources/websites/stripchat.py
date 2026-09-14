@@ -75,11 +75,48 @@ class StripchatWebsite(BaseWebsite):
             return broadcast == "group" and "tranny" not in gender
         if filter_name == "trans":
             return broadcast == "trans" or "tranny" in gender or "trans" in gender
+        if filter_name.startswith("lang:"):
+            wanted = filter_name.split(":", 1)[1].lower()
+            return any(str(value).lower() in (wanted, "language_" + wanted) for value in (model.get("languages") or []))
+        if filter_name.startswith("country:"):
+            wanted = filter_name.split(":", 1)[1].lower()
+            values = []
+            for key in ("country", "countryCode", "country_code", "countryName", "region", "location"):
+                value = model.get(key)
+                if isinstance(value, (list, tuple)):
+                    values.extend(value)
+                elif value:
+                    values.append(value)
+            return any(wanted in str(value).lower() for value in values)
         if filter_name == "german":
-            return "de" in (model.get("languages") or [])
+            return any(str(value).lower() in ("de", "de-de", "german") for value in (model.get("languages") or []))
         if filter_name == "hd":
             return bool(model.get("broadcastHD"))
         return True
+
+    def _available_demographic_filters(self):
+        """Return filters backed by metadata actually exposed by Stripchat."""
+        models = []
+        for offset in (0, 200):
+            batch, _total = self._request_models(200, offset)
+            models.extend(batch)
+            if len(batch) < 200:
+                break
+        languages = set()
+        countries = set()
+        for model in models:
+            for value in model.get("languages") or []:
+                value = str(value).strip().lower()
+                if value:
+                    languages.add(value)
+            for key in ("country", "countryCode", "country_code", "countryName", "region"):
+                value = model.get(key)
+                values = value if isinstance(value, (list, tuple)) else [value]
+                for entry in values:
+                    entry = str(entry or "").strip()
+                    if entry:
+                        countries.add(entry)
+        return sorted(languages), sorted(countries, key=str.lower)
 
     def _filtered_models(self, filter_name, page):
         if filter_name == "all":
@@ -166,6 +203,7 @@ class StripchatWebsite(BaseWebsite):
         if not url or url == "BOOTSTRAP":
             url = self.LIST_PREFIX + "all"
         filter_name = url.split(":", 1)[1] if url.startswith(self.LIST_PREFIX) else "all"
+        filter_name = urllib.parse.unquote(filter_name)
 
         if page == 1:
             self.add_dir("Search", "", 5, self.icons.get("search", self.icon))
@@ -190,6 +228,14 @@ class StripchatWebsite(BaseWebsite):
             ("HD Rooms", "hd"),
         ):
             self.add_dir(label, self.LIST_PREFIX + filter_name, 2, self.icon)
+        languages, countries = self._available_demographic_filters()
+        language_labels = {"de": "German", "en": "English", "es": "Spanish", "fr": "French", "it": "Italian", "pt": "Portuguese", "ru": "Russian", "ja": "Japanese"}
+        for language in languages:
+            label = language_labels.get(language, language.upper())
+            if language != "de":
+                self.add_dir("Language: " + label, self.LIST_PREFIX + "lang:" + language, 2, self.icon)
+        for country in countries:
+            self.add_dir("Country: " + country, self.LIST_PREFIX + "country:" + urllib.parse.quote(country, safe=""), 2, self.icon)
         self.end_directory("videos")
 
     def search(self, query):

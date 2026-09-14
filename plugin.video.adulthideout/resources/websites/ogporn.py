@@ -194,6 +194,7 @@ class OGPorn(BaseWebsite):
             controller = ProxyController(
                 resolved["url"], upstream_headers=resolved["headers"],
                 use_urllib=True, probe_size=True, fast_wait=1.5,
+                emulate_ignored_ranges=True,
             )
             play_url = controller.start()
             PlaybackGuard(xbmc.Player(), xbmc.Monitor(), play_url, controller).start()

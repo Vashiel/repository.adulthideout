@@ -38,7 +38,7 @@ except ImportError:
 
 RUNNING_PROPERTY = "AdultHideout.ViewServiceRunning"
 VERSION_PROPERTY = "AdultHideout.ViewServiceVersion"
-SERVICE_VERSION = "40"
+SERVICE_VERSION = "41"
 PENDING_SECONDS = 60
 STALL_TIMEOUT_SECONDS = 6.0
 

@@ -49,6 +49,7 @@
     <setting id="hidden_websites" type="text" default="" visible="false" />
     <setting id="website_visibility_migrated" type="bool" default="false" visible="false" />
     <setting id="atlas_unavailable_sites_migrated" type="bool" default="false" visible="false" />
+    <setting id="recovered_websites_migrated" type="bool" default="false" visible="false" />
     <setting id="asianviralhub_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="ashemaletube_pf_country" type="enum" label="30500" values="Any|Argentina|Australia|Austria|Brazil|Canada|Chile|China|Colombia|Czechia|France|Germany|Hong Kong|Hungary|Indonesia|Italy|Japan|Malaysia|Mexico|Netherlands|Peru|Philippines|Poland|Romania|Russia|Spain|Switzerland|Thailand|United Kingdom|United States|Venezuela" default="0" visible="false" />
     <setting id="ashemaletube_pf_penis" type="enum" label="30501" values="Any|Small|Medium|Big" default="0" visible="false" />
@@ -229,9 +230,10 @@
     <setting id="goperv_sort_by" type="enum" label="30004" values="Latest|Popular" default="0" visible="false" />
     <setting id="hairydivas_sort_by" type="enum" label="30004" values="Latest|Popular" default="0" visible="false" />
     <setting id="eroprofile_sort_by" type="enum" label="30004" values="Latest|Popular" default="0" visible="false" />
+    <setting id="homemoviestube_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated|Longest" default="0" visible="false" />
+    <setting id="porno24_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="ruleporn_sort_by" type="enum" label="30004" values="Latest|Most Popular|Top Rated" default="0" visible="false" />
     <setting id="watchmygf_sort_by" type="enum" label="30004" values="Latest|Popular|Popular This Month|Longest" default="0" visible="false" />
-    <setting id="xoxporn_sort_by" type="enum" label="30004" values="Most Recent|Most Viewed|Best Rated" default="0" visible="false" />
     <setting id="youramateurporn_sort_by" type="enum" label="30004" values="Latest|Top Rated|Most Viewed|Longest" default="0" visible="false" />
     <setting id="drtuber_content_type" type="text" default="straight" visible="false" />
     <setting id="drtuber_sort" type="text" default="newest" visible="false" />

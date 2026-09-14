@@ -8,12 +8,10 @@ import sys
 import urllib.parse
 
 import requests
-import xbmc
 import xbmcgui
 import xbmcplugin
 
 from resources.lib.base_website import BaseWebsite
-from resources.lib.proxy_utils import PlaybackGuard, ProxyController
 from resources.lib.resilient_http import fetch_text
 
 
@@ -172,6 +170,10 @@ class HentaiMama(BaseWebsite):
                 if match and not match.group(1).startswith("data:image/"):
                     thumb = self._absolute(match.group(1), video_url)
                     break
+            # The site publishes upcoming episodes as empty cards before a
+            # player or artwork exists. Do not expose them as playable videos.
+            if not thumb:
+                continue
             if thumb:
                 thumb = "{}|{}".format(
                     thumb,
@@ -188,7 +190,7 @@ class HentaiMama(BaseWebsite):
                 info["duration"] = seconds
             label = "{} [COLOR lime]({})[/COLOR]".format(title, duration) if duration else title
             seen.add(video_url)
-            videos.append((label, video_url, thumb or self.icon, info))
+            videos.append((label, video_url, thumb, info))
         return videos
 
     def _series_urls(self, content):
@@ -265,38 +267,40 @@ class HentaiMama(BaseWebsite):
         post_match = re.search(r"\ba\s*:\s*['\"](\d+)['\"]", page or "", re.IGNORECASE)
         if not post_match:
             return None
-        raw = self._post(
-            {"action": "get_player_contents", "a": post_match.group(1)},
-            episode_url,
-        )
-        try:
-            frames = json.loads(raw)
-        except (TypeError, ValueError):
-            frames = []
-        for frame in frames:
-            iframe_match = re.search(r'src=["\']([^"\']+)["\']', frame or "", re.IGNORECASE)
-            if not iframe_match:
-                continue
-            iframe_url = self._absolute(iframe_match.group(1), episode_url)
-            iframe_html = self._get(iframe_url, referer=episode_url)
-            stream_match = re.search(
-                r"(?:file|src)\s*:\s*['\"](https?://[^'\"]+\.(?:mp4|m3u8)[^'\"]*)['\"]",
-                iframe_html or "",
-                re.IGNORECASE,
+        for option in range(1, 5):
+            raw = self._post(
+                {"action": "get_player_contents", "a": post_match.group(1), "i": option},
+                episode_url,
             )
-            if not stream_match:
+            try:
+                frames = json.loads(raw)
+            except (TypeError, ValueError):
+                frames = []
+            for frame in frames:
+                iframe_match = re.search(r'src=["\']([^"\']+)["\']', frame or "", re.IGNORECASE)
+                if not iframe_match:
+                    continue
+                iframe_url = self._absolute(iframe_match.group(1), episode_url)
+                iframe_html = self._get(iframe_url, referer=episode_url)
+                normalized_iframe = (iframe_html or "").replace("\\/", "/")
                 stream_match = re.search(
-                    r"(https?://[^\"'\s<]+\.(?:mp4|m3u8)[^\"'\s<]*)",
-                    iframe_html or "",
+                    r"[\"']?(?:file|src)[\"']?\s*:\s*[\"'](https?://[^\"']+\.(?:mp4|m3u8)[^\"']*)[\"']",
+                    normalized_iframe,
                     re.IGNORECASE,
                 )
-            if stream_match:
-                stream_url = html.unescape(stream_match.group(1)).replace("\\/", "/")
-                return {
-                    "url": stream_url,
-                    "headers": self._headers(iframe_url, accept="*/*"),
-                    "extension": "m3u8" if ".m3u8" in stream_url else "mp4",
-                }
+                if not stream_match:
+                    stream_match = re.search(
+                        r"(https?://[^\"'\s<]+\.(?:mp4|m3u8)[^\"'\s<]*)",
+                        normalized_iframe,
+                        re.IGNORECASE,
+                    )
+                if stream_match:
+                    stream_url = html.unescape(stream_match.group(1)).replace("\\/", "/")
+                    return {
+                        "url": stream_url,
+                        "headers": self._headers(iframe_url, accept="*/*"),
+                        "extension": "m3u8" if ".m3u8" in stream_url else "mp4",
+                    }
         return None
 
     def resolve_recording_stream(self, url):
@@ -308,17 +312,12 @@ class HentaiMama(BaseWebsite):
             self.notify_error("Could not resolve HentaiMama stream")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
-        controller = ProxyController(
+        stream_url = "{}|{}".format(
             resolved["url"],
-            upstream_headers=resolved["headers"],
-            session=self.session,
-            skip_resolve=True,
-            probe_size=True,
+            urllib.parse.urlencode(resolved.get("headers") or {}),
         )
-        local_url = controller.start()
-        item = xbmcgui.ListItem(path=local_url)
+        item = xbmcgui.ListItem(path=stream_url)
         item.setProperty("IsPlayable", "true")
-        item.setMimeType("video/mp4")
+        item.setMimeType("application/vnd.apple.mpegurl" if resolved["extension"] == "m3u8" else "video/mp4")
         item.setContentLookup(False)
         xbmcplugin.setResolvedUrl(self.addon_handle, True, item)
-        PlaybackGuard(xbmc.Player(), xbmc.Monitor(), local_url, controller).start()

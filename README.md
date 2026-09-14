@@ -14,13 +14,13 @@ AdultHideout does not host videos. It organizes publicly available listings and 
 
 ## Current Release
 
-**AdultHideout 1.0.22 "Atlas"** was released on **August 30, 2026**.
+**AdultHideout 1.0.23 "Lifeline"** was released on **September 14, 2026**.
 
-Atlas adds **Complete Backup & Restore**, optional **Continue Watching**, account-free **Cam Favorites**, public **PornHub Playlists**, Mega Shuffle, richer website views and eleven new sources. It also strengthens Smart Streams, exact-uploader navigation, persistent Kodi views and catalog-wide diagnostics.
+Lifeline is a focused maintenance release. It restores six previously hidden websites, repairs several listing and playback paths, removes two unavailable sources and adds **HomeMoviesTube** and **Porno24**.
 
-The name **Atlas** reflects what this release does: AdultHideout has grown into a world of hundreds of sources and personal paths through them. Atlas makes that world easier to navigate, preserve and revisit.
+The name **Lifeline** reflects its purpose: reconnect working sources, retire dead ends and keep AdultHideout's growing catalog dependable.
 
-**[Read the complete Atlas release story and technical highlights](docs/releases/1.0.22-atlas.md)**
+**[Read the complete Lifeline release notes](docs/releases/1.0.23-lifeline.md)**
 
 ## What AdultHideout Can Do
 
@@ -80,7 +80,7 @@ AdultHideout has grown beyond what a single README can explain. The official **[
 - **Issues:** [Bug reports and feature requests](https://github.com/Vashiel/repository.adulthideout/issues)
 - **Discussions:** [Announcements and community discussion](https://github.com/Vashiel/repository.adulthideout/discussions)
 - **Changelog:** [Complete release history](plugin.video.adulthideout/changelog.txt)
-- **Release notes:** [Atlas 1.0.22](docs/releases/1.0.22-atlas.md)
+- **Release notes:** [Lifeline 1.0.23](docs/releases/1.0.23-lifeline.md)
 
 ## Disclaimer
 

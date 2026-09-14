@@ -286,22 +286,34 @@ class Porn7(BaseWebsite):
         items = []
         thumb_urls = []
         for block in html_content.split('<div class="b-item">')[1:]:
-            link_match = re.search(
-                r'<a[^>]+class="blk"[^>]+href="(https://www\.porn7\.xxx/v/[^"]+)"[^>]+title="([^"]+)"',
-                block,
-                re.IGNORECASE,
-            )
+            anchor_match = re.search(r'<a\b([^>]*)>', block, re.IGNORECASE)
             duration_match = re.search(
                 r'<span class="item-time">([^<]+)</span>',
                 block,
                 re.IGNORECASE,
             )
 
-            if not link_match:
+            if not anchor_match:
                 continue
 
-            video_url = link_match.group(1)
-            title = link_match.group(2)
+            attrs = anchor_match.group(1)
+            title_match = re.search(r'\btitle=["\']([^"\']+)', attrs, re.IGNORECASE)
+            href_match = re.search(r'\bhref=["\']([^"\']+)', attrs, re.IGNORECASE)
+            section_match = re.search(r'\bdata-s=["\']([^"\']+)', attrs, re.IGNORECASE)
+            id_match = re.search(r'\bdata-i=["\'](\d+)', attrs, re.IGNORECASE)
+            slug_match = re.search(r'\bdata-u=["\']([^"\']+)', attrs, re.IGNORECASE)
+            if href_match:
+                video_url = urllib.parse.urljoin(self.base_url, html.unescape(href_match.group(1)))
+            elif section_match and id_match and slug_match:
+                path = "{}{}/{}".format(
+                    section_match.group(1).rstrip("/") + "/",
+                    id_match.group(1),
+                    slug_match.group(1).lstrip("/"),
+                )
+                video_url = urllib.parse.urljoin(self.base_url, path)
+            else:
+                continue
+            title = title_match.group(1) if title_match else "Video {}".format(id_match.group(1) if id_match else "")
             thumb = self._extract_thumb(block)
             duration = duration_match.group(1) if duration_match else ""
 

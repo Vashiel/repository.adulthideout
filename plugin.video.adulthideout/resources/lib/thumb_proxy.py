@@ -58,6 +58,7 @@ ALLOWED_HOSTS = frozenset((
     "thumbs.hqmediago.com",
     "static.hqmediago.com",
     "icdn05.hairydivas.com",
+    "thumbs.cdn.homemoviestube.com",
     "swingerpornfun.com",
     "www.swingerpornfun.com",
     "i0.wp.com",
@@ -79,6 +80,7 @@ ALLOWED_PATH_PREFIXES = (
 UNRESTRICTED_PATH_HOSTS = frozenset((
     "thumbs.hqmediago.com",
     "icdn05.hairydivas.com",
+    "thumbs.cdn.homemoviestube.com",
 ))
 SESSION_COUNT = 4
 

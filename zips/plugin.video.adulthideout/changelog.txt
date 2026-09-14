@@ -1,3 +1,15 @@
+v. 1.0.23 "Lifeline" - 2026-09-14
+- **Recovered Websites**: Re-enabled HentaiMama, HQPorner, OGPorn, SaintPorn, SwingerPornFun and VintagePornFun after fresh listing, thumbnail, playback and seek checks.
+- **Playback Repairs**: Updated HentaiMama's player API and removed unavailable placeholders, added opt-in range emulation for OGPorn's non-compliant CDN, and made SwingerPornFun retain only entries with working resolver-backed mirrors.
+- **Diagnostics Accuracy**: Removed the stale external-issue exemptions so recovered sources are tested normally again.
+- **Website Cleanup**: Removed CzechVideo after its website remained inaccessible behind an HTTP 403 challenge.
+- **Final Diagnostics Repairs**: Updated Porn7 for its new data-attribute listings and moved BDSM Villa playback to the stable requests-backed range transport.
+- **Unavailable Source**: Removed XoxPorn after its domain stopped publishing DNS records.
+- **New Websites**: Added HomeMoviesTube and Porno24 with public video listings, search and playback.
+- **New Website Polish**: Restored HomeMoviesTube artwork through the existing memory-only thumbnail proxy and accelerated Porno24 detail resolution with a direct IPv4 transport.
+- **Stripchat Filters**: Added API-backed language filters and optional country/region filters when exposed by Stripchat metadata.
+
+
 v. 1.0.22 "Atlas" - 2026-08-30
 - **Diagnostics Accuracy**: Added resilient thumbnail verification for temporary DNS and upstream gateway failures, repaired Zeenite and RapeLust checks, and separated confirmed external outages from actionable AdultHideout failures.
 - **Unavailable Sources**: Temporarily hide CzechVideo, HentaiMama, HQPorner, OGPorn and SaintPorn by default while their video service, Cloudflare access or host availability remains broken. They remain available through Manage hidden websites for manual retesting.
