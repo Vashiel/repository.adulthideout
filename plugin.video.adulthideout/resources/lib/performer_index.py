@@ -59,10 +59,14 @@ def _text(string_id, fallback=""):
     return fallback
 
 
-def _end_dir(handle, addon, content_type="videos"):
+def _end_dir(handle, addon, content_type="videos", cache_to_disc=True, apply_view=False, view_mode=None):
     if end_directory_with_view and addon:
         try:
-            end_directory_with_view(handle, addon, content_type=content_type)
+            end_directory_with_view(
+                handle, addon, content_type=content_type,
+                cache_to_disc=cache_to_disc, apply_view=apply_view,
+                view_mode=view_mode
+            )
             return
         except Exception:
             pass
@@ -200,6 +204,15 @@ class PerformerIndex:
 
     def _decorate_performer(self, performer):
         return dict(performer) if performer else performer
+
+    def _portrait_fallback(self):
+        try:
+            path = xbmcvfs.translatePath("special://xbmc/media/DefaultActor.png")
+            if path and xbmcvfs.exists(path):
+                return path
+        except Exception:
+            pass
+        return os.path.join(self.addon_path, "resources", "logos", "star_finder.png")
 
     def _get_performer(self, performer_id):
         if self.star_db and self.star_db.available:
@@ -501,9 +514,9 @@ class PerformerIndex:
         li_stream.setArt({"icon": "DefaultVideo.png", "thumb": "DefaultVideo.png"})
         xbmcplugin.addDirectoryItem(self.addon_handle, stream_url, li_stream, isFolder=False)
 
-        # 2b. Action: Start 24/7 Multi-Star Full Movies (>= 70 Min)
+        # 2b. Action: Start 24/7 Multi-Star Full Movies (>= 60 Min)
         movies_stream_url = f"{self.plugin_url}?mode=50&action=custom_zap&query={urllib.parse.quote_plus('Multi-Star Movies')}&stars={enc_stars}&pool={stream_pool}&length=movies"
-        li_movies = xbmcgui.ListItem(label=f"[COLOR orange][B]★ 24/7 Full Movies (≥70 Min)[/B][/COLOR] [COLOR yellow]({match_count} Stars)[/COLOR]")
+        li_movies = xbmcgui.ListItem(label=f"[COLOR orange][B]★ 24/7 Full Movies (≥60 Min)[/B][/COLOR] [COLOR yellow]({match_count} Stars)[/COLOR]")
         li_movies.setArt({"icon": "DefaultVideo.png", "thumb": "DefaultVideo.png"})
         xbmcplugin.addDirectoryItem(self.addon_handle, movies_stream_url, li_movies, isFolder=False)
 
@@ -645,8 +658,11 @@ class PerformerIndex:
         if selected < 0:
             return self.show_matrix()
 
+        performer = matched[selected]
         query = urllib.parse.quote_plus(labels[selected])
-        target = f"{self.plugin_url}?mode=21&website=global_search&query={query}&search_mode=selected"
+        genre_key, _genre_title, _pool_key = self._detect_performer_genre(performer)
+        search_mode = "top_tubes" if genre_key == "selected" else genre_key
+        target = f"{self.plugin_url}?mode=21&website=global_search&query={query}&search_mode={search_mode}"
         xbmcplugin.endOfDirectory(self.addon_handle, succeeded=True, updateListing=False, cacheToDisc=False)
         xbmc.executebuiltin(f"Container.Update({target},replace)")
 
@@ -669,9 +685,9 @@ class PerformerIndex:
             li_stream.setArt({"icon": "DefaultVideo.png", "thumb": "DefaultVideo.png"})
             xbmcplugin.addDirectoryItem(self.addon_handle, stream_url, li_stream, isFolder=False)
 
-            # 2. Action: Start 24/7 Multi-Star Full Movies (>= 70 Min)
+            # 2. Action: Start 24/7 Multi-Star Full Movies (>= 60 Min)
             movies_stream_url = f"{self.plugin_url}?mode=50&action=custom_zap&query={urllib.parse.quote_plus('Multi-Star Movies')}&stars={enc_stars}&pool={stream_pool}&length=movies"
-            li_movies = xbmcgui.ListItem(label=f"[COLOR orange][B]★ 24/7 Multi-Star Full Movies (≥70 Min)[/B][/COLOR] [COLOR yellow]({match_count} Stars im Mix)[/COLOR]")
+            li_movies = xbmcgui.ListItem(label=f"[COLOR orange][B]★ 24/7 Multi-Star Full Movies (≥60 Min)[/B][/COLOR] [COLOR yellow]({match_count} Stars im Mix)[/COLOR]")
             li_movies.setArt({"icon": "DefaultVideo.png", "thumb": "DefaultVideo.png"})
             xbmcplugin.addDirectoryItem(self.addon_handle, movies_stream_url, li_movies, isFolder=False)
 
@@ -754,7 +770,7 @@ class PerformerIndex:
                 li = xbmcgui.ListItem(label=f"[COLOR cyan][B]{_text(30712, 'Next Page')} >>[/B][/COLOR]")
                 li.setArt({"icon": "DefaultFolder.png", "thumb": "DefaultFolder.png"})
                 xbmcplugin.addDirectoryItem(self.addon_handle, next_url, li, isFolder=True)
-            _end_dir(self.addon_handle, self.addon, content_type="videos")
+            _end_dir(self.addon_handle, self.addon, content_type="movies", cache_to_disc=False, apply_view=True, view_mode=50)
             return
         all_performers = self._load_performers()
         results = []
@@ -837,7 +853,7 @@ class PerformerIndex:
         if not performers:
             li = xbmcgui.ListItem(label=f"[COLOR red]{_text(30908, 'Keine Darsteller gefunden')}[/COLOR]")
             xbmcplugin.addDirectoryItem(self.addon_handle, "", li, isFolder=False)
-            _end_dir(self.addon_handle, self.addon, content_type="videos")
+            _end_dir(self.addon_handle, self.addon, content_type="movies", cache_to_disc=False, apply_view=True, view_mode=50)
             return
 
         for p in performers:
@@ -853,23 +869,17 @@ class PerformerIndex:
                 or p.get("legacy_id") in fav_ids
                 or self._name_key(p_name) in fav_names
             )
-            fav_prefix = "[COLOR yellow]★ [/COLOR]" if is_fav else ""
-
             details = [str(country)] if country else []
             details.extend(str(tag) for tag in tags[:2] if tag)
-            tag_str = f" [COLOR gray]({' • '.join(details)})[/COLOR]" if details else ""
-            label = f"{fav_prefix}[COLOR gold][B]{p_name}[/B][/COLOR]{tag_str}"
+            label2 = ("★ " if is_fav else "") + " • ".join(details)
 
             hub_url = f"{self.plugin_url}?mode=60&action=hub&id={urllib.parse.quote_plus(p_id)}&name={urllib.parse.quote_plus(p_name)}&thumb={urllib.parse.quote_plus(thumb)}"
 
-            li = xbmcgui.ListItem(label=label)
-            li.setArt({
-                "icon": thumb or "DefaultActor.png",
-                "thumb": thumb or "DefaultActor.png",
-                "poster": thumb or "DefaultActor.png",
-                "banner": thumb or "DefaultActor.png",
-                "fanart": thumb or "DefaultActor.png",
-            })
+            li = xbmcgui.ListItem(label=p_name, label2=label2)
+            li.setLabel(p_name)
+            li.setLabel2(label2)
+            portrait = thumb or self._portrait_fallback()
+            li.setArt({"icon": "DefaultActor.png", "thumb": portrait, "poster": portrait})
 
             plot_text = self._format_plot(p)
             li.setInfo("video", {
@@ -885,22 +895,24 @@ class PerformerIndex:
             fav_label = _text(30909, "Aus Favoriten entfernen") if is_fav else _text(30910, "Zu Favoriten hinzufügen")
             fav_cmd = f"RunPlugin({self.plugin_url}?mode=60&action={fav_action}&id={urllib.parse.quote_plus(p_id)}&name={urllib.parse.quote_plus(p_name)}&thumb={urllib.parse.quote_plus(thumb or '')})"
 
-            stream_cmd = f"RunPlugin({self.plugin_url}?mode=50&action=custom_zap&query={urllib.parse.quote_plus(p_name)}&pool=top_tubes&length=any)"
-            search_cmd = f"Container.Update({self.plugin_url}?mode=21&website=global_search&query={urllib.parse.quote_plus(p_name)})"
+            genre_key, genre_title, pool_key = self._detect_performer_genre(p)
+            search_mode = "top_tubes" if genre_key == "selected" else genre_key
+            stream_cmd = f"RunPlugin({self.plugin_url}?mode=50&action=custom_zap&query={urllib.parse.quote_plus(p_name)}&pool={pool_key}&length=any)"
+            search_cmd = f"Container.Update({self.plugin_url}?mode=21&website=global_search&query={urllib.parse.quote_plus(p_name)}&search_mode={search_mode})"
             bio_cmd = f"RunPlugin({self.plugin_url}?mode=60&action=bio&id={urllib.parse.quote_plus(p_id)})"
 
             context_menu = [
                 (f"[ i ] {_text(30916, 'Biografie & Details')}", bio_cmd),
                 (fav_label, fav_cmd),
                 (f"★ {_text(30911, '24/7 Smart Stream starten')}", stream_cmd),
-                (f"★ {_text(30912, 'Über alle 272 Webseiten suchen')}", search_cmd),
+                (f"★ {_text(30912, 'Über {}-Quellen suchen'.format(genre_title))}", search_cmd),
             ]
             li.addContextMenuItems(context_menu)
 
             xbmcplugin.addDirectoryItem(self.addon_handle, hub_url, li, isFolder=True)
 
         if finish:
-            _end_dir(self.addon_handle, self.addon, content_type="videos")
+            _end_dir(self.addon_handle, self.addon, content_type="movies", cache_to_disc=False, apply_view=True, view_mode=50)
 
     def show_favorites(self):
         favs = self._load_favorites()
@@ -916,7 +928,7 @@ class PerformerIndex:
         if not favs:
             li = xbmcgui.ListItem(label=f"[COLOR yellow]{_text(30913, 'Noch keine Favoriten gespeichert')}[/COLOR]")
             xbmcplugin.addDirectoryItem(self.addon_handle, "", li, isFolder=False)
-            _end_dir(self.addon_handle, self.addon, content_type="videos")
+            _end_dir(self.addon_handle, self.addon, content_type="movies", cache_to_disc=False, apply_view=True, view_mode=50)
             return
 
         for p_fav in favs:
@@ -930,17 +942,16 @@ class PerformerIndex:
             )
             thumb = p.get("thumb") or p_fav.get("thumb", "")
 
-            label = f"[COLOR yellow]★ [/COLOR][COLOR gold][B]{p_name}[/B][/COLOR]"
+            details = [str(p.get("country"))] if p.get("country") else []
+            details.extend(str(tag) for tag in (p.get("tags") or [])[:2] if tag)
+            label2 = "★ " + " • ".join(details)
             hub_url = f"{self.plugin_url}?mode=60&action=hub&id={urllib.parse.quote_plus(p_id)}&name={urllib.parse.quote_plus(p_name)}&thumb={urllib.parse.quote_plus(thumb or '')}"
 
-            li = xbmcgui.ListItem(label=label)
-            li.setArt({
-                "icon": thumb or "DefaultActor.png",
-                "thumb": thumb or "DefaultActor.png",
-                "poster": thumb or "DefaultActor.png",
-                "banner": thumb or "DefaultActor.png",
-                "fanart": thumb or "DefaultActor.png",
-            })
+            li = xbmcgui.ListItem(label=p_name, label2=label2)
+            li.setLabel(p_name)
+            li.setLabel2(label2)
+            portrait = thumb or self._portrait_fallback()
+            li.setArt({"icon": "DefaultActor.png", "thumb": portrait, "poster": portrait})
 
             plot_text = self._format_plot(p)
             li.setInfo("video", {
@@ -950,21 +961,23 @@ class PerformerIndex:
             })
 
             fav_cmd = f"RunPlugin({self.plugin_url}?mode=60&action=remove_fav&id={urllib.parse.quote_plus(p_id)}&name={urllib.parse.quote_plus(p_name)})"
-            stream_cmd = f"RunPlugin({self.plugin_url}?mode=50&action=custom_zap&query={urllib.parse.quote_plus(p_name)}&pool=top_tubes&length=any)"
-            search_cmd = f"Container.Update({self.plugin_url}?mode=21&website=global_search&query={urllib.parse.quote_plus(p_name)})"
+            genre_key, genre_title, pool_key = self._detect_performer_genre(p)
+            search_mode = "top_tubes" if genre_key == "selected" else genre_key
+            stream_cmd = f"RunPlugin({self.plugin_url}?mode=50&action=custom_zap&query={urllib.parse.quote_plus(p_name)}&pool={pool_key}&length=any)"
+            search_cmd = f"Container.Update({self.plugin_url}?mode=21&website=global_search&query={urllib.parse.quote_plus(p_name)}&search_mode={search_mode})"
             bio_cmd = f"RunPlugin({self.plugin_url}?mode=60&action=bio&id={urllib.parse.quote_plus(p_id)})"
 
             context_menu = [
                 (f"[ i ] {_text(30916, 'Biografie & Details')}", bio_cmd),
                 (_text(30909, "Aus Favoriten entfernen"), fav_cmd),
                 (f"★ {_text(30911, '24/7 Smart Stream starten')}", stream_cmd),
-                (f"★ {_text(30912, 'Über alle 272 Webseiten suchen')}", search_cmd),
+                (f"★ {_text(30912, 'Über {}-Quellen suchen'.format(genre_title))}", search_cmd),
             ]
             li.addContextMenuItems(context_menu)
 
             xbmcplugin.addDirectoryItem(self.addon_handle, hub_url, li, isFolder=True)
 
-        _end_dir(self.addon_handle, self.addon, content_type="videos")
+        _end_dir(self.addon_handle, self.addon, content_type="movies", cache_to_disc=False, apply_view=True, view_mode=50)
 
     def search(self, query=None):
         if not query:
@@ -995,15 +1008,24 @@ class PerformerIndex:
     def _detect_performer_genre(self, p):
         gender = str(p.get("gender", "")).lower()
         tags = [str(t).lower() for t in p.get("tags", [])]
-        if gender in ("t", "ts") or "trans" in tags or "shemale" in tags:
+        if gender in ("t", "ts", "trans") or "trans" in tags or "shemale" in tags:
             return "trans", "Trans & Shemale", "trans"
         if "jav" in tags or "asian" in tags or "japan" in tags:
             return "jav_asian", "JAV & Asian", "jav"
+        decade = str(p.get("decade", "")).lower()
+        if any(tag in tags for tag in ("vintage", "retro", "classic", "70s", "80s", "90s", "golden_age")) or decade.startswith("vintage"):
+            return "vintage", "Retro & Vintage", "retro"
+        if any(any(token in tag for token in ("fetish", "bdsm", "bondage", "femdom", "spanking", "latex")) for tag in tags):
+            return "fetish", "Fetish & BDSM", "fetish"
         if gender == "m" or "gay" in tags:
             return "gay", "Gay & Male", "gay"
-        return "straight", "Top Tube", "top_tubes"
+        return "selected", "Top Tubes", "top_tubes"
 
-    def show_performer_hub(self, performer_id, performer_name, thumb=None):
+    def _performer_movie_search_modes(self, genre_key):
+        pool_key = {"straight": "full_movies", "selected": "full_movies", "jav_asian": "jav_asian", "vintage": "vintage"}.get(genre_key, genre_key)
+        return "full_movies_pool_{}".format(pool_key), "filmography_titles_pool_{}".format(pool_key)
+
+    def _show_performer_hub_legacy(self, performer_id, performer_name, thumb=None):
         p = self._get_performer(performer_id) or {}
         if not thumb:
             thumb = p.get("thumb", "")
@@ -1029,21 +1051,22 @@ class PerformerIndex:
         xbmcplugin.addDirectoryItem(self.addon_handle, bio_url, li_bio, isFolder=False)
 
         # 2. Start 24/7 Smart Stream (Genre-pool aware!)
-        stream_url = f"{self.plugin_url}?mode=50&action=custom_zap&query={enc_name}&pool={pool_key}&length=any"
-        li_stream = xbmcgui.ListItem(label=f"[COLOR yellow]★ [/COLOR][COLOR gold][B]{_text(30911, '24/7 Smart Stream starten')} ({performer_name})[/B][/COLOR]")
+        stream_options_url = f"{self.plugin_url}?mode=50&action=custom_zap&query={enc_name}&pool={pool_key}&length=any"
+        li_stream = xbmcgui.ListItem(label=f"[COLOR gold][B]★ Start 24/7 Smart Stream ({performer_name})[/B][/COLOR]")
         li_stream.setArt({"icon": thumb or "DefaultVideo.png", "thumb": thumb or "DefaultVideo.png", "poster": thumb or "DefaultVideo.png"})
-        xbmcplugin.addDirectoryItem(self.addon_handle, stream_url, li_stream, isFolder=False)
+        xbmcplugin.addDirectoryItem(self.addon_handle, stream_options_url, li_stream, isFolder=False)
 
-        # 3. Multi-search across genre-specific network
-        search_network_url = f"{self.plugin_url}?mode=21&website=global_search&query={enc_name}&search_mode={genre_key}"
-        li_network = xbmcgui.ListItem(label=f"[COLOR cyan]★ [/COLOR][B]Search Videos & Clips ({genre_title} Network)[/B]")
-        li_network.setArt({"icon": "DefaultAddonsSearch.png", "thumb": "DefaultAddonsSearch.png"})
-        xbmcplugin.addDirectoryItem(self.addon_handle, search_network_url, li_network, isFolder=True)
+        # Keep routine searches one-step and on the standard Top Tubes pool.
+        search_mode = "top_tubes" if genre_key == "selected" else genre_key
+        search_options_url = f"{self.plugin_url}?mode=21&website=global_search&query={enc_name}&search_mode={search_mode}"
+        li_search = xbmcgui.ListItem(label="[COLOR cyan][B]★ Search {}[/B][/COLOR]".format(genre_title))
+        li_search.setArt({"icon": "DefaultAddonsSearch.png", "thumb": "DefaultAddonsSearch.png"})
+        xbmcplugin.addDirectoryItem(self.addon_handle, search_options_url, li_search, isFolder=True)
 
-        # 3b. Full Movies Multi-Search
-        movie_search_mode = "full_movies_trans" if genre_key == "trans" else "full_movies"
+        # Full-movie searches stay on the familiar Top Tubes source set.
+        movie_search_mode, _filmography_mode = self._performer_movie_search_modes(genre_key)
         search_movies_url = f"{self.plugin_url}?mode=21&website=global_search&query={enc_name}&search_mode={movie_search_mode}"
-        li_movies_search = xbmcgui.ListItem(label=f"[COLOR deepskyblue]★ [/COLOR][B]Search Full Movies ≥70 Min ({genre_title})[/B]")
+        li_movies_search = xbmcgui.ListItem(label="[COLOR deepskyblue]★ [/COLOR][B]Search Full Movies ≥60 Min · Top Tubes[/B]")
         li_movies_search.setArt({"icon": "DefaultAddonsSearch.png", "thumb": "DefaultAddonsSearch.png"})
         xbmcplugin.addDirectoryItem(self.addon_handle, search_movies_url, li_movies_search, isFolder=True)
 
@@ -1056,13 +1079,7 @@ class PerformerIndex:
             li_filmography.setArt({"icon": "DefaultVideo.png", "thumb": "DefaultVideo.png"})
             xbmcplugin.addDirectoryItem(self.addon_handle, movies_url, li_filmography, isFolder=True)
 
-        # 4. Expand search across all other sites & custom filters
-        expand_url = f"{self.plugin_url}?mode=20&website=global_search"
-        li_expand = xbmcgui.ListItem(label=f"[COLOR lightblue]• [/COLOR][COLOR white]Search all websites and expand filters...[/COLOR]")
-        li_expand.setArt({"icon": "DefaultAddonRepository.png", "thumb": "DefaultAddonRepository.png"})
-        xbmcplugin.addDirectoryItem(self.addon_handle, expand_url, li_expand, isFolder=True)
-
-        # 5. Favorite Toggle
+        # 4. Favorite Toggle
         if is_fav:
             fav_label = f"[COLOR red]★ [/COLOR]{_text(30909, 'Aus Favoriten entfernen')}"
             fav_url = f"{self.plugin_url}?mode=60&action=remove_fav&id={enc_id}&name={enc_name}&thumb={enc_thumb}"
@@ -1078,23 +1095,31 @@ class PerformerIndex:
 
     def show_movies(self, performer_id, performer_name):
         movies = self.star_db.movies(performer_id) if self.star_db and self.star_db.available else []
-        performer = self.star_db.get(performer_id) if self.star_db and self.star_db.available else None
-        movie_search_mode = "filmography_movies_trans" if performer and performer.get("gender") == "ts" else "filmography_movies"
+        performer = self._get_performer(performer_id) or {}
+        genre_key, _genre_title, _pool_key = self._detect_performer_genre(performer)
+        movie_mode, _titles_mode = self._performer_movie_search_modes(genre_key)
         for movie in movies:
             title = movie.get("title", "")
             year = movie.get("release_year")
             minutes = int(movie.get("duration_seconds") or 0) // 60
             suffix = " · ".join(str(value) for value in (year, f"{minutes} min") if value)
             label = f"[B]{title}[/B] [COLOR gray]({suffix})[/COLOR]" if suffix else f"[B]{title}[/B]"
-            url = (
-                f"{self.plugin_url}?mode=21&website=global_search&"
-                f"query={urllib.parse.quote_plus(title)}&search_mode={movie_search_mode}"
-            )
+            url = f"{self.plugin_url}?mode=21&website=global_search&query={urllib.parse.quote_plus(title)}&search_mode={movie_mode}"
             item = xbmcgui.ListItem(label=label)
             item.setArt({"icon": "DefaultVideo.png", "thumb": "DefaultVideo.png"})
             item.setInfo("video", {"title": title, "year": int(year or 0), "duration": int(movie.get("duration_seconds") or 0)})
             xbmcplugin.addDirectoryItem(self.addon_handle, url, item, isFolder=True)
         _end_dir(self.addon_handle, self.addon, content_type="videos")
+
+    def show_movie_search_options(self, title, preset):
+        encoded = urllib.parse.quote_plus(title or "")
+        options = (("Exact phrase · Top Tubes (60+ min)", "full_movies_top_tubes"),)
+        for label, search_mode in options:
+            url = f"{self.plugin_url}?mode=21&website=global_search&query={encoded}&search_mode={search_mode}"
+            item = xbmcgui.ListItem(label=label)
+            item.setArt({"icon": "DefaultAddonsSearch.png", "thumb": "DefaultAddonsSearch.png"})
+            xbmcplugin.addDirectoryItem(self.addon_handle, url, item, isFolder=True)
+        _end_dir(self.addon_handle, self.addon, content_type="files")
 
     def add_favorite(self, performer_id, performer_name, thumb=None):
         favs = self._load_favorites()
@@ -1134,6 +1159,95 @@ class PerformerIndex:
             xbmc.executebuiltin("Container.Refresh")
         if xbmcplugin:
             xbmcplugin.endOfDirectory(self.addon_handle, succeeded=True, updateListing=False, cacheToDisc=False)
+
+    def show_performer_hub(self, performer_id, performer_name, thumb=None):
+        p = self._get_performer(performer_id) or {}
+        thumb = thumb or p.get("thumb", "")
+        favs = self._load_favorites()
+        is_fav = any(
+            f.get("id") in (performer_id, p.get("legacy_id"))
+            or self._name_key(f.get("name")) == self._name_key(performer_name)
+            for f in favs if isinstance(f, dict)
+        )
+        enc_name = urllib.parse.quote_plus(performer_name)
+        enc_id = urllib.parse.quote_plus(performer_id)
+        enc_thumb = urllib.parse.quote_plus(thumb or "")
+        genre_key, genre_title, pool_key = self._detect_performer_genre(p)
+
+        items = [
+            (f"[COLOR yellow][ i ][/COLOR] [B]{_text(30916, 'Biografie & Profil anzeigen')}[/B]",
+             f"{self.plugin_url}?mode=60&action=bio&id={enc_id}", thumb or "DefaultInfo.png", False),
+            (f"[COLOR gold][B]★ Start 24/7 Smart Stream ({performer_name})[/B][/COLOR]",
+             f"{self.plugin_url}?mode=50&action=custom_zap&query={enc_name}&pool={pool_key}&length=any",
+             thumb or "DefaultVideo.png", False),
+            ("[COLOR cyan][B]★ Search {} Sources[/B][/COLOR]".format(genre_title),
+             f"{self.plugin_url}?mode=21&website=global_search&query={enc_name}&search_mode={'top_tubes' if genre_key == 'selected' else genre_key}",
+             "DefaultAddonsSearch.png", True),
+            ("[COLOR deepskyblue][B]★ Full-length movies (60+ min)…[/B][/COLOR]",
+             f"{self.plugin_url}?mode=60&action=performer_search_options&id={enc_id}&name={enc_name}&genre={genre_key}&genre_title={urllib.parse.quote_plus(genre_title)}&kind=movies",
+             "DefaultAddonsSearch.png", True),
+        ]
+        for label, url, icon, is_folder in items:
+            item = xbmcgui.ListItem(label=label)
+            item.setArt({"icon": icon, "thumb": icon, "poster": thumb or icon})
+            if "Biografie" in label:
+                item.setInfo("video", {"plot": self._format_plot(p)})
+            xbmcplugin.addDirectoryItem(self.addon_handle, url, item, isFolder=is_folder)
+
+        movie_count = int(p.get("movie_count") or 0)
+        if movie_count:
+            movies_url = f"{self.plugin_url}?mode=60&action=movies&id={enc_id}&name={enc_name}"
+            item = xbmcgui.ListItem(label=f"[COLOR orange]★ [/COLOR][B]Movies with {performer_name} ({movie_count})[/B]")
+            item.setArt({"icon": "DefaultVideo.png", "thumb": "DefaultVideo.png"})
+            xbmcplugin.addDirectoryItem(self.addon_handle, movies_url, item, isFolder=True)
+
+        if is_fav:
+            fav_label = f"[COLOR red]★ [/COLOR]{_text(30909, 'Aus Favoriten entfernen')}"
+            fav_action = "remove_fav"
+        else:
+            fav_label = f"[COLOR lime]★ [/COLOR]{_text(30910, 'Zu Favoriten hinzufügen')}"
+            fav_action = "add_fav"
+        fav_url = f"{self.plugin_url}?mode=60&action={fav_action}&id={enc_id}&name={enc_name}&thumb={enc_thumb}"
+        item = xbmcgui.ListItem(label=fav_label)
+        item.setArt({"icon": "DefaultFavourites.png", "thumb": "DefaultFavourites.png"})
+        xbmcplugin.addDirectoryItem(self.addon_handle, fav_url, item, isFolder=False)
+        _end_dir(self.addon_handle, self.addon, content_type="files")
+
+    def show_performer_search_options(self, performer_id, performer_name, genre_key, genre_title, kind):
+        query = urllib.parse.quote_plus(performer_name or "")
+        movie_mode, titles_mode = self._performer_movie_search_modes(genre_key)
+        if kind == "movies":
+            choices = (
+                ("Search performer name · {} (60+ min)".format(genre_title), "performer", movie_mode),
+                ("Search filmography titles · {} (60+ min)".format(genre_title), "titles", titles_mode),
+            )
+        else:
+            search_mode = "top_tubes" if genre_key == "selected" else genre_key
+            choices = (
+                ("Exact performer name · {}".format(genre_title), "performer", search_mode),
+            )
+        for choice in choices:
+            if kind == "movies":
+                label, search_kind, mode = choice
+            else:
+                label, search_kind, mode = choice
+            if search_kind == "titles":
+                url = f"{self.plugin_url}?mode=60&action=filmography_batch&id={urllib.parse.quote_plus(str(performer_id or ''))}&name={query}&search_mode={mode}"
+            else:
+                url = f"{self.plugin_url}?mode=21&website=global_search&query={query}&search_mode={mode}"
+            item = xbmcgui.ListItem(label=label)
+            item.setArt({"icon": "DefaultAddonsSearch.png", "thumb": "DefaultAddonsSearch.png"})
+            xbmcplugin.addDirectoryItem(self.addon_handle, url, item, isFolder=True)
+        _end_dir(self.addon_handle, self.addon, content_type="files")
+
+    def show_stream_options(self, performer_name, pool_key):
+        encoded = urllib.parse.quote_plus(performer_name or "")
+        pool = urllib.parse.quote_plus(pool_key or "top_tubes")
+        url = f"{self.plugin_url}?mode=50&action=custom_zap&query={encoded}&pool={pool}&length=any"
+        item = xbmcgui.ListItem(label="Start 24/7 Smart Stream · {}".format((pool_key or "top_tubes").replace("_", " ").title()))
+        item.setArt({"icon": "DefaultVideo.png", "thumb": "DefaultVideo.png"})
+        xbmcplugin.addDirectoryItem(self.addon_handle, url, item, isFolder=False)
+        _end_dir(self.addon_handle, self.addon, content_type="files")
 
     def handle(self, action, params):
         if action in (None, "", "menu"):
@@ -1193,6 +1307,15 @@ class PerformerIndex:
             return self.show_bio(params.get("id", ""))
         if action == "movies":
             return self.show_movies(params.get("id", ""), params.get("name", "Unknown"))
+        if action == "movie_search_options":
+            return self.show_movie_search_options(params.get("title", ""), params.get("preset", "filmography_movies"))
+        if action == "performer_search_options":
+            return self.show_performer_search_options(
+                params.get("id", ""), params.get("name", ""), params.get("genre", "straight"),
+                params.get("genre_title", "Top Tube"), params.get("kind", "videos")
+            )
+        if action == "stream_options":
+            return self.show_stream_options(params.get("name", ""), params.get("pool", "top_tubes"))
         if action == "add_fav":
             return self.add_favorite(
                 params.get("id", ""),

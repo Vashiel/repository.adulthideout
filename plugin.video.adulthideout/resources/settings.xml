@@ -51,6 +51,17 @@
     <setting id="atlas_unavailable_sites_migrated" type="bool" default="false" visible="false" />
     <setting id="recovered_websites_migrated" type="bool" default="false" visible="false" />
     <setting id="asianviralhub_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
+    <setting id="ebalka26_sort_by" type="enum" label="30004" values="Newest|Top Rated|Most Popular" default="0" visible="false" />
+    <setting id="ruporno_sort_by" type="enum" label="30004" values="Newest|Top Rated|Most Popular" default="0" visible="false" />
+    <setting id="xxxperevod_sort_by" type="enum" label="30004" values="Newest|Top Rated|Most Popular" default="0" visible="false" />
+    <setting id="deutschepornos_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Popular|Longest" default="0" visible="false" />
+    <setting id="hentaicosplay_sort_by" type="enum" label="30004" values="Latest|Ranking" default="0" visible="false" />
+    <setting id="iceporncasting_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Longest|Top Rated" default="0" visible="false" />
+    <setting id="pornoaffe_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
+    <setting id="pornoente_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Best Rated" default="0" visible="false" />
+    <setting id="pornohirsch_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Popular" default="0" visible="false" />
+    <setting id="sfmcompile_sort_by" type="enum" label="30004" values="Latest|Top Animations|Trending|Longer Clips" default="0" visible="false" />
+    <setting id="theclassicporn_sort_by" type="enum" label="30004" values="German Vintage|Latest|Most Popular|Top Rated|Longest|Italian Classic|French Classic" default="0" visible="false" />
     <setting id="ashemaletube_pf_country" type="enum" label="30500" values="Any|Argentina|Australia|Austria|Brazil|Canada|Chile|China|Colombia|Czechia|France|Germany|Hong Kong|Hungary|Indonesia|Italy|Japan|Malaysia|Mexico|Netherlands|Peru|Philippines|Poland|Romania|Russia|Spain|Switzerland|Thailand|United Kingdom|United States|Venezuela" default="0" visible="false" />
     <setting id="ashemaletube_pf_penis" type="enum" label="30501" values="Any|Small|Medium|Big" default="0" visible="false" />
     <setting id="ashemaletube_pf_breast" type="enum" label="30502" values="Any|Small|Medium|Big|Natural" default="0" visible="false" />
@@ -118,6 +129,9 @@
     <setting id="xcafe_sort_by" type="enum" label="30004" values="Recommended|Newest|Most Popular|Top Rated" default="0" visible="false" />
     <setting id="fullporner_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="xxxfiles_sort_by" type="enum" label="30004" values="Latest Updates|Most Viewed|Top Rated" default="0" visible="false" />
+    <setting id="yabuchka_sort_by" type="enum" label="30004" values="Latest|Most Popular|Top Rated|Longest" default="0" visible="false" />
+    <setting id="pornofeya_sort_by" type="enum" label="30004" values="Latest|Most Popular|Top Rated|Longest" default="0" visible="false" />
+    <setting id="mixporn_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated|Longest" default="0" visible="false" />
     <setting id="3movs_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated|Total Videos" default="0" visible="false" />
     <setting id="xmoviesforyou_sort_by" type="enum" label="30004" values="Newest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="okxxx_sort_by" type="enum" label="30004" values="Recent|Popular|Top Rated" default="0" visible="false" />
@@ -242,11 +256,14 @@
     <setting id="avjoy_sort_by" type="number" default="0" visible="false" />
     <setting id="darknessporn_sort_by" type="number" default="0" visible="false" />
     <setting id="fullxcinema_sort_by" type="number" default="0" visible="false" />
+    <setting id="fulleroticmovies_sort_by" type="enum" label="30004" values="Newest|Trending|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="hdshemalez_sort_by" type="number" default="0" visible="false" />
     <setting id="vintagepornfun_sort_by" type="number" default="0" visible="false" />
+    <setting id="vintagehuyamba_sort_by" type="enum" label="30004" values="Newest|Most Popular|Top Rated|Longest" default="0" visible="false" />
     <setting id="archivebate_filter_gender" type="number" default="0" visible="false" />
     <setting id="archivebate_filter_sort" type="number" default="0" visible="false" />
     <setting id="xopenload_sort_by" type="number" default="0" visible="false" />
+    <setting id="x24video_sort_by" type="enum" label="30004" values="Newest|All Movies" default="0" visible="false" />
     <setting id="chaturbate_filter_gender" type="number" default="0" visible="false" />
     <setting id="chaturbate_filter_keywords" type="text" default="" visible="false" />
     <setting id="chaturbate_filter_special" type="number" default="0" visible="false" />

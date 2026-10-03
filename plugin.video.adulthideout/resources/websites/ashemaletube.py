@@ -241,6 +241,9 @@ class AshemaletubeWebsite(BaseWebsite):
             fallback_pattern = r'<h1>.*?</h1>.*?<ul class="media-listing-grid[^"]*">(.*?)</ul>'
             main_list_match = re.search(fallback_pattern, content, re.DOTALL)
         if not main_list_match:
+            fallback_pattern2 = r'<ul class="media-listing-grid[^"]*">(.*?)</ul>'
+            main_list_match = re.search(fallback_pattern2, content, re.DOTALL)
+        if not main_list_match:
             return
 
         self.parse_video_list(main_list_match.group(1), current_url)
@@ -258,6 +261,10 @@ class AshemaletubeWebsite(BaseWebsite):
         list_match = re.search(video_container_pattern, content, re.DOTALL)
         
         if not list_match:
+            fallback_pattern = r'<ul class="media-listing-grid.*?">(.*?)</ul>'
+            list_match = re.search(fallback_pattern, content, re.DOTALL)
+            
+        if not list_match:
             self.end_directory()
             return
             
@@ -267,10 +274,6 @@ class AshemaletubeWebsite(BaseWebsite):
 
     def parse_video_list(self, html_content, current_url):
         item_pattern = r'(<li\b[^>]*class="[^"]*(?:js-pop|media-item|mtile-x7)[^"]*"[\s\S]*?</li>)'
-        video_pattern = re.compile(
-            r'<a[^>]*href="(/videos/[^"]+)"[^>]*title="([^"]+)"[^>]*>[\s\S]*?<img[^>]+(?:src|data-src|data-original)="([^"]+)"',
-            re.DOTALL | re.IGNORECASE
-        )
         duration_pattern = r'<span\s+class="[^"]*(?:media-item__info-item-length|mtile-x7__info-item-length|duration|length)[^"]*">\s*([\d:]+)\s*</span>'
         item_blocks = re.findall(item_pattern, html_content, re.DOTALL)
         
@@ -280,17 +283,41 @@ class AshemaletubeWebsite(BaseWebsite):
         seen = set()
         
         for block in item_blocks:
-            video_match = video_pattern.search(block)
+            url_match = re.search(r'<a\b[^>]*href="(/videos/[^"]+)"', block)
+            if not url_match:
+                continue
+            video_url = url_match.group(1)
+            absolute_video_url = urllib.parse.urljoin(base_url, video_url)
+            if absolute_video_url in seen:
+                continue
+            seen.add(absolute_video_url)
+
+            thumb_match = re.search(r'<img[^>]+(?:src|data-src|data-original)="([^"]+)"', block, re.IGNORECASE)
+            thumb = thumb_match.group(1) if thumb_match else ""
+
+            name = ""
+            alt_match = re.search(r'<img[^>]+alt="([^"]+)"', block, re.IGNORECASE)
+            if alt_match and alt_match.group(1).strip():
+                name = alt_match.group(1).strip()
+            if not name:
+                title_link_match = re.search(r'class="[^"]*(?:mtile-x7__title|media-item__title)[^"]*"[^>]*title="([^"]+)"', block)
+                if title_link_match:
+                    name = title_link_match.group(1).strip()
+                else:
+                    title_text_match = re.search(r'class="[^"]*(?:mtile-x7__title|media-item__title)[^"]*"[^>]*>\s*([^<]+)\s*<', block)
+                    if title_text_match:
+                        name = title_text_match.group(1).strip()
+            if not name:
+                any_title = re.search(r'title="([^"]+)"', block)
+                if any_title:
+                    name = any_title.group(1).strip()
+            if not name:
+                name = "Video"
+
             duration_match = re.search(duration_pattern, block, re.DOTALL)
-            if video_match:
-                video_url, name, thumb = video_match.groups()
-                absolute_video_url = urllib.parse.urljoin(base_url, video_url)
-                if absolute_video_url in seen:
-                    continue
-                seen.add(absolute_video_url)
-                duration = duration_match.group(1).strip() if duration_match else ""
-                display_name = f"{html.unescape(name)} [COLOR yellow]({duration})[/COLOR]" if duration else html.unescape(name)
-                self.add_link(display_name, absolute_video_url, 4, urllib.parse.urljoin(base_url, thumb), self.fanart, context_menu)
+            duration = duration_match.group(1).strip() if duration_match else ""
+            display_name = f"{html.unescape(name)} [COLOR yellow]({duration})[/COLOR]" if duration else html.unescape(name)
+            self.add_link(display_name, absolute_video_url, 4, urllib.parse.urljoin(base_url, thumb), self.fanart, context_menu)
 
     def process_categories(self, url):
         if isinstance(url, bytes): url = url.decode('utf-8')

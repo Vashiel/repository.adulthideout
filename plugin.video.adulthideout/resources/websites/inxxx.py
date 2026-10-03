@@ -23,9 +23,8 @@ class InXXX(KVSTubeWebsite):
     categories_path = "/categories/"
     models_path = None
     video_path_markers = ("/v/",)
-    category_path_markers = ("/categories/", "/tags/")
     next_page_full_count = 40
-    use_playback_proxy = False
+    use_playback_proxy = True
     # Only the 480p video_url is freely playable; the HD video_alt_url redirects to
     # a login wall, so prefer the default stream instead of the highest alt url.
     prefer_default_stream = True

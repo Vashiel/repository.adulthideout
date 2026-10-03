@@ -133,19 +133,24 @@ class FilmAdult(BaseWebsite):
 
     def resolve_recording_stream(self, url):
         page = self._get(url, referer=self.base_url)
-        for host_url in self._host_links(page):
-            try:
-                result = resolver.resolve(host_url, referer=url, headers={"User-Agent": self.ua, "Referer": url})
-                if isinstance(result, tuple):
-                    stream, headers = result[0], result[1] if len(result) > 1 else {}
-                else:
-                    stream, headers = result, {}
-                if stream and stream.startswith("http"):
-                    lowered = stream.lower().split("?", 1)[0]
-                    is_hls = ".m3u8" in lowered or "/hls" in lowered or lowered.endswith("master.txt")
-                    return {"url": stream, "headers": headers or {}, "extension": "m3u8" if is_hls else "mp4"}
-            except Exception as exc:
-                self.logger.warning("[FilmAdult] Resolver failed for %s: %s", host_url, exc)
+        host_urls = self._host_links(page)
+        headers = {"User-Agent": self.ua, "Referer": url}
+        stream, play_headers, host_url = resolver.resolve_first_working(
+            host_urls,
+            referer=url,
+            headers=headers,
+            addon=self.addon,
+        )
+        if stream:
+            lowered = stream.lower().split("?", 1)[0]
+            is_hls = ".m3u8" in lowered or "/hls" in lowered or lowered.endswith("master.txt")
+            return {
+                "url": stream,
+                "headers": play_headers or {},
+                "extension": "m3u8" if is_hls else "mp4",
+                "mirror": host_url,
+            }
+        self.logger.warning("[FilmAdult] No playable mirror found for %s (%d embeds checked)", url, len(host_urls))
         return None
 
     def play_video(self, url):

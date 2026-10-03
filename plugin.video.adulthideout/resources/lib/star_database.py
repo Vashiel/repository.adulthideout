@@ -27,6 +27,7 @@ class StarDatabase:
         self._by_id = None
         self._manifest = None
         self._movie_shards = {}
+        self._movie_catalog = None
 
     @property
     def available(self):
@@ -73,6 +74,29 @@ class StarDatabase:
         self._movie_shards[shard_id] = shard
         return shard
 
+    def _load_movie_catalog(self):
+        if self._movie_catalog is not None:
+            return self._movie_catalog
+        metadata = self._load_manifest().get("catalog", {})
+        expected = str(metadata.get("sha256") or "").lower()
+        filename = metadata.get("file") or "star_movies_catalog.json.gz"
+        if not expected:
+            return None
+        path = os.path.join(os.path.dirname(self.movies_dir), filename)
+        try:
+            with open(path, "rb") as source:
+                compressed = source.read()
+            if hashlib.sha256(compressed).hexdigest().lower() != expected:
+                return None
+            payload = json.loads(gzip.decompress(compressed).decode("utf-8"))
+            catalog = payload.get("catalog") if isinstance(payload, dict) else None
+            if not isinstance(catalog, list):
+                return None
+        except Exception:
+            return None
+        self._movie_catalog = catalog
+        return self._movie_catalog
+
     def count(self):
         return len(self._load_index()) if self.available else 0
 
@@ -107,6 +131,19 @@ class StarDatabase:
             return []
         shard = self._movie_shard(performer_id)
         rows = shard.get(str(performer_id), [])
+        if int(self._load_manifest().get("schema_version") or 1) >= 2:
+            catalog = self._load_movie_catalog()
+            if catalog is None:
+                return []
+            resolved = []
+            for index in rows:
+                try:
+                    row = catalog[int(index)]
+                    if isinstance(row, list) and len(row) >= 3:
+                        resolved.append(row)
+                except (IndexError, TypeError, ValueError):
+                    continue
+            rows = resolved
         return [
             {"title": row[0], "release_year": row[1] or 0, "duration_seconds": row[2] or 0}
             for row in rows

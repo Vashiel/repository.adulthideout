@@ -1194,8 +1194,8 @@ msgstr "Lange Szenen (20+ Min)"
 
 
 msgctxt "#30880"
-msgid "Full Movies & Feature Films"
-msgstr "Spielfilme & Ganze Filme"
+msgid "Full Movies & Feature Films (60+ Min)"
+msgstr "Spielfilme & Ganze Filme (60+ Min)"
 
 
 msgctxt "#30881"

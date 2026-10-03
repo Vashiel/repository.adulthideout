@@ -16,7 +16,7 @@ from resources.lib.thumb_proxy import build_thumb_url
 
 class YourDailyPornVideos(KVSTubeWebsite):
     label = "YourDailyPornVideos"
-    use_playback_proxy = False
+    use_playback_proxy = True
     sort_options = ["Latest"]
     sort_paths = {"Latest": "/"}
     categories_path = None
@@ -80,13 +80,15 @@ class YourDailyPornVideos(KVSTubeWebsite):
 
     def _mirror_urls(self, content):
         mirrors = []
-        for value in re.findall(
-            r'https?://(?:[^/"\']+\.)?(?:playmogo\.com|streamtape\.com|streamtape\.to)/[^"\'<\s]+',
+        values = re.findall(
+            r'''(?:src|data-src|data-lazy-src|href)\s*=\s*["']([^"']+)["']''',
             content or "",
             re.IGNORECASE,
-        ):
-            clean = value.replace("&amp;", "&")
-            if clean not in mirrors:
+        )
+        values.extend(re.findall(r'''https?://[^"'< >\s]+''', content or "", re.IGNORECASE))
+        for value in values:
+            clean = urllib.parse.urljoin(self.base_url, value.replace("&amp;", "&").strip())
+            if resolver.resolver_entry_for_url(clean) and clean not in mirrors:
                 mirrors.append(clean)
         return mirrors
 

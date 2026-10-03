@@ -13,8 +13,8 @@ class SxyPrnWebsite(BaseWebsite):
     def __init__(self, addon_handle, addon=None):
         super().__init__(
             name="sxyprn",
-            base_url="https://sxyprn.com",
-            search_url="https://sxyprn.com/{}.html",
+            base_url="https://sxyprn.net",
+            search_url="https://sxyprn.net/{}.html",
             addon_handle=addon_handle,
             addon=addon
         )
@@ -40,11 +40,24 @@ class SxyPrnWebsite(BaseWebsite):
         return f"{self.base_url}{path}", label
 
     def make_request(self, url):
+        headers = {'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"}
         try:
-            req = urllib.request.Request(url, headers={'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"})
+            req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=15) as response:
                 return response.read().decode('utf-8')
         except Exception:
+            fallback_url = None
+            if "sxyprn.net" in url:
+                fallback_url = url.replace("sxyprn.net", "sxyprn.com")
+            elif "sxyprn.com" in url:
+                fallback_url = url.replace("sxyprn.com", "sxyprn.net")
+            if fallback_url:
+                try:
+                    req = urllib.request.Request(fallback_url, headers=headers)
+                    with urllib.request.urlopen(req, timeout=15) as response:
+                        return response.read().decode('utf-8')
+                except Exception:
+                    pass
             return None
 
     def process_content(self, url):

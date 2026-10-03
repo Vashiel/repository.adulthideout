@@ -12,9 +12,9 @@ _lib_dir = os.path.dirname(_curr_file)
 _res_dir = os.path.dirname(_lib_dir)
 _addon_root = os.path.dirname(_res_dir)
 
-for _p in (_addon_root, _lib_dir, os.path.join(_lib_dir, "vendor")):
-    if _p and _p not in sys.path:
-        sys.path.insert(0, _p)
+for _path in (_addon_root, _lib_dir, os.path.join(_lib_dir, "vendor")):
+    if _path and _path not in sys.path:
+        sys.path.insert(0, _path)
 
 import xbmc
 import xbmcaddon
@@ -38,14 +38,33 @@ except ImportError:
 
 RUNNING_PROPERTY = "AdultHideout.ViewServiceRunning"
 VERSION_PROPERTY = "AdultHideout.ViewServiceVersion"
-SERVICE_VERSION = "41"
+SERVICE_VERSION = "47"
 PENDING_SECONDS = 60
 STALL_TIMEOUT_SECONDS = 6.0
 
 _SEEN_CHANNEL_URLS = set()
 _CHANNEL_PAGES = {}
+_CHANNEL_ROUND_ADDED = {}
 _IS_REFILLING = False
+_REFILL_LOCK = threading.Lock()
 _STOPPED_SINCE = None
+_REFILL_DIAGNOSTIC_LOGGED = False
+
+
+def _resource_namespace_state():
+    details = []
+    for name in ("resources", "resources.lib", "resources.websites"):
+        module = sys.modules.get(name)
+        if module is None:
+            details.append("{}=<not-loaded>".format(name))
+            continue
+        paths = getattr(module, "__path__", None)
+        details.append("{} file={} path={}".format(
+            name,
+            getattr(module, "__file__", None),
+            list(paths) if paths is not None else None,
+        ))
+    return " | ".join(details)
 
 
 def _log(message, level=xbmc.LOGINFO):
@@ -103,27 +122,46 @@ class ViewSettingsMonitor(xbmc.Monitor):
 
 
 def _refill_smart_playlist(channel, playlist):
-    global _SEEN_CHANNEL_URLS, _CHANNEL_PAGES, _IS_REFILLING
-    if _IS_REFILLING:
+    global _SEEN_CHANNEL_URLS, _CHANNEL_PAGES, _CHANNEL_ROUND_ADDED, _IS_REFILLING
+    if not _REFILL_LOCK.acquire(False):
         return 0
     _IS_REFILLING = True
     try:
         try:
-            from resources.lib.smart_playlists import SmartPlaylists, is_query_relevance_match
+            from resources.lib.smart_playlists import SmartPlaylists, is_query_relevance_match, SMART_STREAM_UNSTABLE_SOURCES
         except ImportError:
-            from smart_playlists import SmartPlaylists, is_query_relevance_match
+            from smart_playlists import SmartPlaylists, is_query_relevance_match, SMART_STREAM_UNSTABLE_SOURCES
         spl = SmartPlaylists(addon_handle=-1, plugin_url=f"plugin://{ADDON_ID}/", addon=ADDON)
+
+        stream = None
+        if channel.startswith("custom_"):
+            stream = spl._get_temp_stream(channel)
+            if stream is None:
+                stream = next((item for item in spl._load_custom_streams() if item.get("id") == channel), None)
+        all_sites_stream = bool(
+            stream
+            and stream.get("pool") == "all"
+            and not stream.get("stars")
+            and not stream.get("specific_site")
+        )
+        batch_count = 0
+        if all_sites_stream:
+            available = [
+                site for site in spl._enabled_stream_sites(spl._get_catalog_sites())
+                if site not in SMART_STREAM_UNSTABLE_SOURCES
+            ]
+            batch_count = max(1, (len(available) + 5) // 6)
 
         current_page = _CHANNEL_PAGES.get(channel, 1) + 1
         _CHANNEL_PAGES[channel] = current_page
 
         fresh_videos = spl._get_channel_videos(channel, force_refresh=True, page=current_page)
-        if not fresh_videos and current_page > 2:
+        if not fresh_videos and current_page > 2 and not all_sites_stream:
             _CHANNEL_PAGES[channel] = 1
             fresh_videos = spl._get_channel_videos(channel, force_refresh=True, page=1)
 
         if channel.startswith("custom_"):
-            stream = spl._get_temp_stream(channel) or {}
+            stream = stream or {}
             required_queries = stream.get("stars") or [stream.get("query", "")]
             required_queries = [query for query in required_queries if query]
             if required_queries:
@@ -136,6 +174,12 @@ def _refill_smart_playlist(channel, playlist):
                 ]
 
         if not fresh_videos:
+            if all_sites_stream and batch_count and current_page % batch_count == 0:
+                if _CHANNEL_ROUND_ADDED.get(channel, 0) <= 0:
+                    _CHANNEL_PAGES[channel] = 0
+                    _SEEN_CHANNEL_URLS.clear()
+                    _log("All-site search pass returned no new videos; restarting source batches")
+                _CHANNEL_ROUND_ADDED[channel] = 0
             return 0
 
         # Filter out already played URLs
@@ -175,15 +219,37 @@ def _refill_smart_playlist(channel, playlist):
                 break
 
         if added_count > 0:
-            _log("24/7 Smart Stream: Pushed {} fresh videos from Page {} (Queue size: {})".format(
-                added_count, current_page, len(playlist)
+            location = (
+                "source batch {}/{} (site page {})".format(
+                    current_page, batch_count, ((current_page - 1) // batch_count) + 1
+                )
+                if all_sites_stream else "page {}".format(current_page)
+            )
+            _log("24/7 Smart Stream: Pushed {} fresh videos from {} (Queue size: {})".format(
+                added_count, location, len(playlist)
             ))
+        if all_sites_stream and batch_count:
+            round_added = _CHANNEL_ROUND_ADDED.get(channel, 0) + added_count
+            if current_page % batch_count == 0:
+                if round_added <= 0:
+                    _CHANNEL_PAGES[channel] = 0
+                    _SEEN_CHANNEL_URLS.clear()
+                    _log("All-site search pass returned no new videos; restarting source batches")
+                _CHANNEL_ROUND_ADDED[channel] = 0
+            else:
+                _CHANNEL_ROUND_ADDED[channel] = round_added
         return added_count
     except Exception as exc:
-        _log("Error auto-refilling smart playlist: {}".format(exc), xbmc.LOGWARNING)
+        global _REFILL_DIAGNOSTIC_LOGGED
+        message = "Error auto-refilling smart playlist: {}".format(exc)
+        if not _REFILL_DIAGNOSTIC_LOGGED:
+            message = "{}; import paths: {}".format(message, _resource_namespace_state())
+            _REFILL_DIAGNOSTIC_LOGGED = True
+        _log(message, xbmc.LOGWARNING)
         return 0
     finally:
         _IS_REFILLING = False
+        _REFILL_LOCK.release()
 
 
 class SmartPlayerMonitor(xbmc.Player):
@@ -196,6 +262,8 @@ class SmartPlayerMonitor(xbmc.Player):
         self.av_started = False
         self.recover_at = None
         self.skip_requested = False
+        self.watchdog_item = ""
+        self.awaiting_position_reset_until = 0
         self.history_entry = None
         self.history_position = 0
         self.history_duration = 0
@@ -246,6 +314,13 @@ class SmartPlayerMonitor(xbmc.Player):
         self.last_playback_time = -999
         self.stuck_since = None
         self.grace_until = time.time() + 6.0
+        try:
+            current_file = self.getPlayingFile()
+        except Exception:
+            current_file = ""
+        if current_file and current_file != self.watchdog_item:
+            self.watchdog_item = current_file
+            self.awaiting_position_reset_until = time.time() + 30.0
         self._begin_history()
         if xbmcgui.Window(10000).getProperty("AdultHideout.SmartChannel"):
             xbmc.executebuiltin("ActivateWindow(fullscreenvideo)")
@@ -258,12 +333,18 @@ class SmartPlayerMonitor(xbmc.Player):
         self.last_playback_time = -999
         self.stuck_since = None
         self.grace_until = time.time() + 6.0
+        try:
+            self.watchdog_item = self.getPlayingFile() or self.watchdog_item
+        except Exception:
+            pass
+        self.awaiting_position_reset_until = time.time() + 30.0
         self._check_and_refill()
 
     def onPlayBackSeek(self, time_offset, seek_offset):
         self.last_playback_time = -999
         self.stuck_since = None
         self.grace_until = time.time() + 5.0
+        self.awaiting_position_reset_until = 0
 
     def _check_and_refill(self):
         try:
@@ -295,6 +376,7 @@ class SmartPlayerMonitor(xbmc.Player):
             self.stuck_since = None
             self.last_playback_time = -999
             self.grace_until = time.time() + 6.0
+            self.awaiting_position_reset_until = 0
             self.skip_requested = True
             self.av_started = False
             self.recover_at = time.time() + 0.5
@@ -304,6 +386,7 @@ class SmartPlayerMonitor(xbmc.Player):
         self.is_paused = False
         self.stuck_since = None
         self.last_playback_time = -999
+        self.awaiting_position_reset_until = 0
         active_channel = xbmcgui.Window(10000).getProperty("AdultHideout.SmartChannel")
         if active_channel and (self.skip_requested or not self.av_started):
             self.recover_at = time.time() + 0.5
@@ -335,7 +418,7 @@ class SmartPlayerMonitor(xbmc.Player):
 
 
 def run():
-    global _SEEN_CHANNEL_URLS, _CHANNEL_PAGES, _STOPPED_SINCE
+    global _SEEN_CHANNEL_URLS, _CHANNEL_PAGES, _CHANNEL_ROUND_ADDED, _STOPPED_SINCE
     window = xbmcgui.Window(10000)
     if (
         window.getProperty(RUNNING_PROPERTY) == "true"
@@ -361,6 +444,7 @@ def run():
         last_channel_name = ""
         last_view_request = ""
         pending_view_attempts = []
+        requested_view_mode = None
 
         while not monitor.abortRequested():
             monitor._mark_pending_if_changed()
@@ -389,10 +473,17 @@ def run():
             view_request = window.getProperty("AdultHideout.PendingViewRequest")
             if view_request and view_request != last_view_request:
                 last_view_request = view_request
+                try:
+                    requested_view_mode = int(view_request.rsplit(":", 1)[1])
+                except (IndexError, TypeError, ValueError):
+                    requested_view_mode = None
                 pending_view_attempts = [now + 0.15, now + 0.55, now + 1.1]
             if pending_view_attempts and now >= pending_view_attempts[0]:
                 if addon_container_active and not settings_visible:
-                    view_mode = apply_view_mode(_current_addon(), reason="directory_complete")
+                    view_mode = apply_view_mode(
+                        _current_addon(), reason="directory_complete",
+                        view_mode=requested_view_mode
+                    )
                     _log("applied website view {} after directory completion".format(view_mode))
                 pending_view_attempts.pop(0)
 
@@ -401,10 +492,22 @@ def run():
 
             if active_channel and player_monitor.isPlaying():
                 _STOPPED_SINCE = None
+                try:
+                    current_file = player_monitor.getPlayingFile()
+                except Exception:
+                    current_file = ""
+                if current_file and current_file != player_monitor.watchdog_item:
+                    player_monitor.watchdog_item = current_file
+                    player_monitor.awaiting_position_reset_until = now + 30.0
+                    player_monitor.last_playback_time = -999
+                    player_monitor.stuck_since = None
+                    player_monitor.grace_until = now + 6.0
+                    _log("new smart-stream item; waiting for Kodi playback position to reset")
                 if active_channel != last_channel_name:
                     last_channel_name = active_channel
                     _SEEN_CHANNEL_URLS.clear()
-                    _CHANNEL_PAGES[active_channel] = 1
+                    _CHANNEL_PAGES.setdefault(active_channel, 1)
+                    _CHANNEL_ROUND_ADDED.setdefault(active_channel, len(xbmc.PlayList(xbmc.PLAYLIST_VIDEO)))
                     player_monitor.grace_until = now + 6.0
 
                 # 1. Precise Stall / Buffer Watchdog with startup buffer immunity
@@ -415,9 +518,28 @@ def run():
                     except Exception:
                         cur_time = -1
 
-                    # Only evaluate stall after initial startup buffering grace period has ended
-                    if not player_monitor.is_paused and now >= player_monitor.grace_until:
-                        if cur_time > 0 and cur_time == player_monitor.last_playback_time:
+                    # Kodi can briefly report the previous item's position after a playlist switch.
+                    # Arm the stall watchdog only after the new item reports a plausible start.
+                    if (player_monitor.awaiting_position_reset_until
+                            and 0 <= cur_time <= 30.0):
+                        player_monitor.awaiting_position_reset_until = 0
+                        player_monitor.last_playback_time = cur_time
+                        player_monitor.stuck_since = None
+                        player_monitor.grace_until = now + 6.0
+                        _log("Kodi playback position reset for current smart-stream item")
+                    elif (player_monitor.awaiting_position_reset_until
+                            and now < player_monitor.awaiting_position_reset_until):
+                        player_monitor.last_playback_time = -999
+                        player_monitor.stuck_since = None
+                    elif (player_monitor.awaiting_position_reset_until
+                            and now >= player_monitor.awaiting_position_reset_until):
+                        player_monitor.awaiting_position_reset_until = 0
+                        player_monitor.last_playback_time = -999
+                        player_monitor.stuck_since = None
+                        player_monitor.grace_until = now + 2.0
+                        _log("Kodi timeline did not reset within 30s; enabling stall watchdog")
+                    elif not player_monitor.is_paused and now >= player_monitor.grace_until:
+                        if cur_time >= 0 and cur_time == player_monitor.last_playback_time:
                             if not player_monitor.stuck_since:
                                 player_monitor.stuck_since = now
                             elif now - player_monitor.stuck_since >= STALL_TIMEOUT_SECONDS:

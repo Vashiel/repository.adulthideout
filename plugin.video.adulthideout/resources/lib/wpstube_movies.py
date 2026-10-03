@@ -265,7 +265,10 @@ class WPSTubeMoviesWebsite(BaseWebsite):
             session=self.session,
             skip_resolve=True,
             probe_size=True,
-            use_urllib=False,
+            use_urllib=(
+                (urllib.parse.urlparse(resolved["url"]).hostname or "").lower().endswith(".veevcdn.co")
+                or (urllib.parse.urlparse(resolved["url"]).hostname or "").lower() == "veevcdn.co"
+            ),
         )
         play_url = controller.start()
         PlaybackGuard(xbmc.Player(), xbmc.Monitor(), play_url, controller).start()

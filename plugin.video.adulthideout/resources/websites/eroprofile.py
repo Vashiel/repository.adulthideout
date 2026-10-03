@@ -29,8 +29,7 @@ class EroProfile(KVSTubeWebsite):
         "Popular": "/m/videos/popular",
     }
     categories_path = "/m/videos/home"
-    models_path = None
-    use_playback_proxy = False
+    use_playback_proxy = True
 
     def __init__(self, addon_handle, addon=None):
         super().__init__(

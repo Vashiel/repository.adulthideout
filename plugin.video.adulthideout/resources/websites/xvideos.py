@@ -587,13 +587,35 @@ class XvideosWebsite(BaseWebsite):
                 )
                 mime_type = 'video/mp4'
             else:
-                lowered = content.lower()
-                if any(marker in lowered for marker in ("premium", "login", "video has been deleted", "video not found", "no longer available")):
-                    self.notify_error("Video is unavailable or login-gated")
+                content_url_match = re.search(r'"contentUrl"\s*:\s*"([^"\n]+)"', content) or re.search(r'<source\b[^>]+src=["\']([^"\']+)["\']', content)
+                if content_url_match:
+                    path = html.unescape(content_url_match.group(1).replace(r"\/", "/"))
+                    if ".m3u8" in path.lower():
+                        controller = HlsProxyController(
+                            path,
+                            headers={'User-Agent': self.ua, 'Referer': url},
+                            session=self.session,
+                            preserve_query=True,
+                        )
+                        mime_type = 'application/vnd.apple.mpegurl'
+                    else:
+                        controller = ProxyController(
+                            path,
+                            upstream_headers={'User-Agent': self.ua, 'Referer': url},
+                            session=self.session,
+                            skip_resolve=True,
+                            probe_size=True,
+                            use_urllib=False,
+                        )
+                        mime_type = 'video/mp4'
                 else:
-                    self.notify_error("No video stream found")
-                xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
-                return
+                    lowered = content.lower()
+                    if any(marker in lowered for marker in ("premium", "login", "video has been deleted", "video not found", "no longer available")):
+                        self.notify_error("Video is unavailable or login-gated")
+                    else:
+                        self.notify_error("No video stream found")
+                    xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
+                    return
 
             local_url = controller.start()
             li = xbmcgui.ListItem(path=local_url)

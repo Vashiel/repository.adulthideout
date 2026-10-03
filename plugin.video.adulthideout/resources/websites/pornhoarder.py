@@ -914,6 +914,14 @@ class PornhoarderWebsite(BaseWebsite):
                 else:
                     candidate, headers = result, {}
                 if candidate and candidate.startswith("http"):
+                    if resolver.resolver_preflight_enabled(self.addon) and not resolver.probe_resolved_stream(
+                        candidate, headers or {}, timeout=5
+                    ):
+                        self.logger.warning(
+                            "[PornHoarder] Resolved stream failed preflight; trying next hoster: %s",
+                            link[:100],
+                        )
+                        continue
                     stream_url = candidate
                     stream_headers = headers or {}
                     break

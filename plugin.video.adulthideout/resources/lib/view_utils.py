@@ -43,9 +43,15 @@ def apply_view_mode(
     persist=False,
     schedule=False,
     log_success=False,
+    view_mode=None,
 ):
     try:
-        _, view_mode = get_view_selection(addon)
+        if view_mode is None:
+            _, view_mode = get_view_selection(addon)
+        else:
+            view_mode = int(view_mode)
+            if view_mode not in VIEW_MODES:
+                view_mode = get_view_mode(addon)
         if xbmc:
             xbmc.executebuiltin(f"Container.SetViewMode({view_mode})")
         return view_mode
@@ -53,18 +59,23 @@ def apply_view_mode(
         return 55
 
 
-def end_directory_with_view(addon_handle, addon, content_type="videos"):
+def end_directory_with_view(addon_handle, addon, content_type="videos", cache_to_disc=True, apply_view=False, view_mode=None):
     try:
         if xbmcplugin:
             xbmcplugin.setContent(addon_handle, content_type)
-            xbmcplugin.endOfDirectory(addon_handle)
+            xbmcplugin.endOfDirectory(addon_handle, cacheToDisc=cache_to_disc)
     except Exception:
         if xbmcplugin:
             xbmcplugin.endOfDirectory(addon_handle)
 
-    if content_type == "videos":
+    if content_type == "videos" or apply_view:
         try:
-            _, view_mode = get_view_selection(addon)
+            if view_mode is None:
+                _, view_mode = get_view_selection(addon)
+            else:
+                view_mode = int(view_mode)
+                if view_mode not in VIEW_MODES:
+                    view_mode = get_view_mode(addon)
             xbmcgui.Window(10000).setProperty(
                 "AdultHideout.PendingViewRequest",
                 "{}:{}".format(time.time(), view_mode),

@@ -29,7 +29,7 @@ FANART_PATH = os.path.join(LOGOS_DIR, 'fanart.jpg')
 DEFAULT_ICON_PATH = os.path.join(LOGOS_DIR, 'icon.png')
 VAULT_ICON_PATH = os.path.join(LOGOS_DIR, 'vault.png')
 VIEW_SERVICE_PATH = os.path.join(ADDON_PATH, 'resources', 'lib', 'view_service.py')
-VIEW_SERVICE_VERSION = "41"
+VIEW_SERVICE_VERSION = "47"
 DIAGNOSTICS_ADDON_ID = "script.adulthideout.kvat"
 OPT_IN_WEBSITE_SETTINGS = {
     "crazyshit": "show_crazyshit",
@@ -56,10 +56,26 @@ TYPE_LABEL_IDS = {
     "resolver": 30798,
 }
 WEBSITE_LABEL_OVERRIDES = {
+    "deutschepornos": "Deutsche Pornos",
+    "fulleroticmovies": "Full Erotic Movies",
     "giantessporn": "Giantess Porn",
+    "hentaicosplay": "Hentai Cosplay",
     "homemoviestube": "HomeMoviesTube",
+    "hotmovies": "HotMovies",
+    "iceporncasting": "IcePornCasting",
+    "mixporn": "MixPorn",
+    "pezdwood": "Pezdwood",
     "porno24": "Porno24",
+    "pornoaffe": "PornoAffe",
+    "pornoente": "PornoEnte",
+    "pornofeya": "PornoFeya",
+    "pornohirsch": "PornoHirsch",
+    "sfmcompile": "SFM Compile",
+    "theclassicporn": "The Classic Porn",
     "tickleporn": "Tickle Porn",
+    "vintagehuyamba": "Vintage Huyamba",
+    "x24video": "X24Video",
+    "yabuchka": "Yabuchka",
 }
 WEBSITE_CATALOG_PATH = os.path.join(RESOURCES_DIR, "website_catalog.json")
 _website_catalog = None
@@ -1098,7 +1114,30 @@ def handle_routing():
 
     if mode == '60':
         from resources.lib.performer_index import PerformerIndex
-        PerformerIndex(ADDON_HANDLE, sys.argv[0], ADDON).handle(params.get('action'), params)
+        if params.get('action') == 'filmography_batch':
+            index = PerformerIndex(ADDON_HANDLE, sys.argv[0], ADDON)
+            performer_id = params.get('id', '')
+            performer_name = params.get('name', 'Unknown')
+            movies = index.star_db.movies(performer_id) if index.star_db and index.star_db.available else []
+            search_mode = params.get('search_mode', 'filmography_titles')
+            if not movies:
+                xbmcgui.Dialog().notification('Star Finder', 'No filmography titles are available for this performer.', xbmcgui.NOTIFICATION_INFO, 3000)
+                xbmcplugin.endOfDirectory(ADDON_HANDLE, succeeded=True, updateListing=False, cacheToDisc=False)
+                return
+            from resources.lib.global_search import GlobalSearch
+            global_search = GlobalSearch(ADDON_HANDLE, addon=ADDON, loader=load_single_website, logger=log)
+            if search_mode == 'filmography_titles_all':
+                enabled_count = len(global_search._available_sources())
+                if not xbmcgui.Dialog().yesno(
+                    'Search filmography titles on all websites',
+                    'This may send up to {} title searches to {} enabled websites. Continue?'.format(len(movies), enabled_count)
+                ):
+                    xbmcplugin.endOfDirectory(ADDON_HANDLE, succeeded=True, updateListing=False, cacheToDisc=False)
+                    return
+            display_query = 'Filmography titles: {}'.format(performer_name)
+            global_search.run_filmography_titles(movies, display_query, search_mode)
+        else:
+            PerformerIndex(ADDON_HANDLE, sys.argv[0], ADDON).handle(params.get('action'), params)
         return
 
     if mode == '31':

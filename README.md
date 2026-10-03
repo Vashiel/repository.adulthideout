@@ -14,13 +14,13 @@ AdultHideout does not host videos. It organizes publicly available listings and 
 
 ## Current Release
 
-**AdultHideout 1.0.23 "Lifeline"** was released on **September 14, 2026**.
+**AdultHideout 1.0.24 "Rosetta"** was released on **October 3, 2026**.
 
-Lifeline is a focused maintenance release. It restores six previously hidden websites, repairs several listing and playback paths, removes two unavailable sources and adds **HomeMoviesTube** and **Porno24**.
+Rosetta is a major feature and catalog release. It adds 19 new websites across German, retro, amateur casting, animation and international categories, introduces offline Cyrillic transliteration and title translation, adds Veev resolver support, updates PandaMovies and Hentai Cosplay playback, and removes unavailable sources.
 
-The name **Lifeline** reflects its purpose: reconnect working sources, retire dead ends and keep AdultHideout's growing catalog dependable.
+The name **Rosetta** reflects its offline translation capability across languages and alphabets without external online services.
 
-**[Read the complete Lifeline release notes](docs/releases/1.0.23-lifeline.md)**
+**[Read the complete Rosetta release notes](docs/releases/1.0.24-rosetta.md)**
 
 ## What AdultHideout Can Do
 
@@ -80,7 +80,7 @@ AdultHideout has grown beyond what a single README can explain. The official **[
 - **Issues:** [Bug reports and feature requests](https://github.com/Vashiel/repository.adulthideout/issues)
 - **Discussions:** [Announcements and community discussion](https://github.com/Vashiel/repository.adulthideout/discussions)
 - **Changelog:** [Complete release history](plugin.video.adulthideout/changelog.txt)
-- **Release notes:** [Lifeline 1.0.23](docs/releases/1.0.23-lifeline.md)
+- **Release notes:** [Rosetta 1.0.24](docs/releases/1.0.24-rosetta.md)
 
 ## Disclaimer
 

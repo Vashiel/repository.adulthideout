@@ -3,10 +3,11 @@
 
 import json
 import os
+import queue
 import re
 import time
 import urllib.parse
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, as_completed, wait
 
 import threading
 
@@ -20,6 +21,7 @@ from resources.lib.view_utils import end_directory_with_view
 from resources.lib.smart_playlists import parse_duration_seconds, matches_duration, DEDICATED_MOVIE_SOURCES
 
 _THREAD_LOCAL = threading.local()
+FILMOGRAPHY_SOURCE_TIMEOUT = 60.0
 _ORIGINAL_ADD_DIR_ITEM = xbmcplugin.addDirectoryItem
 _ORIGINAL_END_OF_DIR = xbmcplugin.endOfDirectory
 
@@ -381,6 +383,16 @@ class GlobalSearch:
         pattern = r'\b' + re.escape(clean_query) + r'\b'
         return bool(re.search(pattern, clean_label, re.IGNORECASE))
 
+    def _matches_all_query_words(self, label, query):
+        if not query or not label:
+            return True
+        clean_label = re.sub(r'\[.*?\]', ' ', str(label)).lower()
+        clean_label = re.sub(r'[-_.]+', ' ', clean_label)
+        clean_label = ' ' + ' '.join(clean_label.split()) + ' '
+        clean_query = re.sub(r'[-_.]+', ' ', str(query).strip().lower())
+        tokens = list(dict.fromkeys(clean_query.split()))
+        return bool(tokens) and all(re.search(r'\b' + re.escape(token) + r'\b', clean_label) for token in tokens)
+
     def _relevance_score(self, query, label):
         def normalize(value):
             value = re.sub(r'\[/?COLOR[^\]]*\]', ' ', str(value), flags=re.IGNORECASE)
@@ -413,11 +425,12 @@ class GlobalSearch:
         displayed = list(results or [])
 
         # Enforce exact word/token matching for query
-        if query:
-            displayed = [r for r in displayed if self._matches_query_strictly(r.get("label", ""), query)]
+        if query and not search_mode.startswith("filmography_titles"):
+            matcher = self._matches_all_query_words if (search_mode in ("all_words", "filmography_all_words", "full_movies_all_words", "full_movies_words", "full_movies_words_trans") or search_mode.startswith("all_words_")) else self._matches_query_strictly
+            displayed = [r for r in displayed if matcher(r.get("label", ""), query)]
 
-        # Duration filter for full_movies search mode (>= 70 min)
-        if search_mode in ("full_movies", "full_movies_trans", "filmography_movies", "filmography_movies_trans"):
+        # Duration filter for full_movies search mode (>= 60 min)
+        if search_mode in ("full_movies", "full_movies_trans", "full_movies_top_tubes", "filmography_movies", "filmography_movies_trans", "filmography_all", "filmography_all_words", "full_movies_all", "full_movies_all_words", "full_movies_words", "full_movies_words_trans") or search_mode.startswith(("filmography_titles", "full_movies_pool_")):
             filtered = []
             for r in displayed:
                 source = r.get("source", "")
@@ -495,6 +508,20 @@ class GlobalSearch:
         state["result_cache"] = cache
         self._save_state(state)
 
+    def _save_filmography_batch(self, query, titles):
+        state = self._load_state()
+        batches = state.get("filmography_batches")
+        if not isinstance(batches, dict):
+            batches = {}
+        batches[query] = titles
+        state["filmography_batches"] = dict(list(batches.items())[-10:])
+        self._save_state(state)
+
+    def _load_filmography_batch(self, query):
+        batches = self._load_state().get("filmography_batches")
+        batch = batches.get(query) if isinstance(batches, dict) else None
+        return batch if isinstance(batch, list) else []
+
     def _mark_refresh_once(self, query):
         state = self._load_state()
         state["refresh_once"] = query.strip().lower()
@@ -558,6 +585,8 @@ class GlobalSearch:
         return profile if profile in known else "balanced"
 
     def _source_label(self, name):
+        if name == "fulleroticmovies":
+            return "Full Erotic Movies"
         return name.replace("_", " ").replace("-", " ").title()
 
     def _source_icon(self, name):
@@ -567,7 +596,13 @@ class GlobalSearch:
         return self.default_icon
 
     def _search_mode_label(self, search_mode):
-        if search_mode == "deep":
+        if search_mode.startswith(("full_movies_pool_", "filmography_titles_pool_")):
+            pool = search_mode.split("_pool_", 1)[1]
+            labels = {"selected": "Top Tubes", "full_movies": "Top Tubes", "jav_asian": "JAV/Asian", "vintage": "Retro", "fetish": "Fetish", "trans": "Trans", "gay": "Gay"}
+            return "{} Film Search".format(labels.get(pool, pool.replace("_", " ").title()))
+        if search_mode in ("top_tubes", "full_movies_top_tubes", "filmography_titles_top_tubes"):
+            return "Top Tubes Search"
+        if search_mode in ("deep", "all_words", "filmography_all", "filmography_all_words", "full_movies_all", "full_movies_all_words", "filmography_titles_all"):
             return "Search All Sites"
         if search_mode == "skin":
             return "AdultHideout Search"
@@ -576,7 +611,23 @@ class GlobalSearch:
     def _sources_for_search(self, query, search_mode):
         available = self._available_sources()
         selected = self._selected_sources()
-        if search_mode == "deep":
+        if search_mode in ("top_tubes", "full_movies_top_tubes", "filmography_titles_top_tubes"):
+            preset_map = {preset[0]: preset[2] for preset in SOURCE_PRESETS}
+            available_set = set(available)
+            return [name for name in preset_map.get("full_movies", []) if name in available_set]
+        if search_mode.startswith(("full_movies_pool_", "filmography_titles_pool_")):
+            pool = search_mode.split("_pool_", 1)[1]
+            preset_map = {preset[0]: preset[2] for preset in SOURCE_PRESETS}
+            available_set = set(available)
+            base_sources = preset_map.get("full_movies", [])
+            niche_sources = [] if pool in ("selected", "full_movies") else preset_map.get(pool, [])
+            combined = base_sources + niche_sources
+            result = []
+            for name in combined:
+                if name in available_set and name not in result:
+                    result.append(name)
+            return result
+        if search_mode in ("deep", "all_words", "filmography_all", "filmography_all_words", "full_movies_all", "full_movies_all_words", "filmography_titles_all"):
             return available
         if search_mode == "skin":
             available_set = set(available)
@@ -584,7 +635,11 @@ class GlobalSearch:
 
         # Direct genre / preset support (e.g. straight, trans, jav_asian, gay)
         preset_map = {p[0]: p[2] for p in SOURCE_PRESETS}
-        if search_mode in ("full_movies_trans", "filmography_movies_trans"):
+        if search_mode.startswith("all_words_"):
+            preset = search_mode[len("all_words_"):]
+            available_set = set(available)
+            return [name for name in preset_map.get(preset, []) if name in available_set]
+        if search_mode in ("full_movies_trans", "full_movies_words_trans", "filmography_movies_trans", "filmography_titles_trans"):
             available_set = set(available)
             combined = preset_map.get("full_movies", []) + preset_map.get("trans", [])
             result = []
@@ -592,7 +647,7 @@ class GlobalSearch:
                 if name in available_set and name not in result:
                     result.append(name)
             return result
-        if search_mode == "filmography_movies":
+        if search_mode in ("filmography_movies", "full_movies_words", "filmography_titles"):
             available_set = set(available)
             return [name for name in preset_map.get("full_movies", []) if name in available_set]
         if search_mode in preset_map:
@@ -600,6 +655,22 @@ class GlobalSearch:
             return [name for name in preset_map[search_mode] if name in available_set]
 
         return selected
+
+    def _profile_for_search(self, search_mode):
+        if search_mode in PROFILE_OVERRIDES:
+            return search_mode
+        for prefix in ("full_movies_pool_", "filmography_titles_pool_"):
+            if search_mode.startswith(prefix):
+                pool = search_mode[len(prefix):]
+                if pool in PROFILE_OVERRIDES:
+                    return pool
+                if pool in {preset[0] for preset in SOURCE_PRESETS}:
+                    return "balanced"
+        if search_mode in ("trans", "gay", "hentai_futa"):
+            return search_mode
+        if search_mode in {preset[0] for preset in SOURCE_PRESETS}:
+            return search_mode if search_mode in PROFILE_OVERRIDES else "balanced"
+        return self._selected_profile()
 
     def _add_dir(self, label, action, icon=None, **params):
         query = {
@@ -626,15 +697,29 @@ class GlobalSearch:
         for query in history:
             entry_mode = self._history_mode(query)
             context_url = "{}?mode=20&website=global_search&action=edit_search&query={}&search_mode={}".format(
+                sys_argv0(), urllib.parse.quote_plus(query), urllib.parse.quote_plus("selected")
+            )
+            previous_url = "{}?mode=21&website=global_search&query={}&search_mode={}".format(
                 sys_argv0(), urllib.parse.quote_plus(query), urllib.parse.quote_plus(entry_mode)
             )
-            mode_suffix = " [COLOR grey](all sites)[/COLOR]" if entry_mode == "deep" else ""
+            all_url = "{}?mode=21&website=global_search&query={}&search_mode=deep".format(
+                sys_argv0(), urllib.parse.quote_plus(query)
+            )
+            all_words_url = "{}?mode=21&website=global_search&query={}&search_mode=all_words".format(
+                sys_argv0(), urllib.parse.quote_plus(query)
+            )
+            mode_suffix = " [COLOR grey](last: all sites)[/COLOR]" if entry_mode == "deep" else ""
             label = "[COLOR yellow]{}[/COLOR]{}".format(query, mode_suffix)
             item = xbmcgui.ListItem(label)
             item.setArt({"thumb": self.search_icon, "icon": self.search_icon, "fanart": self.fanart})
-            item.addContextMenuItems([("Edit", "RunPlugin({})".format(context_url))])
+            item.addContextMenuItems([
+                ("Edit / search current sources", "RunPlugin({})".format(context_url)),
+                ("Repeat previous source scope", "RunPlugin({})".format(previous_url)),
+                ("Search all enabled sites", "RunPlugin({})".format(all_url)),
+                ("Search all enabled sites, all query words", "RunPlugin({})".format(all_words_url)),
+            ])
             url = "{}?mode=21&website=global_search&query={}&search_mode={}".format(
-                sys_argv0(), urllib.parse.quote_plus(query), urllib.parse.quote_plus(entry_mode)
+                sys_argv0(), urllib.parse.quote_plus(query), urllib.parse.quote_plus("selected")
             )
             xbmcplugin.addDirectoryItem(self.addon_handle, url, item, True)
         end_directory_with_view(self.addon_handle, self.addon)
@@ -1212,6 +1297,13 @@ class GlobalSearch:
 
     def run(self, query, refresh=False, page=1, search_mode="selected"):
         query = (query or "").strip()
+        if search_mode.startswith("filmography_titles"):
+            titles = self._load_filmography_batch(query)
+            if not titles:
+                xbmcgui.Dialog().notification("Global Search", "Filmography title list is unavailable. Open the search from Star Finder again.", xbmcgui.NOTIFICATION_WARNING, 4000)
+                xbmcplugin.endOfDirectory(self.addon_handle, succeeded=True, updateListing=False, cacheToDisc=False)
+                return
+            return self.run_filmography_titles(titles, query, search_mode, refresh=refresh, page=page, save_batch=False)
         if not query:
             return self.show_menu()
         self._remember_query(query, search_mode=search_mode)
@@ -1219,7 +1311,7 @@ class GlobalSearch:
         if not refresh and self.show_cached_results(query, page, search_mode=search_mode):
             return
         sources = self._sources_for_search(query, search_mode)
-        profile = self._selected_profile()
+        profile = self._profile_for_search(search_mode)
         max_results_per_site = 12
         self.logger("Global search mode '{}' profile '{}' using sources: {}".format(search_mode, profile, ", ".join(sources)))
         progress = xbmcgui.DialogProgress()
@@ -1235,8 +1327,8 @@ class GlobalSearch:
                 site = self.loader(src) if self.loader else None
                 if site is not None:
                     site.adult_hideout_full_movie_mode = search_mode in (
-                        "full_movies", "full_movies_trans", "filmography_movies", "filmography_movies_trans"
-                    )
+                        "full_movies", "full_movies_trans", "full_movies_top_tubes", "filmography_movies", "filmography_movies_trans", "filmography_all", "filmography_all_words", "full_movies_all", "full_movies_all_words", "full_movies_words", "full_movies_words_trans"
+                    ) or search_mode.startswith("full_movies_pool_")
                 captured = self._capture_site_search(site, query)
 
                 site_items = []
@@ -1244,8 +1336,10 @@ class GlobalSearch:
                     if not self._is_video_result(url, listitem, is_folder):
                         continue
                     item_label = listitem.getLabel() if listitem else ""
-                    if query and not self._matches_query_strictly(item_label, query):
-                        continue
+                    if query:
+                        matcher = self._matches_all_query_words if (search_mode in ("all_words", "filmography_all_words", "full_movies_all_words", "full_movies_words", "full_movies_words_trans") or search_mode.startswith("all_words_")) else self._matches_query_strictly
+                        if not matcher(item_label, query):
+                            continue
                     if (search_mode.startswith("filmography_movies")
                             and hasattr(site, "validate_search_result")):
                         query_args = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
@@ -1291,6 +1385,180 @@ class GlobalSearch:
         self._save_results(query, cache_results, search_mode=search_mode, sources=sources)
         self.logger("Global search '{}' ({}) returned {} results in {:.1f}s".format(query, search_mode, len(cache_results), time.time() - started))
         self._render_results_page(query, self._display_results(query, cache_results, search_mode=search_mode), page, search_mode=search_mode)
+
+    def run_filmography_titles(self, titles, display_query, search_mode, refresh=False, page=1, save_batch=True):
+        display_query = (display_query or "Filmography titles").strip()
+        title_records = []
+        seen_titles = set()
+        for movie in titles or []:
+            if isinstance(movie, dict):
+                title = str(movie.get("title") or "").strip()
+                try:
+                    duration = int(movie.get("duration_seconds") or 0)
+                except (TypeError, ValueError):
+                    duration = parse_duration_seconds(movie.get("duration_seconds"))
+            else:
+                title, duration = str(movie or "").strip(), 0
+            key = " ".join(title.casefold().split())
+            if title and key not in seen_titles:
+                title_records.append({"title": title, "duration_seconds": duration})
+                seen_titles.add(key)
+        if not title_records:
+            xbmcgui.Dialog().notification("Global Search", "No film titles are available for this performer.", xbmcgui.NOTIFICATION_INFO, 3000)
+            xbmcplugin.endOfDirectory(self.addon_handle, succeeded=True, updateListing=False, cacheToDisc=False)
+            return
+        if search_mode not in ("filmography_titles", "filmography_titles_trans", "filmography_titles_all", "filmography_titles_top_tubes") and not search_mode.startswith("filmography_titles_pool_"):
+            search_mode = "filmography_titles"
+        if save_batch:
+            self._save_filmography_batch(display_query, title_records)
+        self._remember_query(display_query, search_mode=search_mode)
+        refresh = bool(refresh) or self._consume_refresh_once(display_query)
+        if not refresh and self.show_cached_results(display_query, page, search_mode=search_mode):
+            return
+
+        sources = self._sources_for_search(display_query, search_mode)
+        if not sources:
+            xbmcgui.Dialog().notification("Global Search", "No enabled websites are available for this search.", xbmcgui.NOTIFICATION_INFO, 3000)
+            xbmcplugin.endOfDirectory(self.addon_handle, succeeded=True, updateListing=False, cacheToDisc=False)
+            return
+
+        self.logger("Filmography search '{}' using {} titles across {} sources".format(display_query, len(title_records), len(sources)))
+        progress = xbmcgui.DialogProgress()
+        progress.create("Search Filmography Titles", "Searching {} titles across {} websites...".format(len(title_records), len(sources)))
+        cancelled = threading.Event()
+        progress_updates = queue.Queue()
+        cache_results = []
+        failed = []
+        started = time.time()
+        source_started_at = {}
+        timed_out_sources = set()
+        previous_profile_settings = self._apply_profile_overrides(self._profile_for_search(search_mode))
+        max_results_per_site = 12
+
+        def fetch_source(source_name):
+            try:
+                if cancelled.is_set():
+                    return source_name, [], None
+                site = self.loader(source_name) if self.loader else None
+                if site is None:
+                    return source_name, [], "module unavailable"
+                site.adult_hideout_full_movie_mode = True
+                source_results = []
+                seen_urls = set()
+                for title_number, movie in enumerate(title_records, 1):
+                    if cancelled.is_set() or source_name in timed_out_sources or len(source_results) >= max_results_per_site:
+                        break
+                    title = movie["title"]
+                    captured = self._capture_site_search(site, title)
+                    progress_updates.put((source_name, title_number))
+                    for url, listitem, is_folder in captured:
+                        if not self._is_video_result(url, listitem, is_folder):
+                            continue
+                        label = listitem.getLabel() if listitem else ""
+                        if not self._matches_query_strictly(label, title):
+                            continue
+                        if hasattr(site, "validate_search_result"):
+                            query_args = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+                            target_url = (query_args.get("url") or [""])[0]
+                            if not target_url or not site.validate_search_result(target_url):
+                                continue
+                        result = self._result_from_item(source_name, url, listitem, is_folder=False)
+                        if not matches_duration(result.get("duration", "") or label, "movies", label, source=source_name):
+                            db_duration = movie.get("duration_seconds", 0)
+                            if source_name not in DEDICATED_MOVIE_SOURCES or db_duration < 3600:
+                                continue
+                            result["duration"] = db_duration
+                        if url in seen_urls:
+                            continue
+                        seen_urls.add(url)
+                        source_results.append(result)
+                        if len(source_results) >= max_results_per_site:
+                            break
+                return source_name, source_results, None
+            except Exception as exc:
+                return source_name, [], str(exc)
+
+        try:
+            completed = 0
+            executor = ThreadPoolExecutor(max_workers=min(10, len(sources)))
+            search_started_at = time.monotonic()
+            source_started_at.update((source, search_started_at) for source in sources)
+            future_map = {executor.submit(fetch_source, source): source for source in sources}
+            pending = set(future_map)
+            per_source_progress = {}
+            while pending:
+                done, pending = wait(pending, timeout=0.5, return_when=FIRST_COMPLETED)
+                if progress.iscanceled():
+                    cancelled.set()
+                    for future in pending:
+                        future.cancel()
+                    break
+                while True:
+                    try:
+                        source, title_number = progress_updates.get_nowait()
+                    except queue.Empty:
+                        break
+                    per_source_progress[source] = max(per_source_progress.get(source, 0), title_number)
+                for future in done:
+                    completed += 1
+                    source_name = future_map[future]
+                    per_source_progress[source_name] = len(title_records)
+                    if future.cancelled():
+                        continue
+                    try:
+                        source, items, error = future.result()
+                        if error:
+                            failed.append(source)
+                        else:
+                            cache_results.extend(items)
+                    except Exception:
+                        failed.append(source_name)
+
+                now = time.monotonic()
+                for future in list(pending):
+                    source_name = future_map[future]
+                    source_start = source_started_at.get(source_name)
+                    if source_start is None or now - source_start < FILMOGRAPHY_SOURCE_TIMEOUT:
+                        continue
+                    timed_out_sources.add(source_name)
+                    failed.append(source_name + " (timed out)")
+                    completed += 1
+                    per_source_progress[source_name] = len(title_records)
+                    self.logger(
+                        "Filmography search skipped {} after {:.0f}s source timeout".format(
+                            source_name, FILMOGRAPHY_SOURCE_TIMEOUT
+                        ),
+                        xbmc.LOGWARNING,
+                    )
+                    future.cancel()
+                    pending.remove(future)
+
+                searched = sum(per_source_progress.values())
+                progress.update(
+                    min(99, int(searched * 100 / max(1, len(sources) * len(title_records)))),
+                    "Searched {}/{} websites · {} results · {} skipped".format(
+                        completed, len(sources), len(cache_results), len(timed_out_sources)
+                    ),
+                )
+        finally:
+            cancelled.set()
+            for future in locals().get("future_map", {}):
+                if not future.done():
+                    future.cancel()
+            executor_ref = locals().get("executor")
+            if executor_ref is not None:
+                executor_ref.shutdown(wait=False)
+            self._restore_profile_overrides(previous_profile_settings)
+            progress.close()
+
+        if not cache_results:
+            xbmcgui.Dialog().notification("Global Search", "No full-length film matches found.", xbmcgui.NOTIFICATION_INFO, 3000)
+        if failed:
+            self.logger("Filmography search failed on sources: {}".format(", ".join(failed)), xbmc.LOGWARNING)
+        self._save_results(display_query, cache_results, search_mode=search_mode, sources=sources)
+        self.logger("Filmography search '{}' ({}) returned {} results in {:.1f}s".format(display_query, search_mode, len(cache_results), time.time() - started))
+        results = self._display_results(display_query, cache_results, search_mode=search_mode)
+        self._render_results_page(display_query, results, page, search_mode=search_mode)
 
 
 def sys_argv0():

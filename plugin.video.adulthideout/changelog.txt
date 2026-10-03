@@ -1,3 +1,14 @@
+v. 1.0.24 "Rosetta" - 2026-10-03
+- **New Websites**: Added 26Ebalka, RuPorno, XXX Perevod, PornoFeya, Yabuchka, Vintage Huyamba, HotMovies, Pezdwood, MixPorn, Full Erotic Movies, X24Video, Deutsche Pornos, Hentai Cosplay, PornoAffe, PornoEnte, PornoHirsch, SFM Compile, The Classic Porn and IcePornCasting.
+- **Offline Translation**: Added Cyrillic transliteration and dictionary-based title/category translation without online translation services.
+- **Artwork**: Expanded performer-card artwork and thumbnail request handling, including WebP conversion where supported.
+- **Resolvers & Playback**: Added Veev support, bounded hoster health checks and Hentai Cosplay HLS proxy routing. Failed, empty and non-video Veev responses now allow mirror fallback.
+- **Website Cleanup**: Removed VagoSex and PornoHimmel because their video CDN endpoints are unreachable.
+- **Navigation Fixes**: Updated PandaMovies domain and card parsing, AShemaleTube card and video listing parser, HotMovies pagination and VintagePornFun filters. Corrected nine website sorting settings.
+- **Search & Source Updates**: Expanded Star Finder filmography batch search; updated XVideos stream extraction and SxyPrn domain fallback.
+- **Catalog & Localization**: Removed Pornobolt and updated English, German, Spanish, French and Italian strings.
+
+
 v. 1.0.23 "Lifeline" - 2026-09-14
 - **Recovered Websites**: Re-enabled HentaiMama, HQPorner, OGPorn, SaintPorn, SwingerPornFun and VintagePornFun after fresh listing, thumbnail, playback and seek checks.
 - **Playback Repairs**: Updated HentaiMama's player API and removed unavailable placeholders, added opt-in range emulation for OGPorn's non-compliant CDN, and made SwingerPornFun retain only entries with working resolver-backed mirrors.

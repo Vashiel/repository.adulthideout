@@ -24,7 +24,7 @@ class KVSTubeWebsite(BaseWebsite):
     search_path = "/search/{}/"
     categories_path = "/categories/"
     models_path = None
-    use_playback_proxy = False
+    use_playback_proxy = True
     use_urllib_proxy = True
     prefer_default_stream = False
     request_retries = 2
@@ -83,6 +83,9 @@ class KVSTubeWebsite(BaseWebsite):
     def _clean(self, value):
         value = re.sub(r"<[^>]+>", " ", value or "")
         return re.sub(r"\s+", " ", html.unescape(value)).strip()
+
+    def _format_category_title(self, title):
+        return title
 
     def _get_sort_key(self):
         try:
@@ -308,7 +311,10 @@ class KVSTubeWebsite(BaseWebsite):
                 continue
             if title.lower() in getattr(self, "skip_category_titles", set()):
                 continue
-            icon = self.icons.get("pornstars" if models_only else "categories", self.icon)
+            img_match = re.search(r"<img\b[^>]*>", body, re.IGNORECASE)
+            thumb = self._pick_thumb(img_match.group(0)) if img_match else ""
+            icon = thumb or self.icons.get("pornstars" if models_only else "categories", self.icon)
+            title = self._format_category_title(title)
             self.add_dir(title, cat_url, 2, icon, self.fanart)
         if next_url:
             self.add_dir("Next Page", next_url, 8, self.icons.get("default", self.icon), self.fanart)
@@ -392,6 +398,12 @@ class KVSTubeWebsite(BaseWebsite):
             headers["Cookie"] = "; ".join("{}={}".format(key, value) for key, value in cookies.items())
         return {"url": stream_url, "headers": headers, "extension": "mp4"}
 
+    def should_use_playback_proxy(self, page_url, stream_url):
+        return self.use_playback_proxy
+
+    def get_playback_startup_index(self, page_url, stream_url, headers):
+        return None
+
     def play_video(self, url):
         resolved = self.resolve_recording_stream(url)
         if not resolved:
@@ -401,8 +413,10 @@ class KVSTubeWebsite(BaseWebsite):
         play_url = resolved["url"]
         headers = resolved.get("headers") or {}
         playback_controller = None
-        if self.use_playback_proxy:
+        if self.should_use_playback_proxy(url, play_url):
             try:
+                startup_index = self.get_playback_startup_index(url, play_url, headers)
+                startup_prefix, startup_total_size = startup_index or (None, None)
                 playback_controller = ProxyController(
                     upstream_url=play_url,
                     upstream_headers=headers,
@@ -411,6 +425,8 @@ class KVSTubeWebsite(BaseWebsite):
                     skip_resolve=True,
                     probe_size=True,
                     use_urllib=self.use_urllib_proxy,
+                    startup_prefix=startup_prefix,
+                    startup_total_size=startup_total_size,
                 )
                 play_url = playback_controller.start()
                 self.logger.info("%s using in-process Range proxy for playback", self.label or self.name)

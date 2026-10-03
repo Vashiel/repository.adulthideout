@@ -13,6 +13,7 @@ import socket
 import re
 import ssl
 import time
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler
 try:
     from http.server import ThreadingHTTPServer
@@ -41,6 +42,7 @@ except Exception as e:
     _HAS_CF = False
 
 import requests
+from urllib.parse import urlparse
 try:
     from resources.lib.playback_preferences import preferred_quality, select_quality_variant
 except ImportError:
@@ -132,6 +134,55 @@ class _UrllibUpstream:
             self._probe_size()
         else:
             xbmc.log("[AHProxy-urllib] Skipping startup size probe", xbmc.LOGDEBUG)
+        self._startup_prefix = None
+        host = (urllib.parse.urlparse(url).hostname or '').lower()
+        if (host.endswith('.veevcdn.co') or host == 'amateur8.com' or host.endswith('.amateur8.com')) and self.total_size:
+            self._prefetch_startup_index()
+
+    def _prefetch_startup_index(self):
+        try:
+            req = self._build_request(self.url, {'Range': 'bytes=0-63'})
+            with urllib.request.urlopen(req, timeout=5, context=self._ssl_ctx) as resp:
+                if resp.status != 206:
+                    return
+                header = resp.read(64)
+            if len(header) < 40 or header[4:8] != b'ftyp':
+                return
+            moov_offset = int.from_bytes(header[:4], 'big')
+            if header[moov_offset + 4:moov_offset + 8] != b'moov':
+                return
+            prefix_size = moov_offset + int.from_bytes(header[moov_offset:moov_offset + 4], 'big')
+            if not 1024 * 1024 < prefix_size <= 16 * 1024 * 1024 or prefix_size >= self.total_size:
+                return
+
+            def fetch_range(start, end):
+                request = self._build_request(self.url, {'Range': f'bytes={start}-{end}'})
+                deadline = time.monotonic() + 12
+                with urllib.request.urlopen(request, timeout=5, context=self._ssl_ctx) as response:
+                    if response.status != 206:
+                        return None
+                    expected = end - start + 1
+                    chunks, received = [], 0
+                    read_fn = getattr(response, 'read1', response.read)
+                    while received < expected and time.monotonic() < deadline:
+                        chunk = read_fn(min(256 * 1024, expected - received))
+                        if not chunk:
+                            break
+                        chunks.append(chunk)
+                        received += len(chunk)
+                    return b''.join(chunks) if received == expected else None
+
+            midpoint = prefix_size // 2
+            started = time.monotonic()
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                left = pool.submit(fetch_range, 0, midpoint - 1)
+                right = pool.submit(fetch_range, midpoint, prefix_size - 1)
+                first, second = left.result(), right.result()
+            if first is not None and second is not None:
+                self._startup_prefix = first + second
+                xbmc.log(f'[AHProxy-urllib] Veev startup index ready: {prefix_size} bytes in {time.monotonic() - started:.1f}s', xbmc.LOGINFO)
+        except Exception as exc:
+            xbmc.log(f'[AHProxy-urllib] Veev startup index fallback: {type(exc).__name__}', xbmc.LOGDEBUG)
 
     def _pre_resolve(self, url):
         """Löst den Hostnamen aus der URL einmalig auf und speichert die IP."""
@@ -330,6 +381,10 @@ class _UrllibUpstream:
         # wird. Sonst stallt der Server den Body der überzähligen Verbindung
         # → Kodi wartet auf 0 Bytes → Hänger.
         range_hdr = (extra or {}).get('Range', 'none')
+        veev_timing = (urllib.parse.urlparse(self.url).hostname or '').lower().endswith('.veevcdn.co')
+        request_started = time.monotonic()
+        if veev_timing:
+            xbmc.log(f"[AHProxy-urllib] Veev GET Range={range_hdr} started", xbmc.LOGDEBUG)
         range_start = None
         match = re.match(r'bytes=(\d+)-', range_hdr or '')
         if match:
@@ -340,22 +395,28 @@ class _UrllibUpstream:
 
         if range_start and range_start > 0:
             xbmc.log(
-                f"[AHProxy-urllib] Seek Range={range_hdr}; closing old upstream streams first",
+                f"[AHProxy-urllib] Range={range_hdr}; preserving one parallel stream",
                 xbmc.LOGDEBUG,
             )
-            self._close_active()
-        else:
-            self._trim_streams(MAX_PARALLEL_UPSTREAMS - 1)
+        # Kodi opens a second range request while probing MP4 metadata. Keep
+        # one active upstream until the KVS two-connection limit is reached.
+        self._trim_streams(MAX_PARALLEL_UPSTREAMS - 1)
         # Dedicated cancel flag for this request.
         cancel_event = threading.Event()
         
-        req = self._build_request(self.url, extra)
+        use_prefix = bool(self._startup_prefix and range_hdr == 'bytes=0-')
+        upstream_extra = dict(extra or {})
+        if use_prefix:
+            upstream_extra['Range'] = f'bytes={len(self._startup_prefix)}-'
+        req = self._build_request(self.url, upstream_extra)
         xbmc.log(f"[AHProxy-urllib] GET {self.url[:100]} Range={range_hdr}", xbmc.LOGDEBUG)
         try:
             # timeout wirkt als Socket-Timeout für connect UND jedes recv():
             # ein Stream, der >15s lang NULL Bytes liefert, bricht ab und
             # Kodi verbindet neu — statt ewig zu blocken.
             resp = urllib.request.urlopen(req, timeout=timeout, context=self._ssl_ctx)
+            if veev_timing:
+                xbmc.log(f"[AHProxy-urllib] Veev GET Range={range_hdr} status={resp.status} headers_after={time.monotonic() - request_started:.2f}s", xbmc.LOGDEBUG)
             
             sock = self._raw_sock(resp)
             with self._active_lock:
@@ -367,7 +428,10 @@ class _UrllibUpstream:
                 f"Content-Range: {resp.headers.get('Content-Range', 'none')}",
                 xbmc.LOGDEBUG
             )
-            return _UrllibResponse(resp, total_size=self.total_size, cancel_event=cancel_event)
+            wrapped = _UrllibResponse(resp, total_size=self.total_size, cancel_event=cancel_event)
+            if use_prefix and resp.status == 206:
+                return _PrefixedResponse(self._startup_prefix, wrapped, self.total_size)
+            return wrapped
         except urllib.error.HTTPError as e:
             xbmc.log(f"[AHProxy-urllib] HTTP Error: {e.code} {e.reason}", xbmc.LOGERROR)
             return _UrllibResponse(e, total_size=self.total_size)
@@ -495,6 +559,37 @@ class _UrllibResponse:
             self._resp.close()
         except Exception:
             pass
+
+
+class _PrefixedResponse:
+    def __init__(self, prefix, tail, total_size):
+        self._prefix = prefix
+        self._offset = 0
+        self._tail = tail
+        self._cancel = getattr(tail, "_cancel", None)
+        self.total_size = total_size
+        self.status_code = 206
+        self.headers = dict(tail.headers)
+        self.headers['Content-Range'] = f'bytes 0-{total_size - 1}/{total_size}'
+        self.headers['Content-Length'] = str(total_size)
+
+    def probe_first_chunk(self, probe_timeout=5.0, chunk_size=PROXY_CHUNK):
+        chunk = self._prefix[:chunk_size]
+        self._offset = len(chunk)
+        return chunk
+
+    def iter_content(self, chunk_size=PROXY_CHUNK):
+        while self._offset < len(self._prefix):
+            if self._cancel and self._cancel.is_set():
+                return
+            end = min(self._offset + chunk_size, len(self._prefix))
+            chunk = self._prefix[self._offset:end]
+            self._offset = end
+            yield chunk
+        yield from self._tail.iter_content(chunk_size=chunk_size)
+
+    def close(self):
+        self._tail.close()
 
 
 # =============================================================================
@@ -843,10 +938,21 @@ class _ProxyHandler(BaseHTTPRequestHandler):
             
         extra = self._extra_browser_headers()
         rng = self._extract_range()
+        upstream_host = (urllib.parse.urlparse(self.upstream.url).hostname or "").lower()
+        is_amateur8 = upstream_host.endswith("amateur8.com")
+        request_started = time.monotonic()
+        startup_prefix = getattr(self.upstream, "startup_prefix", None)
+        startup_total_size = getattr(self.upstream, "startup_total_size", None)
+        use_startup_prefix = bool(startup_prefix and rng and re.match(r"^bytes=0-\s*$", rng))
 
         if rng:
-            extra["Range"] = rng
+            extra["Range"] = (
+                "bytes={}-".format(len(startup_prefix))
+                if use_startup_prefix else rng
+            )
             xbmc.log(f"[AHProxy] Kodi requested Range: {rng}", xbmc.LOGDEBUG)
+        if is_amateur8:
+            xbmc.log("[AHProxy] Amateur8 request Range={}".format(rng or "full"), xbmc.LOGINFO)
 
         rsp = None
         first_chunk = b""
@@ -1049,6 +1155,23 @@ class _ProxyHandler(BaseHTTPRequestHandler):
                 )
 
             status = getattr(rsp, "status_code", 0)
+            if use_startup_prefix and status == 206:
+                rsp = _PrefixedResponse(startup_prefix, rsp, startup_total_size)
+                status = rsp.status_code
+                xbmc.log(
+                    "[AHProxy] Replayed {}-byte MP4 startup index before stream body".format(len(startup_prefix)),
+                    xbmc.LOGINFO,
+                )
+            if is_amateur8:
+                xbmc.log(
+                    "[AHProxy] Amateur8 upstream status={} in {:.2f}s; type={}, range={}".format(
+                        status,
+                        time.monotonic() - request_started,
+                        getattr(rsp, "headers", {}).get("Content-Type", "?"),
+                        getattr(rsp, "headers", {}).get("Content-Range", "?"),
+                    ),
+                    xbmc.LOGINFO,
+                )
 
             # Chunk-Size: klein für urllib (Seek-Performance), normal für requests
             if isinstance(self.upstream, _UrllibUpstream):
@@ -1090,7 +1213,7 @@ class _ProxyHandler(BaseHTTPRequestHandler):
                                 xbmc.log(
                                     f"[AHProxy] First chunk sent: {bytes_sent} bytes "
                                     f"(Range={rng}, chunked={use_chunked})",
-                                    xbmc.LOGDEBUG,
+                                    xbmc.LOGINFO if is_amateur8 or (urllib.parse.urlparse(self.upstream.url).hostname or '').lower().endswith('.veevcdn.co') else xbmc.LOGDEBUG,
                                 )
                         except (
                             BrokenPipeError,
@@ -1218,6 +1341,8 @@ class ProxyController:
         fast_wait=None,
         include_origin=True,
         emulate_ignored_ranges=False,
+        startup_prefix=None,
+        startup_total_size=None,
     ):
         if use_urllib:
             self.up = _UrllibUpstream(
@@ -1236,6 +1361,8 @@ class ProxyController:
             )
         self.up.include_origin = bool(include_origin)
         self.up.emulate_ignored_ranges = bool(emulate_ignored_ranges)
+        self.up.startup_prefix = startup_prefix
+        self.up.startup_total_size = startup_total_size
         self.host = host
         self.port = port
         if fast_wait is not None:

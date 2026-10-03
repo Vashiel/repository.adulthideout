@@ -10,7 +10,7 @@ import random
 import threading
 import urllib.parse
 from collections import Counter
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, as_completed, wait
 from importlib import import_module
 
 import xbmc
@@ -21,10 +21,9 @@ import xbmcvfs
 LIB_DIR = os.path.abspath(os.path.dirname(__file__))
 ADDON_ROOT = os.path.abspath(os.path.join(LIB_DIR, "..", ".."))
 
-if LIB_DIR not in sys.path:
-    sys.path.insert(0, LIB_DIR)
-if ADDON_ROOT not in sys.path:
-    sys.path.insert(0, ADDON_ROOT)
+for _path in (ADDON_ROOT, LIB_DIR, os.path.join(LIB_DIR, "vendor")):
+    if _path and _path not in sys.path:
+        sys.path.insert(0, _path)
 
 try:
     from resources.lib.view_utils import end_directory_with_view
@@ -58,6 +57,11 @@ _CHANNEL_CACHE = {}
 # to stall the persistent 24/7 service.
 SMART_STREAM_UNSTABLE_SOURCES = {"xhamster", "spankbang", "txxx"}
 
+
+def _ordered_all_site_sources(sites):
+    preferred = [site for site in ("eporner", "tnaflix") if site in sites]
+    return preferred + sorted(set(sites) - set(preferred))
+
 GENERIC_QUERY_STOPWORDS = {
     "white", "black", "red", "blue", "green", "pink", "gold", "brown", "grey", "gray",
     "star", "sweet", "rose", "sky", "day", "bell", "cross", "knight", "ford", "stone",
@@ -66,7 +70,7 @@ GENERIC_QUERY_STOPWORDS = {
 }
 
 
-def is_query_relevance_match(query, title):
+def is_query_relevance_match(query, title, match_mode="phrase"):
     """Calculates relevance score and strictly verifies genuine matches to prevent fake/random video injection."""
     if not query or not title:
         return False, 0
@@ -85,6 +89,9 @@ def is_query_relevance_match(query, title):
         return True, 10
 
     tokens = [tok for tok in clean_query.split() if tok]
+    if match_mode == "all_words" and tokens:
+        if all(re.search(r'\b' + re.escape(token) + r'\b', clean_title, re.IGNORECASE) for token in tokens):
+            return True, 6
     if len(tokens) == 1:
         tok_pattern = r'\b' + re.escape(tokens[0]) + r'\b'
         if re.search(tok_pattern, clean_title, re.IGNORECASE):
@@ -220,7 +227,7 @@ LENGTH_OPTIONS = [
     ("short", "Kurze Clips (< 10 Min)"),
     ("10min", "Mittlere Szenen (> 10 Min)"),
     ("20min", "Lange Szenen (> 20 Min)"),
-    ("movies", "Full Movies (70+ Min)"),
+    ("movies", "Full Movies (60+ Min)"),
 ]
 
 POOL_OPTIONS = [
@@ -315,10 +322,10 @@ def matches_duration(duration_str, min_length_key, title="", source=""):
     if min_length_key == "20min":
         return secs >= 1200
     if min_length_key in ("movies", "long_movies", "full_movie"):
-        if secs >= 4200: # >= 70 min (Full Feature Film — a real movie is at least 70 min)
+        if secs >= 3600: # >= 60 min (feature-length minimum)
             return True
-        if secs > 0 and secs < 4200:
-            return False # Strictly reject clips and long scenes (< 70 min)
+        if secs > 0 and secs < 3600:
+            return False # Reject short clips and scenes under feature length
         # A title or a website category is not proof of runtime. Unknown
         # durations are rejected so previews and mislabeled clips cannot enter
         # Full Movie searches or continuous streams.
@@ -457,7 +464,7 @@ class SmartPlaylists:
         self._add_channel_entry(_text(30863, "Mega Tube Shuffle (All Sites)"), "mega", color="cyan", has_custom=has_custom)
         self._add_channel_entry(_text(30864, "Ultra HD 4K / 1080p Theater"), "4k", color="magenta", has_custom=has_custom)
         self._add_channel_entry(_text(30879, "Long Scenes (20+ min)"), "long", color="chartreuse", has_custom=has_custom)
-        self._add_channel_entry(_text(30880, "Full Movies & Feature Films (≥70 Min)"), "movies", color="gold", has_custom=has_custom)
+        self._add_channel_entry(_text(30880, "Full Movies & Feature Films (≥60 Min)"), "movies", color="gold", has_custom=has_custom)
         self._add_channel_entry(_text(30881, "Retro & Vintage Classic Movies"), "retro", color="coral", has_custom=has_custom)
         self._add_channel_entry(_text(30865, "Hentai & Anime 24/7"), "hentai", color="springgreen", has_custom=has_custom)
         self._add_channel_entry(_text(30866, "JAV & Asian 24/7"), "jav", color="pink", has_custom=has_custom)
@@ -472,6 +479,8 @@ class SmartPlaylists:
         pool = params.get("pool", "top_tubes")
         specific_site = params.get("specific_site", "")
         sort = params.get("sort", "trending")
+        match_mode = params.get("match_mode", "phrase")
+        match_label = "Exact phrase" if match_mode == "phrase" else "All query words"
         name = params.get("name", "")
 
         # Find human labels
@@ -484,11 +493,12 @@ class SmartPlaylists:
         def add_setting_row(title, value_text, action_name):
             item = xbmcgui.ListItem(label=f"[COLOR yellow]{title}:[/COLOR]   [COLOR cyan]{value_text}[/COLOR]")
             item.setArt({"thumb": self.playlist_icon, "icon": self.playlist_icon, "fanart": self.fanart})
-            url = self._url(action_name, query=query, length=length, pool=pool, specific_site=specific_site, sort=sort, name=name)
+            url = self._url(action_name, query=query, length=length, pool=pool, specific_site=specific_site, sort=sort, match_mode=match_mode, name=name)
             xbmcplugin.addDirectoryItem(self.addon_handle, url, item, False)
 
         # Field 1: Query
         add_setting_row("Suchbegriff / Query", query if query else "[Beliebig / Alle]", "builder_edit_query")
+        add_setting_row("Treffer / Match", match_label, "builder_edit_match")
         # Field 2: Duration
         add_setting_row("Mindestlänge / Length", len_label, "builder_edit_length")
         # Field 3: Sites Pool
@@ -503,13 +513,13 @@ class SmartPlaylists:
         # Action 1: Start Playback Now
         play_item = xbmcgui.ListItem(label="[COLOR lime][B]>> SMART STREAM JETZT STARTEN[/B][/COLOR]")
         play_item.setArt({"thumb": self.playlist_icon, "icon": self.playlist_icon, "fanart": self.fanart})
-        play_url = self._url("builder_start", query=query, length=length, pool=pool, specific_site=specific_site, sort=sort, name=name)
+        play_url = self._url("builder_start", query=query, length=length, pool=pool, specific_site=specific_site, sort=sort, match_mode=match_mode, name=name)
         xbmcplugin.addDirectoryItem(self.addon_handle, play_url, play_item, False)
 
         # Action 2: Save as Channel & Start
         save_item = xbmcgui.ListItem(label="[COLOR deepskyblue][B]★ ALS EIGENEN KANAL SPEICHERN & STARTEN[/B][/COLOR]")
         save_item.setArt({"thumb": self.playlist_icon, "icon": self.playlist_icon, "fanart": self.fanart})
-        save_url = self._url("builder_save", query=query, length=length, pool=pool, specific_site=specific_site, sort=sort, name=name)
+        save_url = self._url("builder_save", query=query, length=length, pool=pool, specific_site=specific_site, sort=sort, match_mode=match_mode, name=name)
         xbmcplugin.addDirectoryItem(self.addon_handle, save_url, save_item, False)
 
         end_directory_with_view(self.addon_handle, self.addon, content_type="files")
@@ -528,6 +538,17 @@ class SmartPlaylists:
         idx = xbmcgui.Dialog().select("Mindestlänge / Dauer auswählen", labels)
         if idx >= 0:
             params["length"] = LENGTH_OPTIONS[idx][0]
+        url = self._url("builder", **params)
+        xbmc.executebuiltin(f"Container.Update({url},replace)")
+
+    def builder_edit_match(self, params):
+        labels = ["Exact phrase (default)", "All query words (broader)"]
+        values = ("phrase", "all_words")
+        current_value = params.get("match_mode", "phrase")
+        current = values.index(current_value) if current_value in values else 0
+        idx = xbmcgui.Dialog().select("Treffer-Art / Match Type", labels, preselect=current)
+        if idx >= 0:
+            params["match_mode"] = values[idx]
         url = self._url("builder", **params)
         xbmc.executebuiltin(f"Container.Update({url},replace)")
 
@@ -594,6 +615,7 @@ class SmartPlaylists:
             "pool": params.get("pool", "top_tubes"),
             "specific_site": params.get("specific_site", ""),
             "sort": params.get("sort", "trending"),
+            "match_mode": params.get("match_mode", "phrase"),
         }
 
         if existing_idx is not None:
@@ -640,7 +662,7 @@ class SmartPlaylists:
             clean_path = clean_path.rsplit('/', 1)[0]
         return f"{parsed.scheme}://{parsed.netloc}{clean_path}/{page}/"
 
-    def _harvest_website_videos(self, website_name, max_items=10, custom_url=None, query=None, page=1, min_length="any"):
+    def _harvest_website_videos(self, website_name, max_items=10, custom_url=None, query=None, page=1, min_length="any", match_mode="phrase"):
         from resources.lib.base_website import BaseWebsite
 
         try:
@@ -693,6 +715,13 @@ class SmartPlaylists:
             instance.notify_info = lambda *args, **kwargs: None
 
             if query:
+                if page > 1:
+                    process_content = instance.process_content
+
+                    def process_search_page(url, *args, **kwargs):
+                        return process_content(self._get_paged_url(url, page), *args, **kwargs)
+
+                    instance.process_content = process_search_page
                 instance.search(query)
             else:
                 start_url = custom_url or instance.base_url
@@ -707,7 +736,7 @@ class SmartPlaylists:
             if query:
                 filtered = []
                 for v in videos:
-                    matched, score = is_query_relevance_match(query, v.get("title", ""))
+                    matched, score = is_query_relevance_match(query, v.get("title", ""), match_mode=match_mode)
                     if matched:
                         filtered.append((score, v))
                 filtered.sort(key=lambda x: x[0], reverse=True)
@@ -721,7 +750,7 @@ class SmartPlaylists:
                         min_length,
                         video.get("title", ""),
                         source=video.get("website", website_name),
-                    )
+                        )
                 ]
 
             return videos[:max_items]
@@ -767,6 +796,79 @@ class SmartPlaylists:
             sites = sites.keys()
         return enabled(sites) or ["spankbang", "pornhub", "xhamster"]
 
+    def _enabled_stream_sites(self, sites):
+        try:
+            hidden = set(json.loads(self.addon.getSetting("hidden_websites") or "[]"))
+        except (TypeError, ValueError):
+            hidden = set()
+        if self.addon.getSetting("show_crazyshit") != "true":
+            hidden.add("crazyshit")
+        if self.addon.getSetting("show_pervclips") != "true":
+            hidden.add("pervclips")
+        websites_dir = os.path.join(self.addon_path, "resources", "websites")
+        return [
+            site for site in sites
+            if site not in hidden
+            and os.path.isfile(os.path.join(websites_dir, "{}.py".format(site)))
+        ]
+
+    def _collect_fast_seed(self, tasks, max_workers, timeout=12):
+        if not tasks:
+            return []
+        executor = ThreadPoolExecutor(max_workers=max(1, min(max_workers, len(tasks))))
+        futures = {
+            executor.submit(self._harvest_website_videos, *task): task[0]
+            for task in tasks
+        }
+        pending = set(futures)
+        seed = []
+        sources = []
+        failures = []
+        deadline = time.monotonic() + timeout
+        try:
+            while pending and not seed:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                completed, pending = wait(
+                    pending,
+                    timeout=remaining,
+                    return_when=FIRST_COMPLETED,
+                )
+                if not completed:
+                    break
+                for future in completed:
+                    source = futures[future]
+                    try:
+                        videos = future.result()
+                    except Exception as exc:
+                        failures.append("{}: {}".format(source, exc))
+                        continue
+                    if videos:
+                        sources.append(source)
+                        seed.extend(videos)
+        finally:
+            for future in pending:
+                future.cancel()
+            executor.shutdown(wait=False)
+
+        if seed:
+            xbmc.log(
+                "[AdultHideout][SmartStream] Seed ready: {} video(s) from {}".format(
+                    len(seed), ", ".join(sources)
+                ),
+                xbmc.LOGINFO,
+            )
+        else:
+            detail = "; failures: {}".format(" | ".join(failures[:3])) if failures else ""
+            xbmc.log(
+                "[AdultHideout][SmartStream] No seed within {}s across {} sources{}".format(
+                    timeout, len(tasks), detail
+                ),
+                xbmc.LOGWARNING,
+            )
+        return seed[:4]
+
     def _get_fast_seed(self, channel):
         """Quickly harvests 8-12 videos across primary scrapers for instant 1-click playback."""
         if channel == "vault":
@@ -796,30 +898,44 @@ class SmartPlaylists:
                 spec = cs.get("specific_site")
                 pool_name = cs.get("pool", "top_tubes")
                 len_filter = cs.get("length", "any")
-                if len_filter in ("movies", "long_movies", "full_movie"):
-                    sites = [site for site, _url in CHANNEL_POOLS["movies"]]
-                elif spec:
+                match_mode = cs.get("match_mode", "phrase")
+                if spec:
                     sites = [spec]
-                elif pool_name in CHANNEL_POOLS:
-                    sites = [s for s, _ in CHANNEL_POOLS[pool_name]]
                 elif pool_name == "all":
                     sites = self._get_catalog_sites()
+                elif pool_name in CHANNEL_POOLS:
+                    sites = [s for s, _ in CHANNEL_POOLS[pool_name]]
+                elif len_filter in ("movies", "long_movies", "full_movie"):
+                    sites = [site for site, _url in CHANNEL_POOLS["movies"]]
                 else:
                     sites = ["spankbang", "eporner", "xhamster", "xnxx", "redtube", "tnaflix", "pornhub", "youporn", "hqporner"]
                 
-                available = [s for s in sites if os.path.exists(os.path.join(self.addon_path, "resources", "websites", f"{s}.py"))]
-                selected = random.sample(available, min(4, len(available))) if available else ["spankbang"]
+                available = [
+                    site for site in self._enabled_stream_sites(sites)
+                    if site not in SMART_STREAM_UNSTABLE_SOURCES
+                ]
+                if not available:
+                    return []
+                if pool_name == "all":
+                    selected = _ordered_all_site_sources(available)[:6]
+                elif pool_name == "top_tubes":
+                    primary = [site for site in ("eporner", "tnaflix") if site in available]
+                    remaining = [site for site in available if site not in primary]
+                    selected = primary + random.sample(remaining, min(4, len(remaining)))
+                else:
+                    selected = random.sample(available, min(6, len(available)))
                 
                 seed_res = []
                 if stars_list:
                     # Pick 8 random stars and query top available pool tubes concurrently
                     chosen_stars = random.sample(stars_list, min(8, len(stars_list)))
-                    if len_filter in ("movies", "long_movies", "full_movie"):
-                        top_search_sites = [s for s, _url in CHANNEL_POOLS["movies"] if s in available]
-                    elif pool_name == "trans":
-                        top_search_sites = [s for s in ["pornhub", "xhamster", "tnaflix", "xnxx", "eporner", "shemalez", "xvideos"] if s in available]
+                    if pool_name != "top_tubes":
+                        top_search_sites = list(available)
                     else:
                         top_search_sites = [s for s in ["tnaflix", "eporner", "xnxx", "xhamster", "pornhub", "hqporner", "xvideos"] if s in available]
+
+                    if not top_search_sites:
+                        return []
 
                     tasks = []
                     for st in chosen_stars:
@@ -831,41 +947,28 @@ class SmartPlaylists:
                                 min(site_count - 1, len(remaining_sites)),
                             )
                         else:
-                            sites_for_star = random.sample(top_search_sites, min(site_count, len(top_search_sites))) if top_search_sites else ["eporner"]
+                            sites_for_star = random.sample(top_search_sites, min(site_count, len(top_search_sites)))
                         for site in sites_for_star:
                             tasks.append((site, st))
 
-                    with ThreadPoolExecutor(max_workers=min(12, len(tasks))) as executor:
-                        futures = [
-                            executor.submit(self._harvest_website_videos, site, 4, None, st, 1, len_filter)
-                            for site, st in tasks
-                        ]
-                        for f in as_completed(futures):
-                            seed_res.extend(f.result())
-
-
+                    harvest_tasks = [
+                        (site, 4, None, st, 1, len_filter, match_mode)
+                        for site, st in tasks
+                    ]
+                    seed_res = self._collect_fast_seed(
+                        harvest_tasks,
+                        max_workers=12,
+                    )
 
                 else:
-                    with ThreadPoolExecutor(max_workers=4) as executor:
-                        futures = [executor.submit(self._harvest_website_videos, s, 4, None, q, 1, len_filter) for s in selected]
-                        for f in as_completed(futures):
-                            seed_res.extend(f.result())
-                            if len(seed_res) >= 4:
-                                break
-
-                if not seed_res and (q or stars_list):
-                    # Search alternative tubes specifically for this performer/query
-                    target_name = stars_list[0] if stars_list else q
-                    remaining = [s for s in sites if s not in selected and os.path.exists(os.path.join(self.addon_path, "resources", "websites", f"{s}.py"))]
-                    for rem_site in remaining:
-                        more = self._harvest_website_videos(rem_site, 4, None, target_name, 1, len_filter)
-                        if more:
-                            seed_res.extend(more)
-                            if len(seed_res) >= 4:
-                                break
-
-
-
+                    harvest_tasks = [
+                        (site, 4, None, q, 1, len_filter, match_mode)
+                        for site in selected
+                    ]
+                    seed_res = self._collect_fast_seed(
+                        harvest_tasks,
+                        max_workers=6,
+                    )
 
                 random.shuffle(seed_res)
                 return seed_res
@@ -887,23 +990,21 @@ class SmartPlaylists:
             else:
                 selected = random.sample(available, min(4, len(available))) if available else [("spankbang", None)]
             seed_res = []
-            with ThreadPoolExecutor(max_workers=4) as executor:
-                futures = [
-                    executor.submit(
-                        self._harvest_website_videos,
-                        site,
-                        4,
-                        curl,
-                        None,
-                        1,
-                        "movies" if channel == "movies" else "any",
-                    )
-                    for site, curl in selected
-                ]
-                for f in as_completed(futures):
-                    seed_res.extend(f.result())
-                    if len(seed_res) >= 4:
-                        break
+            harvest_tasks = [
+                (
+                    site,
+                    4,
+                    curl,
+                    None,
+                    1,
+                    "movies" if channel == "movies" else "any",
+                )
+                for site, curl in selected
+            ]
+            seed_res = self._collect_fast_seed(
+                harvest_tasks,
+                max_workers=4,
+            )
 
             if channel != "hentai":
                 random.shuffle(seed_res)
@@ -947,19 +1048,38 @@ class SmartPlaylists:
                 len_filter = cs.get("length", "any")
                 sort_mode = cs.get("sort", "trending")
 
-                if len_filter in ("movies", "long_movies", "full_movie"):
-                    sites = [site for site, _url in CHANNEL_POOLS["movies"]]
-                elif pool_name == "specific" and spec_site:
+                match_mode = cs.get("match_mode", "phrase")
+                if spec_site:
                     sites = [spec_site]
-                elif pool_name in CHANNEL_POOLS:
-                    sites = [s for s, _ in CHANNEL_POOLS[pool_name]]
                 elif pool_name == "all":
                     sites = self._get_catalog_sites()
+                elif pool_name in CHANNEL_POOLS:
+                    sites = [s for s, _ in CHANNEL_POOLS[pool_name]]
+                elif len_filter in ("movies", "long_movies", "full_movie"):
+                    sites = [site for site, _url in CHANNEL_POOLS["movies"]]
                 else:
                     sites = ["spankbang", "eporner", "xhamster", "xnxx", "redtube", "tnaflix", "pornhub", "youporn", "hqporner"]
 
-                available = [s for s in sites if os.path.exists(os.path.join(self.addon_path, "resources", "websites", f"{s}.py"))]
-                selected = random.sample(available, min(8, len(available))) if available else ["spankbang"]
+                available = [
+                    site for site in self._enabled_stream_sites(sites)
+                    if site not in SMART_STREAM_UNSTABLE_SOURCES
+                ]
+                if not available:
+                    return []
+                source_page = page
+                if pool_name == "all" and not stars_list and not spec_site:
+                    ordered_sources = _ordered_all_site_sources(available)
+                    batch_count = max(1, (len(ordered_sources) + 5) // 6)
+                    source_round, batch_index = divmod(max(0, page - 1), batch_count)
+                    first_source = batch_index * 6
+                    selected = ordered_sources[first_source:first_source + 6]
+                    source_page = source_round + 1
+                elif pool_name == "all":
+                    primary = [site for site in ("eporner", "tnaflix") if site in available]
+                    remaining = [site for site in available if site not in primary]
+                    selected = primary + random.sample(remaining, min(8 - len(primary), len(remaining)))
+                else:
+                    selected = random.sample(available, min(8, len(available)))
                 
                 if stars_list:
                     start_idx = ((page - 1) * 8) % len(stars_list)
@@ -967,12 +1087,13 @@ class SmartPlaylists:
                     if len(page_stars) < 8 and len(stars_list) >= 8:
                         page_stars.extend(stars_list[:8 - len(page_stars)])
 
-                    if len_filter in ("movies", "long_movies", "full_movie"):
-                        top_search_sites = [s for s, _url in CHANNEL_POOLS["movies"] if s in available]
-                    elif pool_name == "trans":
-                        top_search_sites = [s for s in ["pornhub", "xhamster", "tnaflix", "xnxx", "eporner", "shemalez", "xvideos"] if s in available]
-                    else:
+                    if pool_name == "top_tubes":
                         top_search_sites = [s for s in ["tnaflix", "eporner", "xnxx", "xhamster", "pornhub", "hqporner", "xvideos"] if s in available]
+                    else:
+                        top_search_sites = list(available)
+
+                    if not top_search_sites:
+                        return []
 
                     tasks = []
                     for st in page_stars:
@@ -984,20 +1105,20 @@ class SmartPlaylists:
                                 min(site_count - 1, len(remaining_sites)),
                             )
                         else:
-                            sites_for_star = random.sample(top_search_sites, min(site_count, len(top_search_sites))) if top_search_sites else ["eporner"]
+                            sites_for_star = random.sample(top_search_sites, min(site_count, len(top_search_sites)))
                         for site in sites_for_star:
                             tasks.append((site, st))
 
                     with ThreadPoolExecutor(max_workers=min(12, len(tasks))) as executor:
                         futures = [
-                            executor.submit(self._harvest_website_videos, site, 4, None, st, page, len_filter)
+                            executor.submit(self._harvest_website_videos, site, 4, None, st, page, len_filter, match_mode)
                             for site, st in tasks
                         ]
                         for f in as_completed(futures):
                             all_videos.extend(f.result())
                 else:
                     with ThreadPoolExecutor(max_workers=8) as executor:
-                        futures = [executor.submit(self._harvest_website_videos, site, 8, None, q, page, len_filter) for site in selected]
+                        futures = [executor.submit(self._harvest_website_videos, site, 8, None, q, source_page, len_filter, match_mode) for site in selected]
                         for f in as_completed(futures):
                             all_videos.extend(f.result())
 
@@ -1025,10 +1146,12 @@ class SmartPlaylists:
         elif channel == "mega":
             all_sites = self._get_catalog_sites()
             available = [
-                s for s in all_sites
-                if os.path.exists(os.path.join(self.addon_path, "resources", "websites", f"{s}.py"))
+                s for s in self._enabled_stream_sites(all_sites)
+                if s not in SMART_STREAM_UNSTABLE_SOURCES
             ]
-            selected = random.sample(available, min(8, len(available)))
+            primary = [site for site in ("eporner", "tnaflix") if site in available]
+            remaining = [site for site in available if site not in primary]
+            selected = primary + random.sample(remaining, min(8 - len(primary), len(remaining)))
             with ThreadPoolExecutor(max_workers=8) as executor:
                 futures = [executor.submit(self._harvest_website_videos, site, 6, None, None, page) for site in selected]
                 for f in as_completed(futures):
@@ -1132,10 +1255,14 @@ class SmartPlaylists:
         else:
             seed_videos = self._get_fast_seed(channel)
             random.shuffle(seed_videos)
-            if not seed_videos:
+            if not seed_videos and not channel.startswith("custom_"):
                 seed_videos = self._get_channel_videos(channel, force_refresh=True)[:4]
 
         if not seed_videos:
+            xbmc.log(
+                "[AdultHideout][SmartStream] No startup videos for channel {}".format(channel),
+                xbmc.LOGWARNING,
+            )
             xbmcgui.Dialog().notification(
                 _text(30860, "Smart Streams (Beta)"),
                 _text(30872, "No videos found for this playlist"),
@@ -1143,8 +1270,17 @@ class SmartPlaylists:
                 3000,
                 sound=False,
             )
+            if channel.startswith("custom_temp_"):
+                self._temp_stream = None
+                try:
+                    with open(self.active_stream_file, "r", encoding="utf-8") as handle:
+                        active_stream = json.load(handle)
+                    if active_stream.get("id") == channel:
+                        os.remove(self.active_stream_file)
+                except Exception:
+                    pass
             if self.addon_handle >= 0:
-                xbmcplugin.endOfDirectory(self.addon_handle, succeeded=False, cacheToDisc=False)
+                xbmcplugin.endOfDirectory(self.addon_handle, succeeded=True, cacheToDisc=False)
             return
 
         playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
@@ -1294,6 +1430,8 @@ class SmartPlaylists:
             return self.builder_edit_query(params)
         if action == "builder_edit_length":
             return self.builder_edit_length(params)
+        if action == "builder_edit_match":
+            return self.builder_edit_match(params)
         if action == "builder_edit_pool":
             return self.builder_edit_pool(params)
         if action == "builder_edit_sort":
@@ -1310,6 +1448,7 @@ class SmartPlaylists:
                 "pool": params.get("pool", "top_tubes"),
                 "specific_site": params.get("specific_site", ""),
                 "sort": params.get("sort", "trending"),
+                "match_mode": params.get("match_mode", "phrase"),
             })
             return self.zap_channel(temp_id)
         if action == "custom_zap":
@@ -1329,6 +1468,7 @@ class SmartPlaylists:
                 "pool": pool,
                 "specific_site": params.get("specific_site", ""),
                 "sort": params.get("sort", "trending"),
+                "match_mode": params.get("match_mode", "phrase"),
             })
             return self.zap_channel(temp_id, force_refresh=True)
         if action == "builder_save":

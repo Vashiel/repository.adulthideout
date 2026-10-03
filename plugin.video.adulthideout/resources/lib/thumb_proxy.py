@@ -64,17 +64,32 @@ ALLOWED_HOSTS = frozenset((
     "i0.wp.com",
     "iafd.com",
     "www.iafd.com",
+    "www1.yabuchka.xyz",
+    "www.yabuchka.xyz",
+    "yabuchka.xyz",
+    "ru.pornofeya.org",
+    "www.pornofeya.org",
+    "pornofeya.org",
+    "r11.mixporn.space",
+    "mx.hotmovies.cc",
+    "pezdwood.com",
+    "www.pezdwood.com",
+    "vintage.huyamba.mobi",
+    "26ebalka.ru.actor",
+    "r1.sosalkino.city",
+    "wh12.sdn16linkblock.top",
 ))
 ALLOWED_PATH_PREFIXES = (
     "/_",
     "/thumbnail/",
-    "/contents/videos_screenshots/",
+    "/contents/",
     "/avatar/",
     "/posts/",
     "/timthumb/",
     "/uploads/",
     "/wp-content/uploads/",
-    "/contents/categories/",
+    "/images/",
+    "/static/",
     "/swingerpornfun.com/",
 )
 UNRESTRICTED_PATH_HOSTS = frozenset((
@@ -185,10 +200,11 @@ def _valid_loadvid_segment(url):
 def _normalize_image(upstream, content_type):
     """Return a Kodi-friendly image, converting disguised WebP in memory."""
     body = upstream.content
-    is_mislabeled_webp = (
-        content_type == "image/jpeg" and body.startswith(b"RIFF") and b"WEBP" in body[:16]
+    is_webp = (
+        (body.startswith(b"RIFF") and b"WEBP" in body[:16])
+        or content_type == "image/webp"
     )
-    if not is_mislabeled_webp:
+    if not is_webp:
         return body, content_type
     try:
         from PIL import Image, features

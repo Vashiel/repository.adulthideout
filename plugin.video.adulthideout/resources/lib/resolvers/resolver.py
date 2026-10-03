@@ -55,6 +55,12 @@ RESOLVERS = [
         "hosts": ("hglink.to", "hanerix.com", "hgcloud.to"),
     },
     {
+        "key": "veev",
+        "setting": "",
+        "module": "veev_resolver",
+        "hosts": ("veev.to", "veev.pro", "poophq.com", "doods.to"),
+    },
+    {
         "key": "doodstream",
         "setting": "resolver_enable_doodstream",
         "module": "doodstream_resolver",
@@ -294,12 +300,13 @@ def probe_resolved_stream(url, headers=None, timeout=7):
 
     request_headers.setdefault("User-Agent", resolver_utils.get_ua())
     request_headers.setdefault("Accept", "*/*")
-    request_headers.setdefault("Accept-Encoding", "identity")
     request_headers.setdefault("Connection", "close")
+    request_headers.setdefault("Range", "bytes=0-65535")
     if headers:
         for key, value in headers.items():
-            if value:
+            if value and key.lower() != "accept-encoding":
                 request_headers[key] = value
+    request_headers["Accept-Encoding"] = "identity"
 
     start = time.time()
     try:
@@ -308,6 +315,13 @@ def probe_resolved_stream(url, headers=None, timeout=7):
             status = response.getcode() or 200
             content_type = response.headers.get("Content-Type", "").lower()
             chunk = response.read(65536)
+
+        if response.headers.get("Content-Encoding", "").lower() == "gzip" or chunk.startswith(b"\x1f\x8b"):
+            try:
+                import zlib
+                chunk = zlib.decompressobj(16 + zlib.MAX_WBITS).decompress(chunk)
+            except Exception:
+                pass
 
         elapsed = time.time() - start
         if status >= 400:
@@ -327,6 +341,20 @@ def probe_resolved_stream(url, headers=None, timeout=7):
         if is_hls and b"#EXTM3U" not in chunk and b"#EXT-X-" not in chunk:
             xbmc.log(
                 "[AdultHideout][resolver] Stream preflight rejected non-HLS playlist for {}".format(direct_url),
+                xbmc.LOGWARNING,
+            )
+            return False
+        sample = chunk.lstrip().lower()
+        looks_like_error_document = (
+            "text/html" in content_type
+            or "application/json" in content_type
+            or ("text/plain" in content_type and sample.startswith((b"<", b"{", b"[")))
+        )
+        if not is_hls and looks_like_error_document:
+            xbmc.log(
+                "[AdultHideout][resolver] Stream preflight rejected non-media content type {} for {}".format(
+                    content_type or "unknown", direct_url
+                ),
                 xbmc.LOGWARNING,
             )
             return False
@@ -363,6 +391,10 @@ def resolve_first_working(urls, referer="", headers=None, addon=None):
                 stream_url, stream_headers = result, {}
             if not stream_url or not str(stream_url).startswith("http"):
                 continue
+            if resolver_key_for_url(candidate) in ("veev", "lulustream"):
+                # Veev and LuluStream issue short-lived playback URLs; probing them first can
+                # consume or invalidate the URL before Kodi opens the player.
+                return stream_url, stream_headers or {}, candidate
             if resolver_preflight_enabled(addon) and not probe_resolved_stream(stream_url, stream_headers):
                 continue
             return stream_url, stream_headers or {}, candidate

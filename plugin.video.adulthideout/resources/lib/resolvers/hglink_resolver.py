@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import re
 import socket
+import time
 import urllib.parse
 import xbmc
 
@@ -65,10 +66,24 @@ def _streams_from_html(html, page_url):
     ]
 
 
-def _playlist_hosts_resolve(stream_url, headers):
+_MAX_RESOLVE_SECONDS = 18.0
+_REQUEST_TIMEOUT_SECONDS = 3.0
+
+
+def _bounded_get(url, headers, deadline):
+    remaining = deadline - time.monotonic()
+    if remaining <= 0.5:
+        return ""
+    timeout = min(_REQUEST_TIMEOUT_SECONDS, remaining / 4.0)
+    return resolver_utils.http_get(
+        url, headers=headers, retries=0, sleep=0, timeout=timeout
+    )
+
+
+def _playlist_hosts_resolve(stream_url, headers, deadline):
     if not _host_resolves(stream_url):
         return False
-    master = resolver_utils.http_get(stream_url, headers=headers)
+    master = _bounded_get(stream_url, headers, deadline)
     if not master or "#EXTM3U" not in master[:64]:
         return False
     media_url = ""
@@ -80,13 +95,9 @@ def _playlist_hosts_resolve(stream_url, headers):
         return False
     if "#EXT-X-STREAM-INF" not in master:
         return True
-    media = resolver_utils.http_get(media_url, headers=headers)
-    if not media or "#EXTM3U" not in media[:64]:
-        return False
-    for line in media.splitlines():
-        if line.strip() and not line.startswith("#"):
-            return _host_resolves(urllib.parse.urljoin(media_url, line.strip()))
-    return False
+    # The master playlist and its selected variant share the same CDN. Do not
+    # fetch every nested playlist/segment here; Kodi will request them during playback.
+    return time.monotonic() < deadline
 
 
 def _host_resolves(url):
@@ -111,32 +122,31 @@ def resolve(url, referer="", headers=None):
     if headers:
         request_headers.update(headers)
 
-    for attempt in range(4):
-        separator = "&" if "?" in page_url else "?"
-        attempt_url = page_url if not attempt else "{}{}_ah_retry={}".format(page_url, separator, attempt)
-        html = resolver_utils.http_get(attempt_url, headers=request_headers)
-        stream_urls = _streams_from_html(html, page_url) if html else []
-        stream_url = next(
-            (candidate for candidate in stream_urls
-             if _playlist_hosts_resolve(candidate, request_headers)), ""
+    deadline = time.monotonic() + _MAX_RESOLVE_SECONDS
+    page_html = _bounded_get(page_url, request_headers, deadline)
+    if not page_html:
+        xbmc.log(
+            "[AdultHideout][hglink] Player page unavailable; stopped within {:.0f}s budget".format(
+                _MAX_RESOLVE_SECONDS
+            ),
+            xbmc.LOGWARNING,
         )
-        if stream_url:
-            xbmc.log(
-                "[AdultHideout][hglink] Final stream URL after {} attempt(s): {}".format(
-                    attempt + 1, stream_url
-                ),
-                xbmc.LOGINFO,
-            )
-            return stream_url, {
+        return "", {}
+
+    for candidate in _streams_from_html(page_html, page_url):
+        if time.monotonic() >= deadline:
+            break
+        if _playlist_hosts_resolve(candidate, request_headers, deadline):
+            xbmc.log("[AdultHideout][hglink] Found reachable HLS playlist", xbmc.LOGINFO)
+            return candidate, {
                 "User-Agent": request_headers["User-Agent"],
                 "Referer": page_url,
             }
-        if stream_urls:
-            xbmc.log(
-                "[AdultHideout][hglink] Skipping unresolved CDN host (attempt {})".format(
-                    attempt + 1
-                ),
-                xbmc.LOGWARNING,
-            )
-    xbmc.log("[AdultHideout][hglink] No reachable HLS stream found", xbmc.LOGWARNING)
+
+    xbmc.log(
+        "[AdultHideout][hglink] No reachable HLS stream found within {:.1f}s".format(
+            min(_MAX_RESOLVE_SECONDS, time.monotonic() - (deadline - _MAX_RESOLVE_SECONDS))
+        ),
+        xbmc.LOGWARNING,
+    )
     return "", {}
