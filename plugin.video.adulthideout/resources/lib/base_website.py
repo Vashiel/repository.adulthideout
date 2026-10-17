@@ -240,7 +240,7 @@ class BaseWebsite:
     def add_dir(self, name, url, mode, icon=None, fanart=None, context_menu=None, name_param=None, info_labels=None, **kwargs):
         icon = icon or self.icons.get('default', self.icon)
         fanart = fanart or self.fanart
-        u = f"{sys.argv[0]}?url={urllib.parse.quote_plus(str(url))}&mode={mode}&name={urllib.parse.quote_plus(name_param or name)}&website={self.name}"
+        u = f"{sys.argv[0]}?url={urllib.parse.quote_plus(str(url))}&mode={mode}&name={urllib.parse.quote_plus(str(name_param or name))}&website={self.name}"
         if kwargs:
             for key, value in kwargs.items(): u += f"&{key}={urllib.parse.quote_plus(str(value))}"
 

@@ -19,8 +19,8 @@ class Wowxxx(BaseWebsite):
     def __init__(self, addon_handle, addon=None):
         super().__init__(
             name="wowxxx",
-            base_url="https://www.wow.xxx/",
-            search_url="https://www.wow.xxx/search/{}/",
+            base_url="https://www.wowxxx.to/",
+            search_url="https://www.wowxxx.to/search/{}/",
             addon_handle=addon_handle,
             addon=addon,
         )

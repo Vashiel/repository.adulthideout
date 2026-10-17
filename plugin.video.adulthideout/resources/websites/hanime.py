@@ -202,6 +202,15 @@ class Hanime(BaseWebsite):
             if video_items:
                 break
 
+        if not video_items:
+            for attrs, body in re.findall(r'<a\b([^>]*)>([\s\S]*?)</a>', html_content or "", re.I):
+                link = re.search(r'\bhref="([^"]+)"', attrs, re.I)
+                image = re.search(r'<img\b[^>]*\bsrc="(/media/posters/[^"]+)"[^>]*>', body, re.I)
+                title = re.search(r'<h3\b[^>]*>([\s\S]*?)</h3>', body, re.I)
+                if link and image and title:
+                    video_items.append({"url": urllib.parse.urljoin(self.base_url, link.group(1)),
+                                        "title": html.unescape(re.sub(r'<[^>]+>', '', title.group(1))).strip(),
+                                        "thumb": urllib.parse.urljoin(self.base_url, image.group(1))})
         return video_items
 
     def process_content(self, url):

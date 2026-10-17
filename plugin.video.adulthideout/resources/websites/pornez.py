@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
+import urllib.parse
 
 from resources.lib.resolvers import resolver
 from resources.lib.wordpress_api_tube import WordPressApiTube
@@ -11,8 +12,41 @@ class PornEZ(WordPressApiTube):
     def __init__(self, addon_handle, addon=None):
         super().__init__("pornez", "PornEZ", "https://pornez.cam/", addon_handle, addon)
 
+    def _thumbnail(self, post):
+        thumbnail = super()._thumbnail(post)
+        if not thumbnail or thumbnail == self.icon:
+            return thumbnail
+        return thumbnail + "|" + urllib.parse.urlencode({"User-Agent": self.ua, "Referer": self.base_url})
+
     def resolve_recording_stream(self, url):
         page_html = self._get(url, referer=self.base_url)
+
+        for value in re.findall(
+            r'<iframe\b[^>]+src=["\']([^"\']*cdnlivestream\.xyz/[^"\']+)',
+            page_html or "",
+            re.IGNORECASE,
+        ):
+            player_url = self._absolute(value, url)
+            player_html = self._get(player_url, referer=url)
+            playlist_matches = re.findall(
+                r'https?:\\?/\\?/[^"\'<>\s]+?\.m3u8(?:\?[^"\'<>\s]*)?',
+                player_html or "",
+                re.IGNORECASE,
+            )
+            for candidate in playlist_matches:
+                candidate = (
+                    candidate.replace("\\/", "/")
+                    .replace("\\u0026", "&")
+                    .replace("\\x26", "&")
+                )
+                candidate = self._absolute(candidate, player_url)
+                if ".m3u8" in urllib.parse.urlsplit(candidate).path.lower():
+                    return {
+                        "url": candidate,
+                        "headers": self._headers(player_url),
+                        "extension": "m3u8",
+                    }
+
         iframe = re.search(
             r'<iframe\b[^>]+src=["\'](https?://player\.mediadelivery\.net/embed/[^"\']+)',
             page_html or "",

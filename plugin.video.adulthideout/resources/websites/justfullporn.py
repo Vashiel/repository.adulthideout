@@ -3,6 +3,7 @@ import html
 import re
 import urllib.parse
 
+from resources.lib.resolvers import resolver
 from resources.websites.xopenload import XopenloadWebsite
 
 
@@ -51,7 +52,13 @@ class JustFullPornWebsite(XopenloadWebsite):
         return result
 
     def _extract_host_links(self, page_html):
-        return [html.unescape(url) for url in re.findall(r'<iframe[^>]+src=["\'](https?://[^"\']+)', page_html, re.I) if "vsonic" in url.lower()]
+        links, seen = [], set()
+        for url in re.findall(r'<iframe[^>]+src=["\'](https?://[^"\']+)', page_html, re.I):
+            clean_url = html.unescape(url).strip()
+            if clean_url not in seen and (resolver.resolver_entry_for_url(clean_url) or "vsonic" in clean_url.lower()):
+                seen.add(clean_url)
+                links.append(clean_url)
+        return links
 
     def search(self, query):
         if query:

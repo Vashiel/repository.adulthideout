@@ -51,7 +51,7 @@ class Javtiful(KVSTubeWebsite):
         videos = []
         seen = set()
         for block in re.findall(
-            r'<article\b[^>]+class=["\'][^"\']*\bfront-video-card\b(?![^"\']*\bfront-partner-card\b)'
+            r'<article\b[^>]+class=["\'][^"\']*\b(?:front-video-card|video-card)\b(?![^"\']*\bfront-partner-card\b)'
             r'[^"\']*["\'][^>]*>[\s\S]{0,8000}?</article>',
             html_content or "",
             re.IGNORECASE,
@@ -71,7 +71,7 @@ class Javtiful(KVSTubeWebsite):
                 continue
 
             title_match = re.search(
-                r'<a\b[^>]+class=["\'][^"\']*\bfront-video-title\b[^"\']*["\'][^>]*>'
+                r'<a\b[^>]+class=["\'][^"\']*\b(?:front-video-title|video-card__title)\b[^"\']*["\'][^>]*>'
                 r'([\s\S]*?)</a>',
                 block,
                 re.IGNORECASE,
@@ -91,11 +91,13 @@ class Javtiful(KVSTubeWebsite):
                         break
 
             duration_match = re.search(
-                r'class=["\'][^"\']*\bfront-duration-tag\b[^"\']*["\'][^>]*>([^<]+)',
+                r'class=["\'][^"\']*\b(?:front-duration-tag|video-card__details)\b[^"\']*["\'][^>]*>([\s\S]*?)</span>',
                 block,
                 re.IGNORECASE,
             )
             duration = self._clean(duration_match.group(1) if duration_match else "")
+            time_match = re.search(r'\d{1,2}:\d{2}(?::\d{2})?', duration)
+            duration = time_match.group(0) if time_match else ""
             seconds = self.convert_duration(duration)
             label = "{} [COLOR lime]({})[/COLOR]".format(title, duration) if duration else title
             info = {"title": title, "plot": title}

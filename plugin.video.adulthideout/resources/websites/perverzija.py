@@ -166,10 +166,12 @@ sys.stdout.write(body)
             raise RuntimeError(completed.stderr.strip() or "system fetch failed")
         return completed.stdout
 
-    def _request(self, url, referer=None):
+    def _request(self, url, referer=None, extra_headers=None):
         headers = {"User-Agent": self.user_agent}
         if referer:
             headers["Referer"] = referer
+        if extra_headers:
+            headers.update(extra_headers)
         try:
             response = self.session.get(url, headers=headers, timeout=30)
             if response.status_code == 200:
@@ -307,28 +309,65 @@ sys.stdout.write(body)
             return None, None
 
         iframe_html = self._request(iframe_url, referer=page_url)
+
+        # Check modern XSFTK player
+        boot_match = re.search(r'XSFTK\.boot\(["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', iframe_html)
+        if boot_match:
+            video_id = boot_match.group(1)
+            token = boot_match.group(2)
+            parsed_iframe = urllib.parse.urlsplit(iframe_url)
+            host = f"{parsed_iframe.scheme}://{parsed_iframe.netloc}"
+            sign_url = f"{host}/player/proto_api.php?data={video_id}&op=castsign&vt={urllib.parse.quote(token)}"
+            sign_headers = {
+                "Origin": host,
+                "X-XS-P": "1"
+            }
+            ct_text = self._request(sign_url, referer=iframe_url, extra_headers=sign_headers)
+            if ct_text:
+                ct = ct_text.strip()
+                master_url = f"{host}/player/proto_api.php?data={video_id}&op=castmaster&vt={urllib.parse.quote(token)}&ct={urllib.parse.quote(ct)}"
+                return master_url, iframe_url
+
+        # Check legacy m3u8_loader_url player
         loader_match = re.search(r"var m3u8_loader_url = `([^`]+)`;", iframe_html)
         video_match = re.search(r"var video_id = `([^`]+)`;", iframe_html)
-        if not loader_match or not video_match:
-            return None, None
+        if loader_match and video_match:
+            master_url = f"{loader_match.group(1)}{video_match.group(1)}"
+            variant_url = self._extract_best_variant_url(master_url, iframe_url)
+            return variant_url, iframe_url
 
-        master_url = f"{loader_match.group(1)}{video_match.group(1)}"
-        variant_url = self._extract_best_variant_url(master_url, iframe_url)
-        return variant_url, iframe_url
+        return None, None
+
+    def resolve_recording_stream(self, url):
+        stream_url, iframe_url = self._resolve_stream(url)
+        if stream_url:
+            parsed = urllib.parse.urlsplit(iframe_url)
+            origin = f"{parsed.scheme}://{parsed.netloc}"
+            headers = {
+                "User-Agent": self.user_agent,
+                "Referer": iframe_url,
+                "Origin": origin,
+            }
+            return {"url": stream_url, "headers": headers, "extension": "m3u8"}
+        return None
 
     def play_video(self, url):
-        stream_url, iframe_url = self._resolve_stream(url)
-        if not stream_url:
-            self.notify_error("Could not resolve video URL")
-            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
+        resolved = self.resolve_recording_stream(url)
+        if resolved:
+            stream_url = resolved["url"]
+            headers = resolved.get("headers", {})
+            play_url = stream_url + "|" + urllib.parse.urlencode(headers) if headers else stream_url
+            list_item = xbmcgui.ListItem(path=play_url)
+            list_item.setProperty("IsPlayable", "true")
+            list_item.setMimeType("application/vnd.apple.mpegurl")
+            list_item.setProperty("inputstream", "inputstream.adaptive")
+            list_item.setProperty("inputstream.adaptive.manifest_type", "hls")
+            list_item.setContentLookup(False)
+            xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
             return
 
-        headers = urllib.parse.urlencode({"User-Agent": self.user_agent, "Referer": iframe_url})
-        list_item = xbmcgui.ListItem(path=f"{stream_url}|{headers}")
-        list_item.setProperty("IsPlayable", "true")
-        list_item.setMimeType("application/vnd.apple.mpegurl")
-        list_item.setContentLookup(False)
-        xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
+        self.notify_error("Could not resolve video URL")
+        xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
 
     def search(self, query):
         if query:

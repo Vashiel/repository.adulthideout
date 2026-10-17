@@ -152,20 +152,62 @@ class OneTwoThreeAV(BaseWebsite):
 
     def resolve_recording_stream(self, url):
         page = self._get(url, self.root + "/en")
-        embeds = re.findall(r'javplayer\.cc[\\/]+e[\\/]+([A-Za-z0-9_-]+)', page or "", re.I)
+        if not page:
+            return None
+
+        embed_urls = []
+        player_match = re.search(r'x-data=["\']player\(JSON\.parse\(["\']([\s\S]*?)["\']\)', page, re.I)
+        if player_match:
+            try:
+                raw = player_match.group(1).encode('utf-8').decode('unicode_escape')
+                raw = raw.replace('\\/', '/')
+                items = json.loads(raw)
+                for ep in items:
+                    u = ep.get('url')
+                    if u:
+                        embed_urls.append(u)
+            except Exception as e:
+                self.logger.warning("123AV json parse failed: %s", e)
+
+        if not embed_urls:
+            embed_matches = re.findall(r'https?:\\?/\\?/[^"\'<>\s]+?\\?/e\\?/[A-Za-z0-9_-]+', page, re.I)
+            for m in embed_matches:
+                embed_urls.append(m.replace('\\/', '/'))
+
+        embeds = re.findall(r'javplayer\.cc[\\/]+e[\\/]+([A-Za-z0-9_-]+)', page, re.I)
         for embed_id in embeds:
+            embed_urls.append("https://javplayer.cc/e/" + embed_id)
+
+        for embed_url in embed_urls:
+            parsed = urllib.parse.urlparse(embed_url)
+            match = re.search(r'/e/([A-Za-z0-9_-]+)', parsed.path)
+            if not match:
+                continue
+            embed_id = match.group(1)
+            stream_api = "{}://{}/stream?id={}".format(parsed.scheme, parsed.netloc, embed_id)
             try:
                 response = self.session.get(
-                    "https://javplayer.cc/stream?id=" + embed_id,
-                    headers=self._headers(url),
+                    stream_api,
+                    headers={
+                        "User-Agent": self.ua,
+                        "Referer": embed_url,
+                        "Accept": "application/json, text/plain, */*",
+                    },
                     timeout=(7, 20),
                 )
-                payload = response.json() if response.status_code == 200 else {}
-                stream = payload.get("media", {}).get("stream")
-                if stream and stream.startswith("http"):
-                    return {"url": stream, "headers": self._headers("https://javplayer.cc/"), "extension": "m3u8"}
-            except (ValueError, requests.RequestException):
-                continue
+                if response.status_code == 200:
+                    payload = response.json()
+                    stream = payload.get("media", {}).get("stream")
+                    if stream and stream.startswith("http"):
+                        ref = "{}://{}/".format(parsed.scheme, parsed.netloc)
+                        return {
+                            "url": stream,
+                            "headers": {"User-Agent": self.ua, "Referer": ref},
+                            "extension": "m3u8",
+                        }
+            except Exception as exc:
+                self.logger.warning("123AV stream fetch error: %s", exc)
+
         return None
 
 

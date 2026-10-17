@@ -164,30 +164,67 @@ class PornMZ(BaseWebsite):
                 return html_content[start_idx:]
         return html_content
 
-    def resolve(self, url):
+    def resolve_recording_stream(self, url):
         html_content = self.make_request(url)
         if not html_content:
-            return None, None
+            return None
 
-        # Extract contentURL meta
+        # 1. Clean-tube-player base64 encoded query
+        for q in re.findall(r'player-x\.php\?q=([A-Za-z0-9+/=]+)', html_content):
+            try:
+                import base64
+                decoded = urllib.parse.unquote(base64.b64decode(q).decode('utf-8', 'ignore'))
+                for m in re.finditer(r'src=["\']([^"\']+\.(?:mp4|webm|m3u8)[^"\']*)', decoded, re.I):
+                    stream_url = html.unescape(m.group(1)).replace('\\/', '/')
+                    if "preview" not in stream_url.lower():
+                        ext = "webm" if ".webm" in stream_url.lower() else ("m3u8" if ".m3u8" in stream_url.lower() else "mp4")
+                        ua = self.scraper.headers.get('User-Agent', 'Mozilla/5.0')
+                        headers = {"User-Agent": ua}
+                        if "twimg.com" not in stream_url:
+                            headers["Referer"] = url
+                        return {"url": stream_url, "headers": headers, "extension": ext}
+            except Exception as e:
+                self.logger.warning(f"PornMZ base64 player decode failed: {e}")
+
+        # 2. Extract contentURL meta fallback
         video_url_match = re.search(r'<meta itemprop="contentURL" content="([^"]+)"', html_content)
         if video_url_match:
-            return video_url_match.group(1), url
+            stream_url = video_url_match.group(1)
+            ext = "m3u8" if ".m3u8" in stream_url.lower() else "mp4"
+            ua = self.scraper.headers.get('User-Agent', 'Mozilla/5.0')
+            return {"url": stream_url, "headers": {"User-Agent": ua, "Referer": url}, "extension": ext}
 
+        # 3. Fallback to external resolver
+        try:
+            from resources.lib import resolver
+            resolved = resolver.resolve_first_working(html_content, referer=url)
+            if resolved:
+                return resolved
+        except Exception:
+            pass
+
+        return None
+
+    def resolve(self, url):
+        res = self.resolve_recording_stream(url)
+        if res:
+            return res.get('url'), url
         return None, None
 
     def play_video(self, url):
-        resolved_url, referer = self.resolve(url)
-        if resolved_url:
-            ua = self.scraper.headers.get('User-Agent', '')
-            final_url = resolved_url + f"|User-Agent={urllib.parse.quote(ua)}"
+        res = self.resolve_recording_stream(url)
+        if res and res.get('url'):
+            stream_url = res['url']
+            ua = res.get('headers', {}).get('User-Agent') or self.scraper.headers.get('User-Agent', '')
+            final_url = stream_url + f"|User-Agent={urllib.parse.quote(ua)}"
             
             li = xbmcgui.ListItem(path=final_url)
-            # If it's m3u8, Kodi handles it if we set property
-            if '.m3u8' in resolved_url:
+            if res.get('extension') == 'm3u8' or '.m3u8' in stream_url:
                 li.setProperty('inputstream', 'inputstream.adaptive')
                 li.setProperty('inputstream.adaptive.manifest_type', 'hls')
                 li.setMimeType('application/vnd.apple.mpegurl')
+            elif res.get('extension') == 'webm' or '.webm' in stream_url:
+                li.setMimeType('video/webm')
             else:
                 li.setMimeType('video/mp4')
                 

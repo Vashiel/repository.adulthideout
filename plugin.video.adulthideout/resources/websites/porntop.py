@@ -100,8 +100,9 @@ class PornTop(BaseWebsite):
     def _normalise(value, inner=False):
         value = value.translate({0x421: "C", 0x415: "E", 0x41C: "M", 0x410: "A", 0x412: "B"})
         if not inner:
-            return value.replace(".", "b")
-        value = value.replace(",", "/")
+            value = value.replace(".", "b")
+        else:
+            value = value.replace(",", "/")
         # PornTop randomizes the final Base64 padding character per request.
         return re.sub(r"[^A-Za-z0-9+/=]", "=", value)
 

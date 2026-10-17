@@ -162,9 +162,12 @@ class BoundHub(BaseWebsite):
             
         xbmc.log(f"BoundHub: Got HTML content ({len(html)} bytes)", xbmc.LOGINFO)
         
-        debug_path = xbmcvfs.translatePath('special://temp/boundhub_listing.html')
-        with open(debug_path, 'w', encoding='utf-8') as f:
-            f.write(html)
+        try:
+            debug_path = xbmcvfs.translatePath('special://temp/boundhub_listing.html')
+            with open(debug_path, 'w', encoding='utf-8') as f:
+                f.write(html)
+        except Exception:
+            pass
 
         items = []
         item_pattern = re.compile(r'<div class=\"item\s*[^\"]*\">', re.DOTALL)
@@ -273,9 +276,12 @@ class BoundHub(BaseWebsite):
 
         xbmc.log(f"BoundHub: Got Categories HTML content ({len(html)} bytes)", xbmc.LOGINFO)
 
-        debug_path = xbmcvfs.translatePath('special://temp/boundhub_categories.html')
-        with open(debug_path, 'w', encoding='utf-8') as f:
-            f.write(html)
+        try:
+            debug_path = xbmcvfs.translatePath('special://temp/boundhub_categories.html')
+            with open(debug_path, 'w', encoding='utf-8') as f:
+                f.write(html)
+        except Exception:
+            pass
         
         pattern = r'<a\s+class="item[^"]*"\s+href="([^"]+)"\s+title="([^"]+)"[^>]*>.*?<img\s+[^>]*src="([^"]+)"'
         pattern_lazy = r'<a\s+class="item[^"]*"\s+href="([^"]+)"\s+title="([^"]+)"[^>]*>.*?<img\s+[^>]*data-original="([^"]+)"'
@@ -305,6 +311,38 @@ class BoundHub(BaseWebsite):
                 self.add_dir('[COLOR blue]Next Page >>>>[/COLOR]', next_url, 8, self.icons.get('default'), self.fanart)
              
         self.end_directory()
+
+
+    def resolve_recording_stream(self, url):
+        headers = self.get_headers()
+        try:
+            if _HAS_CF:
+                scraper = cloudscraper.create_scraper(browser={'custom': headers['User-Agent']})
+                r = scraper.get(url, headers=headers, timeout=20)
+                html = r.text
+            else:
+                req = urllib.request.Request(url, headers=headers)
+                with urllib.request.urlopen(req, timeout=15) as response:
+                    html = response.read().decode('utf-8')
+            if not html:
+                return None
+            video_url = None
+            video_url_match = re.search(r"video_url\s*:\s*['\"]([^'\"]+)['\"]", html)
+            if video_url_match:
+                video_url = video_url_match.group(1)
+                if not video_url.startswith('http'):
+                    license_match = re.search(r"license_code\s*:\s*['\"]([^'\"]+)['\"]", html)
+                    if license_match:
+                        video_url = kvs_decode_url(video_url, license_match.group(1))
+            if not video_url or not video_url.startswith('http'):
+                source_match = re.search(r'<source src="([^"]+)" type="video/mp4"', html)
+                if source_match:
+                    video_url = source_match.group(1)
+            if video_url and video_url.startswith('http'):
+                return {"url": video_url, "headers": {'Referer': url, 'User-Agent': headers['User-Agent']}, "extension": "mp4"}
+        except Exception as e:
+            xbmc.log(f"BoundHub resolve_recording_stream Error: {e}", xbmc.LOGERROR)
+        return None
 
     def play_video(self, url):
         xbmc.log(f"BoundHub: Playing video {url}", xbmc.LOGINFO)

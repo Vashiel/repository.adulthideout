@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import base64
 import re
+import urllib.request
 
 from resources.lib.wordpress_api_tube import WordPressApiTube
 
@@ -10,6 +11,16 @@ class EroticMV(WordPressApiTube):
 
     def __init__(self, addon_handle, addon=None):
         super().__init__("eroticmv", "EroticMV", "https://eroticmv.com/", addon_handle, addon)
+
+    def _get(self, url, referer=None):
+        headers = self._headers(referer)
+        headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36"
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=12) as response:
+                return response.read().decode("utf-8", "replace")
+        except Exception as exc:
+            self.logger.warning("[eroticmv] HTML request failed: %s", exc)
+            return ""
 
     def resolve_recording_stream(self, url):
         page_html = self._get(url, referer=self.base_url)

@@ -10,6 +10,7 @@ import xbmcgui
 import xbmcplugin
 
 from resources.lib.base_website import BaseWebsite
+from resources.lib.host_links import extract_host_links
 from resources.lib.resolvers import resolver
 from resources.lib.stream_validation import is_stream_host_resolvable
 
@@ -181,6 +182,12 @@ class BananaMovies(BaseWebsite):
                 info_labels=info,
             )
 
+        if not seen:
+            from resources.lib.movie_cards import parse_movie_cards
+            for item in parse_movie_cards(html_content, self.base_url):
+                self.add_link(item["title"], item["url"], 4, item["thumb"], self.fanart,
+                              context_menu=context_menu, info_labels=item["info"])
+
         next_url = None
         next_match = re.search(r'rel="next" href="([^"]+)"', html_content, re.IGNORECASE)
         if not next_match:
@@ -257,19 +264,11 @@ class BananaMovies(BaseWebsite):
 
     def _extract_hoster_candidates(self, html_content):
         candidates = []
-
-        for host_url in re.findall(r'data-fl-url="([^"]+)"', html_content, re.IGNORECASE):
-            host_url = html.unescape(host_url).replace("&amp;", "&").strip()
+        for host_url in extract_host_links(html_content):
             if "/d/" in host_url:
                 host_url = host_url.replace("/d/", "/e/")
-            candidates.append(host_url)
-
-        for href in re.findall(r'<a[^>]+href="(https?://[^"]+)"[^>]*>\s*(?:<img[^>]*>)?\s*DoodStream', html_content, re.IGNORECASE):
-            host_url = html.unescape(href).replace("&amp;", "&").strip()
-            if "doply.net/e/" in host_url:
-                code = host_url.rstrip("/").split("/")[-1]
-                host_url = "https://doodstream.com/e/{}/".format(code)
-            candidates.append(host_url)
+            if resolver.resolver_entry_for_url(host_url):
+                candidates.append(host_url)
 
         unique = []
         seen = set()

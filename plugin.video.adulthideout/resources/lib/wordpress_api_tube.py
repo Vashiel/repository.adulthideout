@@ -122,7 +122,8 @@ class WordPressApiTube(BaseWebsite):
         for key in ("medium_large", "large", "medium", "post-thumbnail"):
             if (sizes.get(key) or {}).get("source_url"):
                 return self._absolute(sizes[key]["source_url"])
-        return self._absolute(item.get("source_url")) or self.icon
+        source_url = item.get("source_url")
+        return self._absolute(source_url) if source_url else self.icon
 
     def _video_items(self, posts):
         items = []
@@ -163,7 +164,7 @@ class WordPressApiTube(BaseWebsite):
         items = []
         seen = set()
         for block in re.findall(
-            r'<article\b[^>]+class=["\'][^"\']*loop-video[^"\']*["\'][^>]*>([\s\S]*?)</article>',
+            r'<article\b[^>]+class=["\'][^"\']*(?:loop-video|post-item)[^"\']*["\'][^>]*>([\s\S]*?)</article>',
             page_html or "", re.IGNORECASE,
         ):
             link = re.search(
@@ -176,9 +177,16 @@ class WordPressApiTube(BaseWebsite):
             if not video_url or video_url in seen:
                 continue
             title = self._clean(link.group(2))
-            image = re.search(
-                r'<img\b[^>]+(?:data-src|src)=["\']([^"\']+)', block, re.IGNORECASE,
-            )
+            if not title:
+                anchor_title = re.search(r'\btitle=["\']([^"\']+)', link.group(0), re.I)
+                title = self._clean(anchor_title.group(1)) if anchor_title else ""
+            image_tag = re.search(r'<img\b[^>]*>', block, re.IGNORECASE)
+            image = None
+            if image_tag:
+                for attr in ("data-src", "data-original", "src"):
+                    image = re.search(r'\b{}=["\']([^"\']+)'.format(attr), image_tag.group(0), re.I)
+                    if image:
+                        break
             if not title and image:
                 image_tag = re.search(r'<img\b[^>]*>', block, re.IGNORECASE)
                 alt = re.search(r'\balt=["\']([^"\']+)', image_tag.group(0), re.IGNORECASE) if image_tag else None
@@ -219,6 +227,15 @@ class WordPressApiTube(BaseWebsite):
             has_next = bool(items and page < total_pages)
         else:
             items, has_next = self._html_video_items(url, page)
+
+        if isinstance(posts, list) and any(not item.get("thumb") or item["thumb"] == self.icon for item in items):
+            # Some sites expose artwork only in the HTML, not featured-media metadata.
+            html_items, _ = self._html_video_items(url, page)
+            artwork = {item["url"].rstrip("/"): item["thumb"] for item in html_items
+                       if item.get("thumb") and item["thumb"] != self.icon}
+            for item in items:
+                if not item.get("thumb") or item["thumb"] == self.icon:
+                    item["thumb"] = artwork.get(item["url"].rstrip("/"), item.get("thumb"))
 
         if not items:
             self.notify_error("Could not load {} content".format(self.label))

@@ -145,29 +145,30 @@ class ThreeMovs(BaseWebsite):
 
         self.end_directory()
 
+    def resolve_recording_stream(self, url):
+        page_html = self.make_request(url)
+        if not page_html:
+            return None
+        player_config = re.search(r'var\s+flashvars\s*=\s*({.*?});', page_html, re.DOTALL)
+        if player_config:
+            config_json = player_config.group(1)
+            hq_match = re.search(r'video_url:\s*[\'"](.*?)[\'"]', config_json)
+            lq_match = re.search(r'video_alt_url:\s*[\'"](.*?)[\'"]', config_json)
+            stream_url = (hq_match.group(1) if hq_match else None) or (lq_match.group(1) if lq_match else None)
+            if stream_url:
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': self.base_url,
+                }
+                return {"url": stream_url, "headers": headers, "extension": "mp4"}
+        return None
+
     def play_video(self, url):
         import xbmcgui
         import xbmcplugin
         
-        page_html = self.make_request(url)
-        if not page_html:
-            return
-
-        # KVS flashvars pattern
-        player_config = re.search(r'var\s+flashvars\s*=\s*({.*?});', page_html, re.DOTALL)
-        stream_url = None
-        
-        if player_config:
-            config_json = player_config.group(1)
-            # Find video_url and video_alt_url
-            hq_match = re.search(r'video_url:\s*[\'"](.*?)[\'"]', config_json)
-            lq_match = re.search(r'video_alt_url:\s*[\'"](.*?)[\'"]', config_json)
-            
-            hq_url = hq_match.group(1) if hq_match else None
-            lq_url = lq_match.group(1) if lq_match else None
-            
-            # Always prefer HQ as requested by user, bypass dialog
-            stream_url = hq_url or lq_url
+        resolved = self.resolve_recording_stream(url)
+        stream_url = resolved['url'] if resolved else None
 
         if stream_url:
             try:

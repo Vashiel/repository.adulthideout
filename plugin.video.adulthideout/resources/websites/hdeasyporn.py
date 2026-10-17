@@ -74,7 +74,14 @@ class HdEasyPorn(BaseWebsite):
             duration = re.search(r'class=["\']duration["\'][^>]*>\s*([^<]+)', block, re.I)
             clean_title = html.unescape(title).strip()
             label = "{} [COLOR lime]({})[/COLOR]".format(clean_title, duration.group(1).strip()) if duration else clean_title
-            thumb = build_thumb_url(html.unescape(thumb), referer=self.base_url)
+            image_tag = re.search(r'<img\b[^>]*>', block, re.I)
+            if image_tag:
+                for attr in ("data-src", "data-original", "src"):
+                    candidate = re.search(r'\s{}=["\']([^"\']+)'.format(attr), image_tag.group(0), re.I)
+                    if candidate and not candidate.group(1).startswith("data:"):
+                        thumb = candidate.group(1)
+                        break
+            thumb = build_thumb_url(urllib.parse.urljoin(self.base_url, html.unescape(thumb)), referer=self.base_url)
             items.append((label, clean_title, url, thumb))
         return items
 

@@ -77,23 +77,46 @@ class LatestLeaks(BaseWebsite):
 
     def resolve_recording_stream(self, url):
         content = self._get(url, self.base_url)
-        embed = re.search(r'<iframe[^>]+src=["\'](https?://(?:www\.)?gupload\.xyz/[^"\']+)', content, re.I)
-        if not embed:
+        if not content:
             return None
-        stream, headers = resolver.resolve(html.unescape(embed.group(1)), referer=url, headers=self._headers(url))
-        if not stream:
-            return None
-        return {"url": stream, "headers": headers, "extension": "m3u8"}
+
+        links, seen = [], set()
+        for iframe_src in re.findall(r'<iframe\b[^>]+src=["\']([^"\']+)["\']', content, re.I):
+            clean_url = html.unescape(iframe_src).strip()
+            if clean_url not in seen and resolver.resolver_entry_for_url(clean_url):
+                seen.add(clean_url)
+                links.append(clean_url)
+
+        if not links:
+            for m in re.finditer(r'<iframe[^>]+src=["\'](https?://[^"\']+)', content, re.I):
+                clean_url = html.unescape(m.group(1)).strip()
+                if clean_url not in seen:
+                    seen.add(clean_url)
+                    links.append(clean_url)
+
+        stream_url, headers, _ = resolver.resolve_first_working(
+            links,
+            referer=url,
+            headers={"User-Agent": self.ua, "Referer": url},
+            addon=self.addon,
+        )
+        if stream_url:
+            ext = "m3u8" if ".m3u8" in stream_url.lower() else "mp4"
+            return {"url": stream_url, "headers": headers or {}, "extension": ext}
+        return None
 
     def play_video(self, url):
         resolved = self.resolve_recording_stream(url)
         if not resolved:
-            self.notify_error("No public GUpload stream found")
+            self.notify_error("Could not resolve LatestLeaks stream")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
-        play_url = resolved["url"] + "|" + urllib.parse.urlencode(resolved["headers"])
+        play_url = resolved["url"]
+        if resolved.get("headers"):
+            play_url += "|" + urllib.parse.urlencode(resolved["headers"])
         item = xbmcgui.ListItem(path=play_url)
         item.setProperty("IsPlayable", "true")
-        item.setMimeType("application/vnd.apple.mpegurl")
+        mime = "application/vnd.apple.mpegurl" if resolved["extension"] == "m3u8" else "video/mp4"
+        item.setMimeType(mime)
         item.setContentLookup(False)
         xbmcplugin.setResolvedUrl(self.addon_handle, True, item)

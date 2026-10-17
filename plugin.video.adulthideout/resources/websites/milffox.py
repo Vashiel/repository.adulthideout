@@ -195,6 +195,37 @@ class MilfFox(BaseWebsite):
         content = self._get(url, referer=self.base_url)
         if not content:
             return None
+
+        # 1. Check modern MFConfig get_video.php endpoints
+        get_video_matches = re.findall(
+            r'(\[(?:1080p|720p|480p|360p)\])?(//[^\s,"\'\+]+/player/get_video\.php\?[^\s,"\'\+]+)',
+            content,
+            re.IGNORECASE,
+        )
+        if get_video_matches:
+            target_endpoint = None
+            for quality_tag, endpoint in get_video_matches:
+                if "1080p" in (quality_tag or ""):
+                    target_endpoint = endpoint
+                    break
+            if not target_endpoint:
+                for quality_tag, endpoint in get_video_matches:
+                    if "720p" in (quality_tag or ""):
+                        target_endpoint = endpoint
+                        break
+            if not target_endpoint:
+                target_endpoint = get_video_matches[0][1]
+
+            full_endpoint = "https:" + target_endpoint if target_endpoint.startswith("//") else target_endpoint
+            try:
+                resp = self.session.get(full_endpoint, headers=self._headers(url), allow_redirects=False, timeout=10)
+                cdn_url = resp.headers.get("Location") or (resp.url if resp.status_code == 200 else None)
+                if cdn_url:
+                    return {"url": cdn_url, "headers": self._headers(url, accept="*/*"), "extension": "mp4"}
+            except Exception as e:
+                self.logger.warning("MilfFox get_video lookup failed: %s", e)
+
+        # 2. Legacy video_url / video_alt_url
         alt = re.search(r"video_alt_url:\s*'([^']+)'", content)
         primary = re.search(r"video_url:\s*'([^']+)'", content)
         match = alt or primary

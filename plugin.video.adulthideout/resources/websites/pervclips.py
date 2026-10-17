@@ -377,6 +377,33 @@ class PervClipsWebsite(BaseWebsite):
             
         super().add_link(name, url, mode, icon, fanart, context_menu, info_labels)
 
+
+    def resolve_recording_stream(self, url):
+        content = self.make_request(url)
+        if not content:
+            return None
+        video_url = None
+        vu_match = re.search(r"video_url\s*:\s*'([^']+)'", content)
+        if vu_match:
+            video_url = vu_match.group(1)
+            if video_url.startswith('function/0/'):
+                video_url = video_url.replace('function/0/', '')
+        if not video_url:
+            vu_match = re.search(r'<source[^>]+src="([^"]+)"', content)
+            if vu_match:
+                video_url = vu_match.group(1)
+        if video_url:
+            if not video_url.startswith('http'):
+                video_url = urllib.parse.urljoin(self.base_url, video_url)
+            separator = '&' if '?' in video_url else '?'
+            video_url += f'{separator}rnd={int(time.time() * 1000)}'
+            ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            referer = self.base_url + "/"
+            headers = {"User-Agent": ua, "Referer": referer}
+            ext = "m3u8" if ".m3u8" in video_url else "mp4"
+            return {"url": video_url, "headers": headers, "extension": ext}
+        return None
+
     def play_video(self, url):
         content = self.make_request(url)
         if not content:

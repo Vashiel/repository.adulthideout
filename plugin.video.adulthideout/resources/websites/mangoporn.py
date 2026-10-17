@@ -77,6 +77,8 @@ class MangoPorn(BaseWebsite):
             if not link:
                 continue
             item_url = self._absolute(link.group(1))
+            if "/page/" in item_url:
+                continue
             title_match = re.search(r"<h3\b[^>]*class=[\"'][^\"']*\btitle\b[^\"']*[\"'][^>]*>([\s\S]*?)</h3>", block, re.I)
             if not title_match:
                 title_match = re.search(r"<img\b[^>]*(?:alt|title)=[\"']([^\"']+)[\"']", block, re.I)
@@ -170,20 +172,57 @@ class MangoPorn(BaseWebsite):
             return {"url": streams[0], "headers": self._headers(url, accept="*/*"), "extension": "mp4"}
 
         links, seen = [], set()
-        host_pattern = r'href=["\'](https?://(?:[^/]*dood[^/]*|doply\.net|[^/]*mixdrop[^/]*)/[^"\']+)["\']'
+
+        # Check for video-embed iframe/link
+        embed_match = re.search(r'/(?:video-embed|embed)/(\d+)/?', content or "", re.I)
+        if not embed_match:
+            embed_match = re.search(r'href=[\"\']([^\"\']*/(?:video-embed|embed)/\d+/?)[\"\']', content or "", re.I)
+        
+        embed_url = None
+        if embed_match:
+            matched = embed_match.group(0)
+            embed_url = self._absolute(matched if matched.startswith("http") or matched.startswith("/") else embed_match.group(1))
+            embed_content = self._get(embed_url, referer=url)
+            if embed_content:
+                # Extract servers from data-servers JSON
+                servers_match = re.search(r'data-servers=[\"\']([^\"\']+)[\"\']', embed_content, re.I)
+                if servers_match:
+                    try:
+                        import json
+                        server_list = json.loads(html.unescape(servers_match.group(1)))
+                        for item in server_list:
+                            u = item.get("u")
+                            if u and u not in seen:
+                                seen.add(u)
+                                links.append(u)
+                    except Exception as err:
+                        self.logger.warning("MangoPorn data-servers parse error: %s", err)
+                
+                # Also extract any iframes or host links in embed content
+                for iframe_src in re.findall(r'<iframe\b[^>]+src=[\"\']([^\"\']+)[\"\']', embed_content, re.I):
+                    h_url = self._absolute(iframe_src)
+                    if h_url not in seen:
+                        seen.add(h_url)
+                        links.append(h_url)
+
+        # Check host links directly in movie page
+        host_pattern = r'href=[\"\'](https?://(?:[^/]*dood[^/]*|playmogo\.com|luluvido\.com|doply\.net|[^/]*mixdrop[^/]*|voe\.sx)/[^\"\']+)[\"\']'
         for match in re.finditer(host_pattern, content or "", re.I):
             host_url = html.unescape(match.group(1))
             if host_url not in seen:
                 seen.add(host_url)
                 links.append(host_url)
+
+        ref = embed_url or url
         stream_url, headers, _ = resolver.resolve_first_working(
             links,
-            referer=url,
-            headers={"User-Agent": self.ua, "Referer": url},
+            referer=ref,
+            headers={"User-Agent": self.ua, "Referer": ref},
             addon=self.addon,
         )
         if stream_url:
-            return {"url": stream_url, "headers": headers, "extension": "mp4"}
+            ext = "m3u8" if ".m3u8" in stream_url.lower() else "mp4"
+            return {"url": stream_url, "headers": headers, "extension": ext}
         return None
 
     def play_video(self, url):

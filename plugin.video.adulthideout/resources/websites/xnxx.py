@@ -16,6 +16,10 @@ import xbmcplugin
 import xbmcaddon
 from resources.lib.base_website import BaseWebsite
 from resources.lib.proxy_utils import HlsProxyController, PlaybackGuard, ProxyController
+try:
+    from resources.lib.playback_preferences import select_quality_variant, quality_from_value
+except ImportError:
+    from playback_preferences import select_quality_variant, quality_from_value
 
 try:
     addon_path = xbmcaddon.Addon().getAddonInfo('path')
@@ -303,22 +307,22 @@ class Xnxx(BaseWebsite):
         hls_url = re.search(r"html5player\.setVideoHLS\('([^']+)'\)", content)
 
         stream_url = None
-        if high_url:
-            stream_url = high_url.group(1)
-        elif hls_url:
+        if hls_url:
             stream_url = hls_url.group(1)
+        elif high_url:
+            stream_url = high_url.group(1)
         elif low_url:
             stream_url = low_url.group(1)
 
         if stream_url:
-            if stream_url.endswith('.m3u8'):
+            if stream_url.endswith('.m3u8') or '.m3u8' in stream_url:
                 controller = HlsProxyController(
                     stream_url,
                     headers=headers,
                     session=self.session,
                     preserve_query=True,
                 )
-                mime_type = 'application/x-mpegURL'
+                mime_type = 'application/vnd.apple.mpegurl'
             else:
                 controller = ProxyController(
                     stream_url,
@@ -338,6 +342,60 @@ class Xnxx(BaseWebsite):
             PlaybackGuard(xbmc.Player(), xbmc.Monitor(), local_url, controller).start()
         else:
             self.notify_error("Could not find video stream URL")
+
+    def resolve_recording_stream(self, url):
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': url
+        }
+        content = self.make_request(url, headers=headers)
+        if not content:
+            return None
+
+        high_url = re.search(r"html5player\.setVideoUrlHigh\('([^']+)'\)", content)
+        low_url = re.search(r"html5player\.setVideoUrlLow\('([^']+)'\)", content)
+        hls_url = re.search(r"html5player\.setVideoHLS\('([^']+)'\)", content)
+
+        if hls_url:
+            master_url = hls_url.group(1)
+            try:
+                master_content = self.make_request(master_url, headers=headers)
+                if master_content and "#EXT-X-STREAM-INF" in master_content:
+                    quality_variants = []
+                    current_inf = None
+                    for line in master_content.splitlines():
+                        sline = line.strip()
+                        if not sline:
+                            continue
+                        if sline.startswith("#EXT-X-STREAM-INF:"):
+                            current_inf = sline
+                        elif not sline.startswith("#"):
+                            variant_url = urllib.parse.urljoin(master_url, sline)
+                            q = 0
+                            if current_inf:
+                                res_m = re.search(r'RESOLUTION=\d+x(\d+)', current_inf, re.IGNORECASE)
+                                if res_m:
+                                    q = int(res_m.group(1))
+                                if not q:
+                                    name_m = re.search(r'NAME="?(\d+)p?"?', current_inf, re.IGNORECASE)
+                                    if name_m:
+                                        q = int(name_m.group(1))
+                            if not q:
+                                q = quality_from_value(variant_url)
+                            quality_variants.append((q, variant_url))
+                            current_inf = None
+                    if quality_variants:
+                        selected = select_quality_variant(quality_variants)
+                        if selected:
+                            return {'url': selected, 'headers': headers, 'extension': 'm3u8'}
+            except Exception:
+                pass
+            return {'url': master_url, 'headers': headers, 'extension': 'm3u8'}
+        elif high_url:
+            return {'url': high_url.group(1), 'headers': headers, 'extension': 'mp4'}
+        elif low_url:
+            return {'url': low_url.group(1), 'headers': headers, 'extension': 'mp4'}
+        return None
 
     def search(self, query):
         if query:

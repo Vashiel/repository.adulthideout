@@ -190,10 +190,26 @@ class CumDrinkingClips(BaseWebsite):
 
     def resolve_recording_stream(self, url):
         content = self._get(url, referer=self.base_url)
+        if not content:
+            return None
+
+        # Check for clean-tube-player base64 encoded query
+        for q in re.findall(r'player-x\.php\?q=([A-Za-z0-9+/=]+)', content):
+            try:
+                import base64
+                decoded = urllib.parse.unquote(base64.b64decode(q).decode('utf-8', 'ignore'))
+                for m in re.finditer(r'src=["\']([^"\']+\.(?:mp4|webm|m3u8)[^"\']*)', decoded, re.I):
+                    stream_url = html.unescape(m.group(1)).replace('\\/', '/')
+                    if "preview" not in stream_url.lower():
+                        ext = "webm" if ".webm" in stream_url.lower() else ("m3u8" if ".m3u8" in stream_url.lower() else "mp4")
+                        return {"url": stream_url, "headers": self._headers(url, "*/*"), "extension": ext}
+            except Exception as e:
+                self.logger.warning("CumDrinkingClips base64 player decode failed: %s", e)
+
         candidates = []
         for value in re.findall(
-            r'https?://cumdrinkingclips\.com/wp-content/uploads/[^"\'<>\s]+\.mp4',
-            content or "",
+            r'https?://cumdrinkingclips\.com/wp-content/uploads/[^"\'<>\s]+\.(?:mp4|webm|m3u8)[^"\'<>\s]*',
+            content,
             re.IGNORECASE,
         ):
             stream_url = html.unescape(value).replace("\\/", "/")
@@ -201,7 +217,8 @@ class CumDrinkingClips(BaseWebsite):
                 candidates.append(stream_url)
         if not candidates:
             return None
-        return {"url": candidates[0], "headers": self._headers(url, "*/*"), "extension": "mp4"}
+        ext = "webm" if ".webm" in candidates[0].lower() else ("m3u8" if ".m3u8" in candidates[0].lower() else "mp4")
+        return {"url": candidates[0], "headers": self._headers(url, "*/*"), "extension": ext}
 
     def play_video(self, url):
         resolved = self.resolve_recording_stream(url)
@@ -220,7 +237,8 @@ class CumDrinkingClips(BaseWebsite):
         proxy_url = controller.start()
         item = xbmcgui.ListItem(path=proxy_url)
         item.setProperty("IsPlayable", "true")
-        item.setMimeType("video/mp4")
+        mime = "video/webm" if resolved["extension"] == "webm" else ("application/vnd.apple.mpegurl" if resolved["extension"] == "m3u8" else "video/mp4")
+        item.setMimeType(mime)
         item.setContentLookup(False)
         xbmcplugin.setResolvedUrl(self.addon_handle, True, item)
         PlaybackGuard(xbmc.Player(), xbmc.Monitor(), proxy_url, controller).start()

@@ -229,6 +229,33 @@ class FullPorner(BaseWebsite):
         if f & 8: res.append(1080)
         return res
 
+
+    def resolve_recording_stream(self, url):
+        try:
+            import cloudscraper
+            scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
+            resp = scraper.get(url, timeout=10)
+            html_content = resp.text
+            iframe_match = re.search(r'src=["\'](//xiaoshenke\.net/video/([a-z0-9]+)/(\d+))["\']', html_content, re.IGNORECASE)
+            if not iframe_match:
+                return None
+            video_id = iframe_match.group(2)
+            quality_flag = int(iframe_match.group(3))
+            reversed_id = video_id[::-1]
+            qualities = self._btq(quality_flag)
+            if not qualities:
+                return None
+            best_q = max(qualities)
+            stream_url = f"https://xiaoshenke.net/vid/{reversed_id}/{best_q}"
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Referer': 'https://xiaoshenke.net/',
+                'Accept': '*/*, video/mp4',
+            }
+            return {"url": stream_url, "headers": headers, "extension": "mp4"}
+        except Exception:
+            return None
+
     def play_video(self, url):
         scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
         try:

@@ -14,13 +14,17 @@ AdultHideout does not host videos. It organizes publicly available listings and 
 
 ## Current Release
 
-**AdultHideout 1.0.24 "Rosetta"** was released on **October 3, 2026**.
+**AdultHideout 1.0.25 "Prism"** was released on **October 17, 2026**.
 
-Rosetta is a major feature and catalog release. It adds 19 new websites across German, retro, amateur casting, animation and international categories, introduces offline Cyrillic transliteration and title translation, adds Veev resolver support, updates PandaMovies and Hentai Cosplay playback, and removes unavailable sources.
+Prism is a comprehensive playback precision, stream quality, and catalog maintenance release. It focuses on delivering cleaner, higher-resolution video playback and ensuring consistent operation across the entire source catalog:
 
-The name **Rosetta** reflects its offline translation capability across languages and alphabets without external online services.
+- **Intelligent Stream Quality Selection:** Overhauled internal HLS stream negotiation and proxy handling to reliably deliver high-definition and Full HD (1080p) streams according to user quality settings, eliminating unintended low-resolution fallbacks.
+- **Full Catalog & Resolver Audit:** Audited all 300+ integrated sources, updating and restoring dozens of website scrapers and video resolvers with modern extraction logic, direct stream probing, and renewed security handshakes.
+- **Playback Architecture & Hardening:** Refined stream discovery mechanisms, tightened parameter handling, and improved playback resilience across supported platforms.
 
-**[Read the complete Rosetta release notes](docs/releases/1.0.24-rosetta.md)**
+The codename **Prism** represents optical clarity and the dynamic separation of stream manifests into their full resolution spectrum.
+
+For a detailed list of all website updates, resolved items, and technical changes, see the **[Changelog](plugin.video.adulthideout/changelog.txt)** and the **[Prism Release Notes](docs/releases/1.0.25-prism.md)**.
 
 ## What AdultHideout Can Do
 
@@ -80,7 +84,7 @@ AdultHideout has grown beyond what a single README can explain. The official **[
 - **Issues:** [Bug reports and feature requests](https://github.com/Vashiel/repository.adulthideout/issues)
 - **Discussions:** [Announcements and community discussion](https://github.com/Vashiel/repository.adulthideout/discussions)
 - **Changelog:** [Complete release history](plugin.video.adulthideout/changelog.txt)
-- **Release notes:** [Rosetta 1.0.24](docs/releases/1.0.24-rosetta.md)
+- **Release notes:** [Prism 1.0.25](docs/releases/1.0.25-prism.md)
 
 ## Disclaimer
 

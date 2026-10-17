@@ -14,7 +14,7 @@ class SiskaWebsite(XopenloadWebsite):
     def __init__(self, addon_handle, addon=None):
         super().__init__(addon_handle, addon)
         self.name = "siska"
-        self.base_url = "https://siska.video"
+        self.base_url = "https://siska.tv"
         self.search_url = self.base_url + "/search.php?s={}"
         self.directory_source_url = self.base_url + "/category.php"
 
@@ -29,7 +29,9 @@ class SiskaWebsite(XopenloadWebsite):
         items = []
         pattern = r'<a[^>]+title=["\']([^"\']*)["\'][^>]+href=["\']([^"\']*video\.php\?videoID=\d+)["\'][^>]*>([\s\S]*?)</a>'
         for title, target, body in re.findall(pattern, page_html, re.IGNORECASE):
-            thumb = re.search(r'(?:data-src|src)=["\'](https?://[^"\']+)["\']', body, re.IGNORECASE)
+            thumb = re.search(r'data-src=["\'](https?://[^"\']+)["\']', body, re.IGNORECASE)
+            if not thumb:
+                thumb = re.search(r'src=["\'](https?://[^"\']+)["\']', body, re.IGNORECASE)
             duration = re.search(r'class=["\']th_video_duration["\'][^>]*>([^<]+)', body, re.IGNORECASE)
             clean_title = self._clean(title)
             if clean_title and thumb:

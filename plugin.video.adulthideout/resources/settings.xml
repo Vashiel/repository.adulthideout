@@ -50,6 +50,7 @@
     <setting id="website_visibility_migrated" type="bool" default="false" visible="false" />
     <setting id="atlas_unavailable_sites_migrated" type="bool" default="false" visible="false" />
     <setting id="recovered_websites_migrated" type="bool" default="false" visible="false" />
+    <setting id="cloudflare_blocked_migrated_1025" type="bool" default="false" visible="false" />
     <setting id="asianviralhub_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="ebalka26_sort_by" type="enum" label="30004" values="Newest|Top Rated|Most Popular" default="0" visible="false" />
     <setting id="ruporno_sort_by" type="enum" label="30004" values="Newest|Top Rated|Most Popular" default="0" visible="false" />
@@ -190,7 +191,6 @@
     <setting id="sextu_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated|Popular Today" default="0" visible="false" />
     <setting id="sextvx_sort_by" type="enum" label="30004" values="Latest|Most Viewed|HD" default="0" visible="false" />
     <setting id="neporn_sort_by" type="enum" label="30004" values="Latest|Most Popular|Top Rated" default="0" visible="false" />
-    <setting id="pornrabbit_sort_by" type="enum" label="30004" values="Popular|Top Rated|Longest|Latest" default="0" visible="false" />
     <setting id="pornve_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="cherrygasp_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="fapnfuck_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />

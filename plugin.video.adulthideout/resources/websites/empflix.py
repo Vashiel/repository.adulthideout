@@ -32,9 +32,11 @@ class EmpflixWebsite(BaseWebsite):
 
     def get_start_url_and_label(self):
         sort_id = f"{self.name}_sort_by"
-        sort_index = int(self.addon.getSetting(sort_id) or '0')
+        sort_setting = str(self.addon.getSetting(sort_id) or '0')
+        sort_index = int(sort_setting) if sort_setting.isdigit() else 0
         path = self.sort_paths.get(sort_index, "/")
-        label = f"EMPFlix - {self.sort_options[sort_index]}"
+        label_text = self.sort_options[sort_index] if 0 <= sort_index < len(self.sort_options) else self.sort_options[0]
+        label = f"EMPFlix - {label_text}"
         return f"{self.base_url}{path}", label
 
     def make_request(self, url):
@@ -211,6 +213,29 @@ class EmpflixWebsite(BaseWebsite):
             self.notify_error("No search results")
                 
         self.end_directory()
+
+
+    def resolve_recording_stream(self, url):
+        content = self.make_request(url)
+        if not content:
+            return None
+        video_url = None
+        mp4_match = re.search(r'"(https?://[^"]+\.mp4[^"]*)"', content)
+        if mp4_match:
+            video_url = mp4_match.group(1)
+        if not video_url:
+            m3u8_match = re.search(r'"(https?://[^"]+\.m3u8[^"]*)"', content)
+            if m3u8_match:
+                video_url = m3u8_match.group(1)
+        if not video_url:
+            return None
+        video_url = video_url.replace('\\/', '/')
+        headers = {
+            "User-Agent": self.ua,
+            "Referer": url
+        }
+        ext = "m3u8" if ".m3u8" in video_url else "mp4"
+        return {"url": video_url, "headers": headers, "extension": ext}
 
     def play_video(self, url):
         content = self.make_request(url)

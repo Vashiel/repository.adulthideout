@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import re
+import urllib.parse
+import requests
 from resources.lib.resolvers.resolver_utils import http_get
 
 
@@ -44,22 +46,45 @@ def _unpack_packed_js(page_html):
 
 
 def resolve(embed_url, referer, headers):
-    # FIX: Sicherstellen, dass headers ein Dictionary ist, auch wenn None übergeben wurde
     headers = dict(headers) if headers else {}
+    ua = headers.get("User-Agent") or "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+    req_headers = {
+        "User-Agent": ua,
+        "Referer": referer or embed_url,
+    }
     
-    headers["Referer"] = embed_url
-    html = http_get(embed_url, headers=headers)
+    html = ""
+    # Lulu/TNMR flags cloudscraper TLS fingerprints and generates 403 tokens;
+    # use a clean requests.Session first for legitimate stream token generation.
+    try:
+        session = requests.Session()
+        resp = session.get(embed_url, headers=req_headers, timeout=15)
+        if resp.status_code == 200:
+            html = resp.text
+    except Exception:
+        html = ""
+
+    if not html:
+        headers["Referer"] = embed_url
+        html = http_get(embed_url, headers=headers)
     if not html:
         return "", headers
 
+    parsed = urllib.parse.urlparse(embed_url)
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    out_headers = dict(headers)
+    out_headers["User-Agent"] = ua
+    out_headers["Referer"] = origin + "/"
+    out_headers["Origin"] = origin
+
     m = re.search(r'(https?://[^\s"\']+\.(?:mp4|m3u8)[^\s"\']*)', html, re.IGNORECASE)
     if m:
-        return m.group(1).strip(), headers
+        return m.group(1).strip(), out_headers
 
     unpacked = _unpack_packed_js(html)
     if unpacked:
         m = re.search(r'(https?://[^\s"\']+\.(?:mp4|m3u8)[^\s"\']*)', unpacked, re.IGNORECASE)
         if m:
-            return m.group(1).strip(), headers
+            return m.group(1).strip(), out_headers
 
     return "", headers

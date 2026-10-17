@@ -15,6 +15,10 @@ import sys
 from resources.lib.base_website import BaseWebsite
 from resources.lib.lookup_info import choose_and_open, extract_html_items
 from resources.lib.proxy_utils import HlsProxyController, PlaybackGuard, ProxyController
+try:
+    from resources.lib.playback_preferences import select_quality_variant, quality_from_value
+except ImportError:
+    from playback_preferences import select_quality_variant, quality_from_value
 
 class XvideosWebsite(BaseWebsite):
     supports_uploader_lookup = True
@@ -60,6 +64,8 @@ class XvideosWebsite(BaseWebsite):
     def get_start_url_and_label(self):
         # 1. Category (Straight/Gay/Shemale)
         category = self.addon.getSetting(f"{self.config['name']}_category") or "Straight"
+        if category not in self.category_options:
+            category = "Straight"
         base_url = self.get_category_url(category)
         
         # 2. Sort
@@ -234,6 +240,8 @@ class XvideosWebsite(BaseWebsite):
 
     def process_content(self, url):
         category = self.addon.getSetting(f"{self.config['name']}_category") or "Straight"
+        if category not in self.category_options:
+            category = "Straight"
         cat_value = category.lower() if category != "Straight" else ""
         
         # Check action for Related Videos view
@@ -627,6 +635,57 @@ class XvideosWebsite(BaseWebsite):
         else:
             self.notify_error("Failed to load video page")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
+
+    def resolve_recording_stream(self, url):
+        content = self.make_request(url)
+        if not content:
+            return None
+
+        hls_url = re.search(r"html5player\.setVideoHLS\('(.+?)'\)", content)
+        high_mp4 = re.search(r"html5player\.setVideoUrlHigh\('(.+?)'\)", content)
+        low_mp4 = re.search(r"html5player\.setVideoUrlLow\('(.+?)'\)", content)
+
+        headers = {'User-Agent': self.ua, 'Referer': url}
+        if hls_url:
+            master_url = hls_url.group(1)
+            try:
+                master_content = self.make_request(master_url, headers=headers)
+                if master_content and "#EXT-X-STREAM-INF" in master_content:
+                    quality_variants = []
+                    current_inf = None
+                    for line in master_content.splitlines():
+                        sline = line.strip()
+                        if not sline:
+                            continue
+                        if sline.startswith("#EXT-X-STREAM-INF:"):
+                            current_inf = sline
+                        elif not sline.startswith("#"):
+                            variant_url = urllib.parse.urljoin(master_url, sline)
+                            q = 0
+                            if current_inf:
+                                res_m = re.search(r'RESOLUTION=\d+x(\d+)', current_inf, re.IGNORECASE)
+                                if res_m:
+                                    q = int(res_m.group(1))
+                                if not q:
+                                    name_m = re.search(r'NAME="?(\d+)p?"?', current_inf, re.IGNORECASE)
+                                    if name_m:
+                                        q = int(name_m.group(1))
+                            if not q:
+                                q = quality_from_value(variant_url)
+                            quality_variants.append((q, variant_url))
+                            current_inf = None
+                    if quality_variants:
+                        selected = select_quality_variant(quality_variants)
+                        if selected:
+                            return {'url': selected, 'headers': headers, 'extension': 'm3u8'}
+            except Exception:
+                pass
+            return {'url': master_url, 'headers': headers, 'extension': 'm3u8'}
+        elif high_mp4:
+            return {'url': high_mp4.group(1), 'headers': headers, 'extension': 'mp4'}
+        elif low_mp4:
+            return {'url': low_mp4.group(1), 'headers': headers, 'extension': 'mp4'}
+        return None
 
     def process_related_videos(self, url):
         self.add_dir('[COLOR blue]Search[/COLOR]', '', 5, self.icons['search'], self.config["name"])

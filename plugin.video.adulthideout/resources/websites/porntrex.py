@@ -55,9 +55,18 @@ class PornTrex(BaseWebsite):
             return []
 
         videos = []
-        item_pattern = r'<a[^>]*href=\"([^\"]*video/\d+/[^\"]*)\"[^>]*>.*?<img[^>]*data-src=\"([^\"]+)\"[^>]*alt=\"([^\"]+)\"'
-        
-        items = re.findall(item_pattern, html_content, re.DOTALL)
+        items = []
+        for attrs, body in re.findall(r'<a\b([^>]*)>([\s\S]*?)</a>', html_content, re.I):
+            link_match = re.search(r'\bhref="([^"]*/video/\d+/[^"]*)"', attrs, re.I)
+            image = re.search(r'<img\b[^>]*>', body, re.I)
+            if not link_match or not image:
+                continue
+            thumb_match = re.search(r'\bdata-src="([^"]+)"', image.group(0), re.I)
+            title_match = re.search(r'\balt="([^"]+)"', image.group(0), re.I)
+            if thumb_match and title_match:
+                thumb_url = html.unescape(thumb_match.group(1))
+                thumb_url = urllib.parse.quote(thumb_url, safe=":/?&=%+#@!$'()*;,")
+                items.append((link_match.group(1), thumb_url, title_match.group(1)))
         
         for link, thumb, title in items:
             if link.startswith('//'):

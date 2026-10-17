@@ -14,6 +14,7 @@ import xbmcplugin
 from resources.lib.base_website import BaseWebsite
 from resources.lib.proxy_utils import HlsProxyController, PlaybackGuard, ProxyController
 from resources.lib.resilient_http import fetch_text
+from resources.lib.resolvers import resolver
 
 
 class DaysNetworkWebsite(BaseWebsite):
@@ -184,14 +185,53 @@ class DaysNetworkWebsite(BaseWebsite):
 
     def _resolve_stream(self, url):
         content = self._get(url, referer=self.base_url)
+        if not content:
+            return None
+
+        # 1. Check for direct m3u8 playlist directly in the page (e.g. amateur4days.com/hls/...)
+        m3u8_matches = re.findall(r'https?://[^"\'<>\s]+\.m3u8[^"\'<>\s]*', content, re.I)
+        for m3u8 in m3u8_matches:
+            m3u8 = html.unescape(m3u8).replace("\\/", "/")
+            if "preview" not in m3u8.lower():
+                return m3u8, self._headers(url, accept="*/*"), "m3u8"
+
+        # 2. Check for direct mp4 if configured or present
         if self.direct_mp4:
             streams = re.findall(r'https?://[^"\'<>\s]+\.mp4[^"\'<>\s]*', content, re.I)
             for stream in streams:
                 stream = html.unescape(stream).replace("\\/", "/")
                 if "preview" not in stream.lower():
                     return stream, self._headers(url, accept="*/*"), "mp4"
-            return None
 
+        # 3. Collect hoster links & iframes
+        links, seen = [], set()
+        host_pattern = r'https?://(?:[^"\'<>\s]*(?:streamtape|dood|playmogo|luluvido|doply|mixdrop|voe|turbovid)[^"\'<>\s]*)'
+        for match in re.finditer(host_pattern, content, re.I):
+            h_url = html.unescape(match.group(0)).replace("\\/", "/")
+            if h_url not in seen:
+                seen.add(h_url)
+                links.append(h_url)
+
+        # Also check all iframes
+        for iframe_src in re.findall(r'<iframe\b[^>]+src=["\']([^"\']+)["\']', content, re.I):
+            h_url = self._absolute(iframe_src, url)
+            if h_url not in seen:
+                seen.add(h_url)
+                links.append(h_url)
+
+        # 4. Try resolving through AdultHideout resolver stack
+        if links:
+            stream_url, headers, _ = resolver.resolve_first_working(
+                links,
+                referer=url,
+                headers={"User-Agent": self.ua, "Referer": url},
+                addon=self.addon,
+            )
+            if stream_url:
+                kind = "m3u8" if ".m3u8" in stream_url.lower() else "mp4"
+                return stream_url, headers, kind
+
+        # 5. Fallback: inspect any embedded player page for m3u8/mp4
         embed_match = re.search(r'<iframe\b[^>]+src=["\']([^"\']+)["\']', content, re.I)
         if not embed_match:
             embed_match = re.search(
@@ -199,17 +239,16 @@ class DaysNetworkWebsite(BaseWebsite):
                 content,
                 re.I,
             )
-        if not embed_match:
-            return None
-        embed_url = self._absolute(embed_match.group(1), url)
-        embed = self._get(embed_url, referer=url)
-        streams = re.findall(r'https?://[^"\'<>\s]+\.m3u8[^"\'<>\s]*', embed, re.I)
-        headers = self._headers(embed_url, accept="*/*")
-        if streams:
-            return html.unescape(streams[0]).replace("\\/", "/"), headers, "m3u8"
-        streams = re.findall(r'https?://[^"\'<>\s]+\.mp4[^"\'<>\s]*', embed, re.I)
-        if streams:
-            return html.unescape(streams[0]).replace("\\/", "/"), headers, "mp4"
+        if embed_match:
+            embed_url = self._absolute(embed_match.group(1), url)
+            embed = self._get(embed_url, referer=url)
+            streams = re.findall(r'https?://[^"\'<>\s]+\.m3u8[^"\'<>\s]*', embed or "", re.I)
+            headers = self._headers(embed_url, accept="*/*")
+            if streams:
+                return html.unescape(streams[0]).replace("\\/", "/"), headers, "m3u8"
+            streams = re.findall(r'https?://[^"\'<>\s]+\.mp4[^"\'<>\s]*', embed or "", re.I)
+            if streams:
+                return html.unescape(streams[0]).replace("\\/", "/"), headers, "mp4"
         return None
 
     def resolve_recording_stream(self, url):

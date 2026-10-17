@@ -212,6 +212,10 @@ class WPSTubeMoviesWebsite(BaseWebsite):
             target = self._absolute(next(item for item in value if item))
             if resolver.resolver_entry_for_url(target) and target not in mirrors:
                 mirrors.append(target)
+        for meta_match in re.finditer(r'<meta\b[^>]*(?:itemprop=["\']embedURL["\'][^>]*content=["\']([^"\']+)["\']|content=["\']([^"\']+)["\'][^>]*itemprop=["\']embedURL["\'])', page_html or "", re.I):
+            target = self._absolute(meta_match.group(1) or meta_match.group(2))
+            if resolver.resolver_entry_for_url(target) and target not in mirrors:
+                mirrors.append(target)
         return resolver.sort_urls_by_resolver_preference(mirrors, self.addon)
 
     def resolve_recording_stream(self, url):

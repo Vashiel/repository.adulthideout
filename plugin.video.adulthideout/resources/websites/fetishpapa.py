@@ -62,13 +62,22 @@ class FetishPapa(BaseWebsite):
 
     def _extract_videos(self, content):
         videos, seen = [], set()
-        pattern = re.compile(r'<a\b[^>]+href=["\'](/videos/\d+/[^"\']+/)["\'][^>]+title=["\']([^"\']+)["\'][^>]*>([\s\S]{0,2200}?)</a>', re.I)
-        for href, title, body in pattern.findall(content or ""):
+        pattern = re.compile(r'<a\b([^>]*href=["\'](/videos/\d+/[^"\']+/)["\'][^>]*)>([\s\S]*?)</a>', re.I)
+        for attrs, href, body in pattern.findall(content or ""):
             target = self._absolute(href)
             if target in seen:
                 continue
+            image_tag = re.search(r'<img\b[^>]*>', body, re.I)
+            if not image_tag:
+                continue
+            image = re.search(r'\b(?:data-src|src)=["\']([^"\']+)["\']', image_tag.group(0), re.I)
+            title_match = re.search(r'\btitle=["\']([^"\']+)["\']', attrs, re.I)
+            if not title_match:
+                title_match = re.search(r'\balt=["\']([^"\']+)["\']', image_tag.group(0), re.I)
+            if not image or not title_match:
+                continue
+            title = title_match.group(1)
             seen.add(target)
-            image = re.search(r'<img\b[^>]+(?:src|data-src)=["\']([^"\']+)["\']', body, re.I)
             duration = re.search(r'info-item-length[^>]*>\s*([0-9:]+)', body, re.I)
             duration_text = duration.group(1) if duration else ""
             clean_title = html.unescape(title).strip()

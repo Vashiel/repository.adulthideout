@@ -1,11 +1,35 @@
 import re
 import os
+import sys
 import urllib.parse
-import urllib.request
 import xbmc
 import xbmcgui
 import xbmcplugin
 from resources.lib.base_website import BaseWebsite
+
+try:
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    vendor_path = os.path.abspath(os.path.join(current_dir, "..", "lib", "vendor"))
+    if os.path.exists(vendor_path) and vendor_path not in sys.path:
+        sys.path.insert(0, vendor_path)
+except Exception:
+    pass
+
+try:
+    import cloudscraper
+    _HAS_CF = True
+except Exception:
+    cloudscraper = None
+    _HAS_CF = False
+
+try:
+    from curl_cffi import requests as curl_requests
+    _HAS_CURL = True
+except Exception:
+    curl_requests = None
+    _HAS_CURL = False
+
+import requests
 
 
 class AnaldinWebsite(BaseWebsite):
@@ -24,23 +48,48 @@ class AnaldinWebsite(BaseWebsite):
             1: "/most-popular/"
         }
         self.icon = os.path.join(self.addon.getAddonInfo('path'), 'resources', 'logos', 'analdin.png')
+        self.user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+        self.session = self._build_session()
+
+    def _build_session(self):
+        if _HAS_CURL:
+            try:
+                return curl_requests.Session(impersonate="chrome123", verify=False)
+            except Exception:
+                pass
+        if _HAS_CF:
+            try:
+                return cloudscraper.create_scraper()
+            except Exception:
+                pass
+        s = requests.Session()
+        s.headers.update({"User-Agent": self.user_agent})
+        return s
 
     def get_start_url_and_label(self):
         sort_id = f"{self.name}_sort_by"
-        sort_index = int(self.addon.getSetting(sort_id) or '0')
+        sort_setting = str(self.addon.getSetting(sort_id) or '0')
+        sort_index = int(sort_setting) if sort_setting.isdigit() else 0
         path = self.sort_paths.get(sort_index, "/top-rated/")
-        label = f"Analdin - {self.sort_options[sort_index]}"
+        label_text = self.sort_options[sort_index] if 0 <= sort_index < len(self.sort_options) else self.sort_options[0]
+        label = f"Analdin - {label_text}"
         return f"{self.base_url}{path}", label
 
-    def make_request(self, url):
+    def make_request(self, url, referer=None):
+        headers = {
+            'User-Agent': self.user_agent,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+        }
+        if referer:
+            headers['Referer'] = referer
         try:
-            req = urllib.request.Request(url, headers={
-                'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            })
-            with urllib.request.urlopen(req, timeout=15) as response:
-                return response.read().decode('utf-8')
-        except Exception:
-            return None
+            r = self.session.get(url, headers=headers, timeout=20)
+            if r.status_code == 200:
+                return r.text
+        except Exception as e:
+            xbmc.log(f"[AdultHideout][Analdin] Request error for {url}: {e}", xbmc.LOGWARNING)
+        return None
 
     def process_content(self, url):
         self.add_basic_dirs(url)
@@ -114,67 +163,68 @@ class AnaldinWebsite(BaseWebsite):
             for url_full, title, thumb in categories:
                 self.add_dir(title, url_full, 2, thumb)
         
-        if not categories:
+        if not categories and not matches:
             self.notify_error("No categories found")
             
         self.end_directory()
 
-    def play_video(self, url):
+    def resolve_recording_stream(self, url):
         content = self.make_request(url)
         if not content:
-            self.notify_error("Failed to load video page")
-            return
+            return None
 
         video_url = None
-        
         mp4_match = re.search(r"video_url['\"]?\s*[:=]\s*['\"]([^'\"]+\.mp4[^'\"]*)['\"]", content)
         if mp4_match:
             video_url = mp4_match.group(1)
-        
         if not video_url:
             source_match = re.search(r'<source[^>]+src=["\']([^"\']+\.mp4[^"\']*)["\']', content)
             if source_match:
                 video_url = source_match.group(1)
-        
         if not video_url:
             mp4_urls = re.findall(r'"(https?://[^"]+\.mp4[^"]*)"', content)
             if mp4_urls:
                 video_url = mp4_urls[0]
 
         if not video_url:
-            self.notify_error("No video source found")
-            return
+            return None
 
         video_url = video_url.replace('\\/', '/')
-        
-        try:
-            from resources.lib.proxy_utils import ProxyController, PlaybackGuard
-            
-            controller = ProxyController(video_url, upstream_headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "Referer": url
-            })
-            local_url = controller.start()
-            
-            monitor = xbmc.Monitor()
-            player = xbmc.Player()
-            guard = PlaybackGuard(player, monitor, local_url, controller)
-            guard.start()
-            
-            li = xbmcgui.ListItem(path=local_url)
-            li.setMimeType('video/mp4')
-            li.setProperty('IsPlayable', 'true')
-            li.setContentLookup(False)
-            
-            xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
-            guard.join()
-            
-        except ImportError:
-            headers_str = 'User-Agent={}&Referer={}'.format(
-                urllib.parse.quote("Mozilla/5.0"),
-                urllib.parse.quote(url)
-            )
-            li = xbmcgui.ListItem(path=video_url + '|' + headers_str)
-            li.setMimeType('video/mp4')
-            li.setProperty('IsPlayable', 'true')
-            xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+        headers = {
+            "User-Agent": self.user_agent,
+            "Referer": url
+        }
+        return {"url": video_url, "headers": headers, "extension": "mp4"}
+
+    def play_video(self, url):
+        resolved = self.resolve_recording_stream(url)
+        if resolved:
+            video_url = resolved["url"]
+            headers = resolved.get("headers", {})
+            try:
+                from resources.lib.proxy_utils import ProxyController, PlaybackGuard
+                controller = ProxyController(video_url, upstream_headers=headers)
+                local_url = controller.start()
+
+                monitor = xbmc.Monitor()
+                player = xbmc.Player()
+                guard = PlaybackGuard(player, monitor, local_url, controller)
+                guard.start()
+
+                li = xbmcgui.ListItem(path=local_url)
+                li.setMimeType('video/mp4')
+                li.setProperty('IsPlayable', 'true')
+                li.setContentLookup(False)
+                xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+                guard.join()
+            except ImportError:
+                headers_str = urllib.parse.urlencode(headers)
+                li = xbmcgui.ListItem(path=video_url + '|' + headers_str)
+                li.setMimeType('video/mp4')
+                li.setProperty('IsPlayable', 'true')
+                li.setContentLookup(False)
+                xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+            return
+
+        self.notify_error("No video source found")
+        xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())

@@ -150,72 +150,70 @@ class PremiumPornWebsite(BaseWebsite):
 
         self.end_directory()
 
+    def resolve_recording_stream(self, url):
+        page = self._http_get(url, referer=self.base_url)
+        if not page:
+            return None
+
+        # 1. Extract primary iframe and resolve
+        iframe_url = self._extract_iframe(page)
+        if iframe_url:
+            # Try general resolver for iframe_url (e.g. upbolt, vidara, luvstream, dood, etc.)
+            try:
+                from resources.lib.resolvers import resolver
+                res = resolver.resolve(iframe_url, referer=url)
+                if isinstance(res, tuple) and res[0]:
+                    ext = "m3u8" if ".m3u8" in res[0] else "mp4"
+                    return {"url": res[0], "headers": res[1] or {}, "extension": ext}
+            except Exception as e:
+                self._log_playback("Resolver for iframe failed: %s" % e, xbmc.LOGWARNING)
+
+            # Try byse resolver
+            try:
+                stream_url = self._resolve_byse_hls(iframe_url, url)
+                if stream_url:
+                    return {"url": stream_url, "headers": {"User-Agent": self.headers["User-Agent"], "Referer": iframe_url}, "extension": "m3u8"}
+            except Exception as e:
+                self._log_playback("Byse resolver failed: %s" % e, xbmc.LOGWARNING)
+
+        # 2. Try external resolvers across the entire page HTML
+        try:
+            from resources.lib.resolvers import resolver
+            res = resolver.resolve_first_working(page, referer=url)
+            if res and isinstance(res, tuple) and res[0]:
+                ext = "m3u8" if ".m3u8" in res[0] else "mp4"
+                return {"url": res[0], "headers": res[1] or {}, "extension": ext}
+        except Exception as e:
+            self._log_playback("Resolver first working error: %s" % e, xbmc.LOGWARNING)
+
+        return None
+
     def play_video(self, url):
         self._log_playback("Starting playback: %s" % url)
-
-        page = self._http_get(url, referer=self.base_url)
-        self._log_playback("Video page length: %s" % len(page))
-        iframe_url = self._extract_iframe(page)
-        if not iframe_url:
-            self._log_playback("No Byse iframe found on video page", xbmc.LOGERROR)
-            self.notify_error("No Byse player found.")
-            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
-            return
-        self._log_playback("Byse iframe: %s" % iframe_url)
-
-        stream_url = self._resolve_byse_hls(iframe_url, url)
-        if not stream_url:
+        resolved = self.resolve_recording_stream(url)
+        if not resolved or not resolved.get("url"):
             self._log_playback("Resolver returned no stream", xbmc.LOGERROR)
             self.notify_error("No playable stream found.")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
             return
 
-        self._log_playback("Resolved HLS stream: %s" % stream_url[:160])
-        li = xbmcgui.ListItem(path=stream_url)
-        li.setProperty("IsPlayable", "true")
-        li.setMimeType("application/vnd.apple.mpegurl")
-        li.setContentLookup(False)
-        has_inputstream = xbmc.getCondVisibility("System.HasAddon(inputstream.adaptive)")
-        is_android = xbmc.getCondVisibility("System.Platform.Android")
+        stream_url = resolved["url"]
+        headers = resolved.get("headers", {})
+        if "|" not in stream_url and headers:
+            final_url = stream_url + "|" + urllib.parse.urlencode(headers)
+        else:
+            final_url = stream_url
 
-        if has_inputstream:
+        self._log_playback("Resolved stream: %s" % stream_url[:160])
+        li = xbmcgui.ListItem(path=final_url)
+        li.setProperty("IsPlayable", "true")
+        if resolved.get("extension") == "m3u8" or ".m3u8" in stream_url:
+            li.setMimeType("application/vnd.apple.mpegurl")
             li.setProperty("inputstream", "inputstream.adaptive")
             li.setProperty("inputstream.adaptive.manifest_type", "hls")
-        elif is_android:
-            self._log_playback("InputStream Adaptive is missing or disabled on Android", xbmc.LOGERROR)
-            lang = xbmc.getLanguage(0).lower()
-            if "german" in lang or "deutsch" in lang:
-                title = "[COLOR red]InputStream Adaptive fehlt[/COLOR]"
-                msg = (
-                    "Für das Abspielen unter Android wird die integrierte Kodi-Komponente 'InputStream Adaptive' benötigt.\n\n"
-                    "Bitte aktivieren Sie diese in den Kodi-Einstellungen:\n"
-                    "Einstellungen -> Addons -> Benutzer-Addons -> Videoplayer-InputStream -> InputStream Adaptive -> Aktivieren"
-                )
-            elif "spanish" in lang or "español" in lang or "espanol" in lang:
-                title = "[COLOR red]Falta InputStream Adaptive[/COLOR]"
-                msg = (
-                    "Para la reproducción en Android, se requiere el componente integrado de Kodi 'InputStream Adaptive'.\n\n"
-                    "Por favor, actívelo en la configuración de Kodi:\n"
-                    "Ajustes -> Add-ons -> Mis add-ons -> InputStream de reproductor de vídeo -> InputStream Adaptive -> Activar"
-                )
-            elif "french" in lang or "français" in lang or "francais" in lang:
-                title = "[COLOR red]InputStream Adaptive manquant[/COLOR]"
-                msg = (
-                    "Pour la lecture sur Android, le composant Kodi intégré 'InputStream Adaptive' est requis.\n\n"
-                    "Veuillez l'activer dans vos paramètres Kodi:\n"
-                    "Paramètres -> Extensions -> Mes extensions -> Lecteur vidéo InputStream -> InputStream Adaptive -> Activer"
-                )
-            else:
-                title = "[COLOR red]InputStream Adaptive Missing[/COLOR]"
-                msg = (
-                    "For playback on Android, the built-in Kodi component 'InputStream Adaptive' is required.\n\n"
-                    "Please enable it in your Kodi settings:\n"
-                    "Settings -> Add-ons -> My add-ons -> VideoPlayer InputStream -> InputStream Adaptive -> Enable"
-                )
-            xbmcgui.Dialog().ok(title, msg)
-            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
-            return
-
+        else:
+            li.setMimeType("video/mp4")
+        li.setContentLookup(False)
         xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
 
     def search(self, query):

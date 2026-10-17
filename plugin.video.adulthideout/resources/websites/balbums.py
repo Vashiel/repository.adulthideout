@@ -182,11 +182,12 @@ class BalbumsWebsite(BaseWebsite):
             elif any(filename.lower().endswith(ext) for ext in self.VIDEO_EXTENSIONS):
                 is_video = True
 
-            thumb_match = re.search(r'(?:src|data-src)=["\']([^"\']+)["\']', inner)
+            image_tag = re.search(r'<img\b[^>]*class=["\'][^"\']*grid-images_box-img[^"\']*["\'][^>]*>', inner, re.I)
+            thumb_match = re.search(r'(?:data-src|src)=["\']([^"\']+)["\']', image_tag.group(0) if image_tag else inner)
             thumb = html.unescape(thumb_match.group(1)) if thumb_match else ''
             if thumb and not thumb.startswith('http'):
                 thumb = urllib.parse.urljoin("https://bunkr.cr/", thumb)
-            if '/images/file.svg' in thumb or '/images/image.svg' in thumb:
+            if any('/images/' + kind + '.svg' in thumb for kind in ('file', 'image', 'video', 'audio')):
                 thumb = ''
 
             cards.append({

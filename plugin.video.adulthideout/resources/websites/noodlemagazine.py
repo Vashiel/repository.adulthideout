@@ -279,7 +279,7 @@ class NoodleMagazine(BaseWebsite):
                 self.logger.error(f"JSON parse error: {e}")
 
         else:
-            item_blocks = re.findall(r'<div class="item">\s*<a href="(/watch/[^"]+)"[^>]*>(.*?)</a>\s*</div>', html_content, re.DOTALL)
+            item_blocks = re.findall(r'<div\b[^>]*class="item"[^>]*>\s*<a\b[^>]*href="(/watch/[^"]+)"[^>]*>(.*?)</a>\s*</div>', html_content, re.DOTALL)
             for video_path, item_content in item_blocks:
                 try:
                     thumb_url = ""
@@ -293,7 +293,7 @@ class NoodleMagazine(BaseWebsite):
                             if not raw.startswith('http'): raw = urllib.parse.urljoin(self.base_url, raw)
                             thumb_url = raw
 
-                    title_match = re.search(r'<div class="title">([^<]+)</div>', item_content)
+                    title_match = re.search(r'<div class="title"[^>]*>([^<]+)</div>', item_content)
                     title = html.unescape(title_match.group(1).strip() if title_match else "Unknown")
                     time_match = re.search(r'<div class="m_time">.*?(\d+:\d+(?::\d+)?)', item_content, re.DOTALL)
                     views_match = re.search(r'<div class="m_views">.*?([\d.KM]+)', item_content, re.DOTALL)

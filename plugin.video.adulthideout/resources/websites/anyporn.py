@@ -130,21 +130,18 @@ class Anyporn(BaseWebsite):
             next_url = urllib.parse.urljoin(self.base_url, "/{}/{}/".format(base_path, int(page_num) + 1))
             self.add_dir('[COLOR blue]Next Page >>[/COLOR]', next_url, 2, self.icons['default'])
 
-    def play_video(self, url):
+    def resolve_recording_stream(self, url):
         content = self.make_request(url)
         if not content:
-            self.notify_error("Failed to load video page")
-            return
+            return None
 
         sources_match = re.search(r'const sources = \{(.*?)\};', content, re.DOTALL)
         if not sources_match:
-            self.notify_error("Could not find video configuration.")
-            return
+            return None
 
         pairs = re.findall(r'(\d+)\s*:\s*\'([^\']+)\'', sources_match.group(1))
         if not pairs:
-            self.notify_error("Could not find a playable video stream.")
-            return
+            return None
 
         pairs.sort(key=lambda p: int(p[0]), reverse=True)
         stream_url = None
@@ -158,6 +155,20 @@ class Anyporn(BaseWebsite):
         stream_url = stream_url.replace("&amp;", "&")
         if stream_url.startswith("//"):
             stream_url = "https:" + stream_url
+
+        headers = {
+            'User-Agent': self.session.headers.get('User-Agent', 'Mozilla/5.0'),
+            'Referer': self.base_url,
+        }
+        return {"url": stream_url, "headers": headers, "extension": "mp4"}
+
+    def play_video(self, url):
+        resolved = self.resolve_recording_stream(url)
+        if not resolved:
+            self.notify_error("Could not find a playable video stream.")
+            return
+
+        stream_url = resolved['url']
 
         # anyporn's CDN links are IP-locked to whichever client resolved them.
         # Kodi's own player connects separately and may exit on a different

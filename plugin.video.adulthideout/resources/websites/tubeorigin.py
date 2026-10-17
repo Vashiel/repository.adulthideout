@@ -5,6 +5,7 @@ import html
 import os
 import re
 import urllib.parse
+import urllib.request
 
 import requests
 import xbmcgui
@@ -28,7 +29,14 @@ class TubeOrigin(BaseWebsite):
     def _get(self, url, referer=None):
         try:
             response = self.session.get(url, headers=self._headers(referer), timeout=20)
-            return response.text if response.status_code == 200 else ""
+            if response.status_code == 200:
+                return response.text
+            if response.status_code == 403:
+                headers = self._headers(referer)
+                headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36"
+                with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=12) as result:
+                    return result.read().decode("utf-8", "replace")
+            return ""
         except Exception as exc:
             self.logger.warning("TubeOrigin request failed: %s", exc)
             return ""
@@ -38,6 +46,21 @@ class TubeOrigin(BaseWebsite):
 
     def _items(self, content):
         items, seen = [], set()
+        for attrs, body in re.findall(r'<a\b([^>]*)>([\s\S]*?)</a>', content or "", re.I):
+            link = re.search(r'\bhref=["\'](/@[^"\']+/video/[^"\']+)["\']', attrs, re.I)
+            image = re.search(r'<img\b[^>]*>', body, re.I)
+            if not link or not image:
+                continue
+            title = re.search(r'\balt=["\']([^"\']+)["\']', image.group(0), re.I)
+            thumb = re.search(r'\bdata-src=["\'](https://b-cdn\.tubeorigin\.com/[^"\']+\.jpg)["\']', image.group(0), re.I)
+            if not title or not thumb:
+                continue
+            target = urllib.parse.urljoin(self.base_url, html.unescape(link.group(1)))
+            if target not in seen:
+                seen.add(target)
+                items.append((html.unescape(title.group(1)), target, html.unescape(thumb.group(1))))
+        if items:
+            return items
         # Cards now expose the title on the first link and the Kodi-friendly
         # JPEG in img[data-src]; img[src] is WebP for browsers.
         pattern = (

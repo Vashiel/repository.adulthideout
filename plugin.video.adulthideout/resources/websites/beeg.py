@@ -176,28 +176,34 @@ class BeegWebsite(BaseWebsite):
                 self.notify_error(f"No results for: {query}")
                 self.end_directory()
 
-    def play_video(self, url):
-        vid = url.split('/')[-1]
+    def resolve_recording_stream(self, url):
+        vid = url.rstrip('/').split('/')[-1]
         try:
-            r = self.scraper.get(f"https://store.externulls.com/facts/file/{vid}", headers={'Accept': 'application/json'}, timeout=20)
-            if r.status_code == 200:
-                d = r.json()
-                hls = d.get('file', {}).get('hls_resources') or d.get('fc_facts', [{}])[0].get('hls_resources')
-                vurl = None
-                if hls:
-                    vurl = self._build_video_url(hls.get('fl_cdn_multi'))
-                    if not vurl:
-                        for q in ['fl_cdn_1080', 'fl_cdn_720', 'fl_cdn_480', 'fl_cdn_360']:
-                            vurl = self._build_video_url(hls.get(q))
-                            if vurl:
-                                break
-                
-                if vurl:
-                    li = xbmcgui.ListItem(path=vurl)
-                    li.setMimeType('application/vnd.apple.mpegurl')
-                    li.setProperty('inputstream', 'inputstream.adaptive')
-                    li.setProperty('inputstream.adaptive.manifest_type', 'hls')
-                    xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
-                    return
-        except: pass
+            r = self.scraper.get(f"https://store.externulls.com/video/play_url/{vid}", headers={'Accept': 'application/json, text/plain, */*'}, timeout=20)
+            if r.status_code == 200 and r.text:
+                path = r.text.strip().strip('"')
+                vurl = path if path.startswith('http') else f"https://video.beeg.com/{path.lstrip('/')}"
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': 'https://beeg.com/',
+                    'Origin': 'https://beeg.com',
+                }
+                return {"url": vurl, "headers": headers, "extension": "m3u8"}
+        except Exception:
+            pass
+        return None
+
+    def play_video(self, url):
+        resolved = self.resolve_recording_stream(url)
+        if resolved:
+            vurl = resolved["url"]
+            headers = resolved.get("headers", {})
+            play_url = vurl + '|' + urllib.parse.urlencode(headers) if headers else vurl
+            li = xbmcgui.ListItem(path=play_url)
+            li.setMimeType('application/vnd.apple.mpegurl')
+            li.setProperty('inputstream', 'inputstream.adaptive')
+            li.setProperty('inputstream.adaptive.manifest_type', 'hls')
+            xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+            return
         self.notify_error("Video not found")
+        xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())

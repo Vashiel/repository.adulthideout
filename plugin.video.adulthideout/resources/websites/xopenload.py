@@ -11,6 +11,7 @@ import xbmcplugin
 import requests
 
 from resources.lib.base_website import BaseWebsite
+from resources.lib.host_links import extract_host_links
 from resources.lib.proxy_utils import PlaybackGuard, ProxyController
 from resources.lib.resolvers import resolver
 
@@ -171,6 +172,9 @@ class XopenloadWebsite(BaseWebsite):
                     "info": {"title": title, "plot": title, "duration": duration},
                 }
             )
+        if not items:
+            from resources.lib.movie_cards import parse_movie_cards
+            items = parse_movie_cards(page_html, self.base_url)
         return items
 
     def _extract_next_page(self, page_html, current_url):
@@ -320,6 +324,11 @@ class XopenloadWebsite(BaseWebsite):
         links = []
         seen = set()
 
+        for url in extract_host_links(page_html):
+            if resolver.resolver_entry_for_url(url):
+                seen.add(url)
+                links.append(url)
+
         # Primary pattern: data-fl-url attributes (verified links)
         for url in re.findall(r'data-fl-url="([^"]+)"', page_html, re.IGNORECASE):
             url = html.unescape(url).strip()
@@ -358,56 +367,42 @@ class XopenloadWebsite(BaseWebsite):
         links.sort(key=priority)
         return links
 
-    def play_video(self, url):
+    def resolve_recording_stream(self, url):
         page_html = self._make_request(url)
         if not page_html:
-            self.notify_error("Could not load XOpenload video page")
-            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
-            return
+            return None
 
         host_links = self._extract_host_links(page_html)
         if not host_links:
-            self.notify_error("No playable links found on this page")
-            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
-            return
-
-        self.logger.info("[XOpenload] Found %d host links, trying in priority order", len(host_links))
+            return None
 
         # Convert /d/ and /v/ links to embed /e/ format for resolving
         for i, link in enumerate(host_links):
-            # DoodStream: /d/ -> /e/
             link = re.sub(r"(doodstream\.\w+)/d/", r"\1/e/", link)
-            # StreamTape: /v/ -> /e/
             link = re.sub(r"(streamtape\.\w+)/v/", r"\1/e/", link)
-            # MixDrop: /f/ -> /e/
             link = re.sub(r"(mixdrop\.\w+)/f/", r"\1/e/", link)
             host_links[i] = link
 
-        stream_url = None
-        headers = {}
-        for link in host_links:
-            self.logger.info("[XOpenload] Trying: %s", link[:80])
-            try:
-                result = resolver.resolve(link, referer=url, headers={"User-Agent": self.ua, "Referer": url})
-                if isinstance(result, tuple):
-                    resolved_url, resolved_headers = result
-                else:
-                    resolved_url, resolved_headers = result, {}
+        stream_url, headers, _ = resolver.resolve_first_working(
+            host_links,
+            referer=url,
+            headers={"User-Agent": self.ua, "Referer": url},
+            addon=self.addon,
+        )
+        if stream_url:
+            ext = "m3u8" if ".m3u8" in stream_url.lower() else "mp4"
+            return {"url": stream_url, "headers": headers or {}, "extension": ext}
+        return None
 
-                if resolved_url and resolved_url.startswith("http"):
-                    stream_url = resolved_url
-                    headers = resolved_headers or {}
-                    self.logger.info("[XOpenload] Resolved: %s", stream_url[:80])
-                    break
-            except Exception as exc:
-                self.logger.warning("[XOpenload] Resolver failed for %s: %s", link[:60], exc)
-                continue
-
-        if not stream_url:
+    def play_video(self, url):
+        resolved = self.resolve_recording_stream(url)
+        if not resolved:
             self.notify_error("Could not resolve any XOpenload stream")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
 
+        stream_url = resolved["url"]
+        headers = resolved["headers"]
         play_url = stream_url
         if self.proxy_resolved_streams and ".m3u8" not in stream_url.lower():
             try:

@@ -5,6 +5,8 @@ import urllib.parse
 from html.parser import HTMLParser
 
 from resources.lib.resolvers import resolver
+from resources.lib.host_links import extract_host_links
+from resources.lib.movie_cards import parse_movie_cards
 from resources.websites.xopenload import XopenloadWebsite
 
 
@@ -100,7 +102,7 @@ class PandaMoviesWebsite(XopenloadWebsite):
                 "thumb": urllib.parse.urljoin(self.base_url + "/", card["thumb"]) if card["thumb"] else self.icon,
                 "info": {"title": title, "plot": title, "duration": duration},
             })
-        return items
+        return items or parse_movie_cards(page_html, self.base_url)
 
     def _extract_studios(self, page_html):
         return self._extract_directory(page_html, "actors")
@@ -123,14 +125,11 @@ class PandaMoviesWebsite(XopenloadWebsite):
 
     def _extract_host_links(self, page_html):
         links = []
-        seen = set()
-        for target in re.findall(r'(?:data-fl-url|href)=["\'](https?://[^"\']+)["\']', page_html, re.IGNORECASE):
-            target = html.unescape(target).strip()
+        for target in extract_host_links(page_html):
             lowered = target.lower()
             if "deleted" in lowered or "/api/" in lowered:
                 continue
-            if resolver.resolver_entry_for_url(target) and target not in seen:
-                seen.add(target)
+            if resolver.resolver_entry_for_url(target):
                 links.append(target)
         links.sort(key=lambda value: resolver.resolver_sort_key_for_url(value, self.addon))
         return links

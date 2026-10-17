@@ -55,6 +55,24 @@ RESOLVERS = [
         "hosts": ("hglink.to", "hanerix.com", "hgcloud.to"),
     },
     {
+        "key": "vidara",
+        "setting": "",
+        "module": "vidara_resolver",
+        "hosts": ("vidara.to", "vidara.so", "vidara.net", "vidara.org", "vidara"),
+    },
+    {
+        "key": "luvstream",
+        "setting": "",
+        "module": "luvstream_resolver",
+        "hosts": ("luvstream.cc", "luvstream"),
+    },
+    {
+        "key": "upbolt",
+        "setting": "",
+        "module": "upbolt_resolver",
+        "hosts": ("upbolt.to", "upbolt.net", "upbolt.org", "upbolt.com", "upbolt"),
+    },
+    {
         "key": "veev",
         "setting": "",
         "module": "veev_resolver",

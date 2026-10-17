@@ -35,6 +35,11 @@ OPT_IN_WEBSITE_SETTINGS = {
     "crazyshit": "show_crazyshit",
 }
 TEMPORARILY_UNAVAILABLE_WEBSITES = set()
+CLOUDFLARE_BLOCKED_WEBSITES = {
+    "retropornarchives",
+    "vintageworldp",
+    "wowxxx",
+}
 
 MAIN_MENU_SORT_KEYS = ("az", "za", "newest", "category")
 CONTENT_FILTER_KEYS = ("general", "trans", "hentai", "jav", "rule34", "fetish", "live", "creator")
@@ -177,11 +182,19 @@ def migrate_recovered_websites():
         return
     hidden = get_hidden_websites()
     hidden.difference_update({
-        "hentaimama", "hqporner", "ogporn", "saintporn",
+        "hentaimama", "hqporner", "saintporn",
         "swingerpornfun", "vintagepornfun",
     })
     save_hidden_websites(hidden)
     ADDON.setSetting("recovered_websites_migrated", "true")
+
+def migrate_cloudflare_blocked_websites():
+    if ADDON.getSetting("cloudflare_blocked_migrated_1025") == "true":
+        return
+    hidden = get_hidden_websites()
+    hidden.update(CLOUDFLARE_BLOCKED_WEBSITES)
+    save_hidden_websites(hidden)
+    ADDON.setSetting("cloudflare_blocked_migrated_1025", "true")
 
 def is_website_hidden(name):
     opt_in_setting = OPT_IN_WEBSITE_SETTINGS.get(name)
@@ -594,6 +607,7 @@ def build_main_menu_fast():
     migrate_legacy_website_visibility(website_modules)
     migrate_atlas_unavailable_websites()
     migrate_recovered_websites()
+    migrate_cloudflare_blocked_websites()
 
     enable_collections = (ADDON.getSetting("enable_website_collections") == "true")
     selected_content, selected_types = get_active_website_filters()

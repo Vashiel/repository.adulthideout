@@ -1137,6 +1137,27 @@ class AvjoyWebsite(BaseWebsite):
     # Playback
     # -------------------------------------------------------------------------
 
+    def resolve_recording_stream(self, url):
+        stream_urls = self._resolve_stream_urls(url)
+        if not stream_urls:
+            return None
+        headers = {
+            'User-Agent': self.user_agent,
+            'Referer': url,
+            'Origin': self.base_url,
+            'Accept': '*/*',
+            'Accept-Encoding': 'identity',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Connection': 'keep-alive',
+        }
+        cookies = self._get_cookie_dict(self.raw_session)
+        if not cookies:
+            cookies = self._get_cookie_dict(self.session)
+        video_url = self._select_reachable_stream(stream_urls, headers=headers, cookies=cookies)
+        if not video_url:
+            return None
+        return {"url": video_url, "headers": headers, "extension": "mp4"}
+
     def play_video(self, url):
         self.logger.info(f"Resolving video: {url}")
         resolve_start = time.time()

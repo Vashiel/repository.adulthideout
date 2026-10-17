@@ -217,10 +217,9 @@ class WatchPorn(BaseWebsite):
             return self.end_directory("videos")
 
         item_pattern = re.compile(
-            r'<div class="thumb item\s*[^"]*">\s*'
-            r'<a href="(https://watchporn\.to/video/[^"]+/)" title="([^"]+)".*?'
-            r'<img[^>]+class="thumb[^"]*"[^>]+(?:data-original|src)="([^"]+)"[^>]+alt="([^"]+)".*?'
-            r'<span class="thumb__info-item">([^<]+)</span>',
+            r'<a\b[^>]*href="(https://watchporn\.to/video/[^"]+/)"[^>]*title="([^"]+)"[^>]*>'
+            r'(?:(?!</a>)[\s\S])*?<img[^>]+class="thumb[^"]*"[^>]+(?:data-original|src)="([^"]+)"[^>]+alt="([^"]+)"'
+            r'(?:(?!</a>)[\s\S])*?<span class="(?:thumb__info-item|wp-dur)">([^<]+)</span>',
             re.IGNORECASE | re.DOTALL,
         )
 

@@ -55,6 +55,7 @@ def fetch_text(
             request = lambda: scraper.get(url, timeout=timeout, headers=request_headers)
             response = _ipv4_call(request) if prefer_ipv4 else request()
             if response.status_code == 200:
+                _log(logger, "debug", "HTTP response accepted via scraper")
                 return response.text
             _log(logger, "error", f"HTTP {response.status_code} for {url}")
         except Exception as exc:
@@ -69,13 +70,22 @@ def fetch_text(
         response = _ipv4_call(request) if prefer_ipv4 else request()
         with response:
             if 200 <= response.status < 300:
+                _log(logger, "debug", "HTTP response accepted via urllib")
                 return response.read().decode("utf-8", errors="ignore")
             _log(logger, "error", f"urllib HTTP {response.status} for {url}")
     except Exception as exc:
         _log(logger, "warning", f"urllib request failed: {exc}")
 
-    if not (use_windows_curl_fallback and os.name == "nt"):
+    if use_windows_curl_fallback:
+        return fetch_windows_text(url, request_headers, logger, timeout, prefer_ipv4)
+    return None
+
+
+def fetch_windows_text(url, headers=None, logger=None, timeout=20, prefer_ipv4=False):
+    if os.name != "nt":
         return None
+    request_headers = {"User-Agent": "Mozilla/5.0", "Referer": url}
+    request_headers.update(headers or {})
 
     tmp_path = None
     try:
@@ -85,6 +95,7 @@ def fetch_text(
         command = [
             "curl.exe",
             "-L",
+            "--fail",
             "--silent",
             "--show-error",
             "--connect-timeout",
@@ -97,8 +108,11 @@ def fetch_text(
             request_headers.get("Referer", url),
             "-o",
             tmp_path,
-            url,
         ]
+        for name, value in request_headers.items():
+            if name.lower() not in ("user-agent", "referer"):
+                command.extend(["--header", "{}: {}".format(name, value)])
+        command.append(url)
         if prefer_ipv4:
             command.insert(1, "--ipv4")
 
@@ -122,6 +136,7 @@ def fetch_text(
             with open(tmp_path, "rb") as fh:
                 data = fh.read()
             if data:
+                _log(logger, "debug", "HTTP response accepted via curl.exe")
                 return data.decode("utf-8", errors="ignore")
 
         stderr = completed.stderr.decode("utf-8", errors="ignore").strip()

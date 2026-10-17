@@ -44,9 +44,9 @@ except Exception as e:
 import requests
 from urllib.parse import urlparse
 try:
-    from resources.lib.playback_preferences import preferred_quality, select_quality_variant
+    from resources.lib.playback_preferences import preferred_quality, select_quality_variant, quality_from_value
 except ImportError:
-    from playback_preferences import preferred_quality, select_quality_variant
+    from playback_preferences import preferred_quality, select_quality_variant, quality_from_value
 
 # Kleinere Chunks (32 KB) damit read() schneller zurückkehrt — kritisch für Seeks!
 # 512 KB blockiert zu lange wenn mehrere Streams parallel laufen.
@@ -1690,13 +1690,44 @@ class HlsProxyController:
             response.raise_for_status()
             text = response.content.decode("utf-8", "replace")
             if "#EXT-X-STREAM-INF" in text:
-                variants = [
-                    urllib.parse.urljoin(self.master_url, line.strip())
-                    for line in text.splitlines()
-                    if line.strip() and not line.startswith("#")
-                ]
-                if variants:
-                    self.master_url = variants[-1]
+                quality_variants = []
+                current_inf = None
+                for line in text.splitlines():
+                    sline = line.strip()
+                    if not sline:
+                        continue
+                    if sline.startswith("#EXT-X-STREAM-INF:"):
+                        current_inf = sline
+                    elif not sline.startswith("#"):
+                        variant_url = urllib.parse.urljoin(self.master_url, sline)
+                        if self.preserve_query:
+                            parent_query = urllib.parse.urlparse(self.master_url).query
+                            parsed_variant = urllib.parse.urlparse(variant_url)
+                            if parent_query and not parsed_variant.query:
+                                variant_url = urllib.parse.urlunparse(
+                                    parsed_variant._replace(query=parent_query)
+                                )
+                        q = 0
+                        if current_inf:
+                            res_m = re.search(r'RESOLUTION=\d+x(\d+)', current_inf, re.IGNORECASE)
+                            if res_m:
+                                q = int(res_m.group(1))
+                            if not q:
+                                name_m = re.search(r'NAME="?(\d+)p?"?', current_inf, re.IGNORECASE)
+                                if name_m:
+                                    q = int(name_m.group(1))
+                        if not q:
+                            q = quality_from_value(variant_url)
+                        quality_variants.append((q, variant_url))
+                        current_inf = None
+
+                if quality_variants:
+                    selected = select_quality_variant(quality_variants)
+                    if selected:
+                        self.master_url = selected
+                        xbmc.log(f"[AHHlsProxy] Master flattened to preferred quality variant: {selected}", xbmc.LOGINFO)
+                    else:
+                        self.master_url = quality_variants[0][1]
         except Exception as exc:
             xbmc.log(f"[AHHlsProxy] Master flatten skipped: {exc}", xbmc.LOGDEBUG)
 

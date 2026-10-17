@@ -32,7 +32,8 @@ class HQPorner(BaseWebsite):
         urllib.request.install_opener(self.opener)
 
     def _get_html(self, url, referer=None, extra_headers=None):
-        max_retries = int(self.addon.getSetting('max_retry_attempts') or 3)
+        retries_setting = str(self.addon.getSetting('max_retry_attempts') or '3')
+        max_retries = int(retries_setting) if retries_setting.isdigit() else 3
         for attempt in range(max_retries):
             try:
                 headers = {
@@ -185,6 +186,56 @@ class HQPorner(BaseWebsite):
             self.notify_error("Failed to parse categories.")
 
         self.end_directory()
+
+
+    def resolve_recording_stream(self, url):
+        hqporner_html = self._get_html(url)
+        if not hqporner_html:
+            archive_url = url.replace('https://hqporner.com/hdporn/', 'https://hqporner.com/archive/')
+            hqporner_html = self._get_html(archive_url)
+        if not hqporner_html:
+            return None
+        mydaddy_match = re.search(
+            r'(?:nativeplayer|altplayer|player)\.php\?i=(//mydaddy\.cc/video/[a-f0-9]+/?(?:&alt)?)',
+            hqporner_html,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if not mydaddy_match:
+            return None
+        mydaddy_relative_url = mydaddy_match.group(1).strip()
+        if not mydaddy_relative_url.startswith('//'):
+            mydaddy_relative_url = '//' + mydaddy_relative_url
+        mydaddy_url = 'https:' + mydaddy_relative_url
+        mydaddy_html = self._get_html(mydaddy_url, referer=url)
+        if not mydaddy_html:
+            return None
+        source_matches = re.findall(
+            r'(//(?:s\d+\.)?(?:bigcdn\.cc|othercdn\.com)/pubs/[a-f0-9.]+/(\d+)\.mp4)',
+            mydaddy_html,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if not source_matches:
+            generic_matches = re.findall(r'(https?://[^\s"\x27]+\.mp4)', mydaddy_html)
+            if generic_matches:
+                vurl = generic_matches[0]
+                headers = {'Referer': mydaddy_url, 'User-Agent': self.opener.addheaders[0][1]}
+                return {"url": vurl, "headers": headers, "extension": "mp4"}
+            return None
+        sources = {}
+        for full_url, qual_num in source_matches:
+            normalized = full_url.rstrip('\\')
+            if normalized.startswith('//'):
+                normalized = 'https:' + normalized
+            try:
+                sources[int(qual_num)] = normalized
+            except Exception:
+                continue
+        if sources:
+            selected_quality_num = max(sources.keys())
+            final_url = sources[selected_quality_num]
+            headers = {'Referer': mydaddy_url, 'User-Agent': self.opener.addheaders[0][1]}
+            return {"url": final_url, "headers": headers, "extension": "mp4"}
+        return None
 
     def play_video(self, url):
         self.logger.info(f"HQPorner: Starting play_video for URL: {url}")

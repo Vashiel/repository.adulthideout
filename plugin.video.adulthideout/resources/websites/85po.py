@@ -84,7 +84,8 @@ class Po85(BaseWebsite):
         try:
             response = self.session.get(url, headers=self._headers(), timeout=30)
             response.raise_for_status()
-            response.encoding = response.encoding or "utf-8"
+            if not response.encoding or response.encoding.lower() in ("iso-8859-1", "latin-1"):
+                response.encoding = response.apparent_encoding or "utf-8"
             return response.text.replace("\x00", "")
         except Exception as exc:
             self.logger.error("[85po] Request failed for %s: %s", url, exc)
@@ -123,21 +124,28 @@ class Po85(BaseWebsite):
             return self.end_directory()
 
         # Split content into video items
-        chunks = html_content.split('<div class="thumb thumb_rel item ">')
-        for chunk in chunks[1:]:
+        chunks = re.findall(r'<a\b[^>]*href=["\'][^"\']*/v/\d+[^"\']*["\'][^>]*>[\s\S]*?</a>', html_content, re.I)
+        seen = set()
+        for chunk in chunks:
             # Extract video link, ID and Title
-            match = re.search(r'<a href="([^"]+/v/(\d+)/[^"]*)" title="([^"]+)"', chunk)
+            match = re.search(r'href=["\']([^"\']+/v/(\d+)[^"\']*)["\']', chunk, re.I)
             if not match:
                 continue
-            video_url, video_id, title = match.groups()
-            title = html.unescape(title.strip())
+            video_url, video_id = match.groups()
+            title_match = re.search(r'\btitle=["\']([^"\']+)["\']', chunk, re.I)
+            if not title_match:
+                title_match = re.search(r'class=["\'][^"\']*card-title[^"\']*["\'][^>]*>([\s\S]*?)</div>', chunk, re.I)
+            if not title_match or video_url in seen:
+                continue
+            title = html.unescape(re.sub(r'<[^>]+>', '', title_match.group(1)).strip())
+            seen.add(video_url)
 
             # Extract thumbnail
             thumb_match = re.search(r'data-original="([^"]+)"', chunk)
             thumb = thumb_match.group(1) if thumb_match else self.icons['default']
 
             # Extract duration
-            duration_match = re.search(r'<div class="time">(?:<span[^>]*></span>)?\s*([^<]+)</div>', chunk)
+            duration_match = re.search(r'<div class="(?:time|duration)">(?:<span[^>]*></span>)?\s*([^<]+)</div>', chunk)
             duration_sec = 0
             if duration_match:
                 duration_str = duration_match.group(1).strip()

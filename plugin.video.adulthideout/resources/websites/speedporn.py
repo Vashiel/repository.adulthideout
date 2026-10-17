@@ -8,6 +8,7 @@ import xbmcgui
 import xbmcplugin
 
 from resources.lib.base_website import BaseWebsite
+from resources.lib.host_links import extract_host_links
 from resources.lib.resolvers import resolver
 
 
@@ -129,6 +130,9 @@ class SpeedpornWebsite(BaseWebsite):
 
             items.append({"title": label, "url": video_url, "thumb": thumb, "info": info})
 
+        if not items:
+            from resources.lib.movie_cards import parse_movie_cards
+            items = parse_movie_cards(page_html, self.base_url)
         return items
 
     def _extract_next_page(self, page_html, current_url):
@@ -247,6 +251,14 @@ class SpeedpornWebsite(BaseWebsite):
     def _extract_host_links(self, page_html):
         links = []
         seen = set()
+
+        for raw_url in extract_host_links(page_html):
+            url = self._normalize_hoster_url(raw_url)
+            lowered = url.lower()
+            if (url and url not in seen and "deleted" not in lowered
+                    and resolver.resolver_entry_for_url(url)):
+                seen.add(url)
+                links.append(url)
 
         for pattern in (
             r'<a[^>]+href="([^"]+)"[^>]+id="#iframe"',

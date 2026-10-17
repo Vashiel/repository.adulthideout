@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.24" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.25" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.requests" version="2.25.1"/>
@@ -12,8 +12,12 @@
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
-v. 1.0.24 "Rosetta" - 2026-10-03
-19 new websites including IcePornCasting and PornoEnte. Offline Cyrillic transliteration and title translation. Expanded performer artwork, thumbnail handling and filmography search. Veev resolver support and stricter failed-stream detection. Updated PandaMovies domain and listing parser, AShemaleTube video listing parser, Hentai Cosplay playback, HotMovies pagination, XVideos stream extraction and SxyPrn domain fallback. Corrected website sorting settings and removed Pornobolt, VagoSex and PornoHimmel.
+v. 1.0.25 "Prism" - 2026-10-17
+- Issue #78 fix: structured HLS master playlist parsing and preference-based quality selection, restoring 1080p Full HD playback.
+- Diagnostic audit and repairs across ~30 tube scrapers and resolvers (Perverzija, Analdin, 3Movs, AnyPorn, AVJoy, BoundHub, Empflix, HQPorner, PervClips, Chaturbate, etc.).
+- Direct stream discovery via resolve_recording_stream() across scrapers.
+- Sanitized ListItem argument passing and guarded category/setting integer parsing.
+- Listing and thumbnail repairs across supported websites.
         </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>

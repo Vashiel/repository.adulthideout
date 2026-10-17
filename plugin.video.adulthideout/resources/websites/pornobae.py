@@ -255,47 +255,63 @@ class PornoBae(BaseWebsite):
 
         self.end_directory("videos")
 
-    def play_video(self, url):
+    def resolve_recording_stream(self, url):
         page_html = self._get(url)
         if not page_html:
-            self.notify_error("Could not load video detail page")
-            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
-            return
+            return None
 
+        # 1. Look for iframes
         iframes = re.findall(r'<iframe\b[^>]+src=["\']([^"\']+)["\']', page_html, re.IGNORECASE)
-        embed_url = None
         for iframe in iframes:
-            if "tubexplayer.com" in iframe:
-                embed_url = html.unescape(iframe).strip()
-                break
+            if "adtng" in iframe or "doubleclick" in iframe:
+                continue
+            embed_url = html.unescape(iframe).strip()
+            try:
+                from resources.lib.resolvers import resolver
+                stream_url, play_headers = resolver.resolve(embed_url, referer=url)
+                if stream_url:
+                    ext = "m3u8" if ".m3u8" in stream_url else "mp4"
+                    return {"url": stream_url, "headers": play_headers or {}, "extension": ext}
+            except Exception:
+                pass
 
-        if not embed_url:
-            self.notify_error("Could not find TubexPlayer embed iframe")
+        # 2. Try general resolver for whole page
+        try:
+            from resources.lib.resolvers import resolver
+            res = resolver.resolve_first_working(page_html, referer=url)
+            if res and isinstance(res, tuple) and res[0]:
+                ext = "m3u8" if ".m3u8" in res[0] else "mp4"
+                return {"url": res[0], "headers": res[1] or {}, "extension": ext}
+        except Exception:
+            pass
+
+        return None
+
+    def play_video(self, url):
+        resolved = self.resolve_recording_stream(url)
+        if not resolved or not resolved.get("url"):
+            self.notify_error("Could not resolve video stream (Hoster may be offline)")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
 
-        stream_url, play_headers = resolver.resolve(embed_url, referer=url)
-        if not stream_url:
-            self.notify_error("Could not resolve stream from TubexPlayer")
-            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
-            return
-
-        header_str = urllib.parse.urlencode(play_headers) if play_headers else ""
-        play_url = stream_url
+        play_url = resolved["url"]
+        headers = resolved.get("headers", {})
+        header_str = urllib.parse.urlencode(headers) if headers else ""
         if "|" not in play_url and header_str:
             play_url += "|" + header_str
 
         list_item = xbmcgui.ListItem(path=play_url)
         list_item.setProperty("IsPlayable", "true")
-        list_item.setMimeType("application/vnd.apple.mpegurl")
+        if resolved.get("extension") == "m3u8" or ".m3u8" in play_url:
+            list_item.setMimeType("application/vnd.apple.mpegurl")
+            import xbmc
+            if xbmc.getCondVisibility("System.HasAddon(inputstream.adaptive)"):
+                list_item.setProperty("inputstream", "inputstream.adaptive")
+                list_item.setProperty("inputstream.adaptive.manifest_type", "hls")
+                if header_str:
+                    list_item.setProperty("inputstream.adaptive.manifest_headers", header_str)
+                    list_item.setProperty("inputstream.adaptive.stream_headers", header_str)
+        else:
+            list_item.setMimeType("video/mp4")
         list_item.setContentLookup(False)
-
-        import xbmc
-        if xbmc.getCondVisibility("System.HasAddon(inputstream.adaptive)"):
-            list_item.setProperty("inputstream", "inputstream.adaptive")
-            list_item.setProperty("inputstream.adaptive.manifest_type", "hls")
-            if header_str:
-                list_item.setProperty("inputstream.adaptive.manifest_headers", header_str)
-                list_item.setProperty("inputstream.adaptive.stream_headers", header_str)
-
         xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)

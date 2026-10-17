@@ -876,6 +876,41 @@ class PornhoarderWebsite(BaseWebsite):
         self.notify_error("PornHoarder verification failed")
         return ""
 
+    def resolve_recording_stream(self, url):
+        video_html = self._make_request(url)
+        if not video_html:
+            return None
+
+        player_url = self._extract_player_url(video_html)
+        if not player_url:
+            return None
+
+        player_html = self._make_request(player_url, referer=url)
+        if self._is_captcha_page(player_html):
+            player_html = self._solve_player_captcha(player_html, player_url)
+        host_links = self._extract_host_links(player_html)
+        if not host_links:
+            player_html = self._make_request(player_url, referer=player_url, method="POST", data={"play": ""})
+            if self._is_captcha_page(player_html):
+                player_html = self._solve_player_captcha(player_html, player_url)
+            host_links = self._extract_host_links(player_html)
+        if not host_links:
+            return None
+
+        for link in host_links:
+            try:
+                result = resolver.resolve(link, referer=player_url, headers={"User-Agent": self.ua, "Referer": player_url})
+                if isinstance(result, tuple):
+                    candidate, headers = result
+                else:
+                    candidate, headers = result, {}
+                if candidate and candidate.startswith("http"):
+                    ext = "m3u8" if ".m3u8" in candidate else "mp4"
+                    return {"url": candidate, "headers": headers or {}, "extension": ext}
+            except Exception as exc:
+                self.logger.warning("[PornHoarder] Resolver failed for %s: %s", link[:80], exc)
+        return None
+
     def play_video(self, url):
         video_html = self._make_request(url)
         if not video_html:

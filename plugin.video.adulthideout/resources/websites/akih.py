@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import html
+import json
 import re
 import urllib.parse
 
@@ -112,37 +113,52 @@ class AkiH(KVSTubeWebsite):
         return urllib.parse.urljoin(referer, html.unescape(match.group(1))) if match else ""
 
     def resolve_recording_stream(self, url):
+        slug_match = re.search(r'/videos/([^/?#]+)', url or "")
+        slug = slug_match.group(1) if slug_match else ""
+
         page = self._get(url, referer=self.base_url)
         player_id = re.search(r'displayvideo\(\s*\d+\s*,\s*(\d+)\s*\)', page or "", re.IGNORECASE)
-        if not player_id:
-            return None
-        player_url = self._absolute("/video/{}/".format(player_id.group(1)))
-        player = self._get(player_url, referer=url)
-        first = self._extract_player_url(
-            player, player_url, r"['\"]url['\"]\s*:\s*['\"]([^'\"]*v\.aki-h\.com/v/\d+)",
-        )
-        first_page = self._get(first, referer=player_url) if first else ""
-        public_id = re.search(r"\bvid\s*=\s*['\"]([^'\"]+)", first_page or "", re.IGNORECASE)
-        if not public_id:
-            return None
-        relay_url = "https://v.aki-h.com/f/{}".format(public_id.group(1))
-        relay = self._get(relay_url, referer=first)
-        second = self._extract_player_url(
-            relay, relay_url, r'<iframe\b[^>]+src=["\']([^"\']*streaming\.aki\.today/[^"\']+)',
-        )
-        second_page = self._get(second, referer=relay_url) if second else ""
-        final_page = self._extract_player_url(
-            second_page, second, r'<iframe\b[^>]+src=["\'](https://aki-h\.stream/v/([^"\']+))',
-        )
-        token_match = re.search(r"/v/([^/?#]+)", final_page or "")
-        if not token_match:
-            return None
-        stream_url = "https://aki-h.stream/file/{}/".format(token_match.group(1))
-        return {
-            "url": stream_url,
-            "headers": self._headers(final_page, accept="*/*"),
-            "extension": "m3u8",
-        }
+        pid = player_id.group(1) if player_id else ""
+
+        relay_url = "https://v.aki-h.com/f/{}".format(slug if slug else pid)
+        ref_v = "https://v.aki-h.com/v/{}".format(pid) if pid else url
+        relay = self._get(relay_url, referer=ref_v)
+        if not relay and pid:
+            player_url = self._absolute("/video2/{}/".format(pid))
+            player = self._get(player_url, referer=url)
+            first = self._extract_player_url(
+                player, player_url, r"['\"]url['\"]\s*:\s*['\"]([^'\"]*v\.aki-h\.com/v/\d+)",
+            )
+            relay = self._get(relay_url, referer=first or player_url)
+
+        server_urls = []
+        boot_match = re.search(r'<script\b[^>]*id=["\']boot["\'][^>]*>([\s\S]*?)</script>', relay or "", re.IGNORECASE)
+        if boot_match:
+            try:
+                boot_data = json.loads(boot_match.group(1))
+                for s in boot_data.get("servers", []):
+                    u = s.get("url")
+                    if u and "streaming.aki.today" in u:
+                        server_urls.append(u)
+            except Exception as e:
+                self.logger.warning("Aki-H boot json parse failed: %s", e)
+
+        if not server_urls:
+            server_urls = re.findall(r'https://streaming\.aki\.today/[^\s"\'<>]+', relay or "")
+
+        for s_url in server_urls:
+            sr = self._get(s_url, referer=relay_url)
+            stream_token = re.search(r'aki-h\.stream/v/([^"\'/?#]+)', sr or "")
+            if stream_token:
+                token = stream_token.group(1)
+                final_m3u8 = "https://aki-h.stream/file/{}/".format(token)
+                return {
+                    "url": final_m3u8,
+                    "headers": {"User-Agent": self.ua, "Referer": "https://aki-h.stream/v/{}".format(token)},
+                    "extension": "m3u8",
+                }
+
+        return None
 
     def play_video(self, url):
         resolved = self.resolve_recording_stream(url)

@@ -157,6 +157,43 @@ class WatchHentai(KVSTubeWebsite):
         self.end_directory("videos")
 
     def _extract_stream_url(self, html_content, referer=None):
+        # 1. Try DooPlay admin-ajax player
+        try:
+            player_opts = re.findall(
+                r'data-type=["\'](\w+)["\'][^>]*data-post=["\'](\d+)["\'][^>]*data-nume=["\'](\w+)["\']',
+                html_content or "",
+                re.IGNORECASE,
+            )
+            if not player_opts:
+                p_matches = re.findall(
+                    r'data-post=["\'](\d+)["\'][^>]*data-nume=["\'](\w+)["\']',
+                    html_content or "",
+                    re.IGNORECASE,
+                )
+                player_opts = [("tv", p, n) for p, n in p_matches]
+            for p_type, p_id, p_nume in player_opts:
+                ajax_url = urllib.parse.urljoin(self.base_url, "/wp-admin/admin-ajax.php")
+                headers = self._headers(referer=referer or self.base_url)
+                headers["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8"
+                headers["X-Requested-With"] = "XMLHttpRequest"
+                data = {"action": "doo_player_ajax", "post": p_id, "nume": p_nume, "type": p_type}
+                resp = self.session.post(ajax_url, data=data, headers=headers, timeout=10)
+                if resp.status_code == 200:
+                    import json
+                    payload = resp.json() if hasattr(resp, "json") else json.loads(resp.text)
+                    embed = (payload.get("embed_url") or "").strip()
+                    if embed.startswith("http"):
+                        if ".mp4" in embed:
+                            return embed
+                        from resources.lib.resolvers import resolver
+                        resolved = resolver.resolve(embed, referer=referer or self.base_url, headers=self._headers(referer=referer))
+                        resolved_url = resolved[0] if isinstance(resolved, tuple) else resolved
+                        if resolved_url and resolved_url.startswith("http"):
+                            return resolved_url
+        except Exception as exc:
+            self.logger.warning("WatchHentai DooPlay player lookup failed: %s", exc)
+
+        # 2. Legacy JWPlayer fallback
         match = re.search(
             r'<iframe\b[^>]+src=["\']([^"\']*/jwplayer/\?[^"\']*\bsource=[^"\']+)',
             html_content or "",

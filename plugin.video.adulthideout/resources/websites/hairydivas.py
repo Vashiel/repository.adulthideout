@@ -88,49 +88,60 @@ class HairyDivas(KVSTubeWebsite):
 
     def resolve_recording_stream(self, url):
         page = self._get(url, referer=self.base_url)
+        if not page:
+            return None
+
+        # 1. Check for signed streams in __NUXT_DATA__
+        nuxt_match = re.search(r'<script\b[^>]*id=["\']__NUXT_DATA__["\'][^>]*>([\s\S]*?)</script>', page)
+        if nuxt_match:
+            try:
+                import json
+                data = json.loads(nuxt_match.group(1))
+                for item in data:
+                    if isinstance(item, str) and item.startswith("http") and "vcdn" in item and item.endswith(".mp4") and "media=hls" not in item:
+                        return {"url": item, "headers": self._headers(url, accept="*/*"), "extension": "mp4"}
+                for item in data:
+                    if isinstance(item, str) and item.startswith("http") and "vcdn" in item and item.endswith(".mp4"):
+                        return {"url": item, "headers": self._headers(url, accept="*/*"), "extension": "mp4"}
+            except Exception as e:
+                self.logger.warning("HairyDivas Nuxt data parse failed: %s", e)
+
+        # 2. Check for direct regex in page HTML
+        vcdn_matches = re.findall(r'https?://vcdn\d+\.hairydivas\.com/[^"\'<>\s]+\.mp4', page)
+        for m in vcdn_matches:
+            if "media=hls" not in m:
+                return {"url": m, "headers": self._headers(url, accept="*/*"), "extension": "mp4"}
+        if vcdn_matches:
+            return {"url": vcdn_matches[0], "headers": self._headers(url, accept="*/*"), "extension": "mp4"}
+
+        # 3. Fallback: old KVS signer if still present
         source = re.search(
             r'<source\s+src=["\']([^"\']+__TPL_\.mp4)["\'][^>]*type=["\']application/x-mpegURL',
             page or "", re.IGNORECASE,
         )
         signer = re.search(r'data-v-update-url=["\']([^"\']+)', page or "", re.IGNORECASE)
-        if not source or not signer:
-            return None
-        unsigned = urllib.parse.unquote(html.unescape(source.group(1)))
-        sign_url = urllib.parse.urljoin(signer.group(1), "/ah/sign")
-        try:
-            response = self.session.post(
-                sign_url,
-                json={"urls": {"hls": unsigned}},
-                headers={
-                    "User-Agent": self.ua,
-                    "Referer": url,
-                    "Origin": self.base_url.rstrip("/"),
-                    "Accept": "application/json",
-                },
-                timeout=15,
-            )
-            stream = ((response.json().get("urls") or {}).get("hls") or "") if response.status_code == 200 else ""
-        except Exception as exc:
-            self.logger.warning("HairyDivas signing failed: %s", exc)
-            stream = ""
-        if not stream:
-            return None
-        try:
-            master = self.session.get(stream, headers=self._headers(url, accept="*/*"), timeout=15)
-            if master.status_code != 200 or not master.text.startswith("#EXTM3U"):
-                return None
-            variants = re.findall(
-                r'#EXT-X-STREAM-INF:[^\r\n]*RESOLUTION=(\d+)x(\d+)[^\r\n]*[\r\n]+([^\r\n#]+)',
-                master.text,
-                re.IGNORECASE,
-            )
-            if variants:
-                usable = [entry for entry in variants if int(entry[1]) <= 720] or variants
-                _, _, child = max(usable, key=lambda entry: int(entry[0]) * int(entry[1]))
-                stream = urllib.parse.urljoin(stream, child.strip())
-        except Exception as exc:
-            self.logger.warning("HairyDivas master playlist parsing failed: %s", exc)
-        return {"url": stream, "headers": self._headers(url, accept="*/*"), "extension": "m3u8"}
+        if source and signer:
+            unsigned = urllib.parse.unquote(html.unescape(source.group(1)))
+            sign_url = urllib.parse.urljoin(signer.group(1), "/ah/sign")
+            try:
+                response = self.session.post(
+                    sign_url,
+                    json={"urls": {"hls": unsigned}},
+                    headers={
+                        "User-Agent": self.ua,
+                        "Referer": url,
+                        "Origin": self.base_url.rstrip("/"),
+                        "Accept": "application/json",
+                    },
+                    timeout=15,
+                )
+                stream = ((response.json().get("urls") or {}).get("hls") or "") if response.status_code == 200 else ""
+                if stream:
+                    return {"url": stream, "headers": self._headers(url, accept="*/*"), "extension": "m3u8"}
+            except Exception as exc:
+                self.logger.warning("HairyDivas signing failed: %s", exc)
+
+        return None
 
     def play_video(self, url):
         resolved = self.resolve_recording_stream(url)
