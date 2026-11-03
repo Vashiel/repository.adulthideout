@@ -63,7 +63,7 @@ class Area51(BaseWebsite):
                         'custom': self.get_headers()['User-Agent']
                     }
                 )
-                self.logger.info("Using cloudscraper for Cloudflare bypass")
+                self.logger.info("Using cloudscraper session")
             else:
                 Area51._shared_session = requests.Session()
                 self.logger.info("Using standard requests session")

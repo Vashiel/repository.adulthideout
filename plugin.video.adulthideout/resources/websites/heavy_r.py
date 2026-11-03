@@ -164,9 +164,9 @@ class HeavyRWebsite(BaseWebsite):
             next_url = urllib.parse.urljoin(self.base_url, match.group(1))
             self.add_dir('[COLOR blue]Next Page >>>>[/COLOR]', next_url, 2, self.icons['default'], self.fanart)
 
-    def play_video(self, url):
+    def resolve_recording_stream(self, url):
         content = self.make_request(url)
-        if not content: return
+        if not content: return None
 
         match = self.video_source_pattern.search(content)
         if match:
@@ -176,8 +176,18 @@ class HeavyRWebsite(BaseWebsite):
             elif video_url.startswith('/'):
                 video_url = urllib.parse.urljoin(self.base_url, video_url)
             
-            video_url = video_url.replace("https://", "http://")
-            li = xbmcgui.ListItem(path=video_url)
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+                "Referer": "https://www.heavy-r.com/",
+            }
+            stream_url = video_url + "|" + urllib.parse.urlencode(headers)
+            return {"url": stream_url, "headers": headers}
+        return None
+
+    def play_video(self, url):
+        resolved = self.resolve_recording_stream(url)
+        if resolved:
+            li = xbmcgui.ListItem(path=resolved["url"])
             li.setProperty("IsPlayable", "true")
             li.setMimeType("video/mp4")
             xbmcplugin.setResolvedUrl(self.addon_handle, True, li)

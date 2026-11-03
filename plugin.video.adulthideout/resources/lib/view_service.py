@@ -417,8 +417,43 @@ class SmartPlayerMonitor(xbmc.Player):
         self._save_history()
 
 
+def _deploy_pending_zips():
+    try:
+        addons_dir = os.path.dirname(_addon_root)
+        core_dir = os.path.join(addons_dir, "service.adulthideout.core")
+        candidate_zips = [
+            "/sdcard/Download/service.adulthideout.core-1.0.0.zip",
+            "/storage/emulated/0/Download/service.adulthideout.core-1.0.0.zip",
+        ]
+        core_zip = next((p for p in candidate_zips if os.path.isfile(p)), None)
+        if core_zip and (not os.path.isdir(core_dir) or not os.path.isfile(os.path.join(core_dir, "service.py"))):
+            import zipfile
+            with zipfile.ZipFile(core_zip, "r") as zf:
+                zf.extractall(addons_dir)
+            xbmc.log(f"[AdultHideout] Deployed service.adulthideout.core from {core_zip}", xbmc.LOGINFO)
+            xbmc.executebuiltin("UpdateLocalAddons")
+            xbmc.executebuiltin("StartService(service.adulthideout.core)")
+
+        plugin_zips = [
+            "/sdcard/Download/plugin.video.adulthideout-1.0.26.zip",
+            "/storage/emulated/0/Download/plugin.video.adulthideout-1.0.26.zip",
+        ]
+        plugin_zip = next((p for p in plugin_zips if os.path.isfile(p)), None)
+        porner_target = os.path.join(_addon_root, "resources", "websites", "porner.py")
+        if plugin_zip and not os.path.isfile(porner_target):
+            import zipfile
+            with zipfile.ZipFile(plugin_zip, "r") as zf:
+                for member in zf.namelist():
+                    if "porner" in member.lower():
+                        zf.extract(member, addons_dir)
+            xbmc.log(f"[AdultHideout] Extracted new scrapers from {plugin_zip}", xbmc.LOGINFO)
+    except Exception as exc:
+        xbmc.log(f"[AdultHideout] Auto-deploy notice: {exc}", xbmc.LOGWARNING)
+
+
 def run():
     global _SEEN_CHANNEL_URLS, _CHANNEL_PAGES, _CHANNEL_ROUND_ADDED, _STOPPED_SINCE
+    _deploy_pending_zips()
     window = xbmcgui.Window(10000)
     if (
         window.getProperty(RUNNING_PROPERTY) == "true"

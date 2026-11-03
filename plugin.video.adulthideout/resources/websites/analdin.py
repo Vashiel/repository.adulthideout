@@ -76,6 +76,8 @@ class AnaldinWebsite(BaseWebsite):
         return f"{self.base_url}{path}", label
 
     def make_request(self, url, referer=None):
+        if not url or url == "BOOTSTRAP":
+            url, _ = self.get_start_url_and_label()
         headers = {
             'User-Agent': self.user_agent,
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -89,9 +91,21 @@ class AnaldinWebsite(BaseWebsite):
                 return r.text
         except Exception as e:
             xbmc.log(f"[AdultHideout][Analdin] Request error for {url}: {e}", xbmc.LOGWARNING)
+
+        # Core proxy fallback (handles Cloudflare)
+        try:
+            proxy_url = f"http://127.0.0.1:8191/proxy?url={urllib.parse.quote(url)}"
+            pr = requests.get(proxy_url, headers=headers, timeout=20)
+            if pr.status_code == 200:
+                return pr.text
+        except Exception:
+            pass
+
         return None
 
     def process_content(self, url):
+        if not url or url == "BOOTSTRAP":
+            url, _ = self.get_start_url_and_label()
         self.add_basic_dirs(url)
         self.process_video_list(url)
 

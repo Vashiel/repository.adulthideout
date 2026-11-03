@@ -76,6 +76,9 @@ def resolve(embed_url, referer, headers):
     out_headers["User-Agent"] = ua
     out_headers["Referer"] = origin + "/"
     out_headers["Origin"] = origin
+    out_headers["Accept"] = "*/*"
+    out_headers.pop("Accept-Encoding", None)
+    out_headers.pop("Accept-Language", None)
 
     m = re.search(r'(https?://[^\s"\']+\.(?:mp4|m3u8)[^\s"\']*)', html, re.IGNORECASE)
     if m:

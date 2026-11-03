@@ -33,39 +33,54 @@ def resolve(url, referer=None, headers=None):
             return None, {}
         html = resp.text
         
-        # Streamtape logic: Find the robotlink element and the script that populates it
-        match = re.search(
-            r"document\.getElementById\(['\"]robotlink['\"]\)\.innerHTML\s*=\s*(.+?);",
-            html,
-        )
-        parts = match.group(1) if match else ""
-        
-        # Robust extraction: process the JS expression piece by piece
-        # Pieces are usually: 'string' + 'string'.substring(1) + 'string'.substring(2).substring(1)
+        # Streamtape logic: Evaluate dynamic JS assignments, prioritizing get_video
+        candidates = []
+        for elem_id in ("robotlink", "botlink", "ideoolink", "videoolink", "norobotlink"):
+            m = re.search(
+                rf"document\.getElementById\(['\"]{elem_id}['\"]\)\.innerHTML\s*=\s*(.+?);",
+                html,
+            )
+            if m:
+                candidates.append(m.group(1))
+
+        for m in re.finditer(r"""document\.getElementById\(['"][a-zA-Z0-9]*link['"]\)\.innerHTML\s*=\s*(.+?);""", html):
+            expr = m.group(1)
+            if expr not in candidates:
+                candidates.append(expr)
+
         res = ""
-        # Find all segments: either a string literal or a substring call
-        # We'll split the expression by '+' and process each segment
-        for segment in parts.split('+'):
-            segment = segment.strip()
-            # Find the string literal first
-            str_match = re.search(r"['\"]([^'\"]*)['\"]", segment)
-            if str_match:
-                val = str_match.group(1)
-                # Now find ALL substring calls in this same segment
-                for sub_match in re.findall(r"\.substring\((\d+)\)", segment):
-                    skip = int(sub_match)
-                    val = val[skip:]
-                res += val
-        
+        for parts in candidates:
+            cand_res = ""
+            for segment in parts.split('+'):
+                segment = segment.strip()
+                str_match = re.search(r"""['"]([^'"]*)['"]""", segment)
+                if str_match:
+                    val = str_match.group(1)
+                    for sub_match in re.findall(r"\.substring\((\d+)\)", segment):
+                        skip = int(sub_match)
+                        val = val[skip:]
+                    cand_res += val
+            if "get_video" in cand_res:
+                res = cand_res
+                break
+            elif not res and ("get_vide" in cand_res or "token=" in cand_res):
+                res = cand_res
+
+        if res:
+            res = re.sub(r"/get_vide[a-z0-9_]*\?", "/get_video?", res)
+
         if not res:
-            # Current pages also contain a ready-to-use hidden link. This is
-            # preferable to failing when StreamTape changes only its JS wrapper.
             static = re.search(
                 r'<(?:div|span)\b[^>]*id=["\'](?:robotlink|botlink|ideoolink)["\'][^>]*>([^<]+)',
                 html,
                 re.I,
             )
-            res = static.group(1).strip() if static else ""
+            cand = static.group(1).strip() if static else ""
+            if cand and cand.lower() not in ("robotlink", "botlink", "ideoolink", "videoolink", "norobotlink"):
+                res = cand
+                if "/get_vide" in res:
+                    res = re.sub(r"/get_vide[a-z0-9_]*\?", "/get_video?", res)
+
         if not res or "nofile" in html.lower():
             xbmc.log("[AdultHideout][streamtape] playable link not found", xbmc.LOGERROR)
             return None, {}

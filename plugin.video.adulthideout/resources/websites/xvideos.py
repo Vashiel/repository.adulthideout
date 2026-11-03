@@ -200,6 +200,21 @@ class XvideosWebsite(BaseWebsite):
     def make_request(self, url, headers=None, max_retries=3, retry_wait=5000):
         is_json = 'json' in url.lower()
         headers = headers or self.get_headers(url, is_json=is_json)
+        is_bg = getattr(self, "adult_hideout_background_harvest", False)
+        try:
+            from resources.lib.resilient_http import fetch_text
+            content = fetch_text(
+                url,
+                headers=headers,
+                logger=self.logger,
+                timeout=5 if is_bg else 15,
+            )
+            if content:
+                return content
+        except Exception:
+            pass
+        if is_bg:
+            return ""
         cookie_jar = CookieJar()
         handler = urllib.request.HTTPCookieProcessor(cookie_jar)
         opener = urllib.request.build_opener(handler)
@@ -207,7 +222,7 @@ class XvideosWebsite(BaseWebsite):
         for attempt in range(max_retries):
             try:
                 request = urllib.request.Request(url, headers=headers)
-                with opener.open(request, timeout=60) as response:
+                with opener.open(request, timeout=20) as response:
                     encoding = response.info().get('Content-Encoding')
                     raw_data = response.read()
                     if encoding == 'gzip':

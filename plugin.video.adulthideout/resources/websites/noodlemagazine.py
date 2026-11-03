@@ -41,6 +41,8 @@ _SESSION = None
 _LOCK = threading.Lock()
 
 class NoodleMagazine(BaseWebsite):
+    def get_start_url_and_label(self):
+        return f"{self.base_url}/home", "NoodleMagazine"
     def __init__(self, addon_handle):
         super().__init__(
             name='noodlemagazine',
@@ -228,9 +230,22 @@ class NoodleMagazine(BaseWebsite):
                     html_content = response.text
             else:
                 self.logger.info(f"Fetching: {url} (Standard GET)")
-                with session.get(url, headers=headers, timeout=30) as response:
-                    response.raise_for_status()
-                    html_content = response.text
+                try:
+                    with session.get(url, headers=headers, timeout=15) as response:
+                        response.raise_for_status()
+                        html_content = response.text
+                except Exception as exc:
+                    self.logger.warning(f"Direct NM fetch failed: {exc}, using Core proxy...")
+                    try:
+                        import requests as _req
+                        proxy_url = f"http://127.0.0.1:8191/proxy?url={urllib.parse.quote(url)}"
+                        pr = _req.get(proxy_url, headers=headers, timeout=15)
+                        if pr.status_code == 200 and len(pr.text) > 1000:
+                            html_content = pr.text
+                        else:
+                            raise exc
+                    except Exception:
+                        raise exc
             
             if page_num and (not html_content or html_content.strip() == '[]' or len(html_content) < 500):
                 return None
@@ -244,6 +259,8 @@ class NoodleMagazine(BaseWebsite):
             self.save_cookies()
 
     def process_content(self, url):
+        if not url or url == "BOOTSTRAP":
+            url = f"{self.base_url}/home"
         html_content = self.get_page_content(url)
         if not html_content:
             self.end_directory()

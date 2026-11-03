@@ -108,8 +108,39 @@ class Jable(KVSTubeWebsite):
                 log_method = self.logger.error if attempt + 1 == retries else self.logger.debug
                 log_method("Jable request attempt %s failed: %s", attempt + 1, exc)
             self.session = self._build_session()
+            if attempt == 0:
+                # If blocked on first attempt, immediately retry through the AdultHideout Core session engine
+                try:
+                    from resources.lib.resilient_http import fetch_text
+                    core_content = fetch_text(
+                        url,
+                        headers=self._headers(referer),
+                        logger=self.logger,
+                        timeout=20,
+                    )
+                    if core_content and not self._is_challenge(core_content):
+                        self.logger.info("Jable response resolved via AdultHideout Core bypass")
+                        return core_content
+                except Exception as exc:
+                    self.logger.debug("Jable AdultHideout Core fallback failed: %s", exc)
             if attempt + 1 < retries:
                 xbmc.sleep(900 * (attempt + 1))
+
+        # Final Core attempt before giving up or falling back to RSS
+        try:
+            from resources.lib.resilient_http import fetch_text
+            core_content = fetch_text(
+                url,
+                headers=self._headers(referer),
+                logger=self.logger,
+                timeout=20,
+            )
+            if core_content and not self._is_challenge(core_content):
+                self.logger.info("Jable response resolved via AdultHideout Core bypass")
+                return core_content
+        except Exception as exc:
+            self.logger.debug("Jable AdultHideout Core fallback failed: %s", exc)
+
         parsed = urllib.parse.urlparse(url)
         if parsed.path.rstrip("/") in ("", "/latest-updates"):
             try:

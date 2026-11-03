@@ -250,9 +250,11 @@ class TrannyVideosXXX(BaseWebsite):
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
         try:
-            controller = ProxyController(resolved["url"], upstream_headers=resolved["headers"], use_urllib=True, probe_size=True)
-            play_url = controller.start()
-            PlaybackGuard(xbmc.Player(), xbmc.Monitor(), play_url, controller).start()
+            stream_url = resolved["url"]
+            headers = resolved.get("headers") or {}
+            ua = headers.get("User-Agent") or self.ua
+            ref = headers.get("Referer") or self.base_url
+            play_url = f"{stream_url}|User-Agent={urllib.parse.quote(ua)}&Referer={urllib.parse.quote(ref)}"
             item = xbmcgui.ListItem(path=play_url)
             item.setProperty("IsPlayable", "true")
             item.setMimeType("video/mp4")

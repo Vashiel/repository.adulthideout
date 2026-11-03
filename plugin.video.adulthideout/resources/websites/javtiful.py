@@ -196,6 +196,31 @@ class Javtiful(KVSTubeWebsite):
         self._process_directory(url or self._absolute(self.channels_path), "/channel/", 10, "categories")
 
     def _extract_stream_url(self, html_content, referer=None):
+        match = re.search(r'"playback"\s*:\s*\{\s*"endpoint"\s*:\s*"([^"]+)"\s*,\s*"ticket"\s*:\s*"([^"]+)"', html_content or "")
+        if match:
+            endpoint, ticket = match.group(1), match.group(2)
+            api_url = self._absolute(endpoint)
+            payload = urllib.parse.urlencode({"ticket": ticket}).encode("utf-8")
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Referer": referer or self.base_url,
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+            }
+            try:
+                req = urllib.request.Request(api_url, data=payload, headers=headers, method="POST")
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    if data.get("success") and data.get("sources"):
+                        sources = sorted(data["sources"], key=lambda s: int(s.get("size") or 0), reverse=True)
+                        for src_info in sources:
+                            stream = self._absolute(src_info.get("src") or "")
+                            if stream.startswith("http"):
+                                return stream
+            except Exception as e:
+                self.logger.warning(f"Javtiful playback API error: {e}")
+
         sources = []
         match = re.search(r'"playerSources"\s*:\s*(\[[\s\S]*?\])\s*,\s*"videoTitle"', html_content or "")
         if match:

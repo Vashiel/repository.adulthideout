@@ -55,10 +55,21 @@ class AkiH(KVSTubeWebsite):
         return output
 
     def _extract_videos(self, html_content):
+        import concurrent.futures
+
         videos = []
         seen = set()
-        for episode_url in self._episode_urls(html_content)[:12]:
-            episode = self._get(episode_url, referer=self.base_url)
+        episode_urls = self._episode_urls(html_content)[:6]
+
+        def _fetch_ep(u):
+            return u, self._get(u, referer=self.base_url)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(episode_urls), 6) or 1) as executor:
+            episodes = list(executor.map(_fetch_ep, episode_urls))
+
+        for episode_url, episode in episodes:
+            if not episode:
+                continue
             series_title = re.search(r"<h1\b[^>]*>([\s\S]*?)</h1>", episode or "", re.IGNORECASE)
             series_name = self._clean(series_title.group(1) if series_title else "")
             for href in re.findall(r'href=["\']([^"\']*/videos/([^/"\']+)/)["\']', episode or "", re.IGNORECASE):
@@ -154,7 +165,11 @@ class AkiH(KVSTubeWebsite):
                 final_m3u8 = "https://aki-h.stream/file/{}/".format(token)
                 return {
                     "url": final_m3u8,
-                    "headers": {"User-Agent": self.ua, "Referer": "https://aki-h.stream/v/{}".format(token)},
+                    "headers": {
+                        "User-Agent": self.ua,
+                        "Referer": "https://aki-h.stream/v/{}".format(token),
+                        "Accept": "*/*",
+                    },
                     "extension": "m3u8",
                 }
 

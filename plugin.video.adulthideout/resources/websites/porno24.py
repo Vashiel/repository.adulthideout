@@ -36,4 +36,8 @@ class Porno24(KVSTubeWebsite):
         if not match:
             return None
         stream_url = self._absolute(html.unescape(match.group(1)).replace("\\/", "/"))
-        return {"url": stream_url, "headers": self._headers(url, accept="*/*"), "extension": "mp4"}
+        headers = self._headers(url, accept="*/*")
+        cookie_header = "; ".join(f"{c.name}={c.value}" for c in self.session.cookies)
+        if cookie_header:
+            headers["Cookie"] = cookie_header
+        return {"url": stream_url, "headers": headers, "extension": "mp4"}

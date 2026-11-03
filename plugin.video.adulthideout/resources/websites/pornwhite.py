@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
-import glob
 import html
 import os
 import re
-import subprocess
 import sys
-import threading
 import urllib.parse
 
 import requests
@@ -45,102 +42,6 @@ class Pornwhite(BaseWebsite):
             ("Video Rating", "/pornstars/?sort_by=avg_videos_rating"),
             ("Video Popularity", "/pornstars/?sort_by=avg_videos_popularity"),
         ]
-
-    def _find_system_python(self):
-        local_app_data = os.environ.get("LOCALAPPDATA", "")
-        pattern = os.path.join(local_app_data, "Programs", "Python", "Python*", "python.exe")
-        for candidate in sorted(glob.glob(pattern), reverse=True):
-            if os.path.isfile(candidate):
-                return candidate
-        return "python"
-
-    def _start_external_proxy(self, stream_url, video_url):
-        helper_path = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..", "lib", "system_stream_proxy.py")
-        )
-        if not os.path.isfile(helper_path):
-            return None, None
-
-        python_exe = self._find_system_python()
-        command = [
-            python_exe,
-            "-u",
-            helper_path,
-            "--url",
-            stream_url,
-            "--referer",
-            video_url,
-            "--origin",
-            self.base_url,
-            "--user-agent",
-            self.ua,
-        ]
-
-        startupinfo = None
-        creationflags = 0
-        if os.name == "nt":
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            startupinfo.wShowWindow = 0
-            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            stdin=subprocess.DEVNULL,
-            text=True,
-            bufsize=1,
-            startupinfo=startupinfo,
-            creationflags=creationflags,
-        )
-
-        try:
-            local_url = process.stdout.readline().strip()
-        except Exception:
-            local_url = ""
-
-        if not local_url:
-            try:
-                error_output = process.stderr.read().strip()
-                if error_output:
-                    self.logger.error("[Pornwhite] External proxy stderr: %s", error_output)
-            except Exception:
-                pass
-            try:
-                process.terminate()
-            except Exception:
-                pass
-            return None, None
-
-        return process, local_url
-
-    def _start_process_guard(self, process):
-        class _ProcessGuard(threading.Thread):
-            def __init__(self, kodi_player, monitor, proxy_process):
-                super(_ProcessGuard, self).__init__(name="PornwhiteProxyGuard", daemon=True)
-                self.player = kodi_player
-                self.monitor = monitor
-                self.proxy_process = proxy_process
-
-            def run(self):
-                started = False
-                while not self.monitor.abortRequested():
-                    if self.player.isPlaying():
-                        started = True
-                    elif started:
-                        break
-                    if self.proxy_process.poll() is not None:
-                        break
-                    self.monitor.waitForAbort(1)
-
-                if self.proxy_process.poll() is None:
-                    try:
-                        self.proxy_process.terminate()
-                    except Exception:
-                        pass
-
-        _ProcessGuard(xbmc.Player(), xbmc.Monitor(), process).start()
 
     def _normalize_thumb_url(self, thumb_url):
         if not thumb_url:
@@ -459,12 +360,6 @@ class Pornwhite(BaseWebsite):
             )
             final_url = redirect_response.headers.get("Location") or best_url
             playback_path = self._build_header_url(final_url, stream_headers)
-
-            if os.name == "nt":
-                proxy_process, local_url = self._start_external_proxy(final_url, url)
-                if proxy_process and local_url:
-                    playback_path = local_url
-                    self._start_process_guard(proxy_process)
 
             list_item = xbmcgui.ListItem(path=playback_path)
             list_item.setProperty("IsPlayable", "true")

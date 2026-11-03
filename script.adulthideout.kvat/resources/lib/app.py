@@ -56,7 +56,9 @@ def timeout_for_mode(mode):
         return 95
     if mode in ("detail", "playback"):
         return 55
-    return 25
+    if mode == "smart":
+        return 35
+    return 20
 
 
 def stop_worker():
@@ -130,7 +132,7 @@ def run_worker_batch(sites, mode, progress_callback=None, cancelled_callback=Non
 
         segment_results = []
         current_site = pending[0]
-        deadline = time.time() + timeout_for_mode(mode)
+        deadline = time.time() + (max(90, timeout_for_mode(mode)) if len(pending) > 1 else timeout_for_mode(mode))
         segment_complete = False
         try:
             while not MONITOR.abortRequested():
@@ -142,7 +144,8 @@ def run_worker_batch(sites, mode, progress_callback=None, cancelled_callback=Non
                     reported_site = str(state.get("current_site") or "")
                     if reported_site and reported_site != current_site:
                         current_site = reported_site
-                        deadline = time.time() + timeout_for_mode(mode)
+                        batch_running = len(pending) > 1 and len(segment_results) == 0
+                        deadline = time.time() + (120 if batch_running else timeout_for_mode(mode))
                     if progress_callback:
                         progress_callback(len(completed) + len(segment_results), current_site)
                     if state.get("state") == "complete":
@@ -236,8 +239,6 @@ def show_report(report, path=""):
 
 
 def run_sites(sites, mode, show_result=True):
-    if mode == "smart":
-        return run_smart_scan(sites, show_result=show_result)
     if not sites:
         xbmcgui.Dialog().notification(
             text(30000, "AdultHideout Diagnostics"),
@@ -481,9 +482,9 @@ def select_websites():
     test_mode = xbmcgui.Dialog().select(
         text(30036, "Test mode"),
         [
-            text(30001, "Smart check"),
-            text(30007, "Quick listing check"),
-            text(30002, "Full playback check"),
+            text(30001, "Standard check (Websites, listings & stream test)"),
+            text(30007, "Express check (Servers & reachability only)"),
+            text(30002, "Kodi player test (visible playback)"),
         ],
     )
     if test_mode < 0:
@@ -496,7 +497,7 @@ def confirm_all(mode, count):
     if mode == "smart":
         message = text(
             30044,
-            "Runs a fast screen first, then inspects useful folders only for suspicious websites.",
+            "Tests websites, listings, thumbnails, and verifies stream resolution and stream reachability for each website.",
         )
     elif mode == "full":
         message = text(
@@ -506,7 +507,7 @@ def confirm_all(mode, count):
     else:
         message = text(
             30038,
-            "This test checks every website listing and first thumbnail and may take some time.",
+            "This express check quickly tests server reachability and homepages of all websites.",
         )
     return xbmcgui.Dialog().yesno(
         text(30000, "AdultHideout Diagnostics"),
@@ -516,8 +517,8 @@ def confirm_all(mode, count):
 
 def show_main_menu():
     options = [
-        text(30001, "Smart check all websites"),
-        text(30007, "Quick listing check all websites"),
+        text(30001, "Standard check all websites (listings & streams)"),
+        text(30007, "Express check all websites (servers only)"),
         text(30003, "Select websites"),
         text(30004, "Retest failed"),
         text(30005, "Previous reports"),

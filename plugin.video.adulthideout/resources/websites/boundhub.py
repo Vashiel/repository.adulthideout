@@ -49,6 +49,9 @@ class BoundHub(BaseWebsite):
             addon_handle=addon_handle
         )
     
+    def get_start_url_and_label(self):
+        return f"{self.BASE_URL}latest-updates/", "BoundHub - Latest"
+
     def get_headers(self):
         return {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
@@ -58,19 +61,32 @@ class BoundHub(BaseWebsite):
         }
 
     def make_request(self, url):
+        if not url or url == "BOOTSTRAP":
+            url, _ = self.get_start_url_and_label()
         try:
             headers = self.get_headers()
             if _HAS_CF:
                 scraper = cloudscraper.create_scraper(browser={'custom': headers['User-Agent']})
                 r = scraper.get(url, headers=headers, timeout=20)
-                return r.text
+                if r.status_code == 200 and 'Attention Required' not in r.text and 'cf-chl-' not in r.text:
+                    return r.text
             else:
                 req = urllib.request.Request(url, headers=headers)
                 with urllib.request.urlopen(req, timeout=15) as response:
                     return response.read().decode('utf-8')
         except Exception as e:
             xbmc.log(f"BoundHub: Request error: {e}", xbmc.LOGERROR)
-            return None
+
+        try:
+            import requests
+            proxy_url = f"http://127.0.0.1:8191/proxy?url={urllib.parse.quote(url)}"
+            pr = requests.get(proxy_url, headers=self.get_headers(), timeout=20)
+            if pr.status_code == 200:
+                return pr.text
+        except Exception:
+            pass
+
+        return None
 
     def resolve(self, url):
         xbmc.log(f"BoundHub: Resolving {url}", xbmc.LOGINFO)
@@ -218,6 +234,8 @@ class BoundHub(BaseWebsite):
         self.process_content(url)
 
     def process_content(self, url):
+        if not url or url == "BOOTSTRAP":
+            url, _ = self.get_start_url_and_label()
         if url and ('categories' in url or 'channels' in url):
             if 'videos' not in url:
                 if url.rstrip('/').endswith('categories') or '/categories/page' in url:
@@ -316,14 +334,7 @@ class BoundHub(BaseWebsite):
     def resolve_recording_stream(self, url):
         headers = self.get_headers()
         try:
-            if _HAS_CF:
-                scraper = cloudscraper.create_scraper(browser={'custom': headers['User-Agent']})
-                r = scraper.get(url, headers=headers, timeout=20)
-                html = r.text
-            else:
-                req = urllib.request.Request(url, headers=headers)
-                with urllib.request.urlopen(req, timeout=15) as response:
-                    html = response.read().decode('utf-8')
+            html = self.make_request(url)
             if not html:
                 return None
             video_url = None

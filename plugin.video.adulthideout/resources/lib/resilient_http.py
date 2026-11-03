@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
-import os
+"""Resilient HTTP fetching engine integrated with service.adulthideout.core."""
+
+import json
 import socket
 import ssl
-import subprocess
-import tempfile
 import threading
+import urllib.parse
 import urllib.request
+import requests
 
-
+CORE_ENDPOINT = "http://127.0.0.1:8191/v1"
 _IPV4_LOCK = threading.Lock()
 
 
@@ -39,7 +41,7 @@ def fetch_text(
     headers=None,
     scraper=None,
     logger=None,
-    timeout=20,
+    timeout=120,
     use_windows_curl_fallback=True,
     prefer_ipv4=False,
 ):
@@ -50,9 +52,41 @@ def fetch_text(
     if headers:
         request_headers.update(headers)
 
+    # 1. Primary path: High-speed Rust Core Engine with browser-compatible session handling
+    try:
+        core_headers = {k: str(v) for k, v in request_headers.items() if k.lower() != "user-agent"}
+        req_body = {
+            "cmd": "request.get",
+            "url": url,
+            "maxTimeout": int(timeout * 1000),
+            "headers": core_headers,
+        }
+        resp = requests.post(CORE_ENDPOINT, json=req_body, timeout=max(3.0, float(timeout) + 1.5))
+        if resp.status_code == 200:
+            sol = resp.json().get("solution", {})
+            body = sol.get("response", "")
+            if body and sol.get("status") in (200, 206):
+                _log(logger, "debug", "HTTP response accepted via service.adulthideout.core")
+                if scraper is not None and hasattr(scraper, "cookies"):
+                    try:
+                        netloc = urllib.parse.urlsplit(url).netloc
+                        parts = netloc.split(".")
+                        root_domain = "." + ".".join(parts[-2:]) if len(parts) >= 2 else netloc
+                        for c in sol.get("cookies", []):
+                            scraper.cookies.set(c["name"], c["value"], domain=root_domain)
+                            scraper.cookies.set(c["name"], c["value"])
+                    except Exception:
+                        pass
+                return body
+    except Exception as exc:
+        _log(logger, "debug", f"Core engine bypassed: {exc}")
+
+    fallback_timeout = min(float(timeout), 3.0) if timeout <= 6 else timeout
+
+    # 2. Secondary path: Direct scraper session if provided
     if scraper is not None:
         try:
-            request = lambda: scraper.get(url, timeout=timeout, headers=request_headers)
+            request = lambda: scraper.get(url, timeout=fallback_timeout, headers=request_headers)
             response = _ipv4_call(request) if prefer_ipv4 else request()
             if response.status_code == 200:
                 _log(logger, "debug", "HTTP response accepted via scraper")
@@ -61,12 +95,15 @@ def fetch_text(
         except Exception as exc:
             _log(logger, "warning", f"Scraper request failed: {exc}")
 
+    # 3. Tertiary path: Standard library urllib (skip redundant attempt when fast timeout <= 6 and scraper already ran)
+    if scraper is not None and timeout <= 6:
+        return None
     try:
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
         req = urllib.request.Request(url, headers=request_headers)
-        request = lambda: urllib.request.urlopen(req, timeout=timeout, context=ctx)
+        request = lambda: urllib.request.urlopen(req, timeout=fallback_timeout, context=ctx)
         response = _ipv4_call(request) if prefer_ipv4 else request()
         with response:
             if 200 <= response.status < 300:
@@ -76,78 +113,76 @@ def fetch_text(
     except Exception as exc:
         _log(logger, "warning", f"urllib request failed: {exc}")
 
-    if use_windows_curl_fallback:
-        return fetch_windows_text(url, request_headers, logger, timeout, prefer_ipv4)
     return None
 
 
-def fetch_windows_text(url, headers=None, logger=None, timeout=20, prefer_ipv4=False):
-    if os.name != "nt":
-        return None
-    request_headers = {"User-Agent": "Mozilla/5.0", "Referer": url}
-    request_headers.update(headers or {})
+def fetch_windows_text(url, headers=None, logger=None, timeout=120, prefer_ipv4=False):
+    """Backward compatibility alias: delegates directly to fetch_text without subprocesses."""
+    return fetch_text(
+        url=url,
+        headers=headers,
+        logger=logger,
+        timeout=timeout,
+        prefer_ipv4=prefer_ipv4,
+    )
 
-    tmp_path = None
+
+def fetch_text_with_solution(url, headers=None, logger=None, timeout=120):
+    """Fetch URL and return full solution object (response, cookies, userAgent) from core engine."""
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp_file:
-            tmp_path = tmp_file.name
-
-        command = [
-            "curl.exe",
-            "-L",
-            "--fail",
-            "--silent",
-            "--show-error",
-            "--connect-timeout",
-            "10",
-            "--max-time",
-            str(timeout),
-            "--user-agent",
-            request_headers.get("User-Agent", "Mozilla/5.0"),
-            "--referer",
-            request_headers.get("Referer", url),
-            "-o",
-            tmp_path,
-        ]
-        for name, value in request_headers.items():
-            if name.lower() not in ("user-agent", "referer"):
-                command.extend(["--header", "{}: {}".format(name, value)])
-        command.append(url)
-        if prefer_ipv4:
-            command.insert(1, "--ipv4")
-
-        startupinfo = None
-        creationflags = 0
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = 0
-        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-
-        completed = subprocess.run(
-            command,
-            capture_output=True,
-            timeout=timeout + 10,
-            check=False,
-            startupinfo=startupinfo,
-            creationflags=creationflags,
-        )
-
-        if completed.returncode == 0 and tmp_path and os.path.exists(tmp_path):
-            with open(tmp_path, "rb") as fh:
-                data = fh.read()
-            if data:
-                _log(logger, "debug", "HTTP response accepted via curl.exe")
-                return data.decode("utf-8", errors="ignore")
-
-        stderr = completed.stderr.decode("utf-8", errors="ignore").strip()
-        _log(logger, "error", f"curl.exe failed rc={completed.returncode}: {stderr[:200]}")
+        req_body = {
+            "cmd": "request.get",
+            "url": url,
+            "maxTimeout": int(timeout * 1000),
+        }
+        resp = requests.post(CORE_ENDPOINT, json=req_body, timeout=timeout + 5)
+        if resp.status_code == 200:
+            sol = resp.json().get("solution", {})
+            if sol.get("status") in (200, 206) and sol.get("response"):
+                _log(logger, "debug", "HTTP response solution accepted via service.adulthideout.core")
+                return sol
     except Exception as exc:
-        _log(logger, "error", f"curl.exe request failed: {exc}")
-    finally:
-        if tmp_path and os.path.exists(tmp_path):
-            try:
-                os.remove(tmp_path)
-            except Exception:
-                pass
+        _log(logger, "debug", f"Core engine error: {exc}")
 
+    body = fetch_text(url, headers=headers, logger=logger, timeout=timeout)
+    if body:
+        return {"response": body, "status": 200, "cookies": [], "userAgent": ""}
     return None
+
+
+WARMUP_ENDPOINT = "http://127.0.0.1:8191/warmup"
+
+
+def get_warmup_status():
+    """Query service.adulthideout.core for active Cloudflare/Turnstile warmup pool status."""
+    try:
+        resp = requests.get(WARMUP_ENDPOINT, timeout=2.0)
+        if resp.status_code == 200:
+            return resp.json()
+    except Exception:
+        pass
+    return None
+
+
+def register_warmup_domain(domain, url=None):
+    """Register a new domain to be monitored and pre-warmed by service.adulthideout.core."""
+    try:
+        payload = {"domain": domain}
+        if url:
+            payload["url"] = url
+        resp = requests.post(f"{WARMUP_ENDPOINT}/register", json=payload, timeout=2.0)
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
+def trigger_warmup(domain=None):
+    """Trigger immediate background solving/warming of a domain or all registered domains."""
+    try:
+        payload = {"domain": domain} if domain else {}
+        resp = requests.post(f"{WARMUP_ENDPOINT}/trigger", json=payload, timeout=10.0)
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+

@@ -2,14 +2,18 @@
 # -*- coding: utf-8 -*-
 
 import html
+import json
+import os
 import re
 import sys
+import time
 import urllib.parse
 
 import requests
 import xbmc
 import xbmcgui
 import xbmcplugin
+import xbmcvfs
 
 from resources.lib.base_website import BaseWebsite
 from resources.lib.proxy_utils import PlaybackGuard, ProxyController
@@ -47,14 +51,81 @@ class Wowxxx(BaseWebsite):
             "Accept-Language": "en-US,en;q=0.9",
         }
 
-    def _get(self, url, referer=None, max_retries=3):
+    def _thumb(self, thumb):
+        if not thumb or not thumb.startswith("http"):
+            return thumb or self.icon
+        try:
+            from resources.lib.thumb_proxy import build_thumb_url
+            return build_thumb_url(thumb, referer="https://www.wowxxx.to/")
+        except Exception:
+            return thumb
+
+    def _get_cache_file(self):
+        try:
+            profile_dir = xbmcvfs.translatePath(self.addon.getAddonInfo("profile"))
+            if not os.path.exists(profile_dir):
+                os.makedirs(profile_dir, exist_ok=True)
+            return os.path.join(profile_dir, f"clearance_{self.name}.json")
+        except Exception:
+            return ""
+
+    def _load_cached_cookies(self):
+        try:
+            cached = None
+            prop = xbmcgui.Window(10000).getProperty(f"AdultHideout.Clearance.{self.name}")
+            if prop:
+                cached = json.loads(prop)
+            else:
+                cache_file = self._get_cache_file()
+                if cache_file and os.path.isfile(cache_file):
+                    with open(cache_file, "r", encoding="utf-8") as f:
+                        cached = json.load(f)
+                    if cached:
+                        xbmcgui.Window(10000).setProperty(f"AdultHideout.Clearance.{self.name}", json.dumps(cached))
+
+            if cached:
+                if time.time() - cached.get("ts", 0) < 86400:
+                    self.session.cookies.clear()
+                    for name, val in cached.get("cookies", {}).items():
+                        self.session.cookies.set(name, val, domain=".wowxxx.to")
+                    if cached.get("ua"):
+                        self.ua = cached["ua"]
+        except Exception as exc:
+            self.logger.warning("Failed to load cached clearance for %s: %s", self.name, exc)
+
+    def _save_cached_cookies(self, cookies, ua):
+        if not cookies:
+            return
+        cookie_dict = {c["name"]: c["value"] for c in cookies if c.get("name") and c.get("value")}
+        if not cookie_dict:
+            return
+        try:
+            payload = {
+                "cookies": cookie_dict,
+                "domain": ".wowxxx.to",
+                "ua": ua,
+                "ts": time.time(),
+            }
+            raw = json.dumps(payload)
+            xbmcgui.Window(10000).setProperty(f"AdultHideout.Clearance.{self.name}", raw)
+            cache_file = self._get_cache_file()
+            if cache_file:
+                with open(cache_file, "w", encoding="utf-8") as f:
+                    f.write(raw)
+        except Exception as exc:
+            self.logger.warning("Failed to save cached clearance for %s: %s", self.name, exc)
+
+    def _get(self, url, referer=None, max_retries=2):
+        self._load_cached_cookies()
         last_error = None
         for attempt in range(1, max_retries + 1):
             try:
-                response = self.session.get(url, headers=self._headers(referer), timeout=25)
-                if response.status_code == 200:
+                response = self.session.get(url, headers=self._headers(referer), timeout=5)
+                if response.status_code == 200 and "Just a moment" not in response.text:
                     return response.text
                 last_error = "HTTP {}".format(response.status_code)
+                if response.status_code in (403, 503) or "Just a moment" in response.text:
+                    break
                 self.logger.warning("WOW.xxx HTTP %s for %s", response.status_code, url)
             except Exception as exc:
                 last_error = exc
@@ -62,7 +133,33 @@ class Wowxxx(BaseWebsite):
                 self.session = requests.Session()
 
             if attempt < max_retries:
-                xbmc.sleep(650 * attempt)
+                xbmc.sleep(100 * attempt)
+
+        # Fallback to PhantomFlare (FlareSolverr API on 127.0.0.1:8191)
+        try:
+            self.logger.info("WOW.xxx trying PhantomFlare fallback for %s", url)
+            bg_harvest = getattr(self, "adult_hideout_background_harvest", False)
+            flare_resp = requests.post(
+                "http://127.0.0.1:8191/v1",
+                json={"cmd": "request.get", "url": url, "maxTimeout": 4000 if bg_harvest else 120000},
+                timeout=5 if bg_harvest else 125,
+            )
+            if flare_resp.status_code == 200:
+                data = flare_resp.json()
+                sol = data.get("solution", {})
+                if sol.get("status") == 200 and "Just a moment" not in sol.get("response", ""):
+                    cookies_list = sol.get("cookies", [])
+                    ua = sol.get("userAgent", "")
+                    self.session.cookies.clear()
+                    for cookie in cookies_list:
+                        self.session.cookies.set(cookie["name"], cookie["value"], domain=".wowxxx.to")
+                    if ua:
+                        self.ua = ua
+                    self._save_cached_cookies(cookies_list, self.ua)
+                    return sol.get("response", "")
+                self.logger.warning("WOW.xxx PhantomFlare solution status %s", sol.get("status"))
+        except Exception as flare_err:
+            self.logger.warning("WOW.xxx PhantomFlare fallback failed for %s: %s", url, flare_err)
 
         self.logger.error("WOW.xxx failed to fetch %s: %s", url, last_error)
         return ""
@@ -148,7 +245,7 @@ class Wowxxx(BaseWebsite):
             title = self._clean(title_match.group(1) if title_match else "")
             if not title:
                 continue
-            thumb = self._absolute(thumb_match.group(1)) if thumb_match else self.icon
+            thumb = self._thumb(self._absolute(thumb_match.group(1))) if thumb_match else self.icon
             if thumb.startswith("data:image/"):
                 thumb = self.icon
             duration = self._clean(duration_match.group(1)) if duration_match else ""

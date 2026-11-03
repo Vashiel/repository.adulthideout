@@ -36,7 +36,7 @@ class FullPorner(BaseWebsite):
             "Top Rated"
         ]
         self.sort_paths = {
-            "Latest": "recent",
+            "Latest": "",
             "Most Viewed": "views",
             "Top Rated": "rating"
         }
@@ -111,13 +111,25 @@ class FullPorner(BaseWebsite):
 
     def extract_videos(self, url):
         scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
+        html_content = ""
         try:
             self.logger.info(f"Fetching: {url}")
             resp = scraper.get(url, timeout=10)
-            html_content = resp.text
+            if resp.status_code == 200 and len(resp.text) > 2000:
+                html_content = resp.text
         except Exception as e:
             self.logger.error(f"Error fetching {url}: {e}")
-            return []
+
+        if not html_content or len(html_content) < 2000:
+            try:
+                import requests as _req
+                proxy_url = f"http://127.0.0.1:8191/proxy?url={urllib.parse.quote(url)}"
+                pr = _req.get(proxy_url, timeout=15)
+                if pr.status_code == 200 and len(pr.text) > 2000:
+                    html_content = pr.text
+            except Exception as e:
+                self.logger.error(f"Proxy error fetching {url}: {e}")
+                return []
             
         videos = []
         cards = re.split(r'<div[^>]*class=["\']video-card-image["\'][^>]*>', html_content)[1:]
@@ -196,7 +208,7 @@ class FullPorner(BaseWebsite):
             self.end_directory("videos")
             return
             
-        if url == "BOOTSTRAP":
+        if not url or url == "BOOTSTRAP":
             url = self.base_url + "/"
 
         videos = self.extract_videos(url)
@@ -234,8 +246,17 @@ class FullPorner(BaseWebsite):
         try:
             import cloudscraper
             scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
-            resp = scraper.get(url, timeout=10)
-            html_content = resp.text
+            try:
+                resp = scraper.get(url, timeout=10)
+                html_content = resp.text if (resp.status_code == 200 and len(resp.text) > 2000) else ""
+            except Exception:
+                html_content = ""
+            if not html_content:
+                import requests as _req
+                proxy_url = f"http://127.0.0.1:8191/proxy?url={urllib.parse.quote(url)}"
+                pr = _req.get(proxy_url, timeout=15)
+                if pr.status_code == 200:
+                    html_content = pr.text
             iframe_match = re.search(r'src=["\'](//xiaoshenke\.net/video/([a-z0-9]+)/(\d+))["\']', html_content, re.IGNORECASE)
             if not iframe_match:
                 return None

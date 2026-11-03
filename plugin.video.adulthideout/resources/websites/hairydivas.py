@@ -90,6 +90,7 @@ class HairyDivas(KVSTubeWebsite):
         page = self._get(url, referer=self.base_url)
         if not page:
             return None
+        page = html.unescape(page)
 
         # 1. Check for signed streams in __NUXT_DATA__
         nuxt_match = re.search(r'<script\b[^>]*id=["\']__NUXT_DATA__["\'][^>]*>([\s\S]*?)</script>', page)

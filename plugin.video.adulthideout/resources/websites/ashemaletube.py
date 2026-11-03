@@ -121,13 +121,17 @@ class AshemaletubeWebsite(BaseWebsite):
         if not headers:
             headers = self.get_headers(url, is_json=is_json)
 
-        for attempt in range(max_retries):
+        is_bg = getattr(self, "adult_hideout_background_harvest", False)
+        retries = 1 if is_bg else max_retries
+        timeout = 4 if is_bg else 20
+
+        for attempt in range(retries):
             content = fetch_text(
                 url=url,
                 headers=headers,
                 scraper=self._scraper,
                 logger=self.logger,
-                timeout=20,
+                timeout=timeout,
                 use_windows_curl_fallback=True,
             )
             if content and "Just a moment" not in content and "cf-browser-verification" not in content:

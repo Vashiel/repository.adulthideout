@@ -29,13 +29,13 @@ except ImportError:
 
 
 class LetmejerkWebsite(BaseWebsite):
-    BASE_URL = "https://www.letmejizz.co"
+    BASE_URL = "https://www.letmejerk.com"
 
     def __init__(self, addon_handle, addon=None):
         super().__init__(
             name="letmejerk",
             base_url=self.BASE_URL,
-            search_url="https://www.letmejizz.co/search.php?q={}",
+            search_url="https://www.letmejerk.com/search.php?q={}",
             addon_handle=addon_handle,
             addon=addon
         )
@@ -106,6 +106,8 @@ class LetmejerkWebsite(BaseWebsite):
         return None
 
     def process_content(self, url):
+        if not url or url == "BOOTSTRAP":
+            url, _ = self.get_start_url_and_label()
         self.add_basic_dirs(url)
         self.process_video_list(url)
 
@@ -151,19 +153,20 @@ class LetmejerkWebsite(BaseWebsite):
             return
 
         modern_blocks = re.findall(
-            r'<a[^>]+href="(/[^"]*(?:video|short)s?/[^"]+)"[^>]*>\s*<div\s+class="vc-thumb">\s*<img([^>]+)>',
-            content, re.DOTALL | re.IGNORECASE
+            r'<a[^>]+href="((?:https?://[^"]+)?/(?:video|short)s?/[^"]+)"[^>]*>([\s\S]*?)</a>',
+            content, re.IGNORECASE
         )
         
         matches = []
-        for path, img_attrs in modern_blocks:
-            src_match = re.search(r'data-src="([^"]+)"', img_attrs)
-            if not src_match:
-                 src_match = re.search(r'src="([^"]+)"', img_attrs)
+        for path, block in modern_blocks:
+            src_match = re.search(r'(?:data-src|src)="([^"]+)"', block)
             thumb = src_match.group(1) if src_match else self.icons.get('default', '')
-            
-            alt_match = re.search(r'alt="([^"]*)"', img_attrs)
-            title = alt_match.group(1) if alt_match else ''
+            alt_match = re.search(r'alt="([^"]+)"', block)
+            if alt_match:
+                title = alt_match.group(1)
+            else:
+                title_match = re.search(r'<div[^>]+class="[^"]*(?:title|o164l)[^"]*"[^>]*>([^<]+)<', block)
+                title = title_match.group(1) if title_match else ''
             matches.append((path, title, thumb))
 
         seen = set()
@@ -355,7 +358,25 @@ class LetmejerkWebsite(BaseWebsite):
         li.setProperty("IsPlayable", "true")
         xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
 
+    def resolve_recording_stream(self, url):
+        vid_match = re.search(r'/(?:video|short)s?/([A-Za-z0-9]+)', url or "")
+        if not vid_match:
+            return None
+        vid = vid_match.group(1)
+        stream_url = f"https://videos.letmejerk.com/hls/{vid}.m3u8"
+        headers = {
+            "User-Agent": self.ua,
+            "Referer": f"{self.BASE_URL}/video/{vid}/",
+            "Accept": "*/*",
+        }
+        return {"url": stream_url, "headers": headers, "extension": "m3u8"}
+
     def play_video(self, url):
+        resolved = self.resolve_recording_stream(url)
+        if resolved:
+            self._play_stream(resolved["url"], url, True)
+            return
+
         # 1. Fetch video page to get ID
         content = self.make_request(url)
         if not content:

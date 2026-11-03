@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="script.adulthideout.kvat" name="AdultHideout Diagnostics" version="0.2.3" provider-name="Vashiel">
+<addon id="script.adulthideout.kvat" name="AdultHideout Diagnostics" version="0.2.4" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="plugin.video.adulthideout" version="1.0.20"/>
@@ -8,8 +8,11 @@
         <provides>executable</provides>
     </extension>
     <extension point="xbmc.addon.metadata">
-        <news>v. 0.2.3 - 2026-08-30
-Improved thumbnail verification during temporary DNS and gateway failures and separated confirmed external website outages from actionable AdultHideout failures.</news>
+        <news>v. 0.2.4 - 2026-11-01
+- Hardened stream probe reachability with CDN-compatible headers (stripping browser-only Accept-Language/Accept-Encoding).
+- Fixed dynamic scraper module loading for hyphenated site names (e.g. heavy-r -> heavy_r).
+- Resolved namespace conflicts for resources.lib.base_website during dynamic diagnostic runs.
+- Updated KNOWN_EXTERNAL_ISSUES catalog to verify healthy domains and document external subscriber/challenge gates.</news>
         <summary lang="en_GB">Platform-native diagnostics for AdultHideout</summary>
         <summary lang="de_DE">Plattformnahe Diagnose fuer AdultHideout</summary>
         <summary lang="es_ES">Diagnóstico nativo para AdultHideout</summary>
@@ -20,7 +23,11 @@ Improved thumbnail verification during temporary DNS and gateway failures and se
         <description lang="es_ES">Prueba los sitios de AdultHideout directamente en Kodi y crea un informe seguro para solucionar problemas.</description>
         <description lang="fr_FR">Teste les sites AdultHideout directement dans Kodi et crée un rapport respectueux de la vie privée pour le dépannage.</description>
         <description lang="it_IT">Verifica i siti di AdultHideout direttamente in Kodi e crea un rapporto sicuro per la risoluzione dei problemi.</description>
-        <news>Improved thumbnail health checks by sampling multiple real video entries and retrying one completely empty Kodi directory response before reporting a website failure.</news>
+        <news>v. 0.2.4 - 2026-11-01
+- Hardened stream probe reachability with CDN-compatible headers (stripping browser-only Accept-Language/Accept-Encoding).
+- Fixed dynamic scraper module loading for hyphenated site names (e.g. heavy-r -> heavy_r).
+- Resolved namespace conflicts for resources.lib.base_website during dynamic diagnostic runs.
+- Updated KNOWN_EXTERNAL_ISSUES catalog to verify healthy domains and document external subscriber/challenge gates.</news>
         <platform>all</platform>
         <license>GPL-2.0-only</license>
         <assets>

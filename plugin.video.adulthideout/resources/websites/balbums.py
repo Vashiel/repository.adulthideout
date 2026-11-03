@@ -53,15 +53,27 @@ class BalbumsWebsite(BaseWebsite):
             sys.path.insert(0, vendor_path)
         try:
             import requests
-            if not hasattr(self, "_session"):
+            if not hasattr(self, "_session") or self._session is None:
                 self._session = requests.Session()
             response = self._session.get(url, headers=self.get_headers(url), timeout=20)
-            response.raise_for_status()
-            self.logger.info("[Balbums] Request %s -> %s", url, response.status_code)
-            return response.text
+            if response.status_code == 200:
+                self.logger.info("[Balbums] Request %s -> %s", url, response.status_code)
+                return response.text
         except Exception as exc:
-            self.logger.error("[Balbums] Request failed for %s: %s", url, exc)
-            return None
+            self.logger.warning("[Balbums] Direct request failed for %s: %s", url, exc)
+
+        # Core proxy fallback
+        try:
+            import requests
+            proxy_url = f"http://127.0.0.1:8191/proxy?url={urllib.parse.quote(url)}"
+            pr = requests.get(proxy_url, headers=self.get_headers(url), timeout=20)
+            if pr.status_code == 200:
+                self.logger.info("[Balbums] Proxy request %s -> 200", url)
+                return pr.text
+        except Exception:
+            pass
+
+        return None
 
     def get_start_url_and_label(self):
         try:
@@ -318,6 +330,28 @@ class BalbumsWebsite(BaseWebsite):
                 isFolder=False,
             )
             self.logger.info("[Balbums] Album contains 0 video files (skipped non-video files)")
+
+    def resolve_recording_stream(self, url):
+        target_stream = None
+        if "/f/" in url or "bunkr.cr" in url:
+            file_results = self._fetch_single_file(url)
+            if file_results and file_results[0] and file_results[0][0]:
+                target_stream = file_results[0][0]
+        elif url.startswith("http") and not url.startswith("https://bunkr.cr/"):
+            target_stream = self._sign_media_url(url)
+
+        if not target_stream or not target_stream.startswith("http") or target_stream.startswith("https://bunkr.cr/"):
+            return None
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Referer": "https://bunkr.cr/",
+        }
+        return {
+            "url": target_stream + "|" + urllib.parse.urlencode(headers),
+            "headers": headers,
+            "extension": "mp4",
+        }
 
     def play_video(self, url):
         target_stream = None

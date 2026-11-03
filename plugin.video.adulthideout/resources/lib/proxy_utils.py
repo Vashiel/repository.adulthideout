@@ -58,11 +58,8 @@ DEFAULT_CHUNK = 512 * 1024  # Für requests-Backend (bleibt wie gehabt)
 # sauber neu verbindet statt einzufrieren.
 STREAM_READ_TIMEOUT = 18
 
-# KVS-CDNs (get_file-Links) erlauben pro Token typischerweise 2 parallele
-# Verbindungen — die dritte bekommt zwar Response-Header, aber der Body
-# wird serverseitig gestallt (genau das war der "0 bytes"-Hänger beim Seek).
-# Kodi selbst nutzt für MP4 legitim 2 Verbindungen (Daten + moov-Probe).
-MAX_PARALLEL_UPSTREAMS = 2
+# Kodi nutzt für MP4 legitim 2-3 Verbindungen (Daten + moov-Probe + Audio).
+MAX_PARALLEL_UPSTREAMS = 4
 
 _DEFAULT_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -1558,9 +1555,10 @@ class _HlsProxyHandler(BaseHTTPRequestHandler):
         
         headers = dict(getattr(self.controller, "headers", {}) or {})
         headers.setdefault("User-Agent", _DEFAULT_UA)
+        headers.setdefault("Accept", "*/*")
         
         try:
-            if parsed.path in ("/playlist.m3u8", "/resource", "/resource.ts"):
+            if parsed.path in ("/playlist.m3u8", "/resource", "/resource.ts", "/resource.m4s"):
                 url = query.get("url", [""])[0]
                 if parsed.path == "/playlist.m3u8" and not url:
                     url = getattr(self.controller, "master_url", "")
@@ -1593,16 +1591,21 @@ class _HlsProxyHandler(BaseHTTPRequestHandler):
                             is_variant = previous_tag.startswith("#EXT-X-STREAM-INF")
                             if resource_file.endswith(".m3u8") or is_variant:
                                 resource_path = "/playlist.m3u8"
-                            elif resource_file.endswith((".ts", ".webp")):
-                                resource_path = "/resource.ts"
+                            elif resource_file.endswith((".m4s", ".mp4")):
+                                resource_path = "/resource.m4s"
                             else:
-                                resource_path = "/resource"
+                                resource_path = "/resource.ts"
+                            ext_param = ""
+                            if resource_path == "/resource.ts":
+                                ext_param = "&ext=.ts"
+                            elif resource_path == "/resource.m4s":
+                                ext_param = "&ext=.m4s"
                             line = "http://{}:{}{}?url={}{}".format(
                                 self.controller.host,
                                 self.server.server_address[1],
                                 resource_path,
                                 urllib.parse.quote_plus(resource_url),
-                                "&ext=.ts" if resource_path == "/resource.ts" else "",
+                                ext_param,
                             )
                         lines.append(line)
                         if line.startswith("#"):
@@ -1636,13 +1639,18 @@ class _HlsProxyHandler(BaseHTTPRequestHandler):
                             break
 
                 content_type = res.headers.get("Content-Type", "video/mp2t")
-                if (
+                is_ts_sync = (
                     len(content) >= 377
                     and content[0] == 0x47
                     and content[188] == 0x47
                     and content[376] == 0x47
-                ):
-                    content_type = "video/mp2t"
+                )
+                if is_ts_sync or parsed.path == "/resource.ts":
+                    if not content_type or not content_type.startswith("video/") or "image" in content_type.lower():
+                        content_type = "video/mp2t"
+                elif parsed.path == "/resource.m4s":
+                    if not content_type or not content_type.startswith("video/"):
+                        content_type = "video/mp4"
                 self.send_response(200)
                 self.send_header("Content-Type", content_type)
                 self.send_header("Content-Length", str(len(content)))
@@ -1682,6 +1690,8 @@ class HlsProxyController:
         self.last_activity = time.time()
 
     def is_active(self, idle_seconds=15.0):
+        if self.httpd is None:
+            return True
         return (time.time() - self.last_activity) < idle_seconds
 
     def start(self):
@@ -1730,6 +1740,16 @@ class HlsProxyController:
                         self.master_url = quality_variants[0][1]
         except Exception as exc:
             xbmc.log(f"[AHHlsProxy] Master flatten skipped: {exc}", xbmc.LOGDEBUG)
+
+        try:
+            from resources.lib.thumb_proxy import is_core_healthy, build_stream_url
+            if is_core_healthy():
+                referer = (self.headers or {}).get("Referer")
+                self.local_url = build_stream_url(self.master_url, referer=referer)
+                xbmc.log(f"[AHHlsProxy] Delegated to service.adulthideout.core: {self.local_url}", xbmc.LOGINFO)
+                return self.local_url
+        except Exception as exc:
+            xbmc.log(f"[AHHlsProxy] Core delegation check skipped: {exc}", xbmc.LOGDEBUG)
 
         def _handler_factory(controller_obj):
             class _H(_HlsProxyHandler):

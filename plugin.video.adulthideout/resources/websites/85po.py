@@ -78,18 +78,25 @@ class Po85(BaseWebsite):
 
     def make_request(self, url):
         self.logger.info(f"[85po] Requesting: {url}")
-        if not self.session:
-            self.notify_error("No HTTP session available.")
-            return ""
+        from resources.lib.resilient_http import _ipv4_call
+        if self.session:
+            try:
+                response = _ipv4_call(lambda: self.session.get(url, headers=self._headers(), timeout=15))
+                if response.status_code == 200:
+                    if not response.encoding or response.encoding.lower() in ("iso-8859-1", "latin-1"):
+                        response.encoding = response.apparent_encoding or "utf-8"
+                    return response.text.replace("\x00", "")
+            except Exception as exc:
+                self.logger.warning("[85po] Direct request failed: %s, trying Core proxy", exc)
         try:
-            response = self.session.get(url, headers=self._headers(), timeout=30)
-            response.raise_for_status()
-            if not response.encoding or response.encoding.lower() in ("iso-8859-1", "latin-1"):
-                response.encoding = response.apparent_encoding or "utf-8"
-            return response.text.replace("\x00", "")
+            import requests
+            proxy_url = "http://127.0.0.1:8191/proxy?url=" + urllib.parse.quote(url, safe=":/?=")
+            r = requests.get(proxy_url, timeout=15)
+            if r.status_code == 200:
+                return r.text.replace("\x00", "")
         except Exception as exc:
-            self.logger.error("[85po] Request failed for %s: %s", url, exc)
-            return ""
+            self.logger.error("[85po] Core proxy fallback failed: %s", exc)
+        return ""
 
     def process_content(self, url, **kwargs):
         params = {}

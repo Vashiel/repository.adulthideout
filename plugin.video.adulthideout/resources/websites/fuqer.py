@@ -201,25 +201,8 @@ class Fuqer(BaseWebsite):
             if r.status_code in [301, 302] and 'Location' in r.headers:
                 stream_url = r.headers['Location']
                 xbmc.log(f"[Fuqer][Resolve] Signed URL: {stream_url}", xbmc.LOGINFO)
-                
-                monitor = xbmc.Monitor() 
-                player = xbmc.Player()
-                
-                ctrl = ProxyController(
-                    stream_url,
-                    upstream_headers=self.get_headers(url),
-                    session=self.scraper
-                )
-                
-                proxy_url = ctrl.start()
-                if not proxy_url:
-                    raise Exception("Proxy failed to start")
-                    
-                guard = PlaybackGuard(player, monitor, proxy_url, ctrl)
-                guard.start()
-                
-                return proxy_url
-                
+                headers = f"User-Agent={urllib.parse.quote(self.UA)}&Referer={urllib.parse.quote(self.BASE_URL)}"
+                return f"{stream_url}|{headers}"
             else:
                 xbmc.log(f"[Fuqer][Resolve] Signing failed. Status: {r.status_code}", xbmc.LOGERROR)
                 return f"{video_url}|User-Agent={urllib.parse.quote(self.UA)}&Referer={urllib.parse.quote(url)}"

@@ -379,8 +379,8 @@ msgstr "Avvia Smart Stream 24/7"
 
 
 msgctxt "#30912"
-msgid "Search Across All 272 Websites"
-msgstr "Cerca in tutti i 272 siti web"
+msgid "Search Across All 300+ Websites"
+msgstr "Cerca in tutti i 300+ siti web"
 
 
 msgctxt "#30913"
@@ -503,3 +503,279 @@ msgstr "Riproduci questa pagina della playlist"
 msgctxt "#30965"
 msgid "No public playlist videos found"
 msgstr "Nessun video trovato nella playlist pubblica"
+
+msgctxt "#30920"
+msgid "Pornstar Filter-Matrix / Star Finder"
+msgstr "Matrice filtri Star-Finder"
+
+msgctxt "#30921"
+msgid "Show Filtered Performers"
+msgstr "Mostra star filtrate"
+
+msgctxt "#30922"
+msgid "Start 24/7 Multi-Star Smart Stream"
+msgstr "Avvia Smart Stream Multi-Star 24/7"
+
+msgctxt "#30923"
+msgid "Global Search for Filtered Stars"
+msgstr "Ricerca globale per le star filtrate"
+
+msgctxt "#30924"
+msgid "Reset Filter Matrix"
+msgstr "Reimposta matrice filtri"
+
+msgctxt "#30925"
+msgid "Gender"
+msgstr "Genere"
+
+msgctxt "#30926"
+msgid "Ethnicity & Origin"
+msgstr "Etnia e origine"
+
+msgctxt "#30927"
+msgid "Height"
+msgstr "Altezza"
+
+msgctxt "#30928"
+msgid "Cup Size & Bust"
+msgstr "Taglia reggiseno e seno"
+
+msgctxt "#30929"
+msgid "Hair Color"
+msgstr "Colore dei capelli"
+
+msgctxt "#30930"
+msgid "Eye Color"
+msgstr "Colore degli occhi"
+
+msgctxt "#30931"
+msgid "Body Build"
+msgstr "Corporatura"
+
+msgctxt "#30932"
+msgid "Career Era / Decade"
+msgstr "Epoca / Decennio"
+
+msgctxt "#30933"
+msgid "All"
+msgstr "Tutti"
+
+msgctxt "#30934"
+msgid "Performers matching your filter"
+msgstr "Attori corrispondenti al filtro"
+
+msgctxt "#30935"
+msgid "No performers match your filter"
+msgstr "Nessun attore corrisponde al filtro"
+
+msgctxt "#30966"
+msgid "Global Search"
+msgstr "Ricerca globale"
+
+msgctxt "#30967"
+msgid "Search"
+msgstr "Cerca"
+
+msgctxt "#30968"
+msgid "{} sources"
+msgstr "{} fonti"
+
+msgctxt "#30969"
+msgid "Source Presets"
+msgstr "Preset fonti"
+
+msgctxt "#30970"
+msgid "Choose Sources"
+msgstr "Scegli fonti"
+
+msgctxt "#30971"
+msgid "{} selected"
+msgstr "{} selezionate"
+
+msgctxt "#30972"
+msgid "Search All Sites"
+msgstr "Cerca in tutti i siti"
+
+msgctxt "#30973"
+msgid "Show Selected Sources"
+msgstr "Mostra fonti selezionate"
+
+msgctxt "#30974"
+msgid "Clear Search History"
+msgstr "Cancella cronologia ricerche"
+
+msgctxt "#30975"
+msgid "Combine Presets"
+msgstr "Combina preset"
+
+msgctxt "#30976"
+msgid "Save Current Selection as Custom Preset"
+msgstr "Salva selezione attuale come preset"
+
+msgctxt "#30977"
+msgid "Custom Presets"
+msgstr "Preset personalizzati"
+
+msgctxt "#30978"
+msgid "Delete Custom Preset"
+msgstr "Elimina preset personalizzato"
+
+msgctxt "#30979"
+msgid "Edit / search current sources"
+msgstr "Modifica / cerca nelle fonti attuali"
+
+msgctxt "#30980"
+msgid "Repeat previous source scope"
+msgstr "Ripeti ambito fonti precedente"
+
+msgctxt "#30981"
+msgid "Search all enabled sites"
+msgstr "Cerca in tutti i siti attivati"
+
+msgctxt "#30982"
+msgid "Search all enabled sites, all query words"
+msgstr "Tutti i siti attivati (tutte le parole)"
+
+msgctxt "#30983"
+msgid "Searching {} sources..."
+msgstr "Ricerca in {} fonti..."
+
+msgctxt "#30984"
+msgid "Turbo Search via Rust Core ({}/{} sites · {} results): {}"
+msgstr "Ricerca Turbo via Rust Core ({}/{} siti · {} risultati): {}"
+
+msgctxt "#30985"
+msgid "No results found"
+msgstr "Nessun risultato trovato"
+
+msgctxt "#30986"
+msgid "Mega Shuffle (All Sites)"
+msgstr "Mega Shuffle (Tutti i siti)"
+
+msgctxt "#30987"
+msgid "Balanced Top Sites"
+msgstr "Top siti bilanciati"
+
+msgctxt "#30988"
+msgid "Broad Reliable Sites"
+msgstr "Siti affidabili estesi"
+
+msgctxt "#30989"
+msgid "Playlist Safe"
+msgstr "Sicuro per playlist"
+
+msgctxt "#30990"
+msgid "Straight / Mainstream"
+msgstr "Etero / Mainstream"
+
+msgctxt "#30991"
+msgid "Big Tube Sites"
+msgstr "Grandi siti Tube"
+
+msgctxt "#30992"
+msgid "KVS Tube Sites"
+msgstr "Siti KVS Tube"
+
+msgctxt "#30993"
+msgid "Amateur / Homemade"
+msgstr "Amatoriale / Fatto in casa"
+
+msgctxt "#30994"
+msgid "Full Movies / Longform"
+msgstr "Film completi / Lungometraggi"
+
+msgctxt "#30995"
+msgid "JAV / Asian"
+msgstr "JAV / Asiatico"
+
+msgctxt "#30996"
+msgid "Trans / Shemale"
+msgstr "Trans / Shemale"
+
+msgctxt "#30997"
+msgid "Gay"
+msgstr "Gay"
+
+msgctxt "#30998"
+msgid "Hentai / Futa / Rule34"
+msgstr "Hentai / Futa / Rule34"
+
+msgctxt "#30999"
+msgid "Fetish / BDSM"
+msgstr "Fetish / BDSM"
+
+msgctxt "#31000"
+msgid "Cam / Clips"
+msgstr "Cam / Clip"
+
+msgctxt "#31001"
+msgid "Lesbian"
+msgstr "Lesbo"
+
+msgctxt "#31002"
+msgid "MILF / Mature"
+msgstr "MILF / Mature"
+
+msgctxt "#31003"
+msgid "POV"
+msgstr "POV"
+
+msgctxt "#31004"
+msgid "Anal"
+msgstr "Anale"
+
+msgctxt "#31005"
+msgid "Oral / Blowjob"
+msgstr "Orale / Pompino"
+
+msgctxt "#31006"
+msgid "Voyeur / Public"
+msgstr "Voyeur / Pubblico"
+
+msgctxt "#31007"
+msgid "Vintage / Classic"
+msgstr "Vintage / Classico"
+
+msgctxt "#31008"
+msgid "Feet / Stockings"
+msgstr "Piedi / Calze"
+
+msgctxt "#31009"
+msgid "Femdom / Bondage"
+msgstr "Femdom / Bondage"
+
+msgctxt "#31010"
+msgid "Creator / Fan Content"
+msgstr "Creator / Contenuti fan"
+
+msgctxt "#31011"
+msgid "AdultHideout Core Required"
+msgstr "AdultHideout Core richiesto"
+
+msgctxt "#31012"
+msgid "For full search speed, Mega Shuffle, and native stream acceleration, the AdultHideout Core engine for your system ([B]{}[/B]) is required (~3 MB).\n\nDownload and activate automatically now?\n[COLOR gray](No Kodi restart required)[/COLOR]"
+msgstr "Per la massima velocità di ricerca, Mega Shuffle e l'accelerazione nativa dei flussi, è necessario il motore AdultHideout Core per il tuo sistema ([B]{}[/B]) (~3 MB).\n\nScaricare e attivare automaticamente ora?\n[COLOR gray](Nessun riavvio di Kodi richiesto)[/COLOR]"
+
+msgctxt "#31013"
+msgid "Install Now"
+msgstr "Installa ora"
+
+msgctxt "#31014"
+msgid "Later"
+msgstr "Più tardi"
+
+msgctxt "#31015"
+msgid "Downloading {} for {}... ({} KB)"
+msgstr "Scaricamento di {} per {}... ({} KB)"
+
+msgctxt "#31016"
+msgid "Starting AdultHideout Core engine..."
+msgstr "Avvio del motore AdultHideout Core..."
+
+msgctxt "#31017"
+msgid "Core ({}) installed & active!"
+msgstr "Core ({}) installato e attivo!"
+
+msgctxt "#31018"
+msgid "Download failed for {}. Using Python fallback."
+msgstr "Download fallito per {}. Utilizzo fallback Python."

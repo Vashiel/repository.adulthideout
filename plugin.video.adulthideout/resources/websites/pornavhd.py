@@ -62,14 +62,22 @@ class PornAVHD(BaseWebsite):
         if not self.session:
             self.session = self._create_session()
         try:
-            response = self.session.get(url, headers=self._headers(referer), timeout=(7, 20))
-            if response.status_code == 403 and cloudscraper and not hasattr(self.session, "solveDepth"):
-                self.session = self._create_session()
-                response = self.session.get(url, headers=self._headers(referer), timeout=(7, 20))
-            return response.text if response.status_code == 200 else ""
+            from resources.lib.resilient_http import _ipv4_call
+            response = _ipv4_call(lambda: self.session.get(url, headers=self._headers(referer), timeout=20))
+            if response.status_code == 200 and len(response.text) > 1000:
+                return response.text
         except Exception as exc:
-            self.logger.warning("PornAVHD request failed: %s", exc)
-            return ""
+            self.logger.warning("PornAVHD request failed for %s: %s", url, exc)
+
+        try:
+            proxy_url = f"http://127.0.0.1:8191/proxy?url={urllib.parse.quote(url)}"
+            pr = requests.get(proxy_url, headers=self._headers(referer), timeout=20)
+            if pr.status_code == 200 and len(pr.text) > 1000:
+                return pr.text
+        except Exception:
+            pass
+
+        return ""
 
     def _items(self, content):
         for block in re.findall(r'<article\b[^>]*class=["\'][^"\']*video-preview-item[^"\']*["\'][^>]*>([\s\S]*?)</article>', content or "", re.I):

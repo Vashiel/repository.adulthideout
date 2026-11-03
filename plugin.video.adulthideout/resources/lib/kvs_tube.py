@@ -56,6 +56,22 @@ class KVSTubeWebsite(BaseWebsite):
         }
 
     def _get(self, url, referer=None, max_retries=None):
+        is_bg = getattr(self, "adult_hideout_background_harvest", False)
+        try:
+            from resources.lib.resilient_http import fetch_text
+            text = fetch_text(
+                url,
+                headers=self._headers(referer),
+                scraper=self.session,
+                logger=self.logger,
+                timeout=5 if is_bg else 15,
+            )
+            if text:
+                return text
+        except Exception:
+            pass
+        if is_bg:
+            return ""
         if max_retries is None:
             max_retries = self.request_retries
         last_error = None
@@ -361,10 +377,18 @@ class KVSTubeWebsite(BaseWebsite):
         urls = {}
         license_match = re.search(r'license_code\s*:\s*[\'"]([^\'"]+)[\'"]', html_content or "", re.IGNORECASE)
         license_code = html.unescape(license_match.group(1)).strip() if license_match else ""
-        for key, value in re.findall(r'(video_url|video_alt_url\d*|event_reporting2):\s*[\'"]([^\'"]+)["\']', html_content or "", re.IGNORECASE):
+        for key, value in re.findall(r'(video_?url|video_?alt_?url\d*|event_reporting2):\s*[\'"]([^\'"]+)[\"\']', html_content or "", re.IGNORECASE):
+            norm_key = key.lower().replace("_", "")
+            if norm_key == "videourl":
+                norm_key = "video_url"
+            elif norm_key.startswith("videoalturl"):
+                suffix = norm_key[len("videoalturl"):]
+                norm_key = f"video_alt_url{suffix}" if suffix else "video_alt_url"
+            else:
+                norm_key = key
             stream_url = self._normalize_stream(value, license_code)
             if self._is_stream_candidate(stream_url):
-                urls[key] = stream_url
+                urls[norm_key] = stream_url
         for href in re.findall(r'href=["\']([^"\']+\.mp4/?[^"\']*)["\']', html_content or "", re.IGNORECASE):
             stream_url = self._normalize_stream(href, license_code)
             if self._is_stream_candidate(stream_url):

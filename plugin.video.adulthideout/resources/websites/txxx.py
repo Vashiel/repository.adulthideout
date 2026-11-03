@@ -119,17 +119,16 @@ class TxxxWebsite(BaseWebsite):
         ]
 
     def _get_json(self, url, headers=None):
+        req_headers = headers if headers is not None else self.headers
+        timeout = 5 if getattr(self, "adult_hideout_background_harvest", False) else 15
         try:
-            req_headers = headers if headers is not None else self.headers
-            req = request.Request(url, headers=req_headers)
-            with request.urlopen(req, timeout=20) as response:
-                if response.getcode() == 200:
-                    return json.loads(response.read().decode('utf-8'))
-                self.logger.error(f"HTTP Error {response.getcode()} for {url}")
-                return None
+            from resources.lib.resilient_http import fetch_text
+            text = fetch_text(url, headers=req_headers, logger=self.logger, timeout=timeout)
+            if text:
+                return json.loads(text)
         except Exception as e:
             self.logger.error(f"Error in _get_json for {url}: {e}")
-            return None
+        return None
 
     def _add_static_dirs(self, current_url):
         context_menu = self._get_context_menu(current_url)

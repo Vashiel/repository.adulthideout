@@ -33,11 +33,22 @@ class FetishPapa(BaseWebsite):
 
     def _get(self, url, referer=None):
         try:
-            response = self.session.get(url, headers=self._headers(referer), timeout=20)
-            return response.text if response.status_code == 200 else ""
+            from resources.lib.resilient_http import _ipv4_call
+            response = _ipv4_call(lambda: self.session.get(url, headers=self._headers(referer), timeout=20))
+            if response.status_code == 200 and len(response.text) > 1000:
+                return response.text
         except Exception as exc:
             self.logger.warning("FetishPapa request failed for %s: %s", url, exc)
-            return ""
+
+        try:
+            proxy_url = f"http://127.0.0.1:8191/proxy?url={urllib.parse.quote(url)}"
+            pr = requests.get(proxy_url, headers=self._headers(referer), timeout=20)
+            if pr.status_code == 200 and len(pr.text) > 1000:
+                return pr.text
+        except Exception:
+            pass
+
+        return ""
 
     def _absolute(self, value):
         return urllib.parse.urljoin(self.base_url, html.unescape(value or ""))

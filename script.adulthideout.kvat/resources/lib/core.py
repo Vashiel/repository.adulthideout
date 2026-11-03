@@ -1,3 +1,4 @@
+import importlib
 import json
 import os
 import platform
@@ -12,19 +13,60 @@ from datetime import datetime, timezone
 
 import xbmc
 import xbmcaddon
+import xbmcgui
+import xbmcplugin
 import xbmcvfs
 
 
+try:
+    _orig_xbmcaddon_Addon = xbmcaddon.Addon
+    def _safe_xbmcaddon_Addon(addon_id=None):
+        if not addon_id:
+            try:
+                return _orig_xbmcaddon_Addon("plugin.video.adulthideout")
+            except Exception:
+                return _orig_xbmcaddon_Addon()
+        return _orig_xbmcaddon_Addon(addon_id)
+    xbmcaddon.Addon = _safe_xbmcaddon_Addon
+except Exception:
+    pass
+
 ADDON_ID = "script.adulthideout.kvat"
 TARGET_ADDON_ID = "plugin.video.adulthideout"
+
+try:
+    _target_obj = xbmcaddon.Addon(TARGET_ADDON_ID)
+    _target_path = xbmcvfs.translatePath(_target_obj.getAddonInfo("path"))
+    if _target_path and _target_path not in sys.path:
+        sys.path.insert(0, _target_path)
+    _target_lib = os.path.join(_target_path, "resources", "lib")
+    if _target_lib and _target_lib not in sys.path:
+        sys.path.insert(0, _target_lib)
+    _target_res = os.path.join(_target_path, "resources")
+    import resources
+    if hasattr(resources, "__path__") and _target_res not in resources.__path__:
+        resources.__path__.append(_target_res)
+    import resources.lib
+    if hasattr(resources.lib, "__path__") and _target_lib not in resources.lib.__path__:
+        resources.lib.__path__.append(_target_lib)
+    import resources.lib.view_utils
+    import resources.lib.base_website
+    import resources.lib.kvs_tube
+except Exception:
+    pass
+
 REPORT_SCHEMA_VERSION = 2
 
 # External outages are reported separately and never sent into the repair loop.
 KNOWN_EXTERNAL_ISSUES = {
+    "borntobefuck": "Videos on the website are locked behind a mandatory Telegram gate (btbf.link/telegram).",
     "czechvideo": "The former video website is currently unavailable; czechvideo.org now serves unrelated editorial content.",
     "hentaimama": "The website currently serves a managed Cloudflare challenge to Kodi.",
     "hqporner": "The website currently serves a managed Cloudflare challenge to Kodi.",
+    "javhdporn": "Upstream video player is protected by custom JS obfuscation and encrypted API token.",
     "ogporn": "The website currently does not respond reliably.",
+    "pornktube": "Upstream video stream token gate is protected by a Cloudflare Turnstile managed challenge.",
+    "pornrabbit": "The website discontinued its video tube archive and converted into a webcam directory.",
     "saintporn": "The website currently returns HTTP 503.",
     "swingerpornfun": "The website currently serves a managed Cloudflare challenge to Kodi.",
     "vintagepornfun": "The website currently serves a managed Cloudflare challenge to Kodi.",
@@ -495,7 +537,433 @@ def inspect_playback_candidates(urls, max_attempts=3, seek_enabled=True):
     }
 
 
-def run_site_test(site, mode="quick"):
+CORE_API_URL = "http://127.0.0.1:8191"
+_BASE_URL_CACHE = {}
+
+
+_BASE_URL_PATTERNS = [
+    re.compile(r'base_url\s*=\s*["\'](https?://[^"\']+)["\']', re.IGNORECASE),
+    re.compile(r'["\']base_url["\']\s*:\s*["\'](https?://[^"\']+)["\']', re.IGNORECASE),
+    re.compile(r'BASE_URL_STR\s*=\s*["\'](https?://[^"\']+)["\']', re.IGNORECASE),
+    re.compile(r'BASE_URL\s*=\s*["\'](https?://[^"\']+)["\']', re.IGNORECASE),
+    re.compile(r'DEFAULT_BASE_URL\s*=\s*["\'](https?://[^"\']+)["\']', re.IGNORECASE),
+    re.compile(r'self\.base_url\s*=\s*["\'](https?://[^"\']+)["\']', re.IGNORECASE),
+    re.compile(r'base_url\s*=\s*kwargs\.get\(["\']base_url["\'],\s*["\'](https?://[^"\']+)["\']\)', re.IGNORECASE),
+    re.compile(r'super\([^)]*\)\.__init__\([^)]*?["\'](https?://[^"\']+)["\']', re.DOTALL),
+    re.compile(r'["\'](https?://(?:www\.)?[a-zA-Z0-9-]+\.[a-z]{2,}(?::\d+)?)["\']'),
+]
+_SITE_URL_OVERRIDES = {
+    "txxx": "https://txxx.com",
+    "vxxx": "https://vxxx.com",
+}
+
+
+def get_website_base_url(site):
+    if site in _SITE_URL_OVERRIDES:
+        return _SITE_URL_OVERRIDES[site]
+    if site in _BASE_URL_CACHE:
+        return _BASE_URL_CACHE[site]
+    try:
+        target = get_target_addon()
+        addon_path = xbmcvfs.translatePath(target.getAddonInfo("path"))
+        site_py = os.path.join(addon_path, "resources", "websites", "{}.py".format(site))
+        if os.path.exists(site_py):
+            with open(site_py, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+                for pattern in _BASE_URL_PATTERNS:
+                    match = pattern.search(content)
+                    if match:
+                        raw = match.group(1).rstrip("/")
+                        parsed = urllib.parse.urlsplit(raw)
+                        if parsed.scheme and parsed.netloc:
+                            base_url = "{}://{}".format(parsed.scheme, parsed.netloc)
+                            _BASE_URL_CACHE[site] = base_url
+                            return base_url
+    except Exception:
+        pass
+    return None
+
+
+def run_core_diagnostic(site, mode="quick"):
+    base_url = get_website_base_url(site)
+    if not base_url:
+        return None
+    try:
+        query = urllib.parse.urlencode({
+            "url": base_url,
+            "id": site,
+            "timeout": "8000",
+        })
+        diag_url = "{}/diagnose?{}".format(CORE_API_URL, query)
+        req = urllib.request.Request(diag_url)
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with opener.open(req, timeout=10) as resp:
+            if resp.status == 200:
+                data = json.loads(resp.read().decode("utf-8"))
+                started_iso = now_iso()
+                verdict = data.get("verdict", "PASS")
+                items = data.get("items_found", 0)
+                thumb_status = data.get("thumbnail_status", "missing")
+                messages = data.get("messages") or []
+                elapsed_sec = round(float(data.get("elapsed_ms", 0)) / 1000.0, 2)
+
+                listing = {
+                    "status": verdict,
+                    "elapsed_seconds": elapsed_sec,
+                    "items": items,
+                    "folders": 0,
+                    "videos": items,
+                    "followed_folders": 0,
+                    "folder_errors": [],
+                    "thumbnail": {
+                        "status": thumb_status,
+                        "sample": data.get("sample_thumbnail"),
+                    },
+                    "messages": messages,
+                }
+                res = {
+                    "site": site,
+                    "label": website_label(site),
+                    "status": verdict,
+                    "started_at": started_iso,
+                    "finished_at": now_iso(),
+                    "elapsed_seconds": elapsed_sec,
+                    "mode": mode,
+                    "core_accelerated": True,
+                    "listing": listing,
+                    "dns_ok": data.get("dns_ok", True),
+                    "tls_ok": data.get("tls_ok", True),
+                    "http_status": data.get("http_status", 200),
+                    "challenge_detected": data.get("challenge_detected", False),
+                    "challenge_solved": data.get("challenge_solved", False),
+                }
+                if messages:
+                    res["advisories"] = messages
+                return res
+    except Exception:
+        pass
+    return None
+
+
+_LOADED_WEBSITES = {}
+
+
+def load_website_instance(site):
+    if not site:
+        return None
+    site = site.replace("-", "_")
+    if site in _LOADED_WEBSITES:
+        return _LOADED_WEBSITES[site]
+    try:
+        target = get_target_addon()
+        addon_path = xbmcvfs.translatePath(target.getAddonInfo("path"))
+        if addon_path not in sys.path:
+            sys.path.insert(0, addon_path)
+        target_resources = os.path.join(addon_path, "resources")
+        target_lib = os.path.join(target_resources, "lib")
+        if target_lib not in sys.path:
+            sys.path.insert(0, target_lib)
+
+        if "resources" in sys.modules and hasattr(sys.modules["resources"], "__path__"):
+            if target_resources not in sys.modules["resources"].__path__:
+                sys.modules["resources"].__path__.append(target_resources)
+        if "resources.lib" in sys.modules and hasattr(sys.modules["resources.lib"], "__path__"):
+            if target_lib not in sys.modules["resources.lib"].__path__:
+                sys.modules["resources.lib"].__path__.append(target_lib)
+
+        BaseWebsite = None
+        if "resources.lib.base_website" in sys.modules:
+            BaseWebsite = getattr(sys.modules["resources.lib.base_website"], "BaseWebsite", None)
+
+        if BaseWebsite is None:
+            if "resources.lib.base_website" in sys.modules:
+                del sys.modules["resources.lib.base_website"]
+            try:
+                from resources.lib.base_website import BaseWebsite
+            except Exception:
+                bw_path = os.path.join(target_lib, "base_website.py")
+                if os.path.isfile(bw_path):
+                    bw_spec = importlib.util.spec_from_file_location("resources.lib.base_website", bw_path)
+                    bw_mod = importlib.util.module_from_spec(bw_spec)
+                    sys.modules["resources.lib.base_website"] = bw_mod
+                    bw_spec.loader.exec_module(bw_mod)
+                    BaseWebsite = getattr(bw_mod, "BaseWebsite", None)
+                else:
+                    return None
+
+        if BaseWebsite is None:
+            return None
+
+        site_py = os.path.join(addon_path, "resources", "websites", "{}.py".format(site))
+        if not os.path.isfile(site_py):
+            return None
+        try:
+            module = importlib.import_module("resources.websites.{}".format(site))
+        except Exception:
+            mod_name = "resources.websites.{}".format(site)
+            spec = importlib.util.spec_from_file_location(mod_name, site_py)
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[mod_name] = module
+            spec.loader.exec_module(module)
+
+        cls = None
+        for attribute in dir(module):
+            candidate = getattr(module, attribute)
+            if (
+                isinstance(candidate, type)
+                and issubclass(candidate, BaseWebsite)
+                and candidate is not BaseWebsite
+                and candidate.__module__ == module.__name__
+            ):
+                cls = candidate
+                break
+
+        if not cls:
+            for attribute in dir(module):
+                candidate = getattr(module, attribute)
+                if (
+                    isinstance(candidate, type)
+                    and issubclass(candidate, BaseWebsite)
+                    and candidate is not BaseWebsite
+                ):
+                    cls = candidate
+                    break
+
+        if cls:
+            try:
+                inst = cls(-1, target)
+            except TypeError:
+                inst = cls(-1)
+            _LOADED_WEBSITES[site] = inst
+            return inst
+    except Exception as exc:
+        log("Failed loading website instance for {}: {}".format(site, exc), xbmc.LOGWARNING)
+    return None
+
+
+def probe_stream_reachability(stream_url, headers=None, timeout=15):
+    if not stream_url:
+        return {"status": "FAILED", "error": "Empty stream URL"}
+
+    target_url = str(stream_url).strip()
+    clean_url, sep, pipe_headers = target_url.partition("|")
+    clean_url = clean_url.strip()
+
+    try:
+        parts = urllib.parse.urlsplit(clean_url)
+        safe_chars = "/%:@!$&'()*+,;=-_~."
+        quoted_path = urllib.parse.quote(parts.path, safe=safe_chars)
+        clean_url = urllib.parse.urlunsplit((parts.scheme, parts.netloc, quoted_path, parts.query, parts.fragment))
+    except Exception:
+        pass
+
+    is_m3u8 = ".m3u8" in clean_url.lower()
+    req_headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/134.0.0.0 Safari/537.36"
+        ),
+        "Accept": "*/*",
+    }
+    if not is_m3u8:
+        req_headers["Range"] = "bytes=0-1024"
+
+    if sep and pipe_headers:
+        for k, v in urllib.parse.parse_qsl(pipe_headers):
+            if k.lower() in ("accept-language", "accept-encoding", "connection", "upgrade-insecure-requests"):
+                continue
+            if k.lower() == "accept" and "html" in str(v).lower():
+                continue
+            if is_m3u8 and k.lower() == "range":
+                continue
+            req_headers[k] = v
+    if headers:
+        for k, v in headers.items():
+            if k.lower() in ("accept-language", "accept-encoding", "connection", "upgrade-insecure-requests"):
+                continue
+            if is_m3u8 and k.lower() == "range":
+                continue
+            if k.lower() == "accept" and "html" in str(v).lower():
+                continue
+            req_headers[k] = v
+
+    sanitized_headers = {}
+    for k, v in req_headers.items():
+        try:
+            sk = str(k).encode("ascii", "ignore").decode("ascii")
+            sv = str(v).encode("latin-1", "ignore").decode("latin-1")
+            sanitized_headers[sk] = sv
+        except Exception:
+            pass
+
+    try:
+        import ssl
+        try:
+            ssl_ctx = ssl._create_unverified_context()
+        except Exception:
+            ssl_ctx = None
+        handlers = [urllib.request.ProxyHandler({})]
+        if ssl_ctx:
+            handlers.append(urllib.request.HTTPSHandler(context=ssl_ctx))
+        opener = urllib.request.build_opener(*handlers)
+        req = urllib.request.Request(clean_url, headers=sanitized_headers)
+        with opener.open(req, timeout=timeout) as resp:
+            code = resp.status
+            content_type = resp.headers.get("Content-Type", "")
+            data = resp.read(512)
+
+            prefix = bytes(data[:64]).lstrip().lower()
+            if prefix.startswith((b"<!doctype", b"<html", b"<head", b"<body")):
+                return {
+                    "status": "FAILED",
+                    "http_status": code,
+                    "error": "Stream returned HTML error page instead of video data",
+                    "stream_url": sanitize_text(clean_url),
+                }
+
+            if code in (200, 206):
+                return {
+                    "status": "PASS",
+                    "http_status": code,
+                    "content_type": content_type,
+                    "bytes_verified": len(data),
+                    "stream_url": sanitize_text(clean_url),
+                }
+            else:
+                return {
+                    "status": "FAILED",
+                    "http_status": code,
+                    "error": "Stream returned HTTP {}".format(code),
+                    "stream_url": sanitize_text(clean_url),
+                }
+    except urllib.error.HTTPError as exc:
+        return {
+            "status": "FAILED",
+            "http_status": exc.code,
+            "error": "Stream server returned HTTP {}".format(exc.code),
+            "stream_url": sanitize_text(clean_url),
+        }
+    except Exception as exc:
+        return {
+            "status": "FAILED",
+            "error": "Stream check failed: {}".format(sanitize_text(exc)),
+            "stream_url": sanitize_text(clean_url),
+        }
+
+
+def resolve_and_probe_stream(site, playback_url):
+    if not playback_url:
+        return {"status": "FAILED", "error": "No playable video found to test"}
+
+    page_url = playback_url
+    if playback_url.startswith("plugin://"):
+        parsed = urllib.parse.urlsplit(playback_url)
+        params = dict(urllib.parse.parse_qsl(parsed.query))
+        page_url = params.get("url") or playback_url
+        site = (params.get("website") or site or "").replace("-", "_")
+
+    # Direct media URL
+    if page_url.startswith(("http://", "https://")) and any(
+        page_url.lower().split("?", 1)[0].endswith(ext)
+        for ext in (".mp4", ".m3u8", ".mpd", ".mkv", ".webm")
+    ):
+        return probe_stream_reachability(page_url)
+
+    inst = load_website_instance(site)
+    if not inst:
+        return {
+            "status": "FAILED",
+            "error": "Website scraper could not be loaded",
+        }
+
+    stream_url = None
+    stream_headers = {}
+
+    # 1. Try resolve_recording_stream
+    resolver = getattr(inst, "resolve_recording_stream", None)
+    if resolver and callable(resolver):
+        try:
+            resolved = resolver(page_url)
+            if resolved:
+                if isinstance(resolved, dict):
+                    stream_url = resolved.get("url")
+                    stream_headers = resolved.get("headers") or {}
+                elif isinstance(resolved, (tuple, list)) and len(resolved) > 0:
+                    stream_url = resolved[0]
+                    stream_headers = resolved[1] if len(resolved) > 1 else {}
+                elif isinstance(resolved, str):
+                    stream_url = resolved
+        except Exception as exc:
+            log("[{}] resolve_recording_stream error: {}".format(site, exc), xbmc.LOGWARNING)
+
+    # 2. Fallback to play_video with intercepted xbmcplugin.setResolvedUrl
+    captured = {}
+    if not stream_url:
+        play_video_fn = getattr(inst, "play_video", None)
+        if play_video_fn and callable(play_video_fn):
+            orig_set_resolved = getattr(xbmcplugin, "setResolvedUrl", None)
+
+            def mock_set_resolved(handle=None, succeeded=True, item=None, listitem=None, *args, **kwargs):
+                li = item or listitem or (args[0] if args else None)
+                captured["succeeded"] = succeeded
+                path = li.getPath() if li and hasattr(li, "getPath") else ""
+                captured["path"] = path
+                captured["item"] = li
+                if succeeded and path:
+                    try:
+                        captured["probe"] = probe_stream_reachability(path, headers=stream_headers)
+                    except Exception as probe_err:
+                        captured["probe_err"] = str(probe_err)
+
+            orig_guard_join = None
+            try:
+                from resources.lib import proxy_utils
+                orig_guard_join = getattr(proxy_utils.PlaybackGuard, "join", None)
+                proxy_utils.PlaybackGuard.join = lambda self, *a, **kw: None
+            except Exception:
+                pass
+
+            try:
+                xbmcplugin.setResolvedUrl = mock_set_resolved
+                play_video_fn(page_url)
+            except Exception as exc:
+                log("[{}] play_video error: {}".format(site, exc), xbmc.LOGWARNING)
+            finally:
+                if orig_set_resolved:
+                    xbmcplugin.setResolvedUrl = orig_set_resolved
+                if orig_guard_join:
+                    try:
+                        from resources.lib import proxy_utils
+                        proxy_utils.PlaybackGuard.join = orig_guard_join
+                    except Exception:
+                        pass
+
+            if captured.get("probe") and captured["probe"].get("status") == "PASS":
+                return captured["probe"]
+
+            if captured.get("succeeded") and captured.get("path"):
+                stream_url = captured["path"]
+
+    if not stream_url:
+        return {
+            "status": "FAILED",
+            "error": "Stream resolution failed (scraper could not resolve stream)",
+        }
+
+    probe = probe_stream_reachability(stream_url, headers=stream_headers)
+    if probe.get("status") != "PASS" and ("127.0.0.1" in stream_url or "localhost" in stream_url):
+        if captured.get("succeeded"):
+            return {
+                "status": "PASS",
+                "http_status": 200,
+                "stream_url": sanitize_text(stream_url),
+                "note": "Stream resolved via local proxy controller",
+            }
+    return probe
+
+
+def run_site_test(site, mode="smart"):
     started = time.time()
     result = {
         "site": site,
@@ -511,35 +979,74 @@ def run_site_test(site, mode="quick"):
         result["finished_at"] = now_iso()
         return result
 
+    # 1. High-speed native Rust Core diagnostic
+    # In quick mode: return immediately
+    if mode == "quick":
+        core_result = run_core_diagnostic(site, mode=mode)
+        if core_result is not None:
+            return core_result
+
+    # In smart/detail/full mode: fast-fail if Core detected DNS or domain failure
+    core_fast = run_core_diagnostic(site, mode=mode)
+    if core_fast is not None and core_fast.get("status") == "FAILED":
+        return core_fast
+
+    # 2. Kodi listing inspection
     try:
-        detailed = mode in ("full", "detail", "playback")
+        detailed = mode in ("full", "detail", "playback", "smart")
         listing = inspect_listing(site, verify_thumbnail=True, deep=detailed)
         playback_urls = listing.pop("playback_urls", [])
         result["listing"] = listing
         result["status"] = listing.get("status", "FAILED")
-        if mode in ("full", "playback"):
+
+        if result["status"] == "FAILED":
+            messages = listing.get("messages") or []
+            result["error"] = "; ".join(messages) if messages else "Listing failed"
+            result["elapsed_seconds"] = round(time.time() - started, 2)
+            result["finished_at"] = now_iso()
+            return result
+
+        # 3. Stream verification
+        if mode in ("smart", "playback", "stream", "detail"):
+            # Lightweight background stream resolution & preflight probe
+            if not playback_urls:
+                result["status"] = "FAILED"
+                result["error"] = "No playable video found in listing"
+            else:
+                stream_test = resolve_and_probe_stream(site, playback_urls[0])
+                result["stream_probe"] = stream_test
+                if stream_test.get("status") == "FAILED":
+                    result["status"] = "FAILED"
+                    result["error"] = stream_test.get("error") or "Stream playback test failed"
+                else:
+                    # Stream resolution & probe passed!
+                    thumb = listing.get("thumbnail") or {}
+                    if thumb.get("status") == "missing":
+                        result["status"] = "WARNING"
+                        result["advisories"] = ["Thumbnail missing"]
+                    else:
+                        result["status"] = "PASS"
+                        if thumb.get("status") == "failed":
+                            result["advisories"] = ["Thumbnail could not be verified automatically"]
+
+        elif mode == "full":
             playback = inspect_playback_candidates(
                 playback_urls,
-                seek_enabled=mode == "full",
+                seek_enabled=True,
             )
             result["playback"] = playback
             if playback.get("status") == "FAILED":
                 result["status"] = "FAILED"
+                result["error"] = "; ".join(playback.get("messages") or ["Playback failed"])
             elif playback.get("status") == "WARNING":
                 result["status"] = "WARNING"
             elif playback.get("status") == "PASS":
-                thumbnail = listing.get("thumbnail") or {}
-                if thumbnail.get("status") == "missing":
-                    result["status"] = "WARNING"
-                else:
-                    # A remote thumbnail probe can fail even when Kodi's skin loader
-                    # succeeds. Keep the evidence, but do not call a playable site broken.
-                    result["status"] = "PASS"
-                    if thumbnail.get("status") == "failed":
-                        result["advisories"] = ["thumbnail could not be verified automatically"]
+                result["status"] = "PASS"
+
     except Exception as exc:
         result["error"] = sanitize_text(exc)
         result["status"] = "FAILED"
+
     result["elapsed_seconds"] = round(time.time() - started, 2)
     result["finished_at"] = now_iso()
     return result
@@ -597,7 +1104,14 @@ def write_json(path, payload):
     temporary = path + ".tmp"
     with open(temporary, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2, sort_keys=True, ensure_ascii=True)
-    os.replace(temporary, path)
+    for attempt in range(8):
+        try:
+            os.replace(temporary, path)
+            break
+        except OSError:
+            if attempt == 7:
+                raise
+            time.sleep(0.05 * (attempt + 1))
 
 
 def report_summary(results):

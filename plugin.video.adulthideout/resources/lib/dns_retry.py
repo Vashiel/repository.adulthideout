@@ -3,6 +3,8 @@ import json
 import os
 import socket
 import time
+import urllib.parse
+import urllib.request
 
 try:
     import xbmc
@@ -32,6 +34,28 @@ def _log(message, level=None):
         pass
 
 
+def _is_ip_address(host):
+    if not host or not isinstance(host, (str, bytes)):
+        return False
+    try:
+        if isinstance(host, bytes):
+            host = host.decode("idna")
+        host = str(host).strip().rstrip(".")
+        try:
+            socket.inet_pton(socket.AF_INET, host)
+            return True
+        except Exception:
+            pass
+        try:
+            socket.inet_pton(socket.AF_INET6, host)
+            return True
+        except Exception:
+            pass
+    except Exception:
+        pass
+    return False
+
+
 def _host_key(host):
     if host is None:
         return None
@@ -39,18 +63,8 @@ def _host_key(host):
         if isinstance(host, bytes):
             host = host.decode("idna")
         host = str(host).strip().lower().rstrip(".")
-        if not host:
+        if not host or _is_ip_address(host):
             return None
-        try:
-            socket.inet_pton(socket.AF_INET, host)
-            return None
-        except Exception:
-            pass
-        try:
-            socket.inet_pton(socket.AF_INET6, host)
-            return None
-        except Exception:
-            pass
         return host
     except Exception:
         return None
@@ -170,17 +184,50 @@ def _cached_result(host, family, socktype, proto):
         return None
     result = _restore_result(entry.get("records"), family, socktype, proto)
     if result:
-        _log("using cached DNS for {} after getaddrinfo 11002".format(key))
+        _log("using cached DNS for {}".format(key))
         return result
     return None
 
 
+def _query_doh(host):
+    endpoints = [
+        ("https://1.1.1.1/dns-query?name={}&type=A", {"Accept": "application/dns-json"}),
+        ("https://8.8.8.8/resolve?name={}&type=A", {"Accept": "application/json"}),
+    ]
+    for url_tmpl, headers in endpoints:
+        try:
+            url = url_tmpl.format(urllib.parse.quote(host))
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=3.0) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode("utf-8", errors="ignore"))
+                    answers = data.get("Answer") or []
+                    ips = []
+                    for ans in answers:
+                        if ans.get("type") == 1 and ans.get("data"):
+                            ip = str(ans.get("data")).strip()
+                            try:
+                                socket.inet_pton(socket.AF_INET, ip)
+                                ips.append(ip)
+                            except Exception:
+                                pass
+                    if ips:
+                        return ips
+        except Exception as exc:
+            _log("DoH query failed on {}: {}".format(url_tmpl.split("/")[2], exc))
+            continue
+    return []
+
+
 def install(retries=7, delay=0.35):
     global _INSTALLED
-    if _INSTALLED or os.name != "nt":
+    if _INSTALLED:
         return
 
     def getaddrinfo_with_retry(host, port, family=0, type=0, proto=0, flags=0):
+        if _is_ip_address(host) or host in ("1.1.1.1", "8.8.8.8", "127.0.0.1", "localhost"):
+            return _ORIGINAL_GETADDRINFO(host, port, family, type, proto, flags)
+
         last_error = None
         for attempt in range(1, int(retries) + 1):
             try:
@@ -189,12 +236,30 @@ def install(retries=7, delay=0.35):
                 return result
             except socket.gaierror as exc:
                 last_error = exc
-                if getattr(exc, "errno", None) not in (11001, 11002):
-                    raise
+                cached = _cached_result(host, family, type, proto)
+                if cached:
+                    return cached
+
+                # Attempt DoH fallback on resolution failure (resolver failure / timeout)
+                try:
+                    ips = _query_doh(host)
+                    if ips:
+                        doh_results = []
+                        for ip in ips:
+                            try:
+                                sub_res = _ORIGINAL_GETADDRINFO(ip, port, family, type, proto, flags)
+                                if sub_res:
+                                    doh_results.extend(sub_res)
+                            except Exception:
+                                continue
+                        if doh_results:
+                            _store_result(host, doh_results)
+                            _log("resolved {} via DoH fallback ({} IPs)".format(host, len(ips)))
+                            return doh_results
+                except Exception as doh_exc:
+                    _log("DoH fallback error for {}: {}".format(host, doh_exc))
+
                 if attempt >= int(retries):
-                    cached = _cached_result(host, family, type, proto)
-                    if cached:
-                        return cached
                     raise
                 _log("retrying DNS for {} after getaddrinfo {} ({}/{})".format(
                     host, getattr(exc, "errno", "unknown"), attempt, retries
@@ -204,4 +269,4 @@ def install(retries=7, delay=0.35):
 
     socket.getaddrinfo = getaddrinfo_with_retry
     _INSTALLED = True
-    _log("installed Windows getaddrinfo retry")
+    _log("installed cross-platform getaddrinfo retry with DoH bypass")

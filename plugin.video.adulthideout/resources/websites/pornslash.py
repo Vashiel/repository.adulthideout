@@ -36,12 +36,13 @@ class Pornslash(BaseWebsite):
             "User-Agent": self.ua,
             "Referer": referer or (self.base_url + "/"),
         }
+        timeout = 5 if getattr(self, "adult_hideout_background_harvest", False) else 20
         return fetch_text(
             url,
             headers=headers,
             scraper=self.session,
             logger=self.logger,
-            timeout=20,
+            timeout=timeout,
         )
 
     def _get_content_key(self):

@@ -80,9 +80,28 @@ class Spankbang(BaseWebsite):
         self._set_orientation_cookie()
 
     def _get_html(self, url):
+        is_bg = getattr(self, "adult_hideout_background_harvest", False)
+        try:
+            from resources.lib.resilient_http import fetch_text
+            hdrs = dict(self._headers)
+            cookie_str = "; ".join(f"{c.name}={c.value}" for c in self.cookie_jar)
+            if cookie_str:
+                hdrs["Cookie"] = cookie_str
+            text = fetch_text(
+                url,
+                headers=hdrs,
+                logger=self.logger,
+                timeout=4 if is_bg else 12,
+            )
+            if text:
+                return text
+        except Exception:
+            pass
+        if is_bg:
+            return ""
         req = urllib.request.Request(url, headers=self._headers)
         try:
-            with self.opener.open(req, timeout=15) as resp:
+            with self.opener.open(req, timeout=10) as resp:
                 data = resp.read()
                 encoding = resp.info().get('Content-Encoding', '')
                 if encoding == 'gzip':
@@ -102,12 +121,17 @@ class Spankbang(BaseWebsite):
             orientation_idx = int(self.addon.getSetting('spankbang_orientation') or '0')
             if not (0 <= orientation_idx < len(self.orientation_options)):
                 orientation_idx = 0
-            
             orientation_key = self.orientation_options[orientation_idx]
             orientation_path = self.orientation_paths[orientation_key]
-            
-            cookie_url = urllib.parse.urljoin(self.base_url, f'sex_version/{orientation_path}')
-            self._get_html(cookie_url)
+            cookie = http.cookiejar.Cookie(
+                version=0, name='sex_version', value=orientation_path,
+                port=None, port_specified=False,
+                domain='.spankbang.com', domain_specified=True, domain_initial_dot=True,
+                path='/', path_specified=True,
+                secure=True, expires=None, discard=True,
+                comment=None, comment_url=None, rest={}, rfc2109=False
+            )
+            self.cookie_jar.set_cookie(cookie)
         except Exception as e:
             self.logger.error(f"Failed to set orientation cookie: {e}")
 

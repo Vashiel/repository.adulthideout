@@ -51,6 +51,8 @@
     <setting id="atlas_unavailable_sites_migrated" type="bool" default="false" visible="false" />
     <setting id="recovered_websites_migrated" type="bool" default="false" visible="false" />
     <setting id="cloudflare_blocked_migrated_1025" type="bool" default="false" visible="false" />
+    <setting id="cloudflare_blocked_migrated_1026_restored" type="bool" default="false" visible="false" />
+    <setting id="factory_websites_enabled_1026" type="bool" default="false" visible="false" />
     <setting id="asianviralhub_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="ebalka26_sort_by" type="enum" label="30004" values="Newest|Top Rated|Most Popular" default="0" visible="false" />
     <setting id="ruporno_sort_by" type="enum" label="30004" values="Newest|Top Rated|Most Popular" default="0" visible="false" />
@@ -78,7 +80,6 @@
     <setting id="abxxx_sort_by" type="enum" label="30004" values="Latest|Most Popular|Top Rated" default="0" visible="false" />
     <setting id="123av_sort_by" type="enum" label="30004" values="New|Hot|Recent" default="0" visible="false" />
     <setting id="8kporner_sort_by" type="enum" label="30004" values="Latest|Trending|Top Rated" default="0" visible="false" />
-    <setting id="one43porn_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="mygoodporn_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="porneec_sort_by" type="enum" label="30004" values="Newest|Best|Most Viewed|Longest" default="0" visible="false" />
     <setting id="pornmike_sort_by" type="enum" label="30004" values="Newest|Most Viewed|Top Rated" default="0" visible="false" />
@@ -129,6 +130,7 @@
     <setting id="upornia_sort_by" type="enum" label="30004" values="Most Popular|Latest Updates|Top Rated" default="0" visible="false" />
     <setting id="xcafe_sort_by" type="enum" label="30004" values="Recommended|Newest|Most Popular|Top Rated" default="0" visible="false" />
     <setting id="fullporner_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
+    <setting id="porner_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Most Liked" default="0" visible="false" />
     <setting id="xxxfiles_sort_by" type="enum" label="30004" values="Latest Updates|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="yabuchka_sort_by" type="enum" label="30004" values="Latest|Most Popular|Top Rated|Longest" default="0" visible="false" />
     <setting id="pornofeya_sort_by" type="enum" label="30004" values="Latest|Most Popular|Top Rated|Longest" default="0" visible="false" />
@@ -259,7 +261,6 @@
     <setting id="fulleroticmovies_sort_by" type="enum" label="30004" values="Newest|Trending|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="hdshemalez_sort_by" type="number" default="0" visible="false" />
     <setting id="vintagepornfun_sort_by" type="number" default="0" visible="false" />
-    <setting id="vintagehuyamba_sort_by" type="enum" label="30004" values="Newest|Most Popular|Top Rated|Longest" default="0" visible="false" />
     <setting id="archivebate_filter_gender" type="number" default="0" visible="false" />
     <setting id="archivebate_filter_sort" type="number" default="0" visible="false" />
     <setting id="xopenload_sort_by" type="number" default="0" visible="false" />

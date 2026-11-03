@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.25" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.26" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.requests" version="2.25.1"/>
+        <import addon="service.adulthideout.core" version="1.0.0"/>
     </requires>
     <extension point="xbmc.python.pluginsource" library="default.py">
         <provides>video</provides>
@@ -12,13 +13,15 @@
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
-v. 1.0.25 "Prism" - 2026-10-17
-- Issue #78 fix: structured HLS master playlist parsing and preference-based quality selection, restoring 1080p Full HD playback.
-- Diagnostic audit and repairs across ~30 tube scrapers and resolvers (Perverzija, Analdin, 3Movs, AnyPorn, AVJoy, BoundHub, Empflix, HQPorner, PervClips, Chaturbate, etc.).
-- Direct stream discovery via resolve_recording_stream() across scrapers.
-- Sanitized ListItem argument passing and guarded category/setting integer parsing.
-- Listing and thumbnail repairs across supported websites.
-        </news>
+v. 1.0.26 "Core Horizon" - 2026-11-03
+- AdultHideout Core (Public Architecture Preview): New native engine for search, stream relaying and script evaluation. Falls back automatically to the classic Python engine if Core is not installed or unsupported.
+- On-Demand Core Installer: Downloads only the ~3 MB binary for your device on first use and starts it without restarting Kodi.
+- Global Search &amp; Mega Shuffle: All 302 sources searched concurrently, about 56 s on a phone and 12-18 s on desktop.
+- Playback &amp; Network: Local HLS and byte-range relay for reliable seeking and 1080p selection, encrypted DNS fallback.
+- Website Catalog: Re-enabled nine previously hidden websites (CrazyShit stays optional), removed OGPorn, One43Porn and VintageHuyamba.
+- Website Repairs: 37 websites and the DoodStream, LuLuStream and StreamTape resolvers repaired. Added Porner.tv.
+- Localization: English, German, French, Spanish and Italian updated.
+</news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>
 Internet [COLOR red]XXX Porn Video[COLOR white] Streams.
@@ -74,7 +77,7 @@ https://github.com/Vashiel/repository.adulthideout
   </extension>
 </addon>
 
-<addon id="script.adulthideout.kvat" name="AdultHideout Diagnostics" version="0.2.3" provider-name="Vashiel">
+<addon id="script.adulthideout.kvat" name="AdultHideout Diagnostics" version="0.2.4" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="plugin.video.adulthideout" version="1.0.20"/>
@@ -83,8 +86,11 @@ https://github.com/Vashiel/repository.adulthideout
         <provides>executable</provides>
     </extension>
     <extension point="xbmc.addon.metadata">
-        <news>v. 0.2.3 - 2026-08-30
-Improved thumbnail verification during temporary DNS and gateway failures and separated confirmed external website outages from actionable AdultHideout failures.</news>
+        <news>v. 0.2.4 - 2026-11-01
+- Hardened stream probe reachability with CDN-compatible headers (stripping browser-only Accept-Language/Accept-Encoding).
+- Fixed dynamic scraper module loading for hyphenated site names (e.g. heavy-r -> heavy_r).
+- Resolved namespace conflicts for resources.lib.base_website during dynamic diagnostic runs.
+- Updated KNOWN_EXTERNAL_ISSUES catalog to verify healthy domains and document external subscriber/challenge gates.</news>
         <summary lang="en_GB">Platform-native diagnostics for AdultHideout</summary>
         <summary lang="de_DE">Plattformnahe Diagnose fuer AdultHideout</summary>
         <summary lang="es_ES">Diagnóstico nativo para AdultHideout</summary>
@@ -95,12 +101,45 @@ Improved thumbnail verification during temporary DNS and gateway failures and se
         <description lang="es_ES">Prueba los sitios de AdultHideout directamente en Kodi y crea un informe seguro para solucionar problemas.</description>
         <description lang="fr_FR">Teste les sites AdultHideout directement dans Kodi et crée un rapport respectueux de la vie privée pour le dépannage.</description>
         <description lang="it_IT">Verifica i siti di AdultHideout direttamente in Kodi e crea un rapporto sicuro per la risoluzione dei problemi.</description>
-        <news>Improved thumbnail health checks by sampling multiple real video entries and retrying one completely empty Kodi directory response before reporting a website failure.</news>
+        <news>v. 0.2.4 - 2026-11-01
+- Hardened stream probe reachability with CDN-compatible headers (stripping browser-only Accept-Language/Accept-Encoding).
+- Fixed dynamic scraper module loading for hyphenated site names (e.g. heavy-r -> heavy_r).
+- Resolved namespace conflicts for resources.lib.base_website during dynamic diagnostic runs.
+- Updated KNOWN_EXTERNAL_ISSUES catalog to verify healthy domains and document external subscriber/challenge gates.</news>
         <platform>all</platform>
         <license>GPL-2.0-only</license>
         <assets>
             <icon>icon.png</icon>
             <fanart>fanart.jpg</fanart>
+        </assets>
+    </extension>
+</addon>
+
+<addon id="service.adulthideout.core" name="AdultHideout Core Service" version="1.0.0" provider-name="Vashiel">
+    <requires>
+        <import addon="xbmc.python" version="3.0.0"/>
+    </requires>
+    <extension point="xbmc.service" library="service.py" start="startup"/>
+    <extension point="xbmc.addon.metadata">
+        <summary lang="de_DE">Hochleistungs-Hintergrunddienst für AdultHideout</summary>
+        <summary lang="en_GB">High-performance native background engine for AdultHideout</summary>
+        <summary lang="fr_FR">Moteur d'arrière-plan natif haute performance pour AdultHideout</summary>
+        <summary lang="es_ES">Motor nativo en segundo plano de alto rendimiento para AdultHideout</summary>
+        <summary lang="it_IT">Motore nativo in background ad alte prestazioni per AdultHideout</summary>
+        <description lang="de_DE">Stellt parallele Multi-Site-Suche, lokales HLS/MP4-Stream-Relaying, dynamische Player-Auswertung und ausfallsichere DNS-Auflösung für AdultHideout bereit.</description>
+        <description lang="en_GB">Provides native high-concurrency search, local HLS/MP4 stream relaying, dynamic JavaScript player evaluation, and resilient DNS resolution for AdultHideout.</description>
+        <description lang="fr_FR">Fournit une recherche parallèle haute concurrence, un relais local de flux HLS/MP4, une évaluation JavaScript dynamique et une résolution DNS résiliente pour AdultHideout.</description>
+        <description lang="es_ES">Proporciona búsqueda paralela de alta concurrencia, retransmisión local de flujos HLS/MP4, evaluación dinámica de JavaScript y resolución DNS resiliente para AdultHideout.</description>
+        <description lang="it_IT">Fornisce ricerca parallela ad alta concorrenza, relay locale di flussi HLS/MP4, valutazione dinamica JavaScript e risoluzione DNS resiliente per AdultHideout.</description>
+        <platform>all</platform>
+        <license>GPL-2.0-only</license>
+        <news>
+v. 1.0.0 - 2026-11-03
+- First release of the native AdultHideout Core engine for concurrent search, stream relaying and script evaluation.
+- Detects the device platform, downloads only the matching binary (~3 MB) after confirmation and starts it without restarting Kodi.
+        </news>
+        <assets>
+            <icon>icon.png</icon>
         </assets>
     </extension>
 </addon>

@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.25" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.26" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.requests" version="2.25.1"/>
+        <import addon="service.adulthideout.core" version="1.0.0"/>
     </requires>
     <extension point="xbmc.python.pluginsource" library="default.py">
         <provides>video</provides>
@@ -11,13 +12,15 @@
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
-v. 1.0.25 "Prism" - 2026-10-17
-- Issue #78 fix: structured HLS master playlist parsing and preference-based quality selection, restoring 1080p Full HD playback.
-- Diagnostic audit and repairs across ~30 tube scrapers and resolvers (Perverzija, Analdin, 3Movs, AnyPorn, AVJoy, BoundHub, Empflix, HQPorner, PervClips, Chaturbate, etc.).
-- Direct stream discovery via resolve_recording_stream() across scrapers.
-- Sanitized ListItem argument passing and guarded category/setting integer parsing.
-- Listing and thumbnail repairs across supported websites.
-        </news>
+v. 1.0.26 "Core Horizon" - 2026-11-03
+- AdultHideout Core (Public Architecture Preview): New native engine for search, stream relaying and script evaluation. Falls back automatically to the classic Python engine if Core is not installed or unsupported.
+- On-Demand Core Installer: Downloads only the ~3 MB binary for your device on first use and starts it without restarting Kodi.
+- Global Search &amp; Mega Shuffle: All 302 sources searched concurrently, about 56 s on a phone and 12-18 s on desktop.
+- Playback &amp; Network: Local HLS and byte-range relay for reliable seeking and 1080p selection, encrypted DNS fallback.
+- Website Catalog: Re-enabled nine previously hidden websites (CrazyShit stays optional), removed OGPorn, One43Porn and VintageHuyamba.
+- Website Repairs: 37 websites and the DoodStream, LuLuStream and StreamTape resolvers repaired. Added Porner.tv.
+- Localization: English, German, French, Spanish and Italian updated.
+</news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>
 Internet [COLOR red]XXX Porn Video[COLOR white] Streams.

@@ -398,6 +398,42 @@ def probe_resolved_stream(url, headers=None, timeout=7):
 def resolve_first_working(urls, referer="", headers=None, addon=None):
     """Resolve preferred enabled mirrors until one passes the optional probe."""
     addon = addon or _addon()
+    urls = list(urls or [])
+    if not urls:
+        return "", {}, ""
+
+    # 1. Turbo Parallel Resolving via AdultHideout Core (Race-to-Play in < 500ms)
+    try:
+        import json
+        import urllib.request
+        payload = json.dumps({
+            "urls": urls,
+            "referer": referer or "",
+            "timeout_ms": 6000,
+            "probe_stream": resolver_preflight_enabled(addon)
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            "http://127.0.0.1:8191/resolve",
+            data=payload,
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=7) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            if data.get("status") == "ok" and data.get("stream_url"):
+                stream_url = data["stream_url"]
+                stream_headers = data.get("headers") or {}
+                winner_candidate = data.get("candidate_url") or urls[0]
+                xbmc.log(
+                    "[AdultHideout][resolver] Core Race-to-Play WON in {}ms ({}) for {}".format(
+                        data.get("elapsed_ms", 0), data.get("hoster", "unknown"), winner_candidate
+                    ),
+                    xbmc.LOGINFO,
+                )
+                return stream_url, stream_headers, winner_candidate
+    except Exception as exc:
+        xbmc.log("[AdultHideout][resolver] Core parallel resolve skipped/failed: {}".format(exc), xbmc.LOGDEBUG)
+
+    # 2. Fallback to sequential Python resolvers
     for candidate in sort_urls_by_resolver_preference(urls or [], addon):
         if not is_resolver_enabled(candidate, addon):
             continue
@@ -423,6 +459,37 @@ def resolve_first_working(urls, referer="", headers=None, addon=None):
 
 def resolve(url, referer="", headers=None):
     xbmc.log("[AdultHideout][resolver] Input: {}".format(url), xbmc.LOGINFO)
+
+    # Fast-path: try AdultHideout Core zero-browser resolver
+    try:
+        import json
+        import urllib.request
+        payload = json.dumps({
+            "urls": [url],
+            "referer": referer or "",
+            "timeout_ms": 5000,
+            "probe_stream": False
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            "http://127.0.0.1:8191/resolve",
+            data=payload,
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=6) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            resolved_stream = data.get("stream_url")
+            if data.get("status") == "ok" and resolved_stream and str(resolved_stream).strip().startswith(("http://", "https://", "//")):
+                if resolved_stream.startswith("//"):
+                    resolved_stream = "https:" + resolved_stream
+                xbmc.log(
+                    "[AdultHideout][resolver] Core resolved in {}ms: {}".format(
+                        data.get("elapsed_ms", 0), resolved_stream
+                    ),
+                    xbmc.LOGINFO,
+                )
+                return resolved_stream, data.get("headers") or {}
+    except Exception:
+        pass
 
     entry = resolver_entry_for_url(url)
     if entry:

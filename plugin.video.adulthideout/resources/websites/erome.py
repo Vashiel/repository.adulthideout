@@ -210,20 +210,34 @@ class EromeWebsite(BaseWebsite):
         poster_matches = poster_pattern.findall(content)
         video_to_poster = {video: poster for poster, video in poster_matches}
         
+        headers = f'User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36&Referer={self.base_url}/'
         for i, video_url in enumerate(video_urls, 1):
             poster = video_to_poster.get(video_url, '')
             title = f"{album_title} - Video {i}" if len(video_urls) > 1 else album_title
-            self.add_link(html.unescape(title), video_url, 4, poster or self.icon, self.fanart)
+            play_url = video_url + '|' + headers
+            self.add_link(html.unescape(title), play_url, 4, poster or self.icon, self.fanart)
             items_added += 1
         
         self.logger.info(f"[{self.name.title()}] Found {items_added} videos in album")
 
+    def resolve_recording_stream(self, url):
+        clean_url = url.split('|')[0]
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': self.base_url + '/'
+        }
+        return {'url': clean_url, 'headers': headers}
+
     def play_video(self, url):
         if url:
-            li = xbmcgui.ListItem(path=url)
+            if '|' not in url:
+                headers = f'User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36&Referer={self.base_url}/'
+                play_url = url + '|' + headers
+            else:
+                play_url = url
+                headers = url.split('|', 1)[1]
+            li = xbmcgui.ListItem(path=play_url)
             li.setProperty('IsPlayable', 'true')
-            headers = f'User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36&Referer={self.base_url}/'
-            play_url = url + '|' + headers
             li.setPath(play_url)
             li.setProperty('inputstream.adaptive.stream_headers', headers)
             li.setMimeType('video/mp4')

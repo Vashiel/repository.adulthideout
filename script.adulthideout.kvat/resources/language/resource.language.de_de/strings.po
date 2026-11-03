@@ -11,11 +11,11 @@ msgstr "AdultHideout-Diagnose"
 
 msgctxt "#30001"
 msgid "Smart check all websites"
-msgstr "Alle Websites intelligent prüfen"
+msgstr "Standard-Diagnose (Websites, Listen & Stream-Test)"
 
 msgctxt "#30002"
 msgid "Full playback check"
-msgstr "Vollständiger Wiedergabetest"
+msgstr "Kodi-Player-Test (visuelle Wiedergabe)"
 
 msgctxt "#30003"
 msgid "Select websites"
@@ -35,7 +35,7 @@ msgstr "Neuesten Bericht exportieren"
 
 msgctxt "#30007"
 msgid "Quick listing check all websites"
-msgstr "Alle Website-Listen schnell prüfen"
+msgstr "Express-Check (nur Server & Erreichbarkeit)"
 
 msgctxt "#30020"
 msgid "Total"
@@ -111,7 +111,7 @@ msgstr "Dieser Test spielt pro Website sichtbar ein Video ab, führt einen Seek 
 
 msgctxt "#30038"
 msgid "This test checks every website listing and first thumbnail and may take some time."
-msgstr "Dieser Test prüft die Auflistung und das erste Vorschaubild jeder Website und kann einige Zeit dauern."
+msgstr "Dieser Express-Check prüft blitzschnell nur die Server-Erreichbarkeit und Startseiten aller Websites."
 
 msgctxt "#30039"
 msgid "AdultHideout is not installed."
@@ -135,4 +135,4 @@ msgstr "Detailprüfung"
 
 msgctxt "#30044"
 msgid "Runs a fast screen first, then inspects useful folders only for suspicious websites."
-msgstr "Prüft zuerst alle Websites schnell und untersucht nur bei Auffälligkeiten geeignete Unterordner."
+msgstr "Prüft Websites, Auflistungen, Vorschaubilder und testet für jede Seite die Stream-Auflösung und Erreichbarkeit des Video-Streams."

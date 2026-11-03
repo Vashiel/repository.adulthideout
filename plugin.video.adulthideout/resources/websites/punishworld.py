@@ -35,6 +35,8 @@ _SESSION_LOCK = threading.Lock()
 
 
 class PunishWorld(BaseWebsite):
+    def get_start_url_and_label(self):
+        return f"{self.base_url}/?filter=latest", "PunishWorld"
 
     def __init__(self, addon_handle):
         super().__init__(
@@ -120,6 +122,8 @@ class PunishWorld(BaseWebsite):
                 return self.scraper
 
     def make_request(self, url, referer=None):
+        if not url or url == "BOOTSTRAP":
+            url, _ = self.get_start_url_and_label()
         scraper = self.get_session()
         
         if not hasattr(scraper, 'get'):
@@ -150,6 +154,14 @@ class PunishWorld(BaseWebsite):
             return content
         except Exception as e:
             self.logger.error(f"Failed to load data from {url}: {e}")
+            try:
+                import requests as _req
+                proxy_url = f"http://127.0.0.1:8191/proxy?url={urllib.parse.quote(url)}"
+                pr = _req.get(proxy_url, headers=headers if 'headers' in locals() else {}, timeout=20)
+                if pr.status_code == 200 and len(pr.text) > 1000:
+                    return pr.text
+            except Exception:
+                pass
             self.notify_error(f"Failed to load data: {e}")
             return None
 
@@ -171,6 +183,8 @@ class PunishWorld(BaseWebsite):
         return None
 
     def process_content(self, url):
+        if not url or url == "BOOTSTRAP":
+            url, _ = self.get_start_url_and_label()
         content = self.make_request(url)
         if not content:
             self.end_directory()
@@ -264,6 +278,31 @@ class PunishWorld(BaseWebsite):
             self.notify_info("No categories found (layout changed?).")
 
         self.end_directory(content_type="videos")
+
+    def resolve_recording_stream(self, url):
+        content = self.make_request(url)
+        if not content:
+            return None
+        stream_url = None
+        m = re.search(r'var\s+videoHigh\s*=\s*"([^"]+)"', content, re.IGNORECASE)
+        if m:
+            stream_url = html.unescape(m.group(1).strip())
+        if not stream_url:
+            m = re.search(r'<source\s+src="([^"]+)"\s+type="video/mp4"\s+title="high"', content, re.IGNORECASE)
+            if m:
+                stream_url = html.unescape(m.group(1).strip())
+        if not stream_url:
+            m = re.search(r'"contentUrl"\s*:\s*"([^"]+\.mp4[^"]*)"', content, re.IGNORECASE)
+            if m:
+                stream_url = html.unescape(m.group(1).strip().replace(r'\/', '/'))
+        if not stream_url:
+            return None
+        headers = {
+            "User-Agent": self._scraper_ua,
+            "Referer": url,
+            "Accept": "*/*",
+        }
+        return {"url": stream_url, "headers": headers, "extension": "mp4"}
 
     def play_video(self, url):
         content = self.make_request(url)

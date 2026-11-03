@@ -1313,8 +1313,8 @@ msgstr "Start 24/7 Smart Stream"
 
 
 msgctxt "#30912"
-msgid "Search Across All 272 Websites"
-msgstr "Search Across All 272 Websites"
+msgid "Search Across All 300+ Websites"
+msgstr "Search Across All 300+ Websites"
 
 
 msgctxt "#30913"
@@ -1497,3 +1497,219 @@ msgstr "Play this playlist page"
 msgctxt "#30965"
 msgid "No public playlist videos found"
 msgstr "No public playlist videos found"
+
+msgctxt "#30935"
+msgid "No performers match your filter"
+msgstr "No performers match your filter"
+
+msgctxt "#30966"
+msgid "Global Search"
+msgstr "Global Search"
+
+msgctxt "#30967"
+msgid "Search"
+msgstr "Search"
+
+msgctxt "#30968"
+msgid "{} sources"
+msgstr "{} sources"
+
+msgctxt "#30969"
+msgid "Source Presets"
+msgstr "Source Presets"
+
+msgctxt "#30970"
+msgid "Choose Sources"
+msgstr "Choose Sources"
+
+msgctxt "#30971"
+msgid "{} selected"
+msgstr "{} selected"
+
+msgctxt "#30972"
+msgid "Search All Sites"
+msgstr "Search All Sites"
+
+msgctxt "#30973"
+msgid "Show Selected Sources"
+msgstr "Show Selected Sources"
+
+msgctxt "#30974"
+msgid "Clear Search History"
+msgstr "Clear Search History"
+
+msgctxt "#30975"
+msgid "Combine Presets"
+msgstr "Combine Presets"
+
+msgctxt "#30976"
+msgid "Save Current Selection as Custom Preset"
+msgstr "Save Current Selection as Custom Preset"
+
+msgctxt "#30977"
+msgid "Custom Presets"
+msgstr "Custom Presets"
+
+msgctxt "#30978"
+msgid "Delete Custom Preset"
+msgstr "Delete Custom Preset"
+
+msgctxt "#30979"
+msgid "Edit / search current sources"
+msgstr "Edit / search current sources"
+
+msgctxt "#30980"
+msgid "Repeat previous source scope"
+msgstr "Repeat previous source scope"
+
+msgctxt "#30981"
+msgid "Search all enabled sites"
+msgstr "Search all enabled sites"
+
+msgctxt "#30982"
+msgid "Search all enabled sites, all query words"
+msgstr "Search all enabled sites, all query words"
+
+msgctxt "#30983"
+msgid "Searching {} sources..."
+msgstr "Searching {} sources..."
+
+msgctxt "#30984"
+msgid "Turbo Search via Rust Core ({}/{} sites · {} results): {}"
+msgstr "Turbo Search via Rust Core ({}/{} sites · {} results): {}"
+
+msgctxt "#30985"
+msgid "No results found"
+msgstr "No results found"
+
+msgctxt "#30986"
+msgid "Mega Shuffle (All Sites)"
+msgstr "Mega Shuffle (All Sites)"
+
+msgctxt "#30987"
+msgid "Balanced Top Sites"
+msgstr "Balanced Top Sites"
+
+msgctxt "#30988"
+msgid "Broad Reliable Sites"
+msgstr "Broad Reliable Sites"
+
+msgctxt "#30989"
+msgid "Playlist Safe"
+msgstr "Playlist Safe"
+
+msgctxt "#30990"
+msgid "Straight / Mainstream"
+msgstr "Straight / Mainstream"
+
+msgctxt "#30991"
+msgid "Big Tube Sites"
+msgstr "Big Tube Sites"
+
+msgctxt "#30992"
+msgid "KVS Tube Sites"
+msgstr "KVS Tube Sites"
+
+msgctxt "#30993"
+msgid "Amateur / Homemade"
+msgstr "Amateur / Homemade"
+
+msgctxt "#30994"
+msgid "Full Movies / Longform"
+msgstr "Full Movies / Longform"
+
+msgctxt "#30995"
+msgid "JAV / Asian"
+msgstr "JAV / Asian"
+
+msgctxt "#30996"
+msgid "Trans / Shemale"
+msgstr "Trans / Shemale"
+
+msgctxt "#30997"
+msgid "Gay"
+msgstr "Gay"
+
+msgctxt "#30998"
+msgid "Hentai / Futa / Rule34"
+msgstr "Hentai / Futa / Rule34"
+
+msgctxt "#30999"
+msgid "Fetish / BDSM"
+msgstr "Fetish / BDSM"
+
+msgctxt "#31000"
+msgid "Cam / Clips"
+msgstr "Cam / Clips"
+
+msgctxt "#31001"
+msgid "Lesbian"
+msgstr "Lesbian"
+
+msgctxt "#31002"
+msgid "MILF / Mature"
+msgstr "MILF / Mature"
+
+msgctxt "#31003"
+msgid "POV"
+msgstr "POV"
+
+msgctxt "#31004"
+msgid "Anal"
+msgstr "Anal"
+
+msgctxt "#31005"
+msgid "Oral / Blowjob"
+msgstr "Oral / Blowjob"
+
+msgctxt "#31006"
+msgid "Voyeur / Public"
+msgstr "Voyeur / Public"
+
+msgctxt "#31007"
+msgid "Vintage / Classic"
+msgstr "Vintage / Classic"
+
+msgctxt "#31008"
+msgid "Feet / Stockings"
+msgstr "Feet / Stockings"
+
+msgctxt "#31009"
+msgid "Femdom / Bondage"
+msgstr "Femdom / Bondage"
+
+msgctxt "#31010"
+msgid "Creator / Fan Content"
+msgstr "Creator / Fan Content"
+
+msgctxt "#31011"
+msgid "AdultHideout Core Required"
+msgstr "AdultHideout Core Required"
+
+msgctxt "#31012"
+msgid "For full search speed, Mega Shuffle, and native stream acceleration, the AdultHideout Core engine for your system ([B]{}[/B]) is required (~3 MB).\n\nDownload and activate automatically now?\n[COLOR gray](No Kodi restart required)[/COLOR]"
+msgstr "For full search speed, Mega Shuffle, and native stream acceleration, the AdultHideout Core engine for your system ([B]{}[/B]) is required (~3 MB).\n\nDownload and activate automatically now?\n[COLOR gray](No Kodi restart required)[/COLOR]"
+
+msgctxt "#31013"
+msgid "Install Now"
+msgstr "Install Now"
+
+msgctxt "#31014"
+msgid "Later"
+msgstr "Later"
+
+msgctxt "#31015"
+msgid "Downloading {} for {}... ({} KB)"
+msgstr "Downloading {} for {}... ({} KB)"
+
+msgctxt "#31016"
+msgid "Starting AdultHideout Core engine..."
+msgstr "Starting AdultHideout Core engine..."
+
+msgctxt "#31017"
+msgid "Core ({}) installed & active!"
+msgstr "Core ({}) installed & active!"
+
+msgctxt "#31018"
+msgid "Download failed for {}. Using Python fallback."
+msgstr "Download failed for {}. Using Python fallback."

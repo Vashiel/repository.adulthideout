@@ -990,14 +990,34 @@ class PerformerIndex:
             return
         self.browse(query=query.strip())
 
-    def show_bio(self, performer_id):
-        p = self._get_performer(performer_id)
-        if not p:
+    def show_bio(self, performer_id, performer_name=None):
+        p = self._get_performer(performer_id) or {}
+        p_name = performer_name or p.get("name") or "Unknown"
+
+        # Enrich bio from AdultHideout Core (/performer endpoint)
+        if not p.get("bio") or len(p.get("bio", "").strip()) < 35:
+            try:
+                from resources.lib.thumb_proxy import is_core_healthy
+                if is_core_healthy():
+                    req_name = p_name if p_name != "Unknown" else str(performer_id)
+                    req = urllib.request.Request(f"http://127.0.0.1:8191/performer?name={urllib.parse.quote(req_name)}")
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        data = json.loads(resp.read().decode("utf-8"))
+                        for k in ("bio", "birth_year", "cup", "height", "hair", "eyes", "ethnicity", "aliases"):
+                            if data.get(k) and not p.get(k):
+                                p[k] = data[k]
+                        if not p.get("name") and data.get("name"):
+                            p["name"] = data["name"]
+            except Exception as e:
+                if xbmc:
+                    xbmc.log(f"[AdultHideout][PerformerIndex] Core bio lookup failed: {e}", xbmc.LOGDEBUG)
+
+        if not p and p_name == "Unknown":
             if xbmcgui:
                 xbmcgui.Dialog().notification(_text(30900, "Darsteller & Pornstars"), "Keine Daten gefunden", xbmcgui.NOTIFICATION_WARNING)
             return
 
-        p_name = p.get("name", "Unknown")
+        p_name = p.get("name", p_name)
         bio_text = self._format_plot(p)
 
         if xbmcgui:
@@ -1044,7 +1064,7 @@ class PerformerIndex:
         genre_key, genre_title, pool_key = self._detect_performer_genre(p)
 
         # 1. Bio & Profile Info
-        bio_url = f"{self.plugin_url}?mode=60&action=bio&id={enc_id}"
+        bio_url = f"{self.plugin_url}?mode=60&action=bio&id={enc_id}&name={enc_name}"
         li_bio = xbmcgui.ListItem(label=f"[COLOR yellow][ i ][/COLOR] [B]{_text(30916, 'Biografie & Profil anzeigen')}[/B]")
         li_bio.setArt({"icon": thumb or "DefaultInfo.png", "thumb": thumb or "DefaultInfo.png", "poster": thumb or "DefaultInfo.png"})
         li_bio.setInfo("video", {"plot": self._format_plot(p)})
@@ -1071,13 +1091,11 @@ class PerformerIndex:
         xbmcplugin.addDirectoryItem(self.addon_handle, search_movies_url, li_movies_search, isFolder=True)
 
         movie_count = int(p.get("movie_count") or 0)
-        if movie_count:
-            movies_url = f"{self.plugin_url}?mode=60&action=movies&id={enc_id}&name={enc_name}"
-            li_filmography = xbmcgui.ListItem(
-                label=f"[COLOR orange]★ [/COLOR][B]Movies with {performer_name} ({movie_count})[/B]"
-            )
-            li_filmography.setArt({"icon": "DefaultVideo.png", "thumb": "DefaultVideo.png"})
-            xbmcplugin.addDirectoryItem(self.addon_handle, movies_url, li_filmography, isFolder=True)
+        label_text = f"[COLOR orange]★ [/COLOR][B]Movies with {performer_name} ({movie_count})[/B]" if movie_count else f"[COLOR orange]★ [/COLOR][B]Movies with {performer_name} (IAFD / Filmografie)[/B]"
+        movies_url = f"{self.plugin_url}?mode=60&action=movies&id={enc_id}&name={enc_name}"
+        li_filmography = xbmcgui.ListItem(label=label_text)
+        li_filmography.setArt({"icon": "DefaultVideo.png", "thumb": "DefaultVideo.png"})
+        xbmcplugin.addDirectoryItem(self.addon_handle, movies_url, li_filmography, isFolder=True)
 
         # 4. Favorite Toggle
         if is_fav:
@@ -1095,6 +1113,27 @@ class PerformerIndex:
 
     def show_movies(self, performer_id, performer_name):
         movies = self.star_db.movies(performer_id) if self.star_db and self.star_db.available else []
+        if not movies:
+            try:
+                from resources.lib.thumb_proxy import is_core_healthy
+                if is_core_healthy():
+                    req = urllib.request.Request(f"http://127.0.0.1:8191/performer?name={urllib.parse.quote(performer_name)}")
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        data = json.loads(resp.read().decode("utf-8"))
+                        core_movies = data.get("filmography") or data.get("movies") or []
+                        if core_movies:
+                            movies = [
+                                {
+                                    "title": m.get("title", ""),
+                                    "release_year": m.get("year", 0),
+                                    "duration_seconds": m.get("duration", 0)
+                                }
+                                for m in core_movies
+                            ]
+            except Exception as e:
+                if xbmc:
+                    xbmc.log(f"[AdultHideout][PerformerIndex] Core show_movies lookup failed: {e}", xbmc.LOGWARNING)
+
         performer = self._get_performer(performer_id) or {}
         genre_key, _genre_title, _pool_key = self._detect_performer_genre(performer)
         movie_mode, _titles_mode = self._performer_movie_search_modes(genre_key)
@@ -1102,7 +1141,7 @@ class PerformerIndex:
             title = movie.get("title", "")
             year = movie.get("release_year")
             minutes = int(movie.get("duration_seconds") or 0) // 60
-            suffix = " · ".join(str(value) for value in (year, f"{minutes} min") if value)
+            suffix = " · ".join(str(value) for value in (year, f"{minutes} min" if minutes else None) if value)
             label = f"[B]{title}[/B] [COLOR gray]({suffix})[/COLOR]" if suffix else f"[B]{title}[/B]"
             url = f"{self.plugin_url}?mode=21&website=global_search&query={urllib.parse.quote_plus(title)}&search_mode={movie_mode}"
             item = xbmcgui.ListItem(label=label)
@@ -1176,7 +1215,7 @@ class PerformerIndex:
 
         items = [
             (f"[COLOR yellow][ i ][/COLOR] [B]{_text(30916, 'Biografie & Profil anzeigen')}[/B]",
-             f"{self.plugin_url}?mode=60&action=bio&id={enc_id}", thumb or "DefaultInfo.png", False),
+             f"{self.plugin_url}?mode=60&action=bio&id={enc_id}&name={enc_name}", thumb or "DefaultInfo.png", False),
             (f"[COLOR gold][B]★ Start 24/7 Smart Stream ({performer_name})[/B][/COLOR]",
              f"{self.plugin_url}?mode=50&action=custom_zap&query={enc_name}&pool={pool_key}&length=any",
              thumb or "DefaultVideo.png", False),
@@ -1195,11 +1234,11 @@ class PerformerIndex:
             xbmcplugin.addDirectoryItem(self.addon_handle, url, item, isFolder=is_folder)
 
         movie_count = int(p.get("movie_count") or 0)
-        if movie_count:
-            movies_url = f"{self.plugin_url}?mode=60&action=movies&id={enc_id}&name={enc_name}"
-            item = xbmcgui.ListItem(label=f"[COLOR orange]★ [/COLOR][B]Movies with {performer_name} ({movie_count})[/B]")
-            item.setArt({"icon": "DefaultVideo.png", "thumb": "DefaultVideo.png"})
-            xbmcplugin.addDirectoryItem(self.addon_handle, movies_url, item, isFolder=True)
+        label = f"[COLOR orange]★ [/COLOR][B]Movies with {performer_name} ({movie_count})[/B]" if movie_count else f"[COLOR orange]★ [/COLOR][B]Movies with {performer_name} (IAFD / Filmografie)[/B]"
+        movies_url = f"{self.plugin_url}?mode=60&action=movies&id={enc_id}&name={enc_name}"
+        item = xbmcgui.ListItem(label=label)
+        item.setArt({"icon": "DefaultVideo.png", "thumb": "DefaultVideo.png"})
+        xbmcplugin.addDirectoryItem(self.addon_handle, movies_url, item, isFolder=True)
 
         if is_fav:
             fav_label = f"[COLOR red]★ [/COLOR]{_text(30909, 'Aus Favoriten entfernen')}"
@@ -1248,6 +1287,51 @@ class PerformerIndex:
         item.setArt({"icon": "DefaultVideo.png", "thumb": "DefaultVideo.png"})
         xbmcplugin.addDirectoryItem(self.addon_handle, url, item, isFolder=False)
         _end_dir(self.addon_handle, self.addon, content_type="files")
+
+    def filmography_batch(self, performer_id, performer_name, search_mode="filmography_titles"):
+        movies = self.star_db.movies(performer_id) if self.star_db and self.star_db.available else []
+        if not movies:
+            try:
+                from resources.lib.thumb_proxy import is_core_healthy
+                if is_core_healthy():
+                    req = urllib.request.Request(f"http://127.0.0.1:8191/performer?name={urllib.parse.quote(performer_name)}")
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        data = json.loads(resp.read().decode("utf-8"))
+                        core_movies = data.get("filmography") or data.get("movies") or []
+                        if core_movies:
+                            movies = core_movies
+            except Exception as e:
+                if xbmc:
+                    xbmc.log(f"[AdultHideout][PerformerIndex] filmography_batch core lookup failed: {e}", xbmc.LOGWARNING)
+
+        titles = [m.get("title") for m in movies if isinstance(m, dict) and m.get("title")]
+        if not titles:
+            if xbmcgui:
+                xbmcgui.Dialog().notification(
+                    "Star Finder",
+                    f"Keine Filmografie-Titel für '{performer_name}' gefunden.",
+                    xbmcgui.NOTIFICATION_WARNING,
+                    3000
+                )
+            try:
+                from resources.lib.global_search import GlobalSearch
+                gs = GlobalSearch(self.addon_handle, self.plugin_url, self.addon)
+                return gs.run(performer_name, search_mode="top_tubes")
+            except Exception:
+                if xbmcplugin:
+                    xbmcplugin.endOfDirectory(self.addon_handle, succeeded=False)
+                return
+
+        try:
+            from resources.lib.global_search import GlobalSearch
+            gs = GlobalSearch(self.addon_handle, self.plugin_url, self.addon)
+            gs._save_filmography_batch(performer_name, titles)
+            return gs.run_filmography_titles(titles, performer_name, search_mode, save_batch=False)
+        except Exception as exc:
+            if xbmc:
+                xbmc.log(f"[AdultHideout][PerformerIndex] filmography_batch execution failed: {exc}", xbmc.LOGERROR)
+            if xbmcplugin:
+                xbmcplugin.endOfDirectory(self.addon_handle, succeeded=False)
 
     def handle(self, action, params):
         if action in (None, "", "menu"):
@@ -1304,7 +1388,13 @@ class PerformerIndex:
                 params.get("thumb"),
             )
         if action == "bio":
-            return self.show_bio(params.get("id", ""))
+            return self.show_bio(params.get("id", ""), params.get("name"))
+        if action == "filmography_batch":
+            return self.filmography_batch(
+                params.get("id", ""),
+                params.get("name", "Unknown"),
+                params.get("search_mode", "filmography_titles")
+            )
         if action == "movies":
             return self.show_movies(params.get("id", ""), params.get("name", "Unknown"))
         if action == "movie_search_options":

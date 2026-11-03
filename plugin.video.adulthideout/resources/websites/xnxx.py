@@ -66,9 +66,15 @@ class Xnxx(BaseWebsite):
             req_headers = {'Referer': self.base_url}
             if headers:
                 req_headers.update(headers)
-            res = self.session.get(url, headers=req_headers, timeout=20)
-            if res.status_code == 200:
-                return res.text
+            from resources.lib.resilient_http import fetch_text
+            timeout = 5 if getattr(self, "adult_hideout_background_harvest", False) else 15
+            return fetch_text(
+                url,
+                headers=req_headers,
+                scraper=self.session,
+                logger=self.logger,
+                timeout=timeout,
+            )
         except Exception as exc:
             self.logger.error(f"[XNXX] Request failed for {url}: {exc}")
         return None
@@ -143,10 +149,16 @@ class Xnxx(BaseWebsite):
                     path = f"/search/{filter_path}"
         else:
             if query_str:
-                if page > 1:
-                    path = f"/search/{query_str}/{page - 1}"
+                if content_idx == 1:
+                    prefix = "/search/gay"
+                elif content_idx == 2:
+                    prefix = "/search/shemale"
                 else:
-                    path = f"/search/{query_str}"
+                    prefix = "/search"
+                if page > 1:
+                    path = f"{prefix}/{query_str}/{page - 1}"
+                else:
+                    path = f"{prefix}/{query_str}"
             else:
                 if content_idx == 1:
                     base_browse = "/search/gay"

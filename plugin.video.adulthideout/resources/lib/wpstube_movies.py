@@ -60,6 +60,22 @@ class WPSTubeMoviesWebsite(BaseWebsite):
             "Sec-Fetch-Mode": "navigate",
             "Sec-Fetch-Site": "same-origin" if referer else "none",
         }
+        is_bg = getattr(self, "adult_hideout_background_harvest", False)
+        try:
+            from resources.lib.resilient_http import fetch_text
+            text = fetch_text(
+                url,
+                headers=request_headers,
+                scraper=self.session,
+                logger=self.logger,
+                timeout=5 if is_bg else 12,
+            )
+            if text:
+                return text
+        except Exception:
+            pass
+        if is_bg:
+            return ""
         for attempt in range(2):
             try:
                 response = self.session.get(

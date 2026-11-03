@@ -1,0 +1,5 @@
+v. 0.2.4 - 2026-11-01
+- **Stream Reachability Probing**: Hardened stream reachability probes by stripping browser-only headers (`Accept-Language`, `Accept-Encoding`, `Connection`, `Upgrade-Insecure-Requests`) on media playlist requests.
+- **Scraper Dynamic Loading**: Fixed hyphenated site name module resolution (`site.replace('-', '_')`) so sites like `heavy-r` load reliably.
+- **BaseWebsite Namespace Resolution**: Corrected `resources.lib.base_website` import routing during dynamic diagnostic execution.
+- **Diagnostic Catalog Sync**: Refreshed `KNOWN_EXTERNAL_ISSUES` catalog; removed healthy unblocked sites (`ebalka26`, `mixporn`, `redtube`) and documented external subscription/challenge gates.

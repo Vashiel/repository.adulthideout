@@ -193,17 +193,32 @@ class PornhubWebsite(BaseWebsite):
         return headers
 
     def make_request(self, url, referer=None, is_api=False):
+        headers = self.get_headers(referer)
+        if is_api:
+            headers['Accept'] = 'application/json, text/plain, */*'
+            headers['X-Requested-With'] = 'XMLHttpRequest'
+        is_bg = getattr(self, "adult_hideout_background_harvest", False)
+        try:
+            from resources.lib.resilient_http import fetch_text
+            text = fetch_text(
+                url,
+                headers=headers,
+                logger=self.logger,
+                timeout=5 if is_bg else 15,
+            )
+            if text:
+                return text
+        except Exception:
+            pass
+        if is_bg:
+            return None
+
         last_error = None
         for attempt in range(3):
             try:
                 if attempt:
                     time.sleep(0.8 * attempt)
                     self._set_age_cookie()
-
-                headers = self.get_headers(referer)
-                if is_api:
-                    headers['Accept'] = 'application/json, text/plain, */*'
-                    headers['X-Requested-With'] = 'XMLHttpRequest'
                 
                 req = urllib.request.Request(url, headers=headers)
                 with self.opener.open(req, timeout=15) as resp:
@@ -586,36 +601,69 @@ class PornhubWebsite(BaseWebsite):
         
         if data:
             media = data.get('mediaDefinitions', [])
-            # Try HLS first
-            streams = [s for s in media if s.get('format') == 'hls' and s.get('videoUrl')]
             
-            # Fallback to MP4 if no HLS found
-            if not streams:
-                self.logger.info("Pornhub: No HLS found, checking for mp4 streams")
-                streams = [s for s in media if s.get('format') == 'mp4' and s.get('videoUrl')]
-            
-            if streams:
-                # Find best stream by quality
+            # 1. Prefer get_media endpoint (returns fresh, direct MP4 streams)
+            get_media_url = None
+            for item in media:
+                v_url = item.get('videoUrl', '')
+                if 'get_media' in v_url:
+                    get_media_url = v_url
+                    break
+
+            streams = []
+            if get_media_url:
                 try:
-                    best_stream = max(streams, key=lambda x: int(str(x.get('quality', '0'))) if str(x.get('quality', '0')).isdigit() else 0)
-                except:
-                    best_stream = streams[0]
-                
+                    headers = self.get_headers(url)
+                    headers['Accept'] = 'application/json, text/plain, */*'
+                    headers['X-Requested-With'] = 'XMLHttpRequest'
+                    req = urllib.request.Request(get_media_url, headers=headers)
+                    with self.opener.open(req, timeout=10) as resp:
+                        gm_data = json.loads(resp.read().decode('utf-8'))
+                        if isinstance(gm_data, list):
+                            streams = [s for s in gm_data if s.get('format') == 'mp4' and s.get('videoUrl')]
+                except Exception as exc:
+                    self.logger.warning(f"Pornhub: get_media fetch failed: {exc}")
+
+            # 2. Fallback to direct MP4 from mediaDefinitions (if not get_media)
+            if not streams:
+                streams = [s for s in media if s.get('format') == 'mp4' and s.get('videoUrl') and 'get_media' not in s.get('videoUrl', '')]
+
+            is_hls = False
+            # 3. Fallback to HLS if no MP4 streams found
+            if not streams:
+                self.logger.info("Pornhub: No MP4 found, falling back to HLS streams")
+                streams = [s for s in media if s.get('format') == 'hls' and s.get('videoUrl')]
+                is_hls = True
+
+            if streams:
+                # Find best stream by quality preference
+                try:
+                    from resources.lib.playback_preferences import select_quality_variant
+                    variants = [(s.get('quality'), s) for s in streams]
+                    best_stream = select_quality_variant(variants, addon=self.addon, default=streams[0])
+                except Exception:
+                    try:
+                        best_stream = max(streams, key=lambda x: int(str(x.get('quality', '0'))) if str(x.get('quality', '0')).isdigit() else 0)
+                    except Exception:
+                        best_stream = streams[0]
+
                 if best_stream:
                     stream_url = html.unescape(best_stream['videoUrl']).replace('\\/', '/')
                     ua = self.get_headers()['User-Agent']
                     
-                    # Prepare headers for segments and manifest
                     headers = {
                         'User-Agent': ua,
                         'Referer': url,
-                        'Origin': self.base_url.rstrip('/'),
-                        'Cookie': "; ".join([f"{c.name}={c.value}" for c in self.cookie_jar])
                     }
+                    if is_hls:
+                        headers['Origin'] = self.base_url.rstrip('/')
+                        cookie_str = "; ".join([f"{c.name}={c.value}" for c in self.cookie_jar])
+                        if cookie_str:
+                            headers['Cookie'] = cookie_str
                     
                     header_str = urllib.parse.urlencode(headers)
 
-                    if not self._prime_stream_url(stream_url, url, headers):
+                    if is_hls and not self._prime_stream_url(stream_url, url, headers):
                         self.logger.warning("Pornhub: stream preflight did not succeed; Kodi playback may retry.")
                     
                     # Construct Kodi player URL
@@ -623,15 +671,14 @@ class PornhubWebsite(BaseWebsite):
                     if "|" not in kodi_url:
                         kodi_url += "|" + header_str
                         
-                    self.logger.info(f"Pornhub: Playback resolved to: {kodi_url[:120]}...")
+                    self.logger.info(f"Pornhub: Playback resolved to: {kodi_url[:120]}... (format={'hls' if is_hls else 'mp4'})")
                     
                     li = xbmcgui.ListItem(path=kodi_url)
                     li.setProperty('IsPlayable', 'true')
                     
-                    if best_stream.get('format') == 'hls':
+                    if is_hls:
                         li.setProperty('inputstream', 'inputstream.adaptive')
                         li.setProperty('inputstream.adaptive.manifest_type', 'hls')
-                        # CRITICAL: Pass headers EXPLICITLY to segments
                         li.setProperty('inputstream.adaptive.stream_headers', header_str)
                         li.setProperty('inputstream.adaptive.manifest_headers', header_str)
                         li.setMimeType('application/vnd.apple.mpegurl')

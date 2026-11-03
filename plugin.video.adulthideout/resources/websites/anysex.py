@@ -163,7 +163,7 @@ class AnySex(BaseWebsite):
         # <a href="https://anysex.com/video/..." ...><img src="..." alt="Title" ...>
         
         # We use a pattern that captures URL, Thumb, and Title (from alt)
-        pattern = r'<a href="(https://anysex\.com/video/[^"]+)".*?<img[^>]+src="([^"]+)"[^>]*alt="([^"]+)"'
+        pattern = r'<a\s+href=["\'](https?://(?:[a-z0-9-]+\.)?anysex\.com/video/[^"\']+)["\'].*?<img[^>]+src=["\']([^"\']+)["\'][^>]*alt=["\']([^"\']+)["\']'
         items = re.findall(pattern, html_content, re.DOTALL)
 
         for idx, (link, thumb, title) in enumerate(items):
@@ -254,7 +254,23 @@ class AnySex(BaseWebsite):
             self.notify_error("Could not resolve video URL")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
 
+    def resolve_recording_stream(self, url):
+        stream_url = self.resolve(url)
+        if not stream_url:
+            return None
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+            "Referer": url,
+        }
+        return {
+            "url": stream_url + "|" + urllib.parse.urlencode(headers),
+            "headers": headers,
+            "extension": "mp4",
+        }
+
     def process_content(self, url):
+        if not url or url == "BOOTSTRAP":
+            url = f"{self.base_url}{self.sort_paths[self.sort_options[0]]}"
         if url == "categories":
             return self.process_categories(url)
 
@@ -283,7 +299,7 @@ class AnySex(BaseWebsite):
         cats_raw = []
         thumb_urls = []
         # Structure: <a data-id="5" title="Amateur" href="https://anysex.com/videos/categories/amateur/">...<img ... src="..." alt="Amateur"/>
-        pattern = r'<a[^>]+href="(https://anysex\.com/videos/categories/[^"]+)"[^>]*>.*?<img[^>]+src="([^"]+)"[^>]*alt="([^"]+)"'
+        pattern = r'<a[^>]+href=["\'](https?://(?:[a-z0-9-]+\.)?anysex\.com/videos/categories/[^"\']+)["\'][^>]*>.*?<img[^>]+src=["\']([^"\']+)["\'][^>]*alt=["\']([^"\']+)["\']'
         items = re.findall(pattern, html_content, re.DOTALL)
         
         for link, thumb, title in items:

@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
 ZIPS_ROOT = os.path.join(ROOT, "zips")
-ADDON_PREFIXES = ("plugin.", "repository.", "script.")
+ADDON_PREFIXES = ("plugin.", "repository.", "script.", "service.")
 SKIP_DIRS = {".git", "__pycache__"}
 
 

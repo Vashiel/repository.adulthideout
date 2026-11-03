@@ -2,20 +2,20 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>AdultHideout Kodi Addon Repository</title>
   <link href="https://vashiel.github.io/repository.adulthideout/"/>
-  <updated>2026-10-17T12:00:00Z</updated>
+  <updated>2026-11-03T18:00:00Z</updated>
   <id>https://vashiel.github.io/repository.adulthideout/</id>
+  <entry>
+    <title>AdultHideout 1.0.26 Core Horizon</title>
+    <link href="https://vashiel.github.io/repository.adulthideout/"/>
+    <id>https://vashiel.github.io/repository.adulthideout/#1.0.26</id>
+    <updated>2026-11-03T18:00:00Z</updated>
+    <summary>Core Horizon introduces the Dual-Engine Hybrid Architecture with the native Rust AdultHideout Core service and automatic classic Python fallback, concurrent 302-source Global Search and Mega Shuffle, on-demand ~3 MB platform binary delivery, local HLS/MP4 stream relaying, 5-language localization, and repairs across 37 websites.</summary>
+  </entry>
   <entry>
     <title>AdultHideout 1.0.25 Prism</title>
     <link href="https://vashiel.github.io/repository.adulthideout/"/>
     <id>https://vashiel.github.io/repository.adulthideout/</id>
     <updated>2026-10-17T12:00:00Z</updated>
     <summary>Prism brings structured HLS master playlist resolution negotiation (restoring 1080p Full HD playback across major tubes), full-catalog audit of 303 websites, and repairs for ~30 tube scrapers and video resolvers.</summary>
-  </entry>
-  <entry>
-    <title>AdultHideout 1.0.24 Rosetta</title>
-    <link href="https://vashiel.github.io/repository.adulthideout/"/>
-    <id>https://vashiel.github.io/repository.adulthideout/</id>
-    <updated>2026-10-03T12:00:00Z</updated>
-    <summary>Rosetta adds 19 new websites across German, retro, amateur casting, animation and international categories, offline Cyrillic transliteration and title translation, Veev resolver support and playback repairs.</summary>
   </entry>
 </feed>

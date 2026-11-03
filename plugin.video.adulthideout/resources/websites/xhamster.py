@@ -273,13 +273,21 @@ class XHamster(BaseWebsite):
             return None
 
     def make_request(self, url):
+        is_bg = getattr(self, "adult_hideout_background_harvest", False)
         try:
-            response = self.session.get(url, timeout=30)
-            response.raise_for_status()
-            return response.text
+            from resources.lib.resilient_http import fetch_text
+            text = fetch_text(
+                url,
+                headers=dict(self.session.headers),
+                scraper=self.session,
+                logger=self.logger,
+                timeout=5 if is_bg else 15,
+            )
+            if text:
+                return text
         except Exception as e:
             self.logger.error(f"Request failed: {e}")
-            return ""
+        return ""
 
     def _select_generic(self, setting_id, options_list, title):
         current_setting = self.addon.getSetting(setting_id)
@@ -342,6 +350,13 @@ class XHamster(BaseWebsite):
         
         if 'search' in path or ('categories' in path and path != 'categories'):
             request_url = url
+            if 'search' in path:
+                content_type = self.addon.getSetting("xhamster_category") or self.content_options[0]
+                content_prefix = self.content_paths.get(content_type, '').strip('/')
+                if content_prefix and not path.startswith(f"{content_prefix}/"):
+                    request_url = urllib.parse.urljoin(self.base_url, f"/{content_prefix}/{path}")
+                    if parsed_url.query:
+                        request_url += f"?{parsed_url.query}"
         else:
             page = 1
             path_parts = path.split('/')
@@ -462,10 +477,17 @@ class XHamster(BaseWebsite):
         results_dict = {r[0]['page_url']: r for r in results}
         for vdata in video_data:
             result = results_dict.get(vdata['page_url'])
-            if result:
-                thumbnail = result[1] if result[1] else self.icons['default']
+            if result and result[1]:
+                thumbnail = result[1]
             else:
-                thumbnail = self.icons['default']
+                thumbnail = None
+                for raw_thumb in vdata['candidates']:
+                    clean_thumb_url = self._format_thumb_url(raw_thumb)
+                    if clean_thumb_url and clean_thumb_url.startswith('http'):
+                        thumbnail = clean_thumb_url
+                        break
+                if not thumbnail:
+                    thumbnail = self.icons['default']
 
             context_menu = [
                 ('Content Type...', f'RunPlugin({sys.argv[0]}?mode=7&action=select_content_type&website={self.name})'),

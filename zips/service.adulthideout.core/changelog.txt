@@ -1,0 +1,4 @@
+v. 1.0.0 - 2026-11-03
+- On-demand platform architecture detection and binary delivery (`windows-x86_64`, `android-arm64-v8a`, `android-armeabi-v7a`, `darwin-arm64`, `darwin-x86_64`, `linux-x86_64`, `linux-aarch64`).
+- Interactive installation notice and progress dialog when the platform Core binary is missing, with live background activation without restarting Kodi.
+- High-performance native Rust Core engine (`127.0.0.1:8191`) for concurrent search, dynamic player evaluation, session pooling, and local stream/artwork relaying.

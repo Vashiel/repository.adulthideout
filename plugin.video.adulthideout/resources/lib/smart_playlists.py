@@ -52,10 +52,8 @@ def _text(message_id, fallback, *args):
 # In-memory cache for harvested channel playlists
 _CHANNEL_CACHE = {}
 
-# These sources currently perform expensive artwork/network work or return
-# unstable playback URLs. They remain available normally, but must not be able
-# to stall the persistent 24/7 service.
-SMART_STREAM_UNSTABLE_SOURCES = {"xhamster", "spankbang", "txxx"}
+# All sources are enabled in 24/7 Smart Streams now that Rust Core handles fast network fetching.
+SMART_STREAM_UNSTABLE_SOURCES = set()
 
 
 def _ordered_all_site_sources(sites):
@@ -803,8 +801,6 @@ class SmartPlaylists:
             hidden = set()
         if self.addon.getSetting("show_crazyshit") != "true":
             hidden.add("crazyshit")
-        if self.addon.getSetting("show_pervclips") != "true":
-            hidden.add("pervclips")
         websites_dir = os.path.join(self.addon_path, "resources", "websites")
         return [
             site for site in sites
@@ -961,6 +957,60 @@ class SmartPlaylists:
                     )
 
                 else:
+                    # Fast-path: try AdultHideout Core Smart Playlist Generator (< 1s parallel harvesting)
+                    try:
+                        from resources.lib.thumb_proxy import is_core_healthy
+                        if is_core_healthy() and q:
+                            core_targets = []
+                            for s in selected:
+                                try:
+                                    mod = import_module(f"resources.websites.{s}")
+                                    from resources.lib.base_website import BaseWebsite
+                                    for attr in dir(mod):
+                                        cand = getattr(mod, attr)
+                                        if isinstance(cand, type) and issubclass(cand, BaseWebsite) and cand is not BaseWebsite and cand.__module__ == mod.__name__:
+                                            inst = cand()
+                                            s_url = getattr(inst, "search_url", None)
+                                            if s_url and not callable(s_url):
+                                                core_targets.append({
+                                                    "id": s,
+                                                    "search_url": str(s_url),
+                                                    "base_url": getattr(inst, "base_url", None)
+                                                })
+                                            break
+                                except Exception:
+                                    pass
+                            if core_targets:
+                                min_dur = 3600 if len_filter in ("movies", "long_movies", "full_movie") else 0
+                                req_payload = json.dumps({
+                                    "sources": core_targets,
+                                    "query": q,
+                                    "min_duration_secs": min_dur,
+                                    "limit": 12
+                                }).encode("utf-8")
+                                req = urllib.request.Request(
+                                    "http://127.0.0.1:8191/playlist/generate",
+                                    data=req_payload,
+                                    headers={"Content-Type": "application/json"}
+                                )
+                                with urllib.request.urlopen(req, timeout=4) as resp:
+                                    payload = json.loads(resp.read().decode("utf-8"))
+                                    items = payload.get("items", [])
+                                    if items:
+                                        xbmc.log(f"[AdultHideout][SmartStream] Core playlist generated {len(items)} items in {payload.get('elapsed_ms', 0)}ms", xbmc.LOGINFO)
+                                        return [
+                                            {
+                                                "website": it.get("source", ""),
+                                                "target_url": it.get("target_url", ""),
+                                                "title": it.get("title", "Video"),
+                                                "thumbnail": it.get("thumbnail", ""),
+                                                "duration": it.get("duration_seconds", 0)
+                                            }
+                                            for it in items
+                                        ]
+                    except Exception as exc:
+                        xbmc.log(f"[AdultHideout][SmartStream] Core playlist fast-path skipped: {exc}", xbmc.LOGDEBUG)
+
                     harvest_tasks = [
                         (site, 4, None, q, 1, len_filter, match_mode)
                         for site in selected
@@ -1069,10 +1119,13 @@ class SmartPlaylists:
                 source_page = page
                 if pool_name == "all" and not stars_list and not spec_site:
                     ordered_sources = _ordered_all_site_sources(available)
-                    batch_count = max(1, (len(ordered_sources) + 5) // 6)
+                    batch_size = 18
+                    batch_count = max(1, (len(ordered_sources) + batch_size - 1) // batch_size)
                     source_round, batch_index = divmod(max(0, page - 1), batch_count)
-                    first_source = batch_index * 6
-                    selected = ordered_sources[first_source:first_source + 6]
+                    first_source = (batch_index * batch_size) % len(ordered_sources)
+                    selected = ordered_sources[first_source : first_source + batch_size]
+                    if len(selected) < batch_size and len(ordered_sources) >= batch_size:
+                        selected.extend(ordered_sources[: batch_size - len(selected)])
                     source_page = source_round + 1
                 elif pool_name == "all":
                     primary = [site for site in ("eporner", "tnaflix") if site in available]
@@ -1149,11 +1202,18 @@ class SmartPlaylists:
                 s for s in self._enabled_stream_sites(all_sites)
                 if s not in SMART_STREAM_UNSTABLE_SOURCES
             ]
-            primary = [site for site in ("eporner", "tnaflix") if site in available]
-            remaining = [site for site in available if site not in primary]
-            selected = primary + random.sample(remaining, min(8 - len(primary), len(remaining)))
-            with ThreadPoolExecutor(max_workers=8) as executor:
-                futures = [executor.submit(self._harvest_website_videos, site, 6, None, None, page) for site in selected]
+            batch_size = 18
+            batch_count = max(1, (len(available) + batch_size - 1) // batch_size)
+            source_round, batch_idx = divmod(max(0, page - 1), batch_count)
+            rnd = random.Random(42 + batch_idx)
+            shuffled_sites = list(available)
+            rnd.shuffle(shuffled_sites)
+            first_idx = (batch_idx * batch_size) % len(available)
+            selected = shuffled_sites[first_idx : first_idx + batch_size]
+            if len(selected) < batch_size and len(available) >= batch_size:
+                selected.extend(shuffled_sites[: batch_size - len(selected)])
+            with ThreadPoolExecutor(max_workers=min(batch_size, len(selected))) as executor:
+                futures = [executor.submit(self._harvest_website_videos, site, 4, None, None, source_round + 1) for site in selected]
                 for f in as_completed(futures):
                     all_videos.extend(f.result())
             random.shuffle(all_videos)

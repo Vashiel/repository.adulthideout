@@ -85,10 +85,10 @@ class Eporner(BaseWebsite):
         if not headers:
             headers = {'Referer': self.base_url}
         try:
+            from resources.lib.resilient_http import fetch_text
+            timeout = 5 if getattr(self, "adult_hideout_background_harvest", False) else 15
             self.session.headers.update(headers)
-            response = self.session.get(url, timeout=20)
-            if response.status_code == 200:
-                return response.text
+            return fetch_text(url, headers=headers, scraper=self.session, logger=self.logger, timeout=timeout)
         except Exception:
             pass
         return None

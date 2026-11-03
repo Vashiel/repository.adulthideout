@@ -17,10 +17,43 @@ import inspect
 from importlib import import_module
 from resources.lib import dns_retry
 from resources.lib.view_utils import end_directory_with_view
+from resources.lib.thumb_proxy import ensure_embedded_image_proxy, ensure_core_running
+ensure_embedded_image_proxy()
+ensure_core_running()
 
 ADDON = xbmcaddon.Addon()
 ADDON_ID = ADDON.getAddonInfo('id')
 ADDON_PATH = ADDON.getAddonInfo('path')
+
+def _deploy_pending_zips():
+    try:
+        addons_dir = os.path.dirname(ADDON_PATH)
+        core_dir = os.path.join(addons_dir, "service.adulthideout.core")
+        for p in ("/sdcard/Download/service.adulthideout.core-1.0.0.zip", "/storage/emulated/0/Download/service.adulthideout.core-1.0.0.zip"):
+            if os.path.isfile(p) and (not os.path.isdir(core_dir) or not os.path.isfile(os.path.join(core_dir, "service.py"))):
+                import zipfile
+                with zipfile.ZipFile(p, "r") as zf:
+                    zf.extractall(addons_dir)
+                xbmc.log(f"[AdultHideout] Deployed service.adulthideout.core from {p}", xbmc.LOGINFO)
+                xbmc.executebuiltin("UpdateLocalAddons")
+                xbmc.executebuiltin("StartService(service.adulthideout.core)")
+                break
+
+        for p in ("/sdcard/Download/plugin.video.adulthideout-1.0.26.zip", "/storage/emulated/0/Download/plugin.video.adulthideout-1.0.26.zip"):
+            porner_target = os.path.join(ADDON_PATH, "resources", "websites", "porner.py")
+            if os.path.isfile(p) and not os.path.isfile(porner_target):
+                import zipfile
+                with zipfile.ZipFile(p, "r") as zf:
+                    for member in zf.namelist():
+                        if "porner" in member.lower():
+                            zf.extract(member, addons_dir)
+                xbmc.log(f"[AdultHideout] Extracted new scrapers from {p}", xbmc.LOGINFO)
+                break
+    except Exception as exc:
+        xbmc.log(f"[AdultHideout] Auto-deploy notice: {exc}", xbmc.LOGWARNING)
+
+_deploy_pending_zips()
+
 ADDON_HANDLE = int(sys.argv[1])
 RESOURCES_DIR = os.path.join(ADDON_PATH, 'resources')
 WEBSITES_DIR = os.path.join(RESOURCES_DIR, 'websites')
@@ -35,8 +68,17 @@ OPT_IN_WEBSITE_SETTINGS = {
     "crazyshit": "show_crazyshit",
 }
 TEMPORARILY_UNAVAILABLE_WEBSITES = set()
-CLOUDFLARE_BLOCKED_WEBSITES = {
+CLOUDFLARE_BLOCKED_WEBSITES = set()
+FACTORY_DISABLED_MIGRATION_WEBSITES = {
+    "czechvideo",
+    "hentaimama",
+    "hqporner",
+    "ogporn",
+    "pervclips",
     "retropornarchives",
+    "saintporn",
+    "swingerpornfun",
+    "vintagepornfun",
     "vintageworldp",
     "wowxxx",
 }
@@ -70,6 +112,7 @@ WEBSITE_LABEL_OVERRIDES = {
     "iceporncasting": "IcePornCasting",
     "mixporn": "MixPorn",
     "pezdwood": "Pezdwood",
+    "porner": "Porner.TV",
     "porno24": "Porno24",
     "pornoaffe": "PornoAffe",
     "pornoente": "PornoEnte",
@@ -78,7 +121,6 @@ WEBSITE_LABEL_OVERRIDES = {
     "sfmcompile": "SFM Compile",
     "theclassicporn": "The Classic Porn",
     "tickleporn": "Tickle Porn",
-    "vintagehuyamba": "Vintage Huyamba",
     "x24video": "X24Video",
     "yabuchka": "Yabuchka",
 }
@@ -189,12 +231,14 @@ def migrate_recovered_websites():
     ADDON.setSetting("recovered_websites_migrated", "true")
 
 def migrate_cloudflare_blocked_websites():
-    if ADDON.getSetting("cloudflare_blocked_migrated_1025") == "true":
+    if ADDON.getSetting("factory_websites_enabled_1026") == "true":
         return
     hidden = get_hidden_websites()
-    hidden.update(CLOUDFLARE_BLOCKED_WEBSITES)
+    hidden.difference_update(FACTORY_DISABLED_MIGRATION_WEBSITES)
     save_hidden_websites(hidden)
     ADDON.setSetting("cloudflare_blocked_migrated_1025", "true")
+    ADDON.setSetting("cloudflare_blocked_migrated_1026_restored", "true")
+    ADDON.setSetting("factory_websites_enabled_1026", "true")
 
 def is_website_hidden(name):
     opt_in_setting = OPT_IN_WEBSITE_SETTINGS.get(name)
@@ -483,7 +527,7 @@ def build_main_menu_fast():
 
     found_any = False
 
-    global_search_item = xbmcgui.ListItem(label="[COLOR yellow]Global Search[/COLOR]")
+    global_search_item = xbmcgui.ListItem(label="[COLOR yellow]{}[/COLOR]".format(localized(30966, "Global Search")))
     global_search_icon = os.path.join(LOGOS_DIR, "search.png")
     if "search.png" not in available_logos:
         global_search_icon = DEFAULT_ICON_PATH
@@ -1010,6 +1054,7 @@ def handle_routing():
         return
 
     if mode is None and action != 'direct_search':
+        ensure_core_running(interactive=True)
         build_main_menu_fast()
         return
 
@@ -1038,6 +1083,7 @@ def handle_routing():
         return
 
     if website_name == 'global_search' or mode in ('20', '21') or action == 'direct_search':
+        ensure_core_running(interactive=True)
         from resources.lib.global_search import GlobalSearch
         global_search = GlobalSearch(ADDON_HANDLE, addon=ADDON, loader=load_single_website, logger=log)
         # Action URLs also carry query=, so only mode 21 and explicit skin
@@ -1327,3 +1373,6 @@ if __name__ == '__main__':
         log(f"CRITICAL ERROR: {e}\n{traceback.format_exc()}", xbmc.LOGERROR)
         notify_user(f"Critical Error: {str(e)}")
         xbmcplugin.endOfDirectory(ADDON_HANDLE)
+    finally:
+        import gc
+        gc.collect()

@@ -77,7 +77,16 @@ class BaseWebsite:
         self.base_url = base_url
         self.search_url = search_url
         self.addon_handle = addon_handle
-        self.addon = addon or xbmcaddon.Addon()
+        if addon is not None:
+            self.addon = addon
+        else:
+            try:
+                self.addon = xbmcaddon.Addon('plugin.video.adulthideout')
+            except Exception:
+                try:
+                    self.addon = xbmcaddon.Addon()
+                except Exception:
+                    self.addon = None
         self.logger = logging.getLogger(f"plugin.video.adulthideout.{name}")
         self.logger.setLevel(logging.INFO)
         if not self.logger.handlers:
@@ -237,8 +246,25 @@ class BaseWebsite:
             with open(self.get_queries_path(), 'w') as f: json.dump([], f)
             self.notify_info("Search history cleared."); xbmc.executebuiltin('Container.Refresh')
 
+    def _normalize_image_url(self, image_url):
+        if not image_url or not isinstance(image_url, str):
+            return image_url
+        if image_url.startswith("//"):
+            image_url = "https:" + image_url
+        if image_url.startswith("special://") or os.path.isabs(image_url):
+            return image_url
+        if image_url.startswith("http://") or image_url.startswith("https://"):
+            try:
+                from resources.lib.thumb_proxy import build_thumb_url
+                base_ref = getattr(self, "base_url", None)
+                return build_thumb_url(image_url, referer=base_ref)
+            except Exception:
+                pass
+        return image_url
+
     def add_dir(self, name, url, mode, icon=None, fanart=None, context_menu=None, name_param=None, info_labels=None, **kwargs):
         icon = icon or self.icons.get('default', self.icon)
+        icon = self._normalize_image_url(icon)
         fanart = fanart or self.fanart
         u = f"{sys.argv[0]}?url={urllib.parse.quote_plus(str(url))}&mode={mode}&name={urllib.parse.quote_plus(str(name_param or name))}&website={self.name}"
         if kwargs:
@@ -288,10 +314,12 @@ class BaseWebsite:
         xbmcplugin.addDirectoryItem(handle=self.addon_handle, url=u, listitem=liz, isFolder=True)
 
     def video_art(self, icon, fanart=None):
+        icon = self._normalize_image_url(icon)
         effective_fanart = icon if self.addon.getSetting('use_video_thumbs_as_fanart') == 'true' else (fanart or self.fanart)
         return {'thumb': icon, 'icon': icon, 'poster': icon, 'fanart': effective_fanart}
 
     def add_link(self, name, url, mode, icon, fanart, context_menu=None, info_labels=None, uploader_name=None, uploader_url=None):
+        icon = self._normalize_image_url(icon)
         u = f"{sys.argv[0]}?url={urllib.parse.quote_plus(url)}&mode={mode}&name={urllib.parse.quote_plus(name)}&website={self.name}&thumbnail={urllib.parse.quote_plus(icon or '')}&fanart={urllib.parse.quote_plus(fanart or '')}"
         liz = xbmcgui.ListItem(name)
         art = self.video_art(icon, fanart)

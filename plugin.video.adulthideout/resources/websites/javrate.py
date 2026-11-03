@@ -32,8 +32,8 @@ class JAVRate(BaseWebsite):
     def __init__(self, addon_handle, addon=None):
         super().__init__(
             "javrate",
-            "https://www.javrate.com/",
-            "https://www.javrate.com/search/{}",
+            "https://hongkong.javrate.com/",
+            "https://hongkong.javrate.com/search/{}",
             addon_handle,
             addon,
         )
@@ -60,17 +60,16 @@ class JAVRate(BaseWebsite):
         }
 
     def _get(self, url, referer=None):
-        for attempt in range(2):
-            try:
-                response = self.session.get(url, headers=self._headers(referer), timeout=25)
-                if response.status_code == 200:
-                    return response.text
-                self.logger.warning("JAVRate HTTP %s for %s", response.status_code, url)
-            except Exception as exc:
-                self.logger.warning("JAVRate request failed for %s: %s", url, exc)
-            if attempt == 0:
-                self.session = self._new_session()
-        return ""
+        from resources.lib import resilient_http
+
+        text = resilient_http.fetch_text(
+            url,
+            headers=self._headers(referer),
+            scraper=self.session,
+            logger=self.logger,
+            timeout=25,
+        )
+        return text or ""
 
     def get_start_url_and_label(self):
         url, label = super().get_start_url_and_label()
@@ -91,7 +90,7 @@ class JAVRate(BaseWebsite):
         items = []
         seen = set()
         pattern = re.compile(
-            r'<a\b[^>]+href=["\']([^"\']*/Movie/Detail/[^"\']+\.html)["\']'
+            r'<a\b[^>]+href=["\']([^"\']*/[Mm]ovie/[Dd]etail/[^"\']+\.html)["\']'
             r'[^>]+title=["\']([^"\']+)["\'][^>]*class=["\'][^"\']*movie-card-link[^"\']*["\']'
             r'[^>]*>[\s\S]{0,500}?<img\b[^>]+src=["\']([^"\']+)["\']',
             re.IGNORECASE,
@@ -123,7 +122,7 @@ class JAVRate(BaseWebsite):
                 self.fanart,
                 info_labels={"title": title, "plot": title},
             )
-        supports_pages = parsed_path.startswith(("/menu/", "/search/"))
+        supports_pages = parsed_path.startswith(("/menu/", "/movie/", "/search/"))
         if supports_pages and len(items) >= 20:
             self.add_dir("Next Page", url, 2, self.icon, page=page + 1)
         if not items:
@@ -151,13 +150,21 @@ class JAVRate(BaseWebsite):
             r'<iframe\b[^>]+id=["\']v2-player["\'][^>]+src=["\']([^"\']+)',
             detail or "",
             re.IGNORECASE,
+        ) or re.search(
+            r'<iframe\b[^>]+src=["\']([^"\']*/player/[^"\']+)["\']',
+            detail or "",
+            re.IGNORECASE,
         )
         if not iframe_match:
             return None
         iframe_url = urllib.parse.urljoin(url, html.unescape(iframe_match.group(1)))
         player = self._get(iframe_url, referer=url)
         stream_match = re.search(
-            r'https://videocdn\.avking\.xyz/[^"\'\\\s]+\.m3u8[^"\'\\\s]*',
+            r'https?://[a-zA-Z0-9\.\-_]+\.avking\.xyz/[^"\'\\\s]+\.m3u8[^"\'\\\s]*',
+            player or "",
+            re.IGNORECASE,
+        ) or re.search(
+            r'https?://[^"\'\\\s]+\.m3u8[^"\'\\\s]*',
             player or "",
             re.IGNORECASE,
         )
@@ -189,5 +196,8 @@ class JAVRate(BaseWebsite):
         item.setProperty("IsPlayable", "true")
         item.setMimeType("application/vnd.apple.mpegurl")
         item.setContentLookup(False)
+        if xbmc.getCondVisibility("System.HasAddon(inputstream.adaptive)"):
+            item.setProperty("inputstream", "inputstream.adaptive")
+            item.setProperty("inputstream.adaptive.manifest_type", "hls")
         xbmcplugin.setResolvedUrl(self.addon_handle, True, item)
         PlaybackGuard(xbmc.Player(), xbmc.Monitor(), local_url, controller).start()

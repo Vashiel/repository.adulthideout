@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 import base64
+import hashlib
 import html
+import json
+import os
 import re
+import time
 import urllib.parse
 
 import requests
 import xbmc
 import xbmcgui
 import xbmcplugin
+import xbmcvfs
 
 from resources.lib.base_website import BaseWebsite
 
@@ -35,34 +40,183 @@ class RetroStreamNetworkWebsite(BaseWebsite):
             ),
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
-            "sec-ch-ua": '"Google Chrome";v="125", "Chromium";v="125", "Not.A/Brand";v="24"',
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": '"Windows"',
-            "sec-fetch-dest": "document",
-            "sec-fetch-mode": "navigate",
-            "sec-fetch-site": "none",
-            "sec-fetch-user": "?1",
-            "upgrade-insecure-requests": "1",
         }
 
-    def make_request(self, url, referer=None):
+    def _get_cache_file(self):
+        try:
+            profile_dir = xbmcvfs.translatePath(self.addon.getAddonInfo("profile"))
+            if not os.path.exists(profile_dir):
+                os.makedirs(profile_dir, exist_ok=True)
+            return os.path.join(profile_dir, f"clearance_{self.name}.json")
+        except Exception:
+            return ""
+
+    def _load_cached_cookies(self):
+        try:
+            cached = None
+            prop = xbmcgui.Window(10000).getProperty(f"AdultHideout.Clearance.{self.name}")
+            if prop:
+                cached = json.loads(prop)
+                self.logger.info("[%s] Loaded clearance from Window property", self.name)
+            else:
+                cache_file = self._get_cache_file()
+                self.logger.info("[%s] Checking cache file: %s (exists=%s)", self.name, cache_file, os.path.isfile(cache_file) if cache_file else False)
+                if cache_file and os.path.isfile(cache_file):
+                    with open(cache_file, "r", encoding="utf-8") as f:
+                        cached = json.load(f)
+                    if cached:
+                        xbmcgui.Window(10000).setProperty(f"AdultHideout.Clearance.{self.name}", json.dumps(cached))
+                        self.logger.info("[%s] Loaded clearance from file into property", self.name)
+
+            if cached:
+                age = time.time() - cached.get("ts", 0)
+                if age < 86400:
+                    domain = cached.get("domain", "")
+                    if domain and not domain.startswith("."):
+                        domain = "." + domain
+                    self.session.cookies.clear()
+                    for name, val in cached.get("cookies", {}).items():
+                        if domain:
+                            self.session.cookies.set(name, val, domain=domain)
+                        else:
+                            self.session.cookies.set(name, val)
+                    if cached.get("ua"):
+                        self.headers["User-Agent"] = cached["ua"]
+                    self.logger.info("[%s] Applied cached clearance (age=%.1fs, cookies=%s, ua=%s)",
+                                     self.name, age, list(cached.get("cookies", {}).keys()), self.headers.get("User-Agent"))
+                else:
+                    self.logger.warning("[%s] Cached clearance expired (age=%.1fs)", self.name, age)
+            else:
+                self.logger.warning("[%s] No cached clearance found", self.name)
+        except Exception as exc:
+            self.logger.error("[%s] Error in _load_cached_cookies: %s", self.name, exc)
+
+    def _save_cached_cookies(self, cookies, domain, ua):
+        if not cookies:
+            return
+        cookie_dict = {c["name"]: c["value"] for c in cookies if c.get("name") and c.get("value")}
+        if not cookie_dict:
+            return
+        try:
+            payload = {
+                "cookies": cookie_dict,
+                "domain": domain,
+                "ua": ua,
+                "ts": time.time(),
+            }
+            raw = json.dumps(payload)
+            xbmcgui.Window(10000).setProperty(f"AdultHideout.Clearance.{self.name}", raw)
+            cache_file = self._get_cache_file()
+            if cache_file:
+                with open(cache_file, "w", encoding="utf-8") as f:
+                    f.write(raw)
+            self.logger.info("[%s] Saved cached clearance (%d cookies) to %s", self.name, len(cookie_dict), cache_file)
+        except Exception as exc:
+            self.logger.error("[%s] Error in _save_cached_cookies: %s", self.name, exc)
+
+    def _get_page_cache_file(self, url):
+        try:
+            profile_dir = xbmcvfs.translatePath(self.addon.getAddonInfo("profile"))
+            cache_dir = os.path.join(profile_dir, "page_cache")
+            if not os.path.exists(cache_dir):
+                os.makedirs(cache_dir, exist_ok=True)
+            url_hash = hashlib.md5(url.encode("utf-8")).hexdigest()
+            return os.path.join(cache_dir, f"{self.name}_{url_hash}.html")
+        except Exception:
+            return ""
+
+    def _get_cached_page(self, url, ttl=1800):
+        cache_file = self._get_page_cache_file(url)
+        if cache_file and os.path.isfile(cache_file):
+            try:
+                age = time.time() - os.path.getmtime(cache_file)
+                if age < ttl:
+                    with open(cache_file, "r", encoding="utf-8") as f:
+                        data = f.read()
+                    if data and "Just a moment" not in data:
+                        self.logger.info("[%s] Serving cached page for %s (age=%.1fs, len=%d)", self.name, url, age, len(data))
+                        return data
+            except Exception as exc:
+                self.logger.debug("[%s] Cache read error: %s", self.name, exc)
+        return None
+
+    def _save_cached_page(self, url, content):
+        if not content or "Just a moment" in content:
+            return
+        cache_file = self._get_page_cache_file(url)
+        if cache_file:
+            try:
+                with open(cache_file, "w", encoding="utf-8") as f:
+                    f.write(content)
+                self.logger.info("[%s] Cached page saved for %s (%d bytes)", self.name, url, len(content))
+            except Exception as exc:
+                self.logger.debug("[%s] Cache write error: %s", self.name, exc)
+
+    def make_request(self, url, referer=None, cache_ttl=1800):
+        # 0. Check fast page cache (instant 0.001s response when stopping video / going back)
+        if cache_ttl > 0:
+            cached_page = self._get_cached_page(url, ttl=cache_ttl)
+            if cached_page:
+                return cached_page
+
+        self._load_cached_cookies()
         headers = dict(self.headers)
         if referer:
             headers["Referer"] = referer
-            headers["sec-fetch-site"] = "same-origin"
+
+        # 1. Fast direct path with cached cookies
         try:
-            response = self.session.get(url, headers=headers, timeout=18, allow_redirects=True)
-            if response.status_code == 200 and "Just a moment" not in response.text:
-                return response.text
-            self.logger.warning("%s returned HTTP %s", url, response.status_code)
+            cookie_names = [c.name for c in self.session.cookies]
+            self.logger.info("[%s] Fast direct GET %s with cookies=%s, UA=%s",
+                             self.name, url, cookie_names, headers.get("User-Agent"))
+            resp = self.session.get(url, headers=headers, timeout=5, allow_redirects=True)
+            self.logger.info("[%s] Direct GET %s -> HTTP %s (ray=%s, mitigated=%s, len=%dB, preview=%.60s)",
+                             self.name, url, resp.status_code, resp.headers.get("cf-ray"),
+                             resp.headers.get("cf-mitigated"), len(resp.text), resp.text.strip().replace("\n", " "))
+            if resp.status_code == 200 and "Just a moment" not in resp.text:
+                if cache_ttl > 0:
+                    self._save_cached_page(url, resp.text)
+                return resp.text
+            self.logger.warning("%s returned HTTP %s (mitigated=%s), trying PhantomFlare fallback",
+                                url, resp.status_code, resp.headers.get("cf-mitigated"))
         except Exception as exc:
-            self.logger.warning("Request failed for %s: %s", url, exc)
+            self.logger.warning("Request failed for %s: %s, trying PhantomFlare fallback", url, exc)
+
+        # 2. Solver fallback (fast timeout for background search, 120s for interactive TV hardware)
+        from resources.lib.resilient_http import fetch_text_with_solution
+        req_timeout = 4 if getattr(self, "adult_hideout_background_harvest", False) else 120
+        sol = fetch_text_with_solution(url, headers=headers, logger=self.logger, timeout=req_timeout)
+        if sol and sol.get("response") and "Just a moment" not in sol.get("response", ""):
+            parsed_host = urllib.parse.urlsplit(url).hostname or ""
+            parts = parsed_host.split(".")
+            root_domain = "." + ".".join(parts[-2:]) if len(parts) >= 2 else parsed_host
+            cookies_list = sol.get("cookies", [])
+            self.session.cookies.clear()
+            for c in cookies_list:
+                self.session.cookies.set(c["name"], c["value"], domain=root_domain)
+            ua = sol.get("userAgent")
+            if ua:
+                self.headers["User-Agent"] = ua
+            self._save_cached_cookies(cookies_list, root_domain, ua or self.headers.get("User-Agent", ""))
+            body = sol["response"]
+            if cache_ttl > 0:
+                self._save_cached_page(url, body)
+            return body
         return ""
 
     @staticmethod
     def _clean(value):
         value = re.sub(r"<[^>]+>", " ", value or "")
         return re.sub(r"\s+", " ", html.unescape(value)).strip()
+
+    def _thumb(self, thumb):
+        if not thumb or not thumb.startswith("http"):
+            return thumb or self.icon
+        try:
+            from resources.lib.thumb_proxy import build_thumb_url
+            return build_thumb_url(thumb, referer=self.base_url)
+        except Exception:
+            return thumb
 
     def _absolute(self, value):
         value = html.unescape(value or "").replace("\\/", "/")
@@ -105,8 +259,13 @@ class RetroStreamNetworkWebsite(BaseWebsite):
             block = content[left:right]
             local_anchor = match.start() - left
 
-            image = re.search(r'<img\b[^>]+(?:src|data-src)=["\']([^"\']+)', block[local_anchor:], re.IGNORECASE)
-            thumb = self._absolute(image.group(1)) if image else self.icon
+            image = re.search(r'<img\b[^>]+data-src=["\']([^"\']+)', block[local_anchor:], re.IGNORECASE)
+            if not image:
+                image = re.search(r'<img\b[^>]+src=["\']([^"\']+)', block[local_anchor:], re.IGNORECASE)
+            raw_thumb = image.group(1) if image else ""
+            if raw_thumb.startswith("data:image/"):
+                raw_thumb = ""
+            thumb = self._thumb(self._absolute(raw_thumb)) if raw_thumb else self.icon
 
             title = ""
             for pattern in (
@@ -158,9 +317,12 @@ class RetroStreamNetworkWebsite(BaseWebsite):
             self.add_dir(title, self._absolute(href), 2, self.icons["categories"])
         self.end_directory("videos")
 
-    def process_content(self, url):
-        if not url or url == "BOOTSTRAP":
-            url = self.base_url
+    def get_start_url_and_label(self):
+        return self.base_url + "?s=", self.label
+
+    def process_content(self, url, page=1):
+        if not url or url == "BOOTSTRAP" or url.rstrip("/") == self.base_url.rstrip("/"):
+            url = self.base_url + "?s="
         parsed = urllib.parse.urlparse(url)
         query = urllib.parse.parse_qs(parsed.query)
         if query.get("ah_view") == ["categories"]:
@@ -172,14 +334,26 @@ class RetroStreamNetworkWebsite(BaseWebsite):
             return self.end_directory("videos")
 
         is_search = self.search_param in query
-        if not is_search:
+        if not is_search and page == 1:
             self._add_navigation()
-        for video in self._extract_videos(content):
+
+        all_videos = self._extract_videos(content)
+        per_page = 36
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        page_videos = all_videos[start_idx:end_idx] if len(all_videos) > per_page else all_videos
+
+        for video in page_videos:
             self.add_link(video["label"], video["url"], 4, video["thumb"], self.fanart, info_labels=video["info"])
+
+        if end_idx < len(all_videos):
+            next_page = page + 1
+            self.add_dir(f"Next Page ({next_page}) >>", url, 2, self.icons["default"], page=next_page)
+
         self.end_directory("videos")
 
     def _resolve(self, url):
-        content = self.make_request(url)
+        content = self.make_request(url, referer=self.base_url, cache_ttl=600)
         stream_match = re.search(
             r'<source\b[^>]+src=["\']([^"\']+\.(?:m3u8|mp4)[^"\']*)["\']',
             content or "",

@@ -640,6 +640,40 @@ class RedtubeWebsite(BaseWebsite):
         ]
         self.add_dir('Pornstars', pornstar_url, 2, self.icons['default'], self.fanart, context_items, name_param='Pornstars')
 
+    def resolve_recording_stream(self, url):
+        try:
+            decoded_url = urllib_parse.unquote_plus(url)
+            video_id_match = re.search(r'(?:redtube\.com)?/(\d+)$', decoded_url)
+            if not video_id_match:
+                return None
+            video_id = video_id_match.group(1)
+            if not decoded_url.startswith("http"):
+                decoded_url = f"{self.web_base.rstrip('/')}/{video_id}"
+            headers = self.get_headers(referer=decoded_url)
+            html_content, cookie_jar = self.make_request(decoded_url, headers=headers)
+            stream_url, stream_format = None, None
+            if html_content:
+                stream_url, stream_format = self.extract_stream_from_html(html_content)
+            if stream_url and stream_format == "mp4":
+                mp4_json = self.fetch_mp4_json(stream_url, headers, cookie_jar)
+                if isinstance(mp4_json, list):
+                    sorted_sources = sorted(mp4_json, key=lambda x: int(x.get("quality", "0")), reverse=True)
+                    stream_url = next((s["videoUrl"] for q in ["1080", "720", "480", "240"] for s in sorted_sources if s.get("quality") == q and s.get("videoUrl")),
+                                      sorted_sources[0].get("videoUrl") if sorted_sources and sorted_sources[0].get("videoUrl") else stream_url)
+            if not stream_url:
+                return None
+            return {
+                "url": stream_url,
+                "headers": {
+                    "User-Agent": headers["User-Agent"],
+                    "Referer": "https://www.redtube.com/"
+                },
+                "extension": "mp4" if stream_format == "mp4" else "m3u8"
+            }
+        except Exception as exc:
+            self.logger.error("Redtube resolve_recording_stream failed: %s", exc)
+            return None
+
     def play_video(self, url):
         try:
             decoded_url = urllib_parse.unquote_plus(url)
