@@ -23,36 +23,8 @@ ensure_core_running()
 
 ADDON = xbmcaddon.Addon()
 ADDON_ID = ADDON.getAddonInfo('id')
-ADDON_PATH = ADDON.getAddonInfo('path')
-
-def _deploy_pending_zips():
-    try:
-        addons_dir = os.path.dirname(ADDON_PATH)
-        core_dir = os.path.join(addons_dir, "service.adulthideout.core")
-        for p in ("/sdcard/Download/service.adulthideout.core-1.0.0.zip", "/storage/emulated/0/Download/service.adulthideout.core-1.0.0.zip"):
-            if os.path.isfile(p) and (not os.path.isdir(core_dir) or not os.path.isfile(os.path.join(core_dir, "service.py"))):
-                import zipfile
-                with zipfile.ZipFile(p, "r") as zf:
-                    zf.extractall(addons_dir)
-                xbmc.log(f"[AdultHideout] Deployed service.adulthideout.core from {p}", xbmc.LOGINFO)
-                xbmc.executebuiltin("UpdateLocalAddons")
-                xbmc.executebuiltin("StartService(service.adulthideout.core)")
-                break
-
-        for p in ("/sdcard/Download/plugin.video.adulthideout-1.0.26.zip", "/storage/emulated/0/Download/plugin.video.adulthideout-1.0.26.zip"):
-            porner_target = os.path.join(ADDON_PATH, "resources", "websites", "porner.py")
-            if os.path.isfile(p) and not os.path.isfile(porner_target):
-                import zipfile
-                with zipfile.ZipFile(p, "r") as zf:
-                    for member in zf.namelist():
-                        if "porner" in member.lower():
-                            zf.extract(member, addons_dir)
-                xbmc.log(f"[AdultHideout] Extracted new scrapers from {p}", xbmc.LOGINFO)
-                break
-    except Exception as exc:
-        xbmc.log(f"[AdultHideout] Auto-deploy notice: {exc}", xbmc.LOGWARNING)
-
-_deploy_pending_zips()
+raw_addon_path = ADDON.getAddonInfo('path')
+ADDON_PATH = (xbmcvfs.translatePath(raw_addon_path) if xbmcvfs is not None else raw_addon_path).rstrip('/\\')
 
 ADDON_HANDLE = int(sys.argv[1])
 RESOURCES_DIR = os.path.join(ADDON_PATH, 'resources')

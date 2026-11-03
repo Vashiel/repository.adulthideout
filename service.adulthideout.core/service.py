@@ -83,20 +83,22 @@ def get_data_dir(addon_dir: str) -> str:
         try:
             p = xbmcvfs.translatePath("special://userdata/addon_data/service.adulthideout.core")
             if p:
-                return os.path.normpath(p)
+                return os.path.normpath(p.rstrip("/\\"))
         except Exception:
             pass
     if addon_dir:
-        norm = os.path.normpath(addon_dir)
+        norm = os.path.normpath(addon_dir.rstrip("/\\"))
         addons_parent = os.path.dirname(norm)
         kodi_root = os.path.dirname(addons_parent)
         candidate = os.path.join(kodi_root, "userdata", "addon_data", "service.adulthideout.core")
         if os.path.isdir(os.path.join(kodi_root, "userdata")):
             return candidate
-    return addon_dir
+    return addon_dir.rstrip("/\\") if addon_dir else ""
 
 
 def resolve_paths(addon_dir: str):
+    if addon_dir:
+        addon_dir = addon_dir.rstrip("/\\")
     arch, lib_name, bin_name, _ = detect_platform_arch()
     if not arch:
         return None, None
@@ -123,6 +125,8 @@ def resolve_paths(addon_dir: str):
 
 
 def is_binary_installed(addon_dir: str) -> bool:
+    if addon_dir:
+        addon_dir = addon_dir.rstrip("/\\")
     arch, _, _, required_files = detect_platform_arch()
     if not arch or not required_files:
         return False
@@ -141,6 +145,8 @@ def is_binary_installed(addon_dir: str) -> bool:
 
 
 def download_platform_binaries(addon_dir: str, show_progress: bool = True) -> bool:
+    if addon_dir:
+        addon_dir = addon_dir.rstrip("/\\")
     arch, _, _, required_files = detect_platform_arch()
     if not arch or not required_files:
         _log("Unsupported platform architecture for Core binary download", xbmc.LOGWARNING if xbmc else None)
@@ -150,13 +156,19 @@ def download_platform_binaries(addon_dir: str, show_progress: bool = True) -> bo
     target_dir = os.path.join(data_dir, "bin", arch)
     os.makedirs(target_dir, exist_ok=True)
 
+    if xbmcgui is not None:
+        try:
+            xbmcgui.Window(10000).setProperty("AdultHideoutCore.Downloading", "1")
+        except Exception:
+            pass
+
     progress = None
     if show_progress and xbmcgui is not None:
         try:
             progress = xbmcgui.DialogProgress()
             progress.create(
-                _tr(31011, "AdultHideout Core Required"),
-                _tr(31015, "Downloading {} for {}... ({} KB)", "Core", arch, 0),
+                "AdultHideout Core",
+                _tr(31015, "Initializing Core engine for {}... ({} KB)", arch, 0),
             )
         except Exception:
             progress = None
@@ -237,6 +249,11 @@ def download_platform_binaries(addon_dir: str, show_progress: bool = True) -> bo
             progress.update(100, _tr(31016, "Starting AdultHideout Core engine..."))
         return True
     finally:
+        if xbmcgui is not None:
+            try:
+                xbmcgui.Window(10000).setProperty("AdultHideoutCore.Downloading", "0")
+            except Exception:
+                pass
         if progress is not None:
             try:
                 progress.close()
@@ -245,54 +262,49 @@ def download_platform_binaries(addon_dir: str, show_progress: bool = True) -> bo
 
 
 def prompt_and_install_core(addon_dir: str) -> bool:
-    if is_healthy() or is_binary_installed(addon_dir):
+    if addon_dir:
+        addon_dir = addon_dir.rstrip("/\\")
+    if is_healthy():
         return True
-    if xbmcgui is None:
-        return False
+    if is_binary_installed(addon_dir):
+        start_engine(addon_dir)
+        for _ in range(15):
+            if is_healthy():
+                return True
+            time.sleep(0.1)
+        return is_healthy()
 
     arch, _, _, _ = detect_platform_arch()
     if not arch:
         return False
 
-    dialog = xbmcgui.Dialog()
-    confirmed = dialog.yesno(
-        _tr(31011, "AdultHideout Core Required"),
-        _tr(
-            31012,
-            (
-                "For full search speed, Mega Shuffle, and native stream acceleration, "
-                "the AdultHideout Core engine for your system ([B]{}[/B]) is required (~3 MB).\n\n"
-                "Download and activate automatically now?\n"
-                "[COLOR gray](No Kodi restart required)[/COLOR]"
-            ),
-            arch,
-        ),
-        nolabel=_tr(31014, "Later"),
-        yeslabel=_tr(31013, "Install Now"),
-    )
-    if not confirmed:
+    # Wait if another thread or service is actively downloading
+    if xbmcgui is not None:
         try:
-            xbmcgui.Window(10000).setProperty("AdultHideoutCore.PromptDeclined", "1")
+            if xbmcgui.Window(10000).getProperty("AdultHideoutCore.Downloading") == "1":
+                for _ in range(40):
+                    time.sleep(0.5)
+                    if is_healthy():
+                        return True
+                    if xbmcgui.Window(10000).getProperty("AdultHideoutCore.Downloading") != "1":
+                        break
         except Exception:
             pass
-        return False
+
+    if is_healthy():
+        return True
 
     ok = download_platform_binaries(addon_dir, show_progress=True)
     if not ok:
-        dialog.notification(
-            "AdultHideout Core",
-            _tr(31018, "Download failed for {}. Using Python fallback.", arch),
-            xbmcgui.NOTIFICATION_ERROR,
-            4000,
-        )
         return False
 
     try:
-        xbmcgui.Window(10000).setProperty("AdultHideoutCore.TriggerStart", str(time.time()))
+        if xbmcgui is not None:
+            xbmcgui.Window(10000).setProperty("AdultHideoutCore.TriggerStart", str(time.time()))
     except Exception:
         pass
 
-    for _ in range(15):
+    for _ in range(20):
         if is_healthy():
             break
         time.sleep(0.15)
@@ -300,16 +312,12 @@ def prompt_and_install_core(addon_dir: str) -> bool:
     if not is_healthy():
         start_engine(addon_dir)
 
-    if is_healthy():
-        dialog.notification(
-            "AdultHideout Core",
-            _tr(31017, "Core ({}) installed & active!", arch),
-            xbmcgui.NOTIFICATION_INFO,
-            3000,
-        )
-        return True
+    for _ in range(15):
+        if is_healthy():
+            break
+        time.sleep(0.1)
 
-    return is_binary_installed(addon_dir)
+    return is_healthy()
 
 
 def is_healthy() -> bool:
@@ -453,7 +461,7 @@ def run_kodi_service() -> None:
         _log("Android environment detected: Ready for in-process ARM core engine.")
 
     addon = xbmcaddon.Addon()
-    addon_dir = xbmcvfs.translatePath(addon.getAddonInfo("path"))
+    addon_dir = xbmcvfs.translatePath(addon.getAddonInfo("path")).rstrip("/\\")
 
     loaded_lib = None
     proc = None
@@ -463,7 +471,12 @@ def run_kodi_service() -> None:
     elif is_binary_installed(addon_dir):
         loaded_lib, proc = start_engine(addon_dir)
     else:
-        _log("Core binary not yet installed for this system; waiting for user install confirmation in AdultHideout.")
+        _log("Core binary not yet installed for this system; downloading platform binary automatically in background...")
+        try:
+            if download_platform_binaries(addon_dir, show_progress=False):
+                loaded_lib, proc = start_engine(addon_dir)
+        except Exception as exc:
+            _log(f"Auto-download on startup notice: {exc}", xbmc.LOGWARNING if xbmc else None)
 
     failed_checks = 0
     last_trigger = ""
@@ -486,6 +499,12 @@ def run_kodi_service() -> None:
                 if is_binary_installed(addon_dir):
                     _log("Detected newly installed Core binary; starting engine immediately...")
                     loaded_lib, proc = start_engine(addon_dir)
+            elif not is_binary_installed(addon_dir) and (xbmcgui is None or xbmcgui.Window(10000).getProperty("AdultHideoutCore.Downloading") != "1"):
+                try:
+                    if download_platform_binaries(addon_dir, show_progress=False):
+                        loaded_lib, proc = start_engine(addon_dir)
+                except Exception:
+                    pass
             continue
 
         healthy = False

@@ -82,6 +82,9 @@ def package_addon(addon_id, source, manifest):
             candidate = os.path.join(location, artwork)
             if os.path.isfile(candidate):
                 copy_if_present(candidate, destination, artwork)
+                logos_dest = os.path.join(destination, "resources", "logos")
+                os.makedirs(logos_dest, exist_ok=True)
+                copy_if_present(candidate, logos_dest, artwork)
                 break
 
     if addon_id == "repository.adulthideout":

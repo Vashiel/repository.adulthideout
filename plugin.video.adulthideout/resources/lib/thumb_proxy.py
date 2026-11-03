@@ -157,7 +157,7 @@ def is_core_healthy():
     healthy = False
     try:
         req = urllib.request.Request("http://127.0.0.1:{}/health".format(DEFAULT_CORE_PORT))
-        with urllib.request.urlopen(req, timeout=0.2) as resp:
+        with urllib.request.urlopen(req, timeout=0.8) as resp:
             healthy = (resp.status == 200)
     except Exception:
         healthy = False
@@ -167,12 +167,17 @@ def is_core_healthy():
     return healthy
 
 
+def reset_core_health_cache():
+    _CORE_HEALTH_CACHE[0] = 0.0
+    _CORE_HEALTH_CACHE[1] = False
+
+
 _CORE_START_ATTEMPTED = False
 
 
 def ensure_core_running(interactive=False):
     """If service.adulthideout.core is installed, ensure its platform binary is present
-    (showing an install prompt when interactive=True and missing) and bootstrap the engine."""
+    and bootstrap the engine autarkically."""
     global _CORE_START_ATTEMPTED
     if is_core_healthy():
         return True
@@ -182,18 +187,37 @@ def ensure_core_running(interactive=False):
         _CORE_START_ATTEMPTED = True
 
     try:
-        addon_path = None
-        try:
-            import xbmcaddon
-            addon_path = xbmcaddon.Addon().getAddonInfo("path")
-        except Exception:
-            pass
+        core_dir = None
+        if xbmcaddon is not None:
+            try:
+                core_addon = xbmcaddon.Addon("service.adulthideout.core")
+                raw_path = core_addon.getAddonInfo("path")
+                if raw_path:
+                    if xbmcvfs is not None:
+                        core_dir = xbmcvfs.translatePath(raw_path).rstrip("/\\")
+                    else:
+                        core_dir = raw_path.rstrip("/\\")
+            except Exception:
+                pass
 
-        if not addon_path:
-            addon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        if not core_dir or not os.path.isdir(core_dir):
+            addon_path = None
+            if xbmcaddon is not None:
+                try:
+                    addon_path = xbmcaddon.Addon().getAddonInfo("path")
+                except Exception:
+                    pass
+            if not addon_path:
+                addon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+            clean_addon_path = (xbmcvfs.translatePath(addon_path) if xbmcvfs is not None else addon_path).rstrip("/\\")
+            addons_dir = os.path.dirname(clean_addon_path)
+            candidate = os.path.join(addons_dir, "service.adulthideout.core")
+            if os.path.isdir(candidate):
+                core_dir = candidate
 
-        addons_dir = os.path.dirname(addon_path)
-        core_dir = os.path.join(addons_dir, "service.adulthideout.core")
+        if not core_dir or not os.path.isdir(core_dir):
+            return False
+
         service_py = os.path.join(core_dir, "service.py")
         if os.path.isfile(service_py):
             import importlib.util
@@ -202,42 +226,52 @@ def ensure_core_running(interactive=False):
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
 
+            # If downloading is currently active, wait for completion
+            if xbmcgui is not None:
+                try:
+                    if xbmcgui.Window(10000).getProperty("AdultHideoutCore.Downloading") == "1":
+                        for _ in range(40):
+                            time.sleep(0.5)
+                            reset_core_health_cache()
+                            if is_core_healthy():
+                                return True
+                            if xbmcgui.Window(10000).getProperty("AdultHideoutCore.Downloading") != "1":
+                                break
+                except Exception:
+                    pass
+
             has_binary = True
             if hasattr(mod, "is_binary_installed"):
                 has_binary = bool(mod.is_binary_installed(core_dir))
 
             if not has_binary:
-                if interactive and hasattr(mod, "prompt_and_install_core"):
-                    declined = False
-                    try:
-                        declined = xbmcgui.Window(10000).getProperty("AdultHideoutCore.PromptDeclined") == "1"
-                    except Exception:
-                        declined = False
-                    if not declined:
-                        _CORE_HEALTH_CACHE[0] = 0.0
-                        if mod.prompt_and_install_core(core_dir):
-                            _CORE_HEALTH_CACHE[0] = 0.0
-                            return is_core_healthy()
-                return False
+                reset_core_health_cache()
+                if hasattr(mod, "download_platform_binaries"):
+                    if mod.download_platform_binaries(core_dir, show_progress=interactive):
+                        has_binary = True
+                    else:
+                        return False
 
-            if hasattr(mod, "start_engine"):
+            if has_binary and hasattr(mod, "start_engine"):
                 _log("Found installed Core binary, bootstrapping engine...")
                 try:
-                    xbmcgui.Window(10000).setProperty("AdultHideoutCore.TriggerStart", str(time.time()))
+                    if xbmcgui is not None:
+                        xbmcgui.Window(10000).setProperty("AdultHideoutCore.TriggerStart", str(time.time()))
                 except Exception:
                     pass
                 t = threading.Thread(target=mod.start_engine, args=(core_dir,), daemon=True)
                 t.start()
-                for _ in range(15):
+                for _ in range(25):
                     time.sleep(0.1)
-                    _CORE_HEALTH_CACHE[0] = 0.0
+                    reset_core_health_cache()
                     if is_core_healthy():
                         _log("service.adulthideout.core bootstrapped successfully on port 8191")
                         return True
     except Exception as exc:
         _log("Bootstrap core notice: {}".format(exc), xbmc.LOGDEBUG)
 
-    return False
+    reset_core_health_cache()
+    return is_core_healthy()
 
 
 class ThumbProxy:
