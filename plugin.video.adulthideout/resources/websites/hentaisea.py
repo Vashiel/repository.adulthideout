@@ -291,7 +291,8 @@ class Hentaisea(BaseWebsite):
         if "/watch/" in target_url:
             watch_html = self._get(target_url, referer=self.base_url)
             target_url = self._first_episode_url(watch_html, target_url)
-        if not target_url or "/episodes/" not in target_url:
+        # Single videos (/videos/...) carry their own player option like an episode page.
+        if not target_url or ("/episodes/" not in target_url and "/videos/" not in target_url):
             return None
         return self._resolve_episode(target_url)
 

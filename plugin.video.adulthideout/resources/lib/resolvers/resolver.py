@@ -184,6 +184,12 @@ RESOLVERS = [
         "module": "watchstreamhd_resolver",
         "hosts": ("watchstreamhd.com", "watchstreamhd", "video-mart.com", "videostreamingworld.com"),
     },
+    {
+        "key": "txxxembed",
+        "setting": "",
+        "module": "txxxembed_resolver",
+        "hosts": ("videohotmovs.com", "videopornl.com", "pornl.com"),
+    },
 ]
 
 PREFERRED_KEYS = [

@@ -83,7 +83,7 @@ class Hanime(BaseWebsite):
         super(Hanime, self).__init__(
             name="hanime",
             base_url="https://hanime.red/",
-            search_url="https://hanime.red/?s={}",
+            search_url="https://hanime.red/search?q={}",
             addon_handle=addon_handle,
             addon=addon,
         )
@@ -269,12 +269,21 @@ class Hanime(BaseWebsite):
         next_page_match = re.search(r'<a[^>]+href="([^"]+)"\s*>Next</a>', html_content, re.IGNORECASE)
         if not next_page_match:
             next_page_match = re.search(r'<a[^>]+class="next page-numbers"[^>]+href="([^"]+)"', html_content)
-
-        if next_page_match:
-            next_page_url = html.unescape(next_page_match.group(1))
+        next_page_url = html.unescape(next_page_match.group(1)) if next_page_match else ""
+        if not next_page_url and path == "search":
+            params = dict(urllib.parse.parse_qsl(parsed_url.query))
+            page = params.get("page", "1")
+            if params.get("q") and page.isdecimal():
+                params["page"] = str(int(page) + 1)
+                for href in re.findall(r'href="([^"#]*/search\?[^"#]+)"', html_content):
+                    target = urllib.parse.urlsplit(urllib.parse.urljoin(url, html.unescape(href)))
+                    if target.netloc == parsed_url.netloc and dict(urllib.parse.parse_qsl(target.query)) == params:
+                        next_page_url = target.geturl()
+                        break
+        if next_page_url:
             self.add_dir(
                 "[COLOR skyblue]Next Page >>[/COLOR]",
-                next_page_url,
+                urllib.parse.urljoin(url, next_page_url),
                 2,
                 self.icons.get("default", ""),
                 context_menu=context_menu,

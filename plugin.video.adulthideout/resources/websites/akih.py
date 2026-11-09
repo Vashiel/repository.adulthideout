@@ -23,12 +23,13 @@ class AkiH(KVSTubeWebsite):
     models_path = None
     video_path_markers = ("/videos/",)
     category_path_markers = ("/genre/",)
+    blocked_terms = ("loli", "shota", "underage")
 
     def __init__(self, addon_handle, addon=None):
         super().__init__(
             name="akih",
             base_url="https://aki-h.com/",
-            search_url="https://aki-h.com/?s={}",
+            search_url="https://aki-h.com/search/?q={}",
             addon_handle=addon_handle,
             addon=addon,
         )
@@ -37,6 +38,10 @@ class AkiH(KVSTubeWebsite):
         if page_num <= 1:
             return base_url
         parsed = urllib.parse.urlparse(base_url)
+        if parsed.path.rstrip("/") == "/search":
+            params = dict(urllib.parse.parse_qsl(parsed.query))
+            params["page"] = str(page_num)
+            return parsed._replace(query=urllib.parse.urlencode(params)).geturl()
         path = re.sub(r"/page/\d+/?$", "/", parsed.path)
         path = path.rstrip("/") + "/page/{}/".format(page_num)
         return urllib.parse.urlunparse(
@@ -50,21 +55,41 @@ class AkiH(KVSTubeWebsite):
         output = []
         for value in re.findall(r'href=["\']([^"\']*/episode/[^"\']+/)["\']', content or "", re.IGNORECASE):
             target = self._absolute(value)
-            if target not in output:
+            if target not in output and not any(term in target.lower() for term in self.blocked_terms):
                 output.append(target)
         return output
+
+    def _search_series_urls(self, content):
+        series = []
+        for href, label in re.findall(
+            r'<h3\b[^>]*class=["\'][^"\']*\bak-card__title\b[^"\']*["\'][^>]*>\s*'
+            r'<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>([\s\S]*?)</a>',
+            content or "",
+            re.IGNORECASE,
+        ):
+            target = self._absolute(href)
+            if urllib.parse.urlsplit(target).netloc != urllib.parse.urlsplit(self.base_url).netloc:
+                continue
+            if any(term in (target + " " + self._clean(label)).lower() for term in self.blocked_terms):
+                continue
+            if target not in series:
+                series.append(target)
+        return series
 
     def _extract_videos(self, html_content):
         import concurrent.futures
 
         videos = []
         seen = set()
-        episode_urls = self._episode_urls(html_content)[:6]
-
         def _fetch_ep(u):
             return u, self._get(u, referer=self.base_url)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(episode_urls), 6) or 1) as executor:
+        episode_urls = self._episode_urls(html_content)[:6]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+            if not episode_urls:
+                for _, series in executor.map(_fetch_ep, self._search_series_urls(html_content)[:6]):
+                    episode_urls.extend(u for u in self._episode_urls(series) if u not in episode_urls)
+                episode_urls = episode_urls[:6]
             episodes = list(executor.map(_fetch_ep, episode_urls))
 
         for episode_url, episode in episodes:
@@ -84,7 +109,7 @@ class AkiH(KVSTubeWebsite):
                 title = self._clean(title_match.group(1) if title_match else "")
                 if not title:
                     title = "{} {}".format(series_name, len(videos) + 1).strip()
-                if any(term in title.lower() for term in ("loli", "shota")):
+                if any(term in (title + " " + video_url).lower() for term in self.blocked_terms):
                     continue
                 thumb = build_thumb_url(
                     "https://t.aki-h.com/thumbnail/{}.webp".format(public_id),
@@ -100,6 +125,14 @@ class AkiH(KVSTubeWebsite):
 
     def _extract_next_page(self, html_content, current_url, page):
         expected = self.get_page_url(current_url, page + 1)
+        parsed = urllib.parse.urlparse(expected)
+        if parsed.path.rstrip("/") == "/search":
+            params = urllib.parse.parse_qs(parsed.query)
+            for href in re.findall(r'href=["\']([^"\']*/search/\?[^"\']+)["\']', html_content or "", re.I):
+                target = urllib.parse.urlparse(self._absolute(href))
+                if target.netloc == parsed.netloc and urllib.parse.parse_qs(target.query) == params:
+                    return expected
+            return None
         return expected if "/page/{}/".format(page + 1) in (html_content or "") else None
 
     def process_categories(self, url):

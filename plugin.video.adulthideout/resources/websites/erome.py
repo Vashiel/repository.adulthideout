@@ -229,6 +229,11 @@ class EromeWebsite(BaseWebsite):
         return {'url': clean_url, 'headers': headers}
 
     def play_video(self, url):
+        if url and re.search(r'erome\.com/a/', url.split('|', 1)[0]):
+            # Album page (e.g. a search hit from the Core): play its first video.
+            content = self.make_request(url.split('|', 1)[0]) or ""
+            first = re.search(r'<(?:source|video)[^>]*src="(https?://[^"]+\.mp4[^"]*)"', content, re.IGNORECASE)
+            url = html.unescape(first.group(1)) if first else None
         if url:
             if '|' not in url:
                 headers = f'User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36&Referer={self.base_url}/'

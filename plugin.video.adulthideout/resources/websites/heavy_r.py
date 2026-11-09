@@ -168,9 +168,12 @@ class HeavyRWebsite(BaseWebsite):
         content = self.make_request(url)
         if not content: return None
 
-        match = self.video_source_pattern.search(content)
+        # The page now plays HLS by default and only names the H.264 mp4 in a script.
+        mp4 = re.search(r'\bmp4\s*=\s*"(https?:[^"]+?\.mp4)"', content)
+        match = mp4 or self.video_source_pattern.search(content) or re.search(
+            r'<source[^>]+src=["\']([^"\']+\.m3u8[^"\']*)["\']', content, re.IGNORECASE)
         if match:
-            video_url = match.group(1)
+            video_url = match.group(1).replace("\\/", "/")
             if video_url.startswith('//'):
                 video_url = 'https:' + video_url
             elif video_url.startswith('/'):

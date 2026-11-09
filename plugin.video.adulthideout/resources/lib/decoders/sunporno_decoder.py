@@ -69,9 +69,8 @@ def decode_video_url(video_url, license_code=None):
              should_permute = True
         except Exception:
              pass
-    elif license_code and ('/get_file/' in video_url or '/video/' in video_url):
-        # Raw URL with license code available -> Try permute
-        should_permute = True
+    # KVS only scrambles URLs marked with "function/N/"; a plain get_file URL is already
+    # valid, and permuting it produces a 404.
 
     # Apply Permutation logic
     if should_permute and license_code:

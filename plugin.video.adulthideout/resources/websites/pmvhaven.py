@@ -249,6 +249,15 @@ class PmvhavenWebsite(BaseWebsite):
             except Exception as exc:
                 self.logger.error("[PMVHaven] Could not decode playback payload: %s", exc)
         else:
+            # Page links (e.g. from the Core search) carry the video id; the API has the stream URLs.
+            video_id = re.search(r"([0-9a-f]{24})(?:[/?#]|$)", url or "")
+            if video_id:
+                data = self._fetch_json("{}/{}".format(self.API_VIDEOS_URL, video_id.group(1)))
+                video = (data or {}).get("data") or {}
+                for candidate in (video.get("videoUrl"), video.get("hlsMasterPlaylistUrl")):
+                    if candidate and candidate not in candidates:
+                        candidates.append(candidate)
+        if not candidates and not url.startswith(self.PLAYBACK_PREFIX):
             html_content = self.make_request(url, referer=self.base_url + "/")
             if not html_content:
                 xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())

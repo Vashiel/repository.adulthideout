@@ -24,7 +24,7 @@ class BDSMVilla(KVSTubeWebsite):
         super().__init__(
             name="bdsmvilla",
             base_url="https://bdsmvilla.com/",
-            search_url="https://bdsmvilla.com/search/{}",
+            search_url="https://bdsmvilla.com/search?q={}",
             addon_handle=addon_handle,
             addon=addon,
         )

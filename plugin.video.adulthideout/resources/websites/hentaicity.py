@@ -28,7 +28,7 @@ class HentaiCity(KVSTubeWebsite):
         super().__init__(
             name="hentaicity",
             base_url="https://www.hentaicity.com/",
-            search_url="https://www.hentaicity.com/search/video/{}/",
+            search_url="https://www.hentaicity.com/search/video/{}",
             addon_handle=addon_handle,
             addon=addon,
         )

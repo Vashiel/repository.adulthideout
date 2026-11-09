@@ -257,7 +257,7 @@ class FullPorner(BaseWebsite):
                 pr = _req.get(proxy_url, timeout=15)
                 if pr.status_code == 200:
                     html_content = pr.text
-            iframe_match = re.search(r'src=["\'](//xiaoshenke\.net/video/([a-z0-9]+)/(\d+))["\']', html_content, re.IGNORECASE)
+            iframe_match = re.search(r'src=["\'](//(?:xiaoshenke\.net/video|fullporner\.com/player)/([a-z0-9]+)/(\d+))["\']', html_content, re.IGNORECASE)
             if not iframe_match:
                 return None
             video_id = iframe_match.group(2)
@@ -284,7 +284,17 @@ class FullPorner(BaseWebsite):
             resp = scraper.get(url, timeout=10)
             html_content = resp.text
             
-            iframe_match = re.search(r'src=["\'](//xiaoshenke\.net/video/([a-z0-9]+)/(\d+))["\']', html_content, re.IGNORECASE)
+            iframe_pattern = r'src=["\'](//(?:xiaoshenke\.net/video|fullporner\.com/player)/([a-z0-9]+)/(\d+))["\']'
+            iframe_match = re.search(iframe_pattern, html_content, re.IGNORECASE)
+            if not iframe_match:
+                # The scraper can get a challenge page while a plain request gets the real one.
+                try:
+                    import urllib.request
+                    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0 Safari/537.36"})
+                    html_content = urllib.request.urlopen(request, timeout=15).read().decode("utf-8", "replace")
+                    iframe_match = re.search(iframe_pattern, html_content, re.IGNORECASE)
+                except Exception as exc:
+                    self.logger.warning(f"Plain page request failed: {exc}")
             if not iframe_match:
                 self.logger.error("Xiaoshenke iframe not found!")
                 xbmcgui.Dialog().notification("FullPorner", "Video not found", xbmcgui.NOTIFICATION_ERROR)

@@ -124,7 +124,11 @@ class HdEasyPorn(BaseWebsite):
         content = self._get(url, self.base_url)
         urls = re.findall(r'https://[^"\' ]+_[0-9]{3,4}p\.mp4', content or "", re.I)
         if not urls:
-            return None
+            # Newer pages offer one file without a quality suffix, e.g. /videos/prime/00/01/86/83.mp4.
+            single = re.search(r'https://[^"\' ]+/videos/[^"\' ]+?\.mp4', content or "", re.I)
+            if not single:
+                return None
+            return {"url": html.unescape(single.group(0)), "headers": self._headers(url), "extension": "mp4"}
         stream = max(urls, key=lambda value: int(re.search(r'_([0-9]{3,4})p\.mp4', value).group(1)))
         return {"url": html.unescape(stream), "headers": self._headers(url), "extension": "mp4"}
 

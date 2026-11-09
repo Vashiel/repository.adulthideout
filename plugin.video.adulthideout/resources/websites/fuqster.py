@@ -129,7 +129,9 @@ class Fuqster(BaseWebsite):
             self.notify_error("Failed to load video page")
             return
 
-        source_match = re.search(r'<source src="([^"]+\.mp4[^"]*)"', content)
+        source_match = re.search(r'<source src="([^"]+\.mp4[^"]*)"', content) or re.search(
+            # Newer pages only carry the signed CDN link in a script.
+            r'(https://cdn\d*\.fuqster\.com/\d+/\d+/\d+(?:_\d+p)?\.mp4\?secure=[^"\'\s<>]+)', content)
         if not source_match:
             self.notify_error("Could not find a playable video stream.")
             return

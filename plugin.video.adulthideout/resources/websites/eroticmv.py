@@ -26,6 +26,10 @@ class EroticMV(WordPressApiTube):
         page_html = self._get(url, referer=self.base_url)
         match = re.search(r'"single_video_url"\s*:\s*"([A-Za-z0-9+/=_-]+)\.m3u8"', page_html or "")
         if not match:
+            # Newer pages put the playlist straight into a <source> tag.
+            direct = re.search(r'<source[^>]+src=["\'](https?://[^"\']+\.m3u8[^"\']*)["\']', page_html or "", re.IGNORECASE)
+            if direct:
+                return {"url": direct.group(1), "headers": self._headers(url), "extension": "m3u8"}
             return None
         try:
             encoded = match.group(1).replace("-", "+").replace("_", "/")

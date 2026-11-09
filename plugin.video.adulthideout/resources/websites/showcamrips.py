@@ -4,6 +4,7 @@ import html
 import io
 import os
 import re
+import time
 import urllib.parse
 
 import requests
@@ -31,7 +32,7 @@ class ShowCamRips(BaseWebsite):
         super().__init__(
             "showcamrips",
             "https://www.showcamrips.com/en/",
-            "https://www.showcamrips.com/search.php?Src={}&l=en",
+            "https://www.showcamrips.com/search.php?Src={}&lg=en",
             addon_handle,
             addon,
         )
@@ -64,27 +65,38 @@ class ShowCamRips(BaseWebsite):
             return ""
 
     def _clear_old_thumbnails(self):
+        cutoff = time.time() - 86400
         try:
             for name in os.listdir(self._temp_dir):
                 if name.startswith("adulthideout_showcamrips_") and (
-                    name.endswith(".webp") or name.endswith(".jpg")
+                    name.endswith((".webp", ".jpg", ".png"))
                 ):
-                    os.remove(os.path.join(self._temp_dir, name))
+                    path = os.path.join(self._temp_dir, name)
+                    try:
+                        if os.path.getmtime(path) < cutoff:
+                            os.remove(path)
+                    except OSError:
+                        pass
         except OSError:
             pass
 
-    def _thumbnail_file(self, video_id, encoded):
-        ext = ".jpg" if HAS_PIL else ".webp"
+    def _thumbnail_file(self, video_id, image_type, encoded):
+        ext = {"jpeg": ".jpg", "jpg": ".jpg", "png": ".png", "webp": ".webp"}.get(image_type.lower())
+        if not ext:
+            return self.icon
+        if HAS_PIL:
+            ext = ".jpg"
         path = os.path.join(
-            self._temp_dir, "adulthideout_showcamrips_{}{}".format(video_id, ext)
+            self._temp_dir, "adulthideout_showcamrips_{}_art{}".format(video_id, ext)
         )
-        if os.path.exists(path):
+        if os.path.isfile(path):
             return path
         try:
             padded = re.sub(r"\s+", "", encoded)
             while len(padded) % 4 != 0:
                 padded += "="
-            raw = base64.b64decode(padded)
+            raw = base64.b64decode(padded, validate=True)
+            os.makedirs(self._temp_dir, exist_ok=True)
             if HAS_PIL:
                 img = Image.open(io.BytesIO(raw))
                 out = io.BytesIO()
@@ -105,12 +117,12 @@ class ShowCamRips(BaseWebsite):
             r'<a\b[^>]*href=["\'](https?://www\.showcamrips\.com/'
             r'show-cam-sex-movies/([^/"\']+))["\'][^>]*data-id=["\'](\d+)["\']'
             r'[^>]*title=["\']([^"\']+)["\'][^>]*>\s*<img\b[^>]*'
-            r'(?:data-tn|src)=["\']data:image/[^;]+;base64,\s*([^"\']+)',
+            r'(?:data-tn|src)=["\']data:image/([^;]+);base64,\s*([^"\']+)',
             re.IGNORECASE,
         )
         seen = set()
         for match in pattern.finditer(content or ""):
-            url, slug, video_id, title, encoded = match.groups()
+            url, slug, video_id, title, image_type, encoded = match.groups()
             if video_id in seen:
                 continue
             seen.add(video_id)
@@ -118,14 +130,7 @@ class ShowCamRips(BaseWebsite):
             uploader = re.sub(
                 r"\s+(?:Chaturbate|Stripchat|Bongacams|Cam4|Camsoda)\s+webcam\s+rip.*$", "", title, flags=re.I
             ).strip(" -")
-            username_match = re.search(r"^\s*([A-Za-z0-9_.-]+)", uploader)
-            username = username_match.group(1) if username_match else uploader
-            if username:
-                thumb = "http://roomimg.stream.highwebmedia.com/ri/{}.jpg|verifypeer=false".format(
-                    urllib.parse.quote(username)
-                )
-            else:
-                thumb = self._thumbnail_file(video_id, encoded)
+            thumb = self._thumbnail_file(video_id, image_type, encoded)
 
             yield title or slug.replace("-", " "), url, video_id, thumb, uploader
 

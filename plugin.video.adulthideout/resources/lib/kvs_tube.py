@@ -409,6 +409,12 @@ class KVSTubeWebsite(BaseWebsite):
         for key in order:
             if key in urls:
                 return urls[key]
+        # Some sites of this family dropped the KVS player variables and put a signed CDN
+        # link (cdnN.<site>/<folder>/<id>/<id>.mp4?secure=...) straight into the page.
+        site = urllib.parse.urlparse(self.base_url).netloc.split(".")[-2:]
+        for candidate in re.findall(r'https://cdn\d*\.[a-z0-9.-]+/\d+/\d+/\d+(?:_\d+p)?\.mp4\?secure=[^"\'\s<>]+', html_content or "", re.IGNORECASE):
+            if urllib.parse.urlparse(candidate).netloc.split(".")[-2:] == site:
+                return html.unescape(candidate)
         return None
 
     def resolve_recording_stream(self, url):

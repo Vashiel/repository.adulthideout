@@ -149,7 +149,12 @@ class HentaiMama(BaseWebsite):
     def _extract_videos(self, content):
         videos = []
         seen = set()
-        for block in re.findall(r"<article\b[^>]*>[\s\S]{0,12000}?</article>", content or "", re.IGNORECASE):
+        blocks = re.findall(r"<article\b[^>]*>[\s\S]{0,12000}?</article>", content or "", re.IGNORECASE)
+        blocks.extend(re.findall(
+            r'<a\b[^>]*class=["\'][^"\']*\bdt-se-item\b[^"\']*["\'][^>]*>[\s\S]{0,12000}?</a>',
+            content or "", re.IGNORECASE,
+        ))
+        for block in blocks:
             href_match = re.search(r'href=["\']([^"\']*/episodes/[^"\']+/)["\']', block, re.IGNORECASE)
             if not href_match:
                 continue
@@ -161,6 +166,11 @@ class HentaiMama(BaseWebsite):
             title_match = re.search(r'\salt=["\']([^"\']+)["\']', image_tag, re.IGNORECASE)
             if not title_match:
                 title_match = re.search(r"<h3\b[^>]*>([\s\S]*?)</h3>", block, re.IGNORECASE)
+            if not title_match:
+                title_match = re.search(
+                    r'<span\b[^>]*class=["\'][^"\']*\bdt-se-title\b[^"\']*["\'][^>]*>([\s\S]*?)</span>',
+                    block, re.IGNORECASE,
+                )
             title = self._clean(title_match.group(1) if title_match else "")
             if not title or not self._allowed("{} {}".format(title, video_url)):
                 continue
@@ -197,7 +207,7 @@ class HentaiMama(BaseWebsite):
         output = []
         for value in re.findall(r'href=["\']([^"\']*/tvshows/[^"\']+/)["\']', content or "", re.IGNORECASE):
             target = self._absolute(value)
-            if target not in output:
+            if target not in output and self._allowed(target):
                 output.append(target)
         return output
 

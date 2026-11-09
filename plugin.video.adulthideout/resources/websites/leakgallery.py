@@ -21,7 +21,7 @@ class LeakGallery(BaseWebsite):
         super().__init__(
             "leakgallery",
             "https://leakgallery.com/",
-            "https://leakgallery.com/search?search={}",
+            "https://leakgallery.com/search/{}",
             addon_handle,
             addon,
         )
@@ -270,30 +270,35 @@ class LeakGallery(BaseWebsite):
         self.end_directory("videos")
 
     def search(self, query):
+        query = (query or "").strip()
         if not query:
             return
-        search_url = self.search_url.format(urllib.parse.quote_plus(query.strip()))
+        search_url = self.search_url.format(urllib.parse.quote(query, safe=""))
         content = self._get(search_url, referer=self.base_url)
-        usernames = []
-        for username in re.findall(
-            r'href=["\']/([A-Za-z0-9._-]+)["\'][^>]*>',
-            content or "",
-            re.IGNORECASE,
-        ):
-            lowered = username.lower()
-            if lowered in (
-                "search", "discover", "user-posts", "tiktok", "login", "register",
-                "comments", "contact", "dmca", "terms", "trust-and-safety",
-                "daily-search-ranking", "most-liked", "welcome-to-leakgallery",
-                "about-leakgallery",
-            ):
-                continue
-            if username not in usernames:
-                usernames.append(username)
+        match = re.search(r'<script\b[^>]*\bid=["\']ng-state["\'][^>]*>(.*?)</script>', content or "", re.S | re.I)
+        try:
+            state = json.loads(match.group(1)) if match else {}
+        except (TypeError, ValueError):
+            state = {}
+        key = "searchmedias:" + query.casefold()
+        media = next((value for name, value in state.items() if name.casefold() == key), []) if isinstance(state, dict) else []
         found = []
-        for username in usernames[:4]:
-            profile_url = "{}{}/Videos".format(self.base_url, username)
-            found.extend(self._profile_video_items(self._get(profile_url, referer=search_url))[:8])
+        seen = set()
+        for item in media if isinstance(media, list) else []:
+            if not isinstance(item, dict) or item.get("is_video") is not True or not item.get("file_path"):
+                continue
+            stream = self._cdn_url(item["file_path"])
+            parsed = urllib.parse.urlsplit(stream)
+            if stream in seen or parsed.scheme not in ("http", "https") or not parsed.path.lower().endswith(".mp4"):
+                continue
+            seen.add(stream)
+            profile = item.get("profile") or {}
+            username = str(profile.get("username") or "") if isinstance(profile, dict) else ""
+            caption = html.unescape(str(item.get("caption_title") or "")).strip()
+            title = caption or "{} #{}".format(username or self.label, item.get("id") or len(found) + 1)
+            thumb = self._cdn_url(item["thumbnail_path"]) if item.get("thumbnail_path") else self.icon
+            profile_url = "{}{}/Videos".format(self.base_url, urllib.parse.quote(username, safe="")) if username else None
+            found.append((title, stream, thumb, username or None, profile_url))
         self._add_items(found)
         if not found:
             self.notify_error("No LeakGallery video results found")

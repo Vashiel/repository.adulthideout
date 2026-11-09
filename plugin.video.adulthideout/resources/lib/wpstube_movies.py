@@ -256,12 +256,13 @@ class WPSTubeMoviesWebsite(BaseWebsite):
             if xbmc.getCondVisibility("System.Platform.Android"):
                 play_url = resolved["url"]
                 if resolved["headers"]:
-                    play_url += "|" + urllib.parse.urlencode(resolved["headers"])
+                    play_url += "|" + urllib.parse.urlencode(resolved["headers"], quote_via=urllib.parse.quote)
                 item = xbmcgui.ListItem(path=play_url)
                 item.setProperty("IsPlayable", "true")
                 item.setProperty("inputstream", "inputstream.adaptive")
                 item.setProperty("inputstream.adaptive.manifest_type", "hls")
-                encoded_headers = urllib.parse.urlencode(resolved["headers"] or {})
+                # %20 instead of "+": some players pass "+" through literally and hosts reject the header.
+                encoded_headers = urllib.parse.urlencode(resolved["headers"] or {}, quote_via=urllib.parse.quote)
                 item.setProperty("inputstream.adaptive.manifest_headers", encoded_headers)
                 item.setProperty("inputstream.adaptive.stream_headers", encoded_headers)
                 item.setMimeType("application/vnd.apple.mpegurl")

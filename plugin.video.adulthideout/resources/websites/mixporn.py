@@ -29,8 +29,8 @@ class MixPorn(KVSTubeWebsite):
     def __init__(self, addon_handle, addon=None):
         super().__init__(
             name="mixporn",
-            base_url="https://r11.mixporn.space/",
-            search_url="https://r11.mixporn.space/search/{}/",
+            base_url="https://r15.mixporn.space/",
+            search_url="https://r15.mixporn.space/search/{}/",
             addon_handle=addon_handle,
             addon=addon,
         )

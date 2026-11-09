@@ -162,7 +162,8 @@ class Pornktube(BaseWebsite):
         self.add_dir('[COLOR blue]Next Page >>[/COLOR]', next_url, 2, self.icons['default'])
 
     def _build_stream_url(self, content):
-        player_match = re.search(r'<div id="player"([^>]*)>', content)
+        # The site renamed the player element from "player" to "tip"; attributes are unchanged.
+        player_match = re.search(r'<div id="(?:player|tip)"([^>]*data-q=[^>]*)>', content)
         if not player_match:
             return None
         attrs = player_match.group(1)

@@ -197,6 +197,8 @@ SOURCE_PRESETS = [
     ]),
 ]
 
+CORE_BLOCKED_TERMS = ("loli", "lolicon", "shota", "shotacon", "underage")
+
 PROFILE_OVERRIDES = {
     "trans": {
         "ashemaletube_pf_gender": "1",
@@ -1540,6 +1542,16 @@ class GlobalSearch:
         except Exception:
             pass
 
+        all_sources = sources
+        word_modes = ("all_words", "filmography_all_words", "full_movies_all_words", "full_movies_words", "full_movies_words_trans")
+        matcher = self._matches_all_query_words if (search_mode in word_modes or search_mode.startswith("all_words_")) else self._matches_query_strictly
+        if self._core_search_allowed(search_mode, profile):
+            core_results, sources, cancelled = self._run_core_search(query, sources, progress, max_results_per_site, matcher)
+            if core_results:
+                cache_results.extend(core_results)
+            if cancelled:
+                sources = []
+
         def fetch_source(src):
             source_started_at[src] = time.monotonic()
             try:
@@ -1634,9 +1646,104 @@ class GlobalSearch:
             xbmcgui.Dialog().notification(self._tr(30966, "Global Search"), self._tr(30985, "No results found"), xbmcgui.NOTIFICATION_INFO, 3000)
         if failed:
             self.logger("Skipped/failed sources: {}".format(", ".join(failed)), xbmc.LOGWARNING)
-        self._save_results(query, cache_results, search_mode=search_mode, sources=sources)
+        self._save_results(query, cache_results, search_mode=search_mode, sources=all_sources)
         self.logger("Global search '{}' ({}) returned {} results in {:.1f}s".format(query, search_mode, len(cache_results), time.time() - started))
         self._render_results_page(query, self._display_results(query, cache_results, search_mode=search_mode), page, search_mode=search_mode)
+
+    def _core_search_allowed(self, search_mode, profile):
+        # Content-type settings and duration rules only exist in the Python site modules.
+        if profile in PROFILE_OVERRIDES:
+            return False
+        return not search_mode.startswith(("full_movies", "filmography"))
+
+    def _load_core_targets(self, sources):
+        path = os.path.join(os.path.dirname(self.websites_dir), "core_search_sources.json")
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                manifest = json.load(handle)
+        except Exception as exc:
+            self.logger("Core source list unavailable: {}".format(exc), xbmc.LOGWARNING)
+            return []
+        wanted = set(sources)
+        return [entry for entry in manifest if entry.get("id") in wanted]
+
+    def _run_core_search(self, query, sources, progress, max_results_per_site, matcher):
+        """Searches the listed sources in the Rust Core.
+
+        Returns (results or None, sources left for Python, cancelled). Sources without a
+        Core entry, and sources whose fetch failed in the Core, stay with Python.
+        """
+        targets = self._load_core_targets(sources)
+        if not targets:
+            return None, sources, False
+        payload = json.dumps({
+            "queries": [query],
+            "sources": targets,
+            "concurrency": 35,
+            "timeout_ms": 6000,
+            "max_results_per_site": max_results_per_site,
+            "strict_match": True,
+            "min_duration_secs": 0,
+        }).encode("utf-8")
+        response = {}
+
+        def call_core():
+            try:
+                import urllib.request
+                request = urllib.request.Request(
+                    "http://127.0.0.1:8191/search", data=payload, headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(request, timeout=90) as handle:
+                    response["data"] = json.loads(handle.read().decode("utf-8"))
+            except Exception as exc:
+                response["error"] = exc
+
+        progress.update(5, self._tr(30983, "Searching {} sources...", len(targets)))
+        worker = threading.Thread(target=call_core, daemon=True)
+        worker.start()
+        while worker.is_alive():
+            if progress.iscanceled():
+                return [], [], True
+            worker.join(0.25)
+        data = response.get("data")
+        if not isinstance(data, dict) or "results" not in data:
+            # An older Core has no /search or the engine is down: Python does everything.
+            self.logger("Core search unavailable, using Python for all sources: {}".format(response.get("error")), xbmc.LOGWARNING)
+            return None, sources, False
+
+        results = []
+        seen = set()
+        per_source = {}
+        for item in data.get("results", []):
+            page_url = item.get("page_url", "")
+            site_name = item.get("source", "")
+            label = item.get("label", "") or "Video"
+            if not page_url or page_url in seen or not matcher(label, query):
+                continue
+            # Same terms the site modules block; the Core does not filter content.
+            marker = "{} {}".format(label, page_url).lower()
+            if any(term in marker for term in CORE_BLOCKED_TERMS):
+                continue
+            if per_source.get(site_name, 0) >= max_results_per_site:
+                continue
+            seen.add(page_url)
+            per_source[site_name] = per_source.get(site_name, 0) + 1
+            thumb = item.get("thumb", "")
+            duration = item.get("duration", "")
+            results.append({
+                "source": site_name,
+                "url": "{}?url={}&mode=4&name={}&website={}".format(
+                    sys_argv0(), urllib.parse.quote_plus(page_url), urllib.parse.quote_plus(label), site_name),
+                "label": label,
+                "art": {"thumb": thumb, "icon": thumb, "poster": thumb, "landscape": thumb, "fanart": self.fanart},
+                "is_folder": False,
+                "duration": duration,
+            })
+        core_ids = {entry["id"] for entry in targets}
+        core_failed = set(data.get("failed_sources", []))
+        remaining = [name for name in sources if name not in core_ids or name in core_failed]
+        self.logger("Core search: {} results from {} sources in {} ms, {} failed, {} left for Python".format(
+            len(results), len(targets), data.get("elapsed_ms", 0), len(core_failed), len(remaining)))
+        return results, remaining, False
 
     def run_filmography_titles(self, titles, display_query, search_mode, refresh=False, page=1, save_batch=True):
         display_query = (display_query or "Filmography titles").strip()

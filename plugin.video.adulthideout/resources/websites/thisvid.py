@@ -128,9 +128,11 @@ class ThisVidWebsite(BaseWebsite):
     def decode_kvs_url(self, video_url):
         mapping = [6, 21, 16, 2, 27, 0, 20, 18, 14, 10, 3, 5, 15, 9, 30, 25, 22, 1, 31, 13, 7, 23, 8, 11, 26, 28, 29, 19, 17, 24, 12, 4]
         
-        if video_url.startswith('function/0/'):
-            video_url = video_url.replace('function/0/', '')
-            
+        # Only "function/0/" URLs are scrambled; permuting a plain get_file URL breaks it (404).
+        if not video_url.startswith('function/0/'):
+            return video_url
+        video_url = video_url.replace('function/0/', '')
+
         match = re.search(r'/get_file/(\d+)/([a-f0-9]+)/', video_url)
         if not match:
             return video_url

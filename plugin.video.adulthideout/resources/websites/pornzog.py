@@ -102,7 +102,7 @@ class Pornzog(BaseWebsite):
         self.txxx_like_domains = [
             'txxx.com', 'videotxxx.com', 'vxxx.com', 
             'privatehomeclips.com', 'desi-porn.tube', 'vid-xm.com', 
-            'xmilf.com', 'vid-ip.com', 'inporn.com'
+            'xmilf.com', 'vid-ip.com', 'inporn.com', 'pornl.com', 'videohotmovs.com'
         ]
         
         self.id_in_url_domains = [

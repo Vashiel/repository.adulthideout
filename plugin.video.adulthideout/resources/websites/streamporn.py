@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import html
+import json
 import re
 import urllib.parse
 
@@ -12,7 +13,7 @@ from resources.lib.resolvers import resolver
 
 
 class StreamPorn(BaseWebsite):
-    HOST_PRIORITY = ("voe.sx", "mixdrop", "lulustream", "dood", "doply")
+    HOST_PRIORITY = ("streamtape", "mixdrop", "voe.sx", "lulustream", "luluvido", "vidara", "dood", "playmogo", "doply")
 
     def __init__(self, addon_handle, addon=None):
         super().__init__("streamporn", "https://streamporn.li/", "https://streamporn.li/?s={}", addon_handle, addon=addon)
@@ -98,7 +99,15 @@ class StreamPorn(BaseWebsite):
 
     def _host_links(self, page):
         links = []
-        for raw in re.findall(r'<a[^>]+href="(https?://[^"]+)"[^>]+(?:id="#iframe"|title="[^"]+on [^"]+")', page or "", re.I):
+        raws = re.findall(r'<a[^>]+href="(https?://[^"]+)"[^>]+(?:id="#iframe"|title="[^"]+on [^"]+")', page or "", re.I)
+        # Host Links Manager pages keep the hosts as JSON in data-servers.
+        servers = re.search(r'data-servers="([^"]+)"', page or "")
+        if servers:
+            try:
+                raws += [entry.get("u", "") for entry in json.loads(html.unescape(servers.group(1))) if isinstance(entry, dict)]
+            except ValueError:
+                self.logger.warning("[StreamPorn] Could not read data-servers")
+        for raw in raws:
             url = html.unescape(raw).replace("&amp;", "&")
             url = re.sub(r"(doodstream\.[^/]+|doply\.net)/d/", r"\1/e/", url, flags=re.I)
             url = re.sub(r"(mixdrop\.[^/]+)/f/", r"\1/e/", url, flags=re.I)

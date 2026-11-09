@@ -143,8 +143,8 @@ class X24Video(BaseWebsite):
     def __init__(self, addon_handle, addon=None):
         super().__init__(
             name="x24video",
-            base_url="https://x24video.xyz",
-            search_url="https://x24video.xyz/search/{}/",
+            base_url="https://x24video.site",
+            search_url="https://x24video.site/search/?q={}",
             addon_handle=addon_handle,
             addon=addon,
         )
@@ -186,7 +186,7 @@ class X24Video(BaseWebsite):
     def search(self, query):
         if query:
             encoded = urllib.parse.quote_plus(query.strip())
-            self.process_content(f"{self.base_url}/search/{encoded}/")
+            self.process_content(f"{self.base_url}/search/?q={encoded}")
 
     def get_page_url(self, url, page):
         if page <= 1:
