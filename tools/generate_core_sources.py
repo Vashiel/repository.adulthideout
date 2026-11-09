@@ -16,6 +16,7 @@ import importlib.machinery
 import json
 import os
 import sys
+import tempfile
 from unittest.mock import MagicMock
 
 ADDON = os.path.abspath("plugin.video.adulthideout")
@@ -136,6 +137,12 @@ def main():
         except Exception:
             pass
     sys.meta_path.append(StubMissingModules())
+    # Modules create cache folders from Kodi paths while loading. Point those stubs at a
+    # throwaway folder, or they create folders named after the mock in the working directory.
+    scratch = tempfile.mkdtemp(prefix="core_sources_")
+    xbmcvfs = importlib.import_module("xbmcvfs")
+    xbmcvfs.translatePath = lambda path: scratch
+    importlib.import_module("xbmcaddon").Addon.return_value.getAddonInfo.return_value = scratch
     sys.argv = ["plugin://plugin.video.adulthideout/", "1", ""]
     from resources.lib.base_website import BaseWebsite
 

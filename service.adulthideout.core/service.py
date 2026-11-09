@@ -20,7 +20,9 @@ except ImportError:
 
 DEFAULT_BIND = "127.0.0.1:8191"
 HEALTH_URL = f"http://{DEFAULT_BIND}/health"
-CORE_VERSION = "1.0.0"
+# Bump with every release of new binaries in core-binaries/; installs with another
+# version.txt download them on the next start.
+CORE_VERSION = "1.0.1"
 RAW_BASE_URLS = (
     "https://raw.githubusercontent.com/Vashiel/repository.adulthideout/master/core-binaries",
     "https://github.com/Vashiel/repository.adulthideout/raw/master/core-binaries",
@@ -142,6 +144,41 @@ def is_binary_installed(addon_dir: str) -> bool:
         ):
             return True
     return False
+
+
+def installed_core_version(addon_dir: str) -> str:
+    """Version written next to the downloaded binaries, or "" if unknown."""
+    if addon_dir:
+        addon_dir = addon_dir.rstrip("/\\")
+    arch = detect_platform_arch()[0]
+    data_dir = get_data_dir(addon_dir)
+    if not arch or not data_dir:
+        return ""
+    try:
+        with open(os.path.join(data_dir, "bin", arch, "version.txt"), "r", encoding="utf-8") as handle:
+            return handle.read().strip()
+    except Exception:
+        return ""
+
+
+def update_outdated_binaries(addon_dir: str) -> None:
+    """Replace binaries from an older Core release before the engine is loaded.
+
+    Presence alone used to count as installed, so an existing install never received a
+    newer Core. If the download fails, the installed binaries keep working and the
+    next start tries again.
+    """
+    installed = installed_core_version(addon_dir)
+    if installed == CORE_VERSION:
+        return
+    _log(f"Core binaries are version {installed or 'unknown'}, expected {CORE_VERSION}; updating...")
+    try:
+        if download_platform_binaries(addon_dir, show_progress=False):
+            _log(f"Core binaries updated to {CORE_VERSION}")
+        else:
+            _log("Core update failed; starting the installed binaries", xbmc.LOGWARNING if xbmc else None)
+    except Exception as exc:
+        _log(f"Core update failed ({exc}); starting the installed binaries", xbmc.LOGWARNING if xbmc else None)
 
 
 def download_platform_binaries(addon_dir: str, show_progress: bool = True) -> bool:
@@ -469,6 +506,8 @@ def run_kodi_service() -> None:
     if is_healthy():
         _log(f"Existing engine daemon already responsive on http://{DEFAULT_BIND}/v1")
     elif is_binary_installed(addon_dir):
+        # Nothing has loaded the binaries yet, so they can still be replaced here.
+        update_outdated_binaries(addon_dir)
         loaded_lib, proc = start_engine(addon_dir)
     else:
         _log("Core binary not yet installed for this system; downloading platform binary automatically in background...")
