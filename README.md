@@ -13,7 +13,22 @@ AdultHideout does not host videos. It organizes publicly available listings and 
 
 ---
 
-## Current Release: AdultHideout 1.0.26 "Core Horizon"
+## Current Release: AdultHideout 1.0.27 "Quicksilver"
+
+**Released November 9, 2026**
+
+Global Search and Mega Shuffle now run through AdultHideout Core first: all sources go to the Core in one request, and the Python modules only search the sources the Core cannot handle or that fail in the Core. With all 302 sources this takes about 18 seconds on desktop and returns more results than the Python search alone.
+
+- **Smarter Core search:** site APIs, feeds and POST search forms, moved domains, Cyrillic titles, and no more ads, category or tag pages among the results.
+- **Content filters preserved:** sources whose modules filter blocked terms, ratings or orientation keep searching through their own module, and Core results are checked against the same blocked terms.
+- **Automatic Core updates:** Core Service 1.0.1 replaces outdated Core binaries on the next start; Core 1.0.1 is built for all seven platforms.
+- **27 websites repaired**, among them Aki-H, Hanime, HentaiMama, HentaiCity, LeakGallery, MixPorn, PornZog, StreamPorn, SunPorno, ThisVid and WOW.xxx.
+
+Full notes: [Quicksilver 1.0.27](docs/releases/1.0.27-quicksilver.md)
+
+---
+
+## Previous Release: AdultHideout 1.0.26 "Core Horizon"
 
 **Released November 3, 2026**
 
@@ -141,7 +156,7 @@ The official **[AdultHideout Wiki](https://github.com/Vashiel/repository.adulthi
 - **Issues:** [Bug reports and feature requests](https://github.com/Vashiel/repository.adulthideout/issues)
 - **Discussions:** [Announcements and community discussion](https://github.com/Vashiel/repository.adulthideout/discussions)
 - **Changelog:** [Complete release history](plugin.video.adulthideout/changelog.txt)
-- **Release notes:** [Core Horizon 1.0.26](docs/releases/1.0.26-core-horizon.md) · [Prism 1.0.25](docs/releases/1.0.25-prism.md)
+- **Release notes:** [Quicksilver 1.0.27](docs/releases/1.0.27-quicksilver.md) · [Core Horizon 1.0.26](docs/releases/1.0.26-core-horizon.md) · [Prism 1.0.25](docs/releases/1.0.25-prism.md)
 
 ## Disclaimer
 

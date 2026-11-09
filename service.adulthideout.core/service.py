@@ -1,4 +1,6 @@
 import ctypes
+import hashlib
+import json
 import os
 import platform
 import shutil
@@ -181,6 +183,30 @@ def update_outdated_binaries(addon_dir: str) -> None:
         _log(f"Core update failed ({exc}); starting the installed binaries", xbmc.LOGWARNING if xbmc else None)
 
 
+def _manifest_hashes(base_url: str, arch: str):
+    """SHA-256 sums for one platform from a mirror's manifest.json, or None.
+
+    None means the mirror has no manifest or one for another Core version.
+    """
+    if base_url.endswith("/download"):
+        return None
+    try:
+        req = urllib.request.Request(
+            f"{base_url}/manifest.json",
+            headers={"User-Agent": "AdultHideoutCore/1.0 (+https://github.com/Vashiel/repository.adulthideout)"},
+        )
+        with _OPENER.open(req, timeout=15.0) as resp:
+            manifest = json.loads(resp.read().decode("utf-8"))
+    except Exception as exc:
+        _log(f"Core manifest unavailable at {base_url}: {exc}")
+        return None
+    if not isinstance(manifest, dict) or manifest.get("version") != CORE_VERSION:
+        _log(f"Core manifest at {base_url} is for version {manifest.get('version') if isinstance(manifest, dict) else '?'}, need {CORE_VERSION}")
+        return None
+    entries = (manifest.get("platforms") or {}).get(arch) or []
+    return {e["name"]: str(e["sha256"]).lower() for e in entries if isinstance(e, dict) and e.get("name") and e.get("sha256")}
+
+
 def download_platform_binaries(addon_dir: str, show_progress: bool = True) -> bool:
     if addon_dir:
         addon_dir = addon_dir.rstrip("/\\")
@@ -212,27 +238,34 @@ def download_platform_binaries(addon_dir: str, show_progress: bool = True) -> bo
 
     try:
         total_files = len(required_files)
-        for idx, filename in enumerate(required_files):
-            dest_path = os.path.join(target_dir, filename)
-            tmp_path = dest_path + ".tmp"
-            downloaded = False
-            last_err = None
-
-            for base_url in RAW_BASE_URLS:
-                if base_url.endswith("/download"):
-                    url = f"{base_url}/{arch}-{filename}"
-                else:
+        last_err = None
+        for base_url in RAW_BASE_URLS:
+            # Only accept a source whose manifest is for exactly this Core version. A
+            # mirror that still serves older binaries (not yet updated, or cached) is
+            # skipped, so old files can never be recorded as the current version.
+            expected = _manifest_hashes(base_url, arch)
+            if expected is None:
+                last_err = "no manifest for Core {} at {}".format(CORE_VERSION, base_url)
+                continue
+            if any(name not in expected for name in required_files):
+                last_err = "manifest at {} lists no {} binaries".format(base_url, arch)
+                continue
+            staged = []
+            try:
+                for idx, filename in enumerate(required_files):
                     url = f"{base_url}/{arch}/{filename}"
-                try:
+                    tmp_path = os.path.join(target_dir, filename + ".tmp")
+                    staged.append((tmp_path, os.path.join(target_dir, filename)))
                     req = urllib.request.Request(
                         url,
                         headers={"User-Agent": "AdultHideoutCore/1.0 (+https://github.com/Vashiel/repository.adulthideout)"},
                     )
+                    digest = hashlib.sha256()
+                    read_bytes = 0
                     with _OPENER.open(req, timeout=20.0) as resp:
                         if resp.status != 200:
-                            continue
+                            raise RuntimeError(f"HTTP {resp.status} for {url}")
                         total_bytes = int(resp.headers.get("Content-Length") or 0)
-                        read_bytes = 0
                         with open(tmp_path, "wb") as out_f:
                             while True:
                                 if progress is not None and progress.iscanceled():
@@ -241,6 +274,7 @@ def download_platform_binaries(addon_dir: str, show_progress: bool = True) -> bo
                                 if not chunk:
                                     break
                                 out_f.write(chunk)
+                                digest.update(chunk)
                                 read_bytes += len(chunk)
                                 if progress is not None:
                                     file_pct = int((read_bytes * 100) / total_bytes) if total_bytes > 0 else 50
@@ -249,32 +283,39 @@ def download_platform_binaries(addon_dir: str, show_progress: bool = True) -> bo
                                         min(99, max(1, overall_pct)),
                                         _tr(31015, "Downloading {} for {}... ({} KB)", filename, arch, read_bytes // 1024),
                                     )
-                    if os.path.isfile(tmp_path) and os.path.getsize(tmp_path) > 10000:
-                        if os.path.exists(dest_path):
-                            try:
-                                os.remove(dest_path)
-                            except OSError:
-                                pass
-                        os.replace(tmp_path, dest_path)
-                        if platform.system().lower() != "windows":
-                            try:
-                                os.chmod(dest_path, 0o755)
-                            except OSError:
-                                pass
-                        downloaded = True
-                        _log(f"Downloaded {filename} ({read_bytes} bytes) from {url}")
-                        break
-                except Exception as exc:
-                    last_err = exc
+                    if digest.hexdigest() != expected[filename]:
+                        raise RuntimeError(f"checksum mismatch for {url}")
+                    _log(f"Downloaded {filename} ({read_bytes} bytes) from {url}")
+                # Every file is verified; only now replace the installed set.
+                for tmp_path, dest_path in staged:
+                    if os.path.exists(dest_path):
+                        try:
+                            os.remove(dest_path)
+                        except OSError:
+                            pass
+                    os.replace(tmp_path, dest_path)
+                    if platform.system().lower() != "windows":
+                        try:
+                            os.chmod(dest_path, 0o755)
+                        except OSError:
+                            pass
+                break
+            except Exception as exc:
+                last_err = exc
+                for tmp_path, _dest in staged:
                     try:
                         if os.path.exists(tmp_path):
                             os.remove(tmp_path)
                     except OSError:
                         pass
-
-            if not downloaded:
-                _log(f"Failed to download {filename} for {arch}: {last_err}", xbmc.LOGERROR if xbmc else None)
-                return False
+                if "Cancelled by user" in str(exc):
+                    break
+        else:
+            _log(f"Failed to download Core {CORE_VERSION} for {arch}: {last_err}", xbmc.LOGERROR if xbmc else None)
+            return False
+        if last_err is not None and "Cancelled by user" in str(last_err):
+            _log("Core download cancelled by user", xbmc.LOGWARNING if xbmc else None)
+            return False
 
         try:
             with open(os.path.join(target_dir, "version.txt"), "w", encoding="utf-8") as vf:

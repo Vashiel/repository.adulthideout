@@ -213,14 +213,14 @@
     "name": "AdultHideout",
     "applicationCategory": "MultimediaApplication",
     "operatingSystem": "Kodi",
-    "softwareVersion": "1.0.26",
+    "softwareVersion": "1.0.27",
     "isAccessibleForFree": true,
     "isFamilyFriendly": false,
     "url": "https://vashiel.github.io/repository.adulthideout/",
     "downloadUrl": "https://vashiel.github.io/repository.adulthideout/repository.adulthideout-1.0.5.zip",
     "codeRepository": "https://github.com/Vashiel/repository.adulthideout",
     "description": "AdultHideout is an adult-oriented Kodi video addon distributed through the official AdultHideout repository.",
-    "dateModified": "2026-11-03"
+    "dateModified": "2026-11-09"
   }
   </script>
 </head>
@@ -264,22 +264,22 @@
         </div>
         <div class="item">
           <h3>Current addon release</h3>
-          <p>AdultHideout 1.0.26 "Core Horizon"</p>
+          <p>AdultHideout 1.0.27 "Quicksilver"</p>
         </div>
       </div>
     </section>
 
     <section aria-labelledby="release-title">
-      <h2 id="release-title">Current Release: Core Horizon</h2>
-      <p><strong>AdultHideout 1.0.26 "Core Horizon"</strong> was released on November 3, 2026. This release introduces the optional native Rust engine (<code>service.adulthideout.core</code>) alongside an automatic classic Python fallback, bringing high-concurrency multi-site search, local stream relaying, and extensive catalog updates.</p>
+      <h2 id="release-title">Current Release: Quicksilver</h2>
+      <p><strong>AdultHideout 1.0.27 "Quicksilver"</strong> was released on November 9, 2026. Global Search now runs through AdultHideout Core first, with the Python modules as a fallback, and many website searches and players have been repaired.</p>
       <ul>
-        <li><strong>Dual-Engine Hybrid Architecture:</strong> High-concurrency search, local HLS/MP4 stream relaying, and embedded script evaluation via native Rust, with automatic fallback to the classic Python engine.</li>
-        <li><strong>On-Demand Core Installer (~3 MB):</strong> Automatically detects your operating system and CPU architecture on first launch, downloading only the matching platform binary without requiring a Kodi restart.</li>
-        <li><strong>Global Search &amp; Mega Shuffle:</strong> Queries all 302 active sources concurrently (~56 seconds on mobile ARM64, ~12–18 seconds on desktop).</li>
-        <li><strong>Catalog, Repairs &amp; Localization:</strong> Re-enabled 9 previously hidden websites by default, repaired 37 websites and 3 resolvers, added Porner.tv, and updated all 5 supported languages (EN, DE, FR, ES, IT).</li>
+        <li><strong>Core-First Global Search:</strong> All sources are searched through AdultHideout Core in one request; the Python modules only take over where Core cannot. About 18 seconds for all 302 sources on desktop.</li>
+        <li><strong>Smarter Results:</strong> Core reads site APIs, feeds and search forms, follows moved domains and skips ads, category and tag pages.</li>
+        <li><strong>Content Filters Preserved:</strong> Sources that filter their results keep using their own module, and Core results are checked against the same blocked terms.</li>
+        <li><strong>Automatic Core Updates &amp; Repairs:</strong> Installed Core binaries are replaced when a new Core version is released, and search or playback was repaired on 27 websites.</li>
       </ul>
       <div class="links" aria-label="Project links">
-        <a class="button" href="https://github.com/Vashiel/repository.adulthideout/blob/master/docs/releases/1.0.26-core-horizon.md">Read full release notes</a>
+        <a class="button" href="https://github.com/Vashiel/repository.adulthideout/blob/master/docs/releases/1.0.27-quicksilver.md">Read full release notes</a>
         <a class="button secondary" href="https://github.com/Vashiel/repository.adulthideout/blob/master/plugin.video.adulthideout/changelog.txt">Read changelog</a>
         <a class="button secondary" href="https://github.com/Vashiel/repository.adulthideout/wiki">Read the Wiki</a>
         <a class="button secondary" href="https://github.com/Vashiel/repository.adulthideout/issues">Report an issue</a>
@@ -299,7 +299,7 @@
         </div>
         <div class="item">
           <h3>Where are update files?</h3>
-          <p><a href="addons.xml">addons.xml</a>, <a href="addons.xml.md5">addons.xml.md5</a>, and <a href="zips/plugin.video.adulthideout/plugin.video.adulthideout-1.0.26.zip">plugin.video.adulthideout-1.0.26.zip</a></p>
+          <p><a href="addons.xml">addons.xml</a>, <a href="addons.xml.md5">addons.xml.md5</a>, and <a href="zips/plugin.video.adulthideout/plugin.video.adulthideout-1.0.27.zip">plugin.video.adulthideout-1.0.27.zip</a></p>
         </div>
       </div>
     </section>

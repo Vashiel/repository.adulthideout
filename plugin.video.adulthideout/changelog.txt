@@ -1,3 +1,11 @@
+v. 1.0.27 "Quicksilver" - 2026-11-09
+- **Global Search & Mega Shuffle through Core**: All sources go to AdultHideout Core in one request; the Python modules only search sources Core cannot handle or that fail in Core. On desktop all 302 sources finish in about 18 seconds with more results than the Python search.
+- **Smarter Core Search**: Core now reads JSON site APIs, WordPress and RSS feeds, POST search forms and per-site cookies, follows moved domains, keeps exact page URLs, matches Cyrillic titles and rejects ads, redirect links, category and tag pages.
+- **Content Filters Preserved**: Sources whose modules filter blocked terms, ratings or orientation (Iwara, HentaiMama, Hentaisea, XVideos and others) keep searching through their own module, and Core results are checked against the same blocked terms.
+- **Automatic Core Updates**: The Core service now compares the installed binaries with the current version and replaces outdated ones on the next start.
+- **Website Repairs**: Search or playback repaired on 27 websites, among them Aki-H, BDSMVilla, Erome, EroticMV, FapNFuck, FullPorner, Fuqster, Hanime, HDEasyPorn, HDShemalez, Heavy-R, HentaiCity, HentaiMama, Hentaisea, IcePornCasting, LeakGallery, MixPorn, PMVHaven, PornKTube, PornZog, ShowCamRips, StreamPorn, SunPorno, ThisVid, W1mp, WOW.xxx and X24Video.
+- **Playback**: New resolver for embedded txxx-network players, signed CDN links for KVS sites without player data, and stream headers that every player decodes correctly.
+
 v. 1.0.26 "Core Horizon" - 2026-11-03
 - **AdultHideout Core (Public Architecture Preview)**: Added the new native Rust engine `service.adulthideout.core`, which handles multi-site search, stream relaying and script evaluation outside Kodi's Python runtime. If Core is not installed, declined or unsupported on a device, AdultHideout automatically continues on the classic Python engine of 1.0.25.
 - **On-Demand Core Installer**: The Core add-on is only about 26 KB. On first use it detects the operating system and CPU (Windows, macOS Apple Silicon and Intel, Android 64/32-bit, Linux x86_64 and aarch64), asks once, downloads only the matching binary of about 3 MB and starts it without restarting Kodi.

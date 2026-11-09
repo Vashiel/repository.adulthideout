@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.26" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.27" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.requests" version="2.25.1"/>
-        <import addon="service.adulthideout.core" version="1.0.0"/>
+        <import addon="service.adulthideout.core" version="1.0.1"/>
     </requires>
     <extension point="xbmc.python.pluginsource" library="default.py">
         <provides>video</provides>
@@ -12,6 +12,13 @@
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
+v. 1.0.27 "Quicksilver" - 2026-11-09
+- Global Search &amp; Mega Shuffle: All sources are searched through AdultHideout Core first; the Python modules only take over where Core cannot. About 18 s for all 302 sources on desktop, with more results than before.
+- Core Search: Reads site APIs, feeds and search forms, follows moved domains and skips ads, category and tag pages.
+- Content Filters: Sources that filter their results stay on their own module, and Core results are checked against the same blocked terms.
+- Automatic Core Updates: Installed Core binaries are now replaced when a new Core version is released.
+- Website Repairs: 27 websites repaired, including Aki-H, Hanime, HentaiMama, HentaiCity, LeakGallery, MixPorn, PornZog, StreamPorn, SunPorno, ThisVid and WOW.xxx.
+
 v. 1.0.26 "Core Horizon" - 2026-11-03
 - AdultHideout Core (Public Architecture Preview): New native engine for search, stream relaying and script evaluation. Falls back automatically to the classic Python engine if Core is not installed or unsupported.
 - On-Demand Core Installer: Downloads only the ~3 MB binary for your device on first use and starts it without restarting Kodi.
