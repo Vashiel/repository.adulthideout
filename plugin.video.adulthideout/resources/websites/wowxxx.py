@@ -116,15 +116,25 @@ class Wowxxx(BaseWebsite):
             self.logger.warning("Failed to save cached clearance for %s: %s", self.name, exc)
 
     def _get(self, url, referer=None, max_retries=2):
+        background = getattr(self, "adult_hideout_background_harvest", False)
+        deadline = time.monotonic() + (5 if background else 25)
+        if background:
+            max_retries = min(max_retries, 1)
         self._load_cached_cookies()
         last_error = None
         for attempt in range(1, max_retries + 1):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
             try:
-                response = self.session.get(url, headers=self._headers(referer), timeout=5)
-                if response.status_code == 200 and "Just a moment" not in response.text:
+                response = self.session.get(
+                    url, headers=self._headers(referer), timeout=min(2 if background else 5, remaining)
+                )
+                usable = self._usable_html(response.text)
+                if response.status_code == 200 and usable:
                     return response.text
                 last_error = "HTTP {}".format(response.status_code)
-                if response.status_code in (403, 503) or "Just a moment" in response.text:
+                if response.status_code in (403, 503) or (response.status_code == 200 and not usable):
                     break
                 self.logger.warning("WOW.xxx HTTP %s for %s", response.status_code, url)
             except Exception as exc:
@@ -133,36 +143,62 @@ class Wowxxx(BaseWebsite):
                 self.session = requests.Session()
 
             if attempt < max_retries:
-                xbmc.sleep(100 * attempt)
+                pause = min(100 * attempt, int((deadline - time.monotonic()) * 1000))
+                if pause > 0:
+                    xbmc.sleep(pause)
 
         # Fallback to PhantomFlare (FlareSolverr API on 127.0.0.1:8191)
         try:
             self.logger.info("WOW.xxx trying PhantomFlare fallback for %s", url)
-            bg_harvest = getattr(self, "adult_hideout_background_harvest", False)
-            flare_resp = requests.post(
-                "http://127.0.0.1:8191/v1",
-                json={"cmd": "request.get", "url": url, "maxTimeout": 4000 if bg_harvest else 120000},
-                timeout=5 if bg_harvest else 125,
-            )
-            if flare_resp.status_code == 200:
+            # A challenge response can leave the Core with a usable cookie. Keep any retry
+            # within the same request budget; background searches only try once.
+            for flare_attempt in range(1 if background else 2):
+                limit = 5 if background else (14 if not flare_attempt else 6)
+                budget = min(deadline - time.monotonic(), limit)
+                if budget <= 1:
+                    break
+                flare_resp = requests.post(
+                    "http://127.0.0.1:8191/v1",
+                    json={"cmd": "request.get", "url": url, "maxTimeout": int((budget - 0.5) * 1000)},
+                    timeout=(0.5, budget - 0.5),
+                )
+                if flare_resp.status_code != 200:
+                    break
                 data = flare_resp.json()
-                sol = data.get("solution", {})
-                if sol.get("status") == 200 and "Just a moment" not in sol.get("response", ""):
-                    cookies_list = sol.get("cookies", [])
+                sol = data.get("solution") if isinstance(data, dict) else None
+                if not isinstance(sol, dict):
+                    break
+                body = sol.get("response")
+                if sol.get("status") == 200 and self._usable_html(body):
+                    cookies = sol.get("cookies") or []
+                    cookies_list = [
+                        cookie for cookie in cookies
+                        if isinstance(cookie, dict)
+                        and all(isinstance(cookie.get(key), str) and cookie[key] for key in ("name", "value"))
+                    ] if isinstance(cookies, list) else []
                     ua = sol.get("userAgent", "")
                     self.session.cookies.clear()
                     for cookie in cookies_list:
                         self.session.cookies.set(cookie["name"], cookie["value"], domain=".wowxxx.to")
-                    if ua:
+                    if isinstance(ua, str) and ua:
                         self.ua = ua
                     self._save_cached_cookies(cookies_list, self.ua)
-                    return sol.get("response", "")
-                self.logger.warning("WOW.xxx PhantomFlare solution status %s", sol.get("status"))
+                    return body
+                self.logger.warning("WOW.xxx PhantomFlare solution status %s (attempt %s)", sol.get("status"), flare_attempt + 1)
+                if sol.get("status") not in (403, 503):
+                    break
         except Exception as flare_err:
             self.logger.warning("WOW.xxx PhantomFlare fallback failed for %s: %s", url, flare_err)
 
         self.logger.error("WOW.xxx failed to fetch %s: %s", url, last_error)
         return ""
+
+    @staticmethod
+    def _usable_html(body):
+        return bool(isinstance(body, str) and body.strip() and not re.search(
+            r"(?:^\s*|<title[^>]*>\s*)just a moment\b|(?:window\.)?_cf_chl_opt\s*=",
+            body[:32768], re.IGNORECASE,
+        ))
 
     def _absolute(self, value):
         if not value:
