@@ -66,8 +66,8 @@ OVERRIDES = {
     "8kporner": {"base_url": "https://8kporner.com/", "search_url": "https://8kporner.com/?link1=search&keyword={}"},
     "ebalka26": {"base_url": "https://1ebalka.ru.actor/", "search_url": "https://1ebalka.ru.actor/search/{}/"},
     # Search by POST form.
-    "heavy_r": {"base_url": "https://www.heavy-r.com/", "search_url": "https://www.heavy-r.com/index.php",
-                "post_data": "keyword={}&handler=search&action=do_search"},
+    # The POST form redirects; the result page itself is a plain GET URL.
+    "heavy_r": {"base_url": "https://www.heavy-r.com/", "search_url": "https://www.heavy-r.com/search/{}.html"},
     "pornhoarder": {"base_url": "https://pornhoarder.tv/", "search_url": "https://pornhoarder.tv/ajax_search.php",
                     "post_data": "search={}&sort=0&date=0&author=0&page=1" + "".join(
                         "&servers%5B%5D=" + server for server in ("47", "21", "40", "45", "12", "25", "41", "44", "42", "43", "48", "29"))},

@@ -459,8 +459,7 @@
 {
 "base_url": "https://www.heavy-r.com/",
 "id": "heavy_r",
-"post_data": "keyword={}&handler=search&action=do_search",
-"search_url": "https://www.heavy-r.com/index.php"
+"search_url": "https://www.heavy-r.com/search/{}.html"
 },
 {
 "base_url": "https://heavyfetish.com/",
