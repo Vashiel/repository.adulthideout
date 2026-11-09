@@ -9,7 +9,7 @@
     <link href="https://vashiel.github.io/repository.adulthideout/"/>
     <id>https://vashiel.github.io/repository.adulthideout/#1.0.27</id>
     <updated>2026-11-09T18:00:00Z</updated>
-    <summary>Quicksilver runs Global Search and Mega Shuffle through AdultHideout Core first with the Python modules as fallback (about 18 seconds for all 302 sources on desktop), keeps per-site content filters, updates installed Core binaries automatically and repairs search or playback on 27 websites.</summary>
+    <summary>Quicksilver runs Global Search and Mega Shuffle natively in AdultHideout Core: all 300+ sources in a single concurrent pass, 20% more results in 25% less time, cleaner results, a streamlined network layer, a fresh Core for all seven platforms and 27 refreshed websites.</summary>
   </entry>
   <entry>
     <title>AdultHideout 1.0.26 Core Horizon</title>

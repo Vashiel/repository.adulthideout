@@ -19,8 +19,7 @@
         <license>GPL-2.0-only</license>
         <news>
 v. 1.0.1 - 2026-11-09
-- New Core engine: faster multi-site search with site APIs, feeds and search forms, ad and listing filters, and an overall time limit.
-- Installed Core binaries are now updated automatically when a new Core version is released.
+- New Core engine: native single-pass search across all sources, smarter result recognition for site APIs, feeds and search forms, cleaner results and a streamlined network layer, freshly built for all seven platforms.
 
 v. 1.0.0 - 2026-11-03
 - First release of the native AdultHideout Core engine for concurrent search, stream relaying and script evaluation.

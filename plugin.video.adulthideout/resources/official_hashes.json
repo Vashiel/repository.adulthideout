@@ -1,11 +1,11 @@
 {
     "addon_id": "plugin.video.adulthideout",
-    "generated_utc": "2026-11-09T22:15:29Z",
+    "generated_utc": "2026-11-09T22:37:54Z",
     "hash_algorithm": "sha256",
     "hashes": {
         "LICENSE.txt": "fc6e2e8c4b76f7ee65e8f6153e44d8a197ac992767582fd9cd01d393a38298cc",
-        "addon.xml": "67afe92a8521e8df8bfd0b1c7fa48d30a9a6a685c4f5c5e174537d37bdd8e632",
-        "changelog.txt": "48f1b3cde540c4d93df3445a3ba0f8cca2cd66e7437b0ec9f7d56f4a82446aa5",
+        "addon.xml": "a4786730e0de386732bd9701779ea76892459d030d5429ac7caeb56d278e0f23",
+        "changelog.txt": "bd9f8903f8702600d6eab77a6d5a82329be4d1a83a5ab754844998116f24edfe",
         "default.py": "709ed563422e7431bfe03bb38741a83bc97d573143e32d651c347ab0320264ae",
         "resources/backup_restore.py": "b8833a582f8a9e30e221f8cc812ce2fe37545e69cd767d7d1c9598ba271918a7",
         "resources/clear_cache.py": "d5e3fa53d14df8144d0e500d12a102da775c46f60fb342e8c63f26e132310443",
