@@ -79,6 +79,18 @@
                 "size": 3949816,
                 "sha256": "f44efe9ae43ed6220ae54329ebc11b88060bf8e70989296f14c691cda294ab28"
             }
+        ],
+        "linux-armv7": [
+            {
+                "name": "adulthideout-core",
+                "size": 3343216,
+                "sha256": "7d0f192dc537a851fa6682c5060490d6d64ff15c5254cfc3b482e0cd9fecc161"
+            },
+            {
+                "name": "libadulthideout_core.so",
+                "size": 3154512,
+                "sha256": "1d715add194243211f062ab03b4ed23f64f98419966d4cb7650c10ebb1ff5f49"
+            }
         ]
     }
 }

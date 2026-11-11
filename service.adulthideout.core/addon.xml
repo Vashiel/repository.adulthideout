@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="service.adulthideout.core" name="AdultHideout Core Service" version="1.0.1" provider-name="Vashiel">
+<addon id="service.adulthideout.core" name="AdultHideout Core Service" version="1.0.2" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
     </requires>
@@ -18,6 +18,9 @@
         <platform>all</platform>
         <license>GPL-2.0-only</license>
         <news>
+v. 1.0.2 - 2026-11-11
+- Core engine now on 32-bit ARM Linux: CoreELEC, LibreELEC and Raspberry Pi systems with 32-bit Kodi get the full native Core search; smarter, calmer engine start.
+
 v. 1.0.1 - 2026-11-09
 - New Core engine: native single-pass search across all sources, smarter result recognition for site APIs, feeds and search forms, cleaner results and a streamlined network layer, freshly built for all seven platforms.
 

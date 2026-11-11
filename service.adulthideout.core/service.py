@@ -73,7 +73,11 @@ def detect_platform_arch():
         req = ["adulthideout_core.dll", "adulthideout-core.exe", "libwinpthread-1.dll"] if is_64bit else ["adulthideout_core.dll", "adulthideout-core.exe"]
         return arch, "adulthideout_core.dll", "adulthideout-core.exe", req
     if sys_name == "linux":
-        arch = "linux-aarch64" if ("arm" in machine or "aarch64" in machine) else "linux-x86_64"
+        if "arm" in machine or "aarch64" in machine:
+            # A 32-bit Kodi on a 64-bit kernel (e.g. CoreELEC) reports aarch64 but can only load 32-bit libraries.
+            arch = "linux-aarch64" if is_64bit else "linux-armv7"
+        else:
+            arch = "linux-x86_64"
         return arch, "libadulthideout_core.so", "adulthideout-core", ["libadulthideout_core.so"]
     if sys_name == "darwin":
         arch = "darwin-arm64" if "arm" in machine else "darwin-x86_64"
@@ -560,6 +564,8 @@ def run_kodi_service() -> None:
 
     failed_checks = 0
     last_trigger = ""
+    failed_starts = 0
+    next_start_at = 0.0
     monitor = xbmc.Monitor()
     while not monitor.abortRequested():
         # Poll faster (1.0s) while binary is not yet running so post-install activation is instant without restart
@@ -574,11 +580,20 @@ def run_kodi_service() -> None:
                     trigger = xbmcgui.Window(10000).getProperty("AdultHideoutCore.TriggerStart") or ""
                 except Exception:
                     trigger = ""
-            if (trigger and trigger != last_trigger) or is_binary_installed(addon_dir):
+            new_trigger = bool(trigger and trigger != last_trigger)
+            if new_trigger or is_binary_installed(addon_dir):
                 last_trigger = trigger
-                if is_binary_installed(addon_dir):
+                # After a failed start, wait longer each time instead of retrying every second.
+                if is_binary_installed(addon_dir) and (new_trigger or time.time() >= next_start_at):
                     _log("Detected newly installed Core binary; starting engine immediately...")
                     loaded_lib, proc = start_engine(addon_dir)
+                    if loaded_lib is None and proc is None:
+                        failed_starts += 1
+                        delay = min(300.0, 5.0 * (2 ** (failed_starts - 1)))
+                        next_start_at = time.time() + delay
+                        _log(f"Core engine did not start; next attempt in {int(delay)}s", xbmc.LOGWARNING)
+                    else:
+                        failed_starts = 0
             elif not is_binary_installed(addon_dir) and (xbmcgui is None or xbmcgui.Window(10000).getProperty("AdultHideoutCore.Downloading") != "1"):
                 try:
                     if download_platform_binaries(addon_dir, show_progress=False):

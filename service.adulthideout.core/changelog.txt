@@ -1,3 +1,8 @@
+v. 1.0.2 - 2026-11-11
+- **Core for 32-bit ARM Linux**: CoreELEC, LibreELEC and Raspberry Pi systems running a 32-bit Kodi now get the native Core engine (`linux-armv7`), with full Core search.
+- **Precise Platform Detection**: Kodi's own architecture decides which Core is installed.
+- **Calm Engine Start**: smarter retry pacing keeps the system responsive.
+
 v. 1.0.1 - 2026-11-09
 - **Native Core Search**: one concurrent pass across all sources with a global time budget and automatic retries.
 - **Smarter & Cleaner Results**: JSON site APIs, WordPress and RSS feeds, POST search forms, per-site sessions and relocated domains understood; ads, redirect links, category, tag and listing pages filtered out.
