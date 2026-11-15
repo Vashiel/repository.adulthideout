@@ -15,6 +15,10 @@ import xbmcplugin
 import xbmcvfs
 
 from resources.lib.view_utils import end_directory_with_view
+try:
+    from resources.lib.json_store import write_json_atomic
+except ImportError:
+    from json_store import write_json_atomic
 
 
 SCHEMA_VERSION = 1
@@ -83,12 +87,7 @@ def load_library():
 
 def save_library(data):
     data = _normalise(data)
-    path = _library_path()
-    temp_path = path + ".tmp"
-    with open(temp_path, "w", encoding="utf-8") as handle:
-        json.dump(data, handle, ensure_ascii=False, indent=2, sort_keys=True)
-        handle.write("\n")
-    os.replace(temp_path, path)
+    write_json_atomic(_library_path(), data, indent=2, sort_keys=True)
 
 
 def _item_id(target_url):

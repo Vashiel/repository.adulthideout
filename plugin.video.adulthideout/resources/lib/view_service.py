@@ -121,6 +121,15 @@ class ViewSettingsMonitor(xbmc.Monitor):
         self._mark_pending_if_changed()
 
 
+def _addon_playlist():
+    """True while a multi-item AdultHideout list plays, so broken items get skipped there too."""
+    try:
+        playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
+        return len(playlist) > 1 and playlist[0].getfilename().startswith("plugin://" + ADDON_ID)
+    except Exception:
+        return False
+
+
 def _refill_smart_playlist(channel, playlist):
     global _SEEN_CHANNEL_URLS, _CHANNEL_PAGES, _CHANNEL_ROUND_ADDED, _IS_REFILLING
     if not _REFILL_LOCK.acquire(False):
@@ -370,9 +379,8 @@ class SmartPlayerMonitor(xbmc.Player):
         self.grace_until = time.time() + 4.0
 
     def onPlayBackError(self):
-        active_channel = xbmcgui.Window(10000).getProperty("AdultHideout.SmartChannel")
-        if active_channel:
-            _log("Playback error on smart channel - auto skipping to next video")
+        if xbmcgui.Window(10000).getProperty("AdultHideout.SmartChannel") or _addon_playlist():
+            _log("Playback error in playlist - auto skipping to next video")
             self.stuck_since = None
             self.last_playback_time = -999
             self.grace_until = time.time() + 6.0
@@ -388,6 +396,8 @@ class SmartPlayerMonitor(xbmc.Player):
         self.last_playback_time = -999
         self.awaiting_position_reset_until = 0
         active_channel = xbmcgui.Window(10000).getProperty("AdultHideout.SmartChannel")
+        # Smart Streams only: in a normal list a stop while loading is the user stopping. A failed item
+        # there reports setResolvedUrl(False) / onPlayBackError and Kodi moves on by itself.
         if active_channel and (self.skip_requested or not self.av_started):
             self.recover_at = time.time() + 0.5
             _STOPPED_SINCE = None
@@ -410,50 +420,16 @@ class SmartPlayerMonitor(xbmc.Player):
         self.stuck_since = None
         self.last_playback_time = -999
         self.av_started = False
-        self.skip_requested = True
-        self.recover_at = time.time() + 1.0
+        if xbmcgui.Window(10000).getProperty("AdultHideout.SmartChannel"):
+            self.skip_requested = True
+            self.recover_at = time.time() + 1.0
         _STOPPED_SINCE = None
         self._check_and_refill()
         self._save_history()
 
 
-def _deploy_pending_zips():
-    try:
-        addons_dir = os.path.dirname(_addon_root)
-        core_dir = os.path.join(addons_dir, "service.adulthideout.core")
-        candidate_zips = [
-            "/sdcard/Download/service.adulthideout.core-1.0.0.zip",
-            "/storage/emulated/0/Download/service.adulthideout.core-1.0.0.zip",
-        ]
-        core_zip = next((p for p in candidate_zips if os.path.isfile(p)), None)
-        if core_zip and (not os.path.isdir(core_dir) or not os.path.isfile(os.path.join(core_dir, "service.py"))):
-            import zipfile
-            with zipfile.ZipFile(core_zip, "r") as zf:
-                zf.extractall(addons_dir)
-            xbmc.log(f"[AdultHideout] Deployed service.adulthideout.core from {core_zip}", xbmc.LOGINFO)
-            xbmc.executebuiltin("UpdateLocalAddons")
-            xbmc.executebuiltin("StartService(service.adulthideout.core)")
-
-        plugin_zips = [
-            "/sdcard/Download/plugin.video.adulthideout-1.0.26.zip",
-            "/storage/emulated/0/Download/plugin.video.adulthideout-1.0.26.zip",
-        ]
-        plugin_zip = next((p for p in plugin_zips if os.path.isfile(p)), None)
-        porner_target = os.path.join(_addon_root, "resources", "websites", "porner.py")
-        if plugin_zip and not os.path.isfile(porner_target):
-            import zipfile
-            with zipfile.ZipFile(plugin_zip, "r") as zf:
-                for member in zf.namelist():
-                    if "porner" in member.lower():
-                        zf.extract(member, addons_dir)
-            xbmc.log(f"[AdultHideout] Extracted new scrapers from {plugin_zip}", xbmc.LOGINFO)
-    except Exception as exc:
-        xbmc.log(f"[AdultHideout] Auto-deploy notice: {exc}", xbmc.LOGWARNING)
-
-
 def run():
     global _SEEN_CHANNEL_URLS, _CHANNEL_PAGES, _CHANNEL_ROUND_ADDED, _STOPPED_SINCE
-    _deploy_pending_zips()
     window = xbmcgui.Window(10000)
     if (
         window.getProperty(RUNNING_PROPERTY) == "true"
@@ -500,6 +476,7 @@ def run():
 
             now = time.time()
             active_channel = window.getProperty("AdultHideout.SmartChannel")
+            guarded = bool(active_channel) or _addon_playlist()
 
             # The plugin signals only after endOfDirectory(), so these retries
             # cannot run against the empty container shown while playback is
@@ -525,7 +502,7 @@ def run():
             if player_monitor.isPlaying() and not active_channel:
                 player_monitor._capture_history_position()
 
-            if active_channel and player_monitor.isPlaying():
+            if guarded and player_monitor.isPlaying():
                 _STOPPED_SINCE = None
                 try:
                     current_file = player_monitor.getPlayingFile()
@@ -538,7 +515,7 @@ def run():
                     player_monitor.stuck_since = None
                     player_monitor.grace_until = now + 6.0
                     _log("new smart-stream item; waiting for Kodi playback position to reset")
-                if active_channel != last_channel_name:
+                if active_channel and active_channel != last_channel_name:
                     last_channel_name = active_channel
                     _SEEN_CHANNEL_URLS.clear()
                     _CHANNEL_PAGES.setdefault(active_channel, 1)
@@ -593,7 +570,7 @@ def run():
                         player_monitor.stuck_since = None
 
                 # 2. Infinite 24/7 Deep Buffer Refill (every 1.5s)
-                if now - last_refill_check >= 1.5:
+                if active_channel and now - last_refill_check >= 1.5:
                     last_refill_check = now
                     try:
                         playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
@@ -604,7 +581,10 @@ def run():
                             threading.Thread(target=_refill_smart_playlist, args=(active_channel, playlist)).start()
                     except Exception:
                         pass
-            elif not player_monitor.isPlaying() and active_channel:
+            elif not player_monitor.isPlaying() and guarded:
+                playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
+                if not active_channel and playlist.getposition() >= len(playlist) - 1:
+                    player_monitor.recover_at = None  # end of a normal list: nothing to skip to
                 if player_monitor.recover_at and now >= player_monitor.recover_at:
                     _log("Smart channel idle after failed item - advancing to next video")
                     # Retry once more if Kodi ignores Next without emitting a callback.

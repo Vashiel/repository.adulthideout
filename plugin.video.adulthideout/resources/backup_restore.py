@@ -10,6 +10,10 @@ import xbmcaddon
 import xbmcgui
 import xbmcvfs
 
+try:
+    from resources.lib.json_store import write_json_atomic
+except ImportError:
+    from lib.json_store import write_json_atomic
 
 ADDON = xbmcaddon.Addon("plugin.video.adulthideout")
 FORMAT = "AdultHideout Complete Backup"
@@ -70,11 +74,7 @@ def _read_json(path, default=None):
 
 
 def _atomic_json_write(path, value):
-    temporary = path + ".restore.tmp"
-    with open(temporary, "w", encoding="utf-8") as handle:
-        json.dump(value, handle, ensure_ascii=False, indent=2, sort_keys=True)
-        handle.write("\n")
-    os.replace(temporary, path)
+    write_json_atomic(path, value, indent=2, sort_keys=True)
 
 
 def _portable_setting_ids():

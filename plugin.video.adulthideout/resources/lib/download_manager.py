@@ -18,6 +18,10 @@ import xbmcaddon
 import xbmcgui
 import xbmcplugin
 import xbmcvfs
+try:
+    from resources.lib.json_store import write_json_atomic
+except ImportError:
+    from json_store import write_json_atomic
 
 
 VIDEO_EXTENSIONS = ("mp4", "mkv", "webm", "mov", "ts")
@@ -97,11 +101,7 @@ def load_job(job_id):
 
 def save_job(job):
     job["updated"] = int(time.time())
-    path = _job_path(job["id"])
-    temp_path = path + ".tmp"
-    with open(temp_path, "w", encoding="utf-8") as handle:
-        json.dump(job, handle, ensure_ascii=False, indent=2, sort_keys=True)
-    os.replace(temp_path, path)
+    write_json_atomic(_job_path(job["id"]), job, indent=2, sort_keys=True)
 
 
 def update_job(job_id, **changes):

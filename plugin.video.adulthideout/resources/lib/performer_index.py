@@ -7,6 +7,10 @@ import sys
 import time
 import urllib.parse
 import urllib.request
+try:
+    from resources.lib.json_store import write_json_atomic
+except ImportError:
+    from json_store import write_json_atomic
 
 try:
     import xbmc
@@ -270,8 +274,7 @@ class PerformerIndex:
     def _save_favorites(self, favs):
         fav_file = self._get_favorites_path()
         try:
-            with open(fav_file, "w", encoding="utf-8") as f:
-                json.dump(favs, f, indent=2, ensure_ascii=False)
+            write_json_atomic(fav_file, favs, indent=2)
         except Exception as e:
             if xbmc:
                 xbmc.log(f"[AdultHideout][PerformerIndex] Error saving favorites: {e}", xbmc.LOGERROR)
@@ -292,8 +295,7 @@ class PerformerIndex:
     def _save_matrix(self, matrix):
         m_file = self._get_matrix_path()
         try:
-            with open(m_file, "w", encoding="utf-8") as f:
-                json.dump(matrix, f, indent=2, ensure_ascii=False)
+            write_json_atomic(m_file, matrix, indent=2)
         except Exception as e:
             if xbmc:
                 xbmc.log(f"[AdultHideout][PerformerIndex] Error saving matrix: {e}", xbmc.LOGERROR)

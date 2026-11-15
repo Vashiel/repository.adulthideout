@@ -20,6 +20,8 @@ from resources.lib.view_utils import end_directory_with_view
 from resources.lib.thumb_proxy import ensure_embedded_image_proxy, ensure_core_running
 ensure_embedded_image_proxy()
 ensure_core_running()
+from resources.lib import core_transport
+core_transport.install()  # page fetches of requests/cloudscraper sites go through the Rust Core first
 
 ADDON = xbmcaddon.Addon()
 ADDON_ID = ADDON.getAddonInfo('id')
@@ -1234,6 +1236,8 @@ def handle_routing():
             target_website.play_video(url)
         except Exception as exc:
             log(f"Error playing video on {website_name}: {exc}", xbmc.LOGERROR)
+            # Without a resolve answer Kodi waits forever and the playlist stalls.
+            xbmcplugin.setResolvedUrl(ADDON_HANDLE, False, xbmcgui.ListItem())
             active_channel = xbmcgui.Window(10000).getProperty("AdultHideout.SmartChannel")
             if active_channel:
                 log(f"[AdultHideout] Smart Channel '{active_channel}' active: skipping broken video silently to next", xbmc.LOGINFO)
@@ -1346,5 +1350,6 @@ if __name__ == '__main__':
         notify_user(f"Critical Error: {str(e)}")
         xbmcplugin.endOfDirectory(ADDON_HANDLE)
     finally:
+        log("Core transport so far: {}".format(core_transport.stats()))
         import gc
         gc.collect()

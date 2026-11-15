@@ -10,6 +10,10 @@ import xbmcaddon
 import xbmcgui
 import xbmcplugin
 import xbmcvfs
+try:
+    from resources.lib.json_store import write_json_atomic
+except ImportError:
+    from json_store import write_json_atomic
 
 ADDON_ID = "plugin.video.adulthideout"
 MAX_ENTRIES = 100
@@ -36,11 +40,7 @@ def load_history():
 
 
 def save_history(items):
-    path = _history_path()
-    temp_path = path + ".tmp"
-    with open(temp_path, "w", encoding="utf-8") as handle:
-        json.dump(items[:MAX_ENTRIES], handle, ensure_ascii=False, separators=(",", ":"))
-    os.replace(temp_path, path)
+    write_json_atomic(_history_path(), items[:MAX_ENTRIES], separators=(",", ":"))
 
 
 def update_entry(entry, position, duration):

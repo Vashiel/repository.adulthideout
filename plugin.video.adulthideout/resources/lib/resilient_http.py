@@ -54,7 +54,9 @@ def fetch_text(
 
     # 1. Primary path: High-speed Rust Core Engine with browser-compatible session handling
     try:
-        core_headers = {k: str(v) for k, v in request_headers.items() if k.lower() != "user-agent"}
+        from resources.lib.core_transport import english_unless_set
+
+        core_headers = english_unless_set({k: str(v) for k, v in request_headers.items() if k.lower() != "user-agent"})
         req_body = {
             "cmd": "request.get",
             "url": url,
@@ -86,7 +88,11 @@ def fetch_text(
     # 2. Secondary path: Direct scraper session if provided
     if scraper is not None:
         try:
-            request = lambda: scraper.get(url, timeout=fallback_timeout, headers=request_headers)
+            from resources.lib.core_transport import bypass
+
+            def request():
+                with bypass():  # the Core was just asked above
+                    return scraper.get(url, timeout=fallback_timeout, headers=request_headers)
             response = _ipv4_call(request) if prefer_ipv4 else request()
             if response.status_code == 200:
                 _log(logger, "debug", "HTTP response accepted via scraper")

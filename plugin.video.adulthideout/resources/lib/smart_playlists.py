@@ -18,6 +18,10 @@ import xbmcaddon
 import xbmcgui
 import xbmcplugin
 import xbmcvfs
+try:
+    from resources.lib.json_store import write_json_atomic
+except ImportError:
+    from json_store import write_json_atomic
 LIB_DIR = os.path.abspath(os.path.dirname(__file__))
 ADDON_ROOT = os.path.abspath(os.path.join(LIB_DIR, "..", ".."))
 
@@ -375,16 +379,14 @@ class SmartPlaylists:
 
     def _save_custom_streams(self, streams):
         try:
-            with open(self.custom_streams_file, "w", encoding="utf-8") as f:
-                json.dump(streams, f, indent=2, ensure_ascii=False)
+            write_json_atomic(self.custom_streams_file, streams, indent=2)
         except Exception:
             pass
 
     def _set_temp_stream(self, stream):
         self._temp_stream = dict(stream or {})
         try:
-            with open(self.active_stream_file, "w", encoding="utf-8") as handle:
-                json.dump(self._temp_stream, handle, ensure_ascii=False)
+            write_json_atomic(self.active_stream_file, self._temp_stream)
         except Exception as exc:
             xbmc.log(f"[AdultHideout] Could not store active Smart Stream: {exc}", xbmc.LOGDEBUG)
 

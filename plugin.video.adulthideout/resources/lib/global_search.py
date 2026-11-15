@@ -19,9 +19,57 @@ import xbmcvfs
 
 from resources.lib.view_utils import end_directory_with_view
 from resources.lib.smart_playlists import parse_duration_seconds, matches_duration, DEDICATED_MOVIE_SOURCES
+try:
+    from resources.lib.json_store import write_json_atomic
+except ImportError:
+    from json_store import write_json_atomic
 
 _THREAD_LOCAL = threading.local()
+
+
+class SearchAbandoned(Exception):
+    """Raised in a search worker whose global search already finished."""
+
+
+def _install_request_cancel_hook():
+    # Python threads cannot be killed. A worker of a finished search fails its next requests/cloudscraper
+    # call instead of running on for minutes and slowing down the next search.
+    try:
+        import requests.sessions
+    except ImportError:
+        return
+    original = requests.sessions.Session.request
+    if getattr(original, "_adulthideout_cancel_hook", False):
+        return
+
+    def request(self, *args, **kwargs):
+        cancel = getattr(_THREAD_LOCAL, "cancel", None)
+        if cancel is not None and cancel.is_set():
+            raise SearchAbandoned("global search already finished")
+        return original(self, *args, **kwargs)
+
+    request._adulthideout_cancel_hook = True
+    requests.sessions.Session.request = request
+
+
+# Core reasons where a Python retry fails the same way: the site is down, gone or rate limiting.
+_HOPELESS_CORE_REASON = re.compile(r"^(network: |http (40[0-24-9]|4[1-9][0-9]|50[0-24-9]|5[1-9][0-9])([ ,]|$))")
 FILMOGRAPHY_SOURCE_TIMEOUT = 60.0
+RESULT_CACHE_LIMIT = 50
+PYTHON_SEARCH_DEADLINE = 25.0
+FULL_MOVIE_MODES = (
+    "full_movies",
+    "full_movies_trans",
+    "full_movies_top_tubes",
+    "filmography_movies",
+    "filmography_movies_trans",
+    "filmography_all",
+    "filmography_all_words",
+    "full_movies_all",
+    "full_movies_all_words",
+    "full_movies_words",
+    "full_movies_words_trans",
+)
 _ORIGINAL_ADD_DIR_ITEM = xbmcplugin.addDirectoryItem
 _ORIGINAL_END_OF_DIR = xbmcplugin.endOfDirectory
 
@@ -327,8 +375,8 @@ class GlobalSearch:
 
     def _save_state(self, state):
         try:
-            with open(self._state_path(), "w") as handle:
-                json.dump(state, handle)
+            # ASCII on purpose: _load_state reads with the platform's default encoding.
+            write_json_atomic(self._state_path(), state, ensure_ascii=True)
             self._state_cache = state
         except Exception as exc:
             self.logger("Could not save global search state: {}".format(exc), xbmc.LOGWARNING)
@@ -466,16 +514,23 @@ class GlobalSearch:
         score -= max(0, len(label_tokens) - len(query_tokens)) * 5
         return score
 
+    def _matcher_for(self, query, search_mode):
+        # Multi-word queries match by words: "asmr hospital" must also find "Hospital ASMR Roleplay".
+        word_modes = ("all_words", "filmography_all_words", "full_movies_all_words", "full_movies_words", "full_movies_words_trans")
+        if search_mode in word_modes or search_mode.startswith("all_words_") or len(str(query).split()) > 1:
+            return self._matches_all_query_words
+        return self._matches_query_strictly
+
     def _display_results(self, query, results, search_mode="selected"):
         displayed = list(results or [])
 
         # Enforce exact word/token matching for query
         if query and not search_mode.startswith("filmography_titles"):
-            matcher = self._matches_all_query_words if (search_mode in ("all_words", "filmography_all_words", "full_movies_all_words", "full_movies_words", "full_movies_words_trans") or search_mode.startswith("all_words_")) else self._matches_query_strictly
+            matcher = self._matcher_for(query, search_mode)
             displayed = [r for r in displayed if matcher(r.get("label", ""), query)]
 
         # Duration filter for full_movies search mode (>= 60 min or dedicated movie sites)
-        if search_mode in ("full_movies", "full_movies_trans", "full_movies_top_tubes", "filmography_movies", "filmography_movies_trans", "filmography_all", "filmography_all_words", "full_movies_all", "full_movies_all_words", "full_movies_words", "full_movies_words_trans") or search_mode.startswith(("filmography_titles", "full_movies_pool_")):
+        if search_mode in FULL_MOVIE_MODES or search_mode.startswith(("filmography_titles", "full_movies_pool_")):
             filtered = []
             for r in displayed:
                 source = r.get("source", "")
@@ -542,6 +597,8 @@ class GlobalSearch:
             "saved_at": int(time.time()),
             "results": results,
         }
+        while len(cache) > RESULT_CACHE_LIMIT:
+            cache.pop(min(cache, key=lambda k: (cache[k] or {}).get("saved_at", 0) if isinstance(cache[k], dict) else 0))
         state["result_cache"] = cache
         self._save_state(state)
 
@@ -812,9 +869,6 @@ class GlobalSearch:
             all_url = "{}?mode=21&website=global_search&query={}&search_mode=deep".format(
                 sys_argv0(), urllib.parse.quote_plus(query)
             )
-            all_words_url = "{}?mode=21&website=global_search&query={}&search_mode=all_words".format(
-                sys_argv0(), urllib.parse.quote_plus(query)
-            )
             mode_suffix = " [COLOR grey](last: all sites)[/COLOR]" if entry_mode == "deep" else ""
             label = "[COLOR yellow]{}[/COLOR]{}".format(query, mode_suffix)
             item = xbmcgui.ListItem(label)
@@ -823,7 +877,6 @@ class GlobalSearch:
                 (self._tr(30979, "Edit / search current sources"), "RunPlugin({})".format(context_url)),
                 (self._tr(30980, "Repeat previous source scope"), "RunPlugin({})".format(previous_url)),
                 (self._tr(30981, "Search all enabled sites"), "RunPlugin({})".format(all_url)),
-                (self._tr(30982, "Search all enabled sites, all query words"), "RunPlugin({})".format(all_words_url)),
             ])
             url = "{}?mode=21&website=global_search&query={}&search_mode={}".format(
                 sys_argv0(), urllib.parse.quote_plus(query), urllib.parse.quote_plus("selected")
@@ -1543,8 +1596,7 @@ class GlobalSearch:
             pass
 
         all_sources = sources
-        word_modes = ("all_words", "filmography_all_words", "full_movies_all_words", "full_movies_words", "full_movies_words_trans")
-        matcher = self._matches_all_query_words if (search_mode in word_modes or search_mode.startswith("all_words_")) else self._matches_query_strictly
+        matcher = self._matcher_for(query, search_mode)
         if self._core_search_allowed(search_mode, profile):
             core_results, sources, cancelled = self._run_core_search(query, sources, progress, max_results_per_site, matcher)
             if core_results:
@@ -1552,14 +1604,16 @@ class GlobalSearch:
             if cancelled:
                 sources = []
 
+        abandoned = threading.Event()
+        _install_request_cancel_hook()
+
         def fetch_source(src):
             source_started_at[src] = time.monotonic()
+            _THREAD_LOCAL.cancel = abandoned
             try:
                 site = self.loader(src) if self.loader else None
                 if site is not None:
-                    site.adult_hideout_full_movie_mode = search_mode in (
-                        "full_movies", "full_movies_trans", "full_movies_top_tubes", "filmography_movies", "filmography_movies_trans", "filmography_all", "filmography_all_words", "full_movies_all", "full_movies_all_words", "full_movies_words", "full_movies_words_trans"
-                    ) or search_mode.startswith("full_movies_pool_")
+                    site.adult_hideout_full_movie_mode = search_mode in FULL_MOVIE_MODES or search_mode.startswith("full_movies_pool_")
                 captured = self._capture_site_search(site, query)
 
                 site_items = []
@@ -1568,7 +1622,6 @@ class GlobalSearch:
                         continue
                     item_label = listitem.getLabel() if listitem else ""
                     if query:
-                        matcher = self._matches_all_query_words if (search_mode in ("all_words", "filmography_all_words", "full_movies_all_words", "full_movies_words", "full_movies_words_trans") or search_mode.startswith("all_words_")) else self._matches_query_strictly
                         if not matcher(item_label, query):
                             continue
                     if (search_mode.startswith("filmography_movies")
@@ -1584,6 +1637,8 @@ class GlobalSearch:
                 return src, site_items, None
             except Exception as exc:
                 return src, [], str(exc)
+            finally:
+                _THREAD_LOCAL.cancel = None
 
         worker_count = min(48 if len(sources) > 24 else 24, max(1, len(sources)))
         executor = ThreadPoolExecutor(max_workers=worker_count)
@@ -1591,7 +1646,16 @@ class GlobalSearch:
             completed_count = 0
             future_map = {executor.submit(fetch_source, s): s for s in sources}
             pending = set(future_map.keys())
+            deadline = time.monotonic() + PYTHON_SEARCH_DEADLINE
             while pending:
+                if time.monotonic() >= deadline:
+                    # Timed-out sites keep their worker busy, so wait no longer than this for the rest.
+                    self.logger("Python search deadline after {:.1f}s, {} sources unfinished".format(
+                        time.time() - started, len(pending)), xbmc.LOGWARNING)
+                    failed.extend(future_map[f] for f in pending)
+                    for f in pending:
+                        f.cancel()
+                    break
                 if progress.iscanceled():
                     for uf in pending:
                         uf.cancel()
@@ -1637,9 +1701,11 @@ class GlobalSearch:
                             ),
                         )
         finally:
+            abandoned.set()
             executor.shutdown(wait=False)
+            self._restore_profile_overrides(previous_profile_settings)
 
-        self._restore_profile_overrides(previous_profile_settings)
+        loop_done = time.time()
         progress.close()
 
         if not cache_results:
@@ -1647,8 +1713,11 @@ class GlobalSearch:
         if failed:
             self.logger("Skipped/failed sources: {}".format(", ".join(failed)), xbmc.LOGWARNING)
         self._save_results(query, cache_results, search_mode=search_mode, sources=all_sources)
+        saved = time.time()
         self.logger("Global search '{}' ({}) returned {} results in {:.1f}s".format(query, search_mode, len(cache_results), time.time() - started))
         self._render_results_page(query, self._display_results(query, cache_results, search_mode=search_mode), page, search_mode=search_mode)
+        self.logger("Global search timing: search {:.1f}s, close+save {:.1f}s, render {:.1f}s".format(
+            loop_done - started, saved - loop_done, time.time() - saved))
 
     def _core_search_allowed(self, search_mode, profile):
         # Content-type settings and duration rules only exist in the Python site modules.
@@ -1679,10 +1748,12 @@ class GlobalSearch:
         payload = json.dumps({
             "queries": [query],
             "sources": targets,
-            "concurrency": 35,
+            # Measured on a Pixel: 96 ends ~2.5 s sooner than 35 with the same failure count.
+            "concurrency": 96,
             "timeout_ms": 6000,
             "max_results_per_site": max_results_per_site,
-            "strict_match": True,
+            # Python re-checks every label; phrase filtering in the Core would drop word matches.
+            "strict_match": matcher == self._matches_query_strictly,
             "min_duration_secs": 0,
         }).encode("utf-8")
         response = {}
@@ -1740,9 +1811,20 @@ class GlobalSearch:
             })
         core_ids = {entry["id"] for entry in targets}
         core_failed = set(data.get("failed_sources", []))
-        remaining = [name for name in sources if name not in core_ids or name in core_failed]
+        reasons = data.get("failed_reasons") or {}
+        # Sites the Core cannot fetch at all (Cloudflare, errors) only Python can find, so they
+        # go first; sites that merely ran out of Core time are the most likely to be cut off.
+        hopeless = {name for name, why in reasons.items() if _HOPELESS_CORE_REASON.match(str(why))}
+        remaining = sorted(
+            (name for name in sources if name not in core_ids or (name in core_failed and name not in hopeless)),
+            key=lambda name: str(reasons.get(name, "")).startswith("deadline"),
+        )
+        if hopeless:
+            self.logger("Not retrying in Python (down or rate limited): " + ", ".join(sorted(hopeless)))
         self.logger("Core search: {} results from {} sources in {} ms, {} failed, {} left for Python".format(
             len(results), len(targets), data.get("elapsed_ms", 0), len(core_failed), len(remaining)))
+        if reasons:
+            self.logger("Core failures: " + "; ".join("{}: {}".format(k, v) for k, v in sorted(reasons.items())))
         return results, remaining, False
 
     def run_filmography_titles(self, titles, display_query, search_mode, refresh=False, page=1, save_batch=True):
