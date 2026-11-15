@@ -63,3 +63,23 @@ if requests:
         pass
     gsm._THREAD_LOCAL.cancel = None
     print("cancel ok")
+
+# Trust the sites: a result without the query words stays in a normal search (missav matches tags),
+# but film searches keep their title check. The Core gets "query", so it does not filter either.
+tag_hit = [{"source": "missav", "label": "Night shift nurse whispers naughty nurse talk"}]
+assert len(gs._display_results("asmr hospital", tag_hit, search_mode="selected")) == 1
+assert gs._display_results("asmr hospital", tag_hit, search_mode="full_movies") == []
+sent = {}
+def capture(*a, **k):
+    sent.update(json.loads(a[0].data))
+    return type("R", (), {"__enter__": lambda s: io.BytesIO(json.dumps({"results": [], "failed_sources": []}).encode()), "__exit__": lambda s, *e: None})()
+urllib.request.urlopen = capture
+gs._run_core_search("asmr hospital", ["missav"], progress, 25, gs._matcher_for("asmr hospital", "selected"))
+assert sent.get("query") == "asmr hospital" and "queries" not in sent and sent["strict_match"] is False, sent
+print("trust ok")
+
+# Relevance before source order: the title with both words leads even from a late source.
+gs._sources_for_search = lambda q, m: ["3movs", "missav", "zzsite"]
+mixed = [{"source": "3movs", "label": "Banged in the hospital"}, {"source": "zzsite", "label": "Hospital ASMR roleplay"}]
+assert gs._display_results("asmr hospital", mixed, search_mode="selected")[0]["source"] == "zzsite"
+print("sort ok")

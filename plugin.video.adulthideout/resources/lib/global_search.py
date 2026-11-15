@@ -57,6 +57,10 @@ _HOPELESS_CORE_REASON = re.compile(r"^(network: |http (40[0-24-9]|4[1-9][0-9]|50
 FILMOGRAPHY_SOURCE_TIMEOUT = 60.0
 RESULT_CACHE_LIMIT = 50
 PYTHON_SEARCH_DEADLINE = 25.0
+# Python site searches share one interpreter: on a phone 48 at once left 89 of 104 unfinished
+# after 6 s each (missav alone needs ~5 s for two requests). Fewer, longer slots finish more.
+PYTHON_SEARCH_WORKERS = 16
+PYTHON_SITE_TIMEOUT = 15.0
 FULL_MOVIE_MODES = (
     "full_movies",
     "full_movies_trans",
@@ -515,6 +519,14 @@ class GlobalSearch:
         return score
 
     def _matcher_for(self, query, search_mode):
+        """Title filter for a search, or None to keep everything a site returned.
+
+        Normal searches trust the sites: they also match tags and descriptions (missav finds a
+        hospital ASMR video whose title has neither word). Relevance sorting still puts title
+        matches first. Film and full-movie searches look for exact titles and keep filtering.
+        """
+        if not search_mode.startswith(("full_movies", "filmography")):
+            return None
         # Multi-word queries match by words: "asmr hospital" must also find "Hospital ASMR Roleplay".
         word_modes = ("all_words", "filmography_all_words", "full_movies_all_words", "full_movies_words", "full_movies_words_trans")
         if search_mode in word_modes or search_mode.startswith("all_words_") or len(str(query).split()) > 1:
@@ -527,7 +539,8 @@ class GlobalSearch:
         # Enforce exact word/token matching for query
         if query and not search_mode.startswith("filmography_titles"):
             matcher = self._matcher_for(query, search_mode)
-            displayed = [r for r in displayed if matcher(r.get("label", ""), query)]
+            if matcher:
+                displayed = [r for r in displayed if matcher(r.get("label", ""), query)]
 
         # Duration filter for full_movies search mode (>= 60 min or dedicated movie sites)
         if search_mode in FULL_MOVIE_MODES or search_mode.startswith(("filmography_titles", "full_movies_pool_")):
@@ -558,8 +571,9 @@ class GlobalSearch:
         sort_order = options.get("sort", "relevance")
         if sort_order == "relevance":
             source_priority = {name: idx for idx, name in enumerate(self._sources_for_search(query, search_mode))}
+            # Relevance first: with trusted site results, a title holding the query words must lead,
+            # not whichever source sorts first alphabetically (Mega Shuffle put 3movs "hospital" on top).
             displayed.sort(key=lambda result: (
-                0 if source_priority.get(result.get("source", ""), 999) < 10 else 1,
                 -self._relevance_score(query, result.get("label", "")),
                 source_priority.get(result.get("source", ""), 999),
                 str(result.get("label") or "").lower(),
@@ -1586,7 +1600,7 @@ class GlobalSearch:
         failed = []
         started = time.time()
         source_started_at = {}
-        per_site_timeout = 6.0
+        per_site_timeout = PYTHON_SITE_TIMEOUT
         previous_profile_settings = self._apply_profile_overrides(profile)
 
         try:
@@ -1622,7 +1636,7 @@ class GlobalSearch:
                         continue
                     item_label = listitem.getLabel() if listitem else ""
                     if query:
-                        if not matcher(item_label, query):
+                        if matcher and not matcher(item_label, query):
                             continue
                     if (search_mode.startswith("filmography_movies")
                             and hasattr(site, "validate_search_result")):
@@ -1640,7 +1654,7 @@ class GlobalSearch:
             finally:
                 _THREAD_LOCAL.cancel = None
 
-        worker_count = min(48 if len(sources) > 24 else 24, max(1, len(sources)))
+        worker_count = min(PYTHON_SEARCH_WORKERS, max(1, len(sources)))
         executor = ThreadPoolExecutor(max_workers=worker_count)
         try:
             completed_count = 0
@@ -1746,14 +1760,15 @@ class GlobalSearch:
         if not targets:
             return None, sources, False
         payload = json.dumps({
-            "queries": [query],
+            # "queries" makes the Core filter by title on its own; a single "query" keeps all site results.
+            ("queries" if matcher else "query"): [query] if matcher else query,
             "sources": targets,
             # Measured on a Pixel: 96 ends ~2.5 s sooner than 35 with the same failure count.
             "concurrency": 96,
             "timeout_ms": 6000,
             "max_results_per_site": max_results_per_site,
             # Python re-checks every label; phrase filtering in the Core would drop word matches.
-            "strict_match": matcher == self._matches_query_strictly,
+            "strict_match": matcher is not None and matcher == self._matches_query_strictly,
             "min_duration_secs": 0,
         }).encode("utf-8")
         response = {}
@@ -1788,7 +1803,7 @@ class GlobalSearch:
             page_url = item.get("page_url", "")
             site_name = item.get("source", "")
             label = item.get("label", "") or "Video"
-            if not page_url or page_url in seen or not matcher(label, query):
+            if not page_url or page_url in seen or (matcher and not matcher(label, query)):
                 continue
             # Same terms the site modules block; the Core does not filter content.
             marker = "{} {}".format(label, page_url).lower()

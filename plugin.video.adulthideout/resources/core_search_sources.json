@@ -25,12 +25,6 @@
 "search_url": "https://8kporner.com/?link1=search&keyword={}"
 },
 {
-"api_page_url": "https://abxxx.com/video/{id}/{dir}/",
-"base_url": "https://abxxx.com/",
-"id": "abxxx",
-"search_url": "https://abxxx.com/api/videos2.php?params=259200/str/relevance/60/search..1.all..&s={}"
-},
-{
 "base_url": "https://allclassic.porn/",
 "id": "allclassic",
 "search_url": "https://allclassic.porn/search/{}/"
@@ -61,19 +55,9 @@
 "search_url": "https://www.analegg.com/search/{}/"
 },
 {
-"base_url": "https://anyporn.com",
-"id": "anyporn",
-"search_url": "https://anyporn.com/search/{}/"
-},
-{
 "base_url": "https://anysex.com",
 "id": "anysex",
 "search_url": "https://anysex.com/search/?q={}"
-},
-{
-"base_url": "https://archivebate.com/",
-"id": "archivebate",
-"search_url": "https://archivebate.com/api/v1/search?query={}&page=1"
 },
 {
 "base_url": "https://area51.porn/",
@@ -116,16 +100,6 @@
 "search_url": "https://bdsmvilla.com/search?q={}"
 },
 {
-"base_url": "https://beeg.com",
-"id": "beeg",
-"search_url": "https://beeg.com/search?q={}"
-},
-{
-"base_url": "https://bestbondagevideos.com/",
-"id": "bestbondagevideos",
-"search_url": "https://bestbondagevideos.com/?s={}"
-},
-{
 "base_url": "https://bigassporn.tv",
 "id": "bigassporn",
 "search_url": "https://bigassporn.tv/search/{}/"
@@ -134,11 +108,6 @@
 "base_url": "https://www.bigtitslust.com",
 "id": "bigtitslust",
 "search_url": "https://www.bigtitslust.com/search/{}/"
-},
-{
-"base_url": "https://bingato.com/",
-"id": "bingato",
-"search_url": "https://bingato.com/search?q={}"
 },
 {
 "base_url": "https://blackporn24.com",
@@ -191,11 +160,6 @@
 "search_url": "https://www.camwhores.tv/search/{}/"
 },
 {
-"base_url": "https://chaturbate.com",
-"id": "chaturbate",
-"search_url": "https://chaturbate.com/?keywords={}"
-},
-{
 "base_url": "https://cherrygasp.com/",
 "id": "cherrygasp",
 "search_url": "https://cherrygasp.com/search/{}/"
@@ -204,26 +168,6 @@
 "base_url": "https://cosplayporntube.com/",
 "id": "cosplayporntube",
 "search_url": "https://cosplayporntube.com/?s={}"
-},
-{
-"base_url": "https://crazyshit.com",
-"id": "crazyshit",
-"search_url": "https://crazyshit.com/search/?query={}"
-},
-{
-"base_url": "https://cumdrinkingclips.com/",
-"id": "cumdrinkingclips",
-"search_url": "https://cumdrinkingclips.com/?s={}"
-},
-{
-"base_url": "https://www.cumlouder.com",
-"id": "cumlouder",
-"search_url": "https://www.cumlouder.com/porn-videos/{}/"
-},
-{
-"base_url": "https://www.daftporn.com",
-"id": "daftporn",
-"search_url": "https://www.daftporn.com/?p=search&newstr={}&r=s"
 },
 {
 "base_url": "https://darknessporn.com",
@@ -291,24 +235,9 @@
 "search_url": "https://eroticmv.com/?s={}"
 },
 {
-"base_url": "https://euroxxx.net/",
-"id": "euroxxx",
-"search_url": "https://euroxxx.net/?s={}"
-},
-{
 "base_url": "https://faapy.com/",
 "id": "faapy",
 "search_url": "https://faapy.com/search/{}/"
-},
-{
-"base_url": "https://familypornhd.com/",
-"id": "familypornhd",
-"search_url": "https://familypornhd.com/?s={}"
-},
-{
-"base_url": "https://fapality.com/",
-"id": "fapality",
-"search_url": "https://fapality.com/search/?q={}"
 },
 {
 "base_url": "https://fapello.com/",
@@ -319,11 +248,6 @@
 "base_url": "https://fapnfuck.com/",
 "id": "fapnfuck",
 "search_url": "https://fapnfuck.com/search/{}/"
-},
-{
-"base_url": "https://www.feet9.com/",
-"id": "feet9",
-"search_url": "https://www.feet9.com/search/video/{}/"
 },
 {
 "base_url": "https://www.femdomvc.com/",
@@ -366,19 +290,9 @@
 "search_url": "https://www.fpo.xxx/search/{}/"
 },
 {
-"base_url": "https://www.freeomovie.to/",
-"id": "freeomovie",
-"search_url": "https://www.freeomovie.to/?s={}"
-},
-{
 "base_url": "https://freeonestube.com",
 "id": "freeonestube",
 "search_url": "https://freeonestube.com/?s={}"
-},
-{
-"base_url": "https://www.freepornsex.net/",
-"id": "freepornsex",
-"search_url": "https://www.freepornsex.net/?s={}"
 },
 {
 "base_url": "https://www.fulleroticmovies.net/",
@@ -389,11 +303,6 @@
 "base_url": "https://fullporner.com",
 "id": "fullporner",
 "search_url": "https://fullporner.com/search/{}/?sort={}"
-},
-{
-"base_url": "https://www.fullxcinema.com",
-"id": "fullxcinema",
-"search_url": "https://fullxcinema.com/?s={}"
 },
 {
 "base_url": "https://www.fuqer.com/",
@@ -421,20 +330,9 @@
 "search_url": "https://hairydivas.com/search/{}/"
 },
 {
-"base_url": "https://hanime.red/",
-"id": "hanime",
-"search_url": "https://hanime.red/search?q={}"
-},
-{
 "base_url": "https://hcbdsm.com/",
 "id": "hcbdsm",
 "search_url": "https://hcbdsm.com/search/{}/"
-},
-{
-"api_page_url": "https://hclips.com/videos/{id}/{dir}/",
-"base_url": "https://hclips.com/",
-"id": "hclips",
-"search_url": "https://hclips.com/api/videos2.php?params=86400/str/relevance/60/search..1.all..&s={}"
 },
 {
 "base_url": "https://www.hd-easyporn.com/",
@@ -445,16 +343,6 @@
 "base_url": "https://hdporn92.com/",
 "id": "hdporn92",
 "search_url": "https://hdporn92.com/?s={}"
-},
-{
-"base_url": "https://hdshemalez.com",
-"id": "hdshemalez",
-"search_url": "https://hdshemalez.com/?s={}"
-},
-{
-"base_url": "https://hdzog.com/",
-"id": "hdzog",
-"search_url": "https://hdzog.com/api/videos2.php?params=259200/str/relevance/60/search..1.all..&s={}"
 },
 {
 "base_url": "https://www.heavy-r.com/",
@@ -477,19 +365,9 @@
 "search_url": "https://www.hentaicity.com/search/video/{}"
 },
 {
-"base_url": "https://hentai-cosplay.com/",
-"id": "hentaicosplay",
-"search_url": "https://hentai-cosplay.com/search-video/keyword/{}/"
-},
-{
 "base_url": "https://hentaidude.xxx/",
 "id": "hentaidude",
 "search_url": "https://hentaidude.xxx/?s={}"
-},
-{
-"base_url": "https://hentaigasm.com",
-"id": "hentaigasm",
-"search_url": "https://hentaigasm.com/?s={}"
 },
 {
 "base_url": "https://hentai-moon.com/",
@@ -527,29 +405,9 @@
 "search_url": "https://hqpornero.com/search/{}.html"
 },
 {
-"base_url": "https://hstream.moe/",
-"id": "hstream",
-"search_url": "https://hstream.moe/search?search={}&order=recently-uploaded"
-},
-{
-"base_url": "https://hypnoporn.net/",
-"id": "hypnoporn",
-"search_url": "https://hypnoporn.net/?s={}"
-},
-{
-"base_url": "https://iceporncasting.net",
-"id": "iceporncasting",
-"search_url": "https://iceporncasting.net/?s={}"
-},
-{
 "base_url": "https://ikisoda.com/",
 "id": "ikisoda",
 "search_url": "https://ikisoda.com/search/{}/"
-},
-{
-"base_url": "https://internetchicks.com/",
-"id": "internetchicks",
-"search_url": "https://internetchicks.com/?s={}"
 },
 {
 "base_url": "https://www.inxxx.com/",
@@ -560,11 +418,6 @@
 "base_url": "https://jable.tv/",
 "id": "jable",
 "search_url": "https://jable.tv/search/{}/"
-},
-{
-"base_url": "https://jav.guru/",
-"id": "javguru",
-"search_url": "https://jav.guru/?s={}"
 },
 {
 "base_url": "https://www.javhdporn.net/",
@@ -582,11 +435,6 @@
 "search_url": "https://hongkong.javrate.com/search/{}"
 },
 {
-"base_url": "https://javsubbed.net",
-"id": "javsubbed",
-"search_url": "https://javsubbed.net/?s={}"
-},
-{
 "base_url": "https://javtiful.com/",
 "id": "javtiful",
 "search_url": "https://javtiful.com/search?q={}"
@@ -595,11 +443,6 @@
 "base_url": "https://jizzberry.com/",
 "id": "jizzberry",
 "search_url": "https://jizzberry.com/s/{}/"
-},
-{
-"base_url": "https://bestporn4free.com",
-"id": "justfullporn",
-"search_url": "https://bestporn4free.com/?s={}"
 },
 {
 "base_url": "https://www.justporn.com/",
@@ -655,11 +498,6 @@
 "base_url": "https://milfzr.com/",
 "id": "milfzr",
 "search_url": "https://milfzr.com/?s={}"
-},
-{
-"base_url": "https://missav123.com/",
-"id": "missav",
-"search_url": "https://missav123.com/en/search/{}"
 },
 {
 "base_url": "https://morehardporn.com/",
@@ -727,11 +565,6 @@
 "search_url": "https://pandamovies.org/?s={}"
 },
 {
-"base_url": "https://en.paradisehill.cc",
-"id": "paradisehill",
-"search_url": "https://en.paradisehill.cc/search/?pattern={}"
-},
-{
 "base_url": "https://www.perfectgirls.xxx",
 "id": "perfectgirls",
 "search_url": "https://www.perfectgirls.xxx/search/{}/?sort={}"
@@ -745,11 +578,6 @@
 "base_url": "https://www.pervertium.com/",
 "id": "pervertium",
 "search_url": "https://www.pervertium.com/search/{}/"
-},
-{
-"base_url": "https://tube.perverzija.com/",
-"id": "perverzija",
-"search_url": "https://tube.perverzija.com/?s={}"
 },
 {
 "base_url": "https://pezdwood.com/",
@@ -770,16 +598,6 @@
 "base_url": "https://porcore.com",
 "id": "porcore",
 "search_url": "https://porcore.com/show/{}?ajax"
-},
-{
-"base_url": "https://www.porn00.org",
-"id": "porn00",
-"search_url": "https://www.porn00.org/q/{}/"
-},
-{
-"base_url": "https://www.porn300.com",
-"id": "porn300",
-"search_url": "https://www.porn300.com/search/?q={}"
 },
 {
 "base_url": "https://porn4days.pw/",
@@ -807,11 +625,6 @@
 "search_url": "https://pornbimbo.com/search/{}/"
 },
 {
-"base_url": "https://pornbusy.com/",
-"id": "pornbusy",
-"search_url": "https://pornbusy.com/?s={}"
-},
-{
 "base_url": "https://www.porndig.com",
 "id": "porndig",
 "search_url": "https://www.porndig.com/videos/s={}"
@@ -837,11 +650,6 @@
 "search_url": "https://pornez.cam/?s={}"
 },
 {
-"base_url": "https://www.pornflip.com",
-"id": "pornflip",
-"search_url": "https://www.pornflip.com/search?q={}"
-},
-{
 "base_url": "https://www.porngo.com",
 "id": "porngo",
 "search_url": "https://www.porngo.com/search/{}/"
@@ -860,12 +668,6 @@
 "base_url": "https://www.pornheed.com",
 "id": "pornheed",
 "search_url": "https://www.pornheed.com/search/{}"
-},
-{
-"base_url": "https://pornhoarder.tv/",
-"id": "pornhoarder",
-"post_data": "search={}&sort=0&date=0&author=0&page=1&servers%5B%5D=47&servers%5B%5D=21&servers%5B%5D=40&servers%5B%5D=45&servers%5B%5D=12&servers%5B%5D=25&servers%5B%5D=41&servers%5B%5D=44&servers%5B%5D=42&servers%5B%5D=43&servers%5B%5D=48&servers%5B%5D=29",
-"search_url": "https://pornhoarder.tv/ajax_search.php"
 },
 {
 "base_url": "https://www.pornktube.com",
@@ -898,29 +700,9 @@
 "search_url": "https://www.pornoaffe.net/suche/?k={}"
 },
 {
-"base_url": "https://pornobae.com/",
-"id": "pornobae",
-"search_url": "https://pornobae.com/?s={}"
-},
-{
-"base_url": "https://www.pornoente.net/",
-"id": "pornoente",
-"search_url": "https://www.pornoente.net/suche/?q={}"
-},
-{
 "base_url": "https://ru.pornofeya.org/",
 "id": "pornofeya",
 "search_url": "https://ru.pornofeya.org/search/{}/"
-},
-{
-"base_url": "https://www.pornohirsch.net/",
-"id": "pornohirsch",
-"search_url": "https://www.pornohirsch.net/suche/?k={}"
-},
-{
-"base_url": "https://pornone.com",
-"id": "pornone",
-"search_url": "https://pornone.com/search/{}/"
 },
 {
 "base_url": "https://www.pornrabbit.com/",
@@ -973,11 +755,6 @@
 "search_url": "https://pornzog.com/search/?s={}&o=recent"
 },
 {
-"base_url": "https://premiumporn.org/",
-"id": "premiumporn",
-"search_url": "https://premiumporn.org/?s={}"
-},
-{
 "base_url": "https://www.punishbang.com",
 "id": "punishbang",
 "search_url": "https://www.punishbang.com/search/?q={}"
@@ -988,19 +765,9 @@
 "search_url": "https://punishworld.com/?s={}"
 },
 {
-"base_url": "https://www.pussyspace.com/",
-"id": "pussyspace",
-"search_url": "https://www.pussyspace.com/search?q={}"
-},
-{
 "base_url": "https://rapelust.com/",
 "id": "rapelust",
 "search_url": "https://rapelust.com/?s={}"
-},
-{
-"base_url": "https://www.redtube.com/",
-"id": "redtube",
-"search_url": "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&search={}"
 },
 {
 "base_url": "https://retropornarchives.com/",
@@ -1031,11 +798,6 @@
 "base_url": "https://saintporn.com",
 "id": "saintporn",
 "search_url": "https://saintporn.com/search/{}/"
-},
-{
-"base_url": "https://sextb.net",
-"id": "sextb",
-"search_url": "https://sextb.net/search/{}"
 },
 {
 "base_url": "https://fullvideosporn.com/",
@@ -1099,11 +861,6 @@
 "search_url": "https://www.spankingtube.com/search/videos/{}/"
 },
 {
-"base_url": "https://speedporn.net",
-"id": "speedporn",
-"search_url": "https://speedporn.net/?s={}"
-},
-{
 "base_url": "https://streamporn.li/",
 "id": "streamporn",
 "search_url": "https://streamporn.li/?s={}"
@@ -1117,11 +874,6 @@
 "base_url": "https://www.superporn.com",
 "id": "superporn",
 "search_url": "https://www.superporn.com/search?q={}"
-},
-{
-"base_url": "https://swingerpornfun.com/",
-"id": "swingerpornfun",
-"search_url": "https://swingerpornfun.com/?s={}"
 },
 {
 "base_url": "https://sxyprn.net",
@@ -1194,41 +946,14 @@
 "search_url": "https://www.trendyporn.com/search/{}/"
 },
 {
-"base_url": "https://www.tube8.com/",
-"id": "tube8",
-"search_url": "https://www.tube8.com/searches.html?q={}"
-},
-{
 "base_url": "https://www.tubeorigin.com/",
 "id": "tubeorigin",
 "search_url": "https://www.tubeorigin.com/search?q={}"
 },
 {
-"api_page_url": "https://tubepornclassic.com/videos/{id}/",
-"base_url": "https://tubepornclassic.com/",
-"id": "tubepornclassic",
-"search_url": "https://tubepornclassic.com/api/videos2.php?params=86400/str/relevance/60/search..1.all..&s={}"
-},
-{
-"base_url": "https://www.tubev.sex",
-"id": "tubev",
-"search_url": "https://www.tubev.sex/search?q={}"
-},
-{
 "base_url": "https://txxx.com/",
 "id": "txxx",
 "search_url": "https://txxx.com/api/videos2.php?params=259200/str/relevance/60/search..1.all..&s={}"
-},
-{
-"api_page_url": "PLAY_VIDEO:{id}",
-"base_url": "https://upornia.com/",
-"id": "upornia",
-"search_url": "https://upornia.com/api/videos.php?params=86400/str/relevance/60/search..1.all..&s={}"
-},
-{
-"base_url": "https://veporn.com",
-"id": "veporn",
-"search_url": "https://veporn.com/search?q={}"
 },
 {
 "base_url": "https://www.vikiporn.com",
@@ -1254,22 +979,6 @@
 "base_url": "https://viralxxxporn.com/",
 "id": "viralxxxporn",
 "search_url": "https://viralxxxporn.com/search/{}/"
-},
-{
-"base_url": "https://vjav.com/",
-"id": "vjav",
-"search_url": "https://vjav.com/api/videos2.php?params=259200/str/relevance/60/search..1.all..&s={}"
-},
-{
-"base_url": "https://voyeurhit.com/",
-"id": "voyeurhit",
-"search_url": "https://voyeurhit.com/api/videos2.php?params=259200/str/relevance/60/search..1.all..&s={}"
-},
-{
-"api_page_url": "https://vxxx.com/video/{id}/{dir}/",
-"base_url": "https://vxxx.com/",
-"id": "vxxx",
-"search_url": "https://vxxx.com/api/videos2.php?params=259200/str/relevance/60/search..1.all..&s={}"
 },
 {
 "base_url": "https://w1mp.com/",
@@ -1302,16 +1011,6 @@
 "search_url": "https://watchporn.to/search/{}/"
 },
 {
-"base_url": "https://xxxfree.watch/",
-"id": "watchxxxfree",
-"search_url": "https://xxxfree.watch/?s={}"
-},
-{
-"base_url": "https://moneypornvideo.com/",
-"id": "whereismyporn",
-"search_url": "https://moneypornvideo.com/?s={}"
-},
-{
 "base_url": "https://www.whoreshub.com/",
 "id": "whoreshub",
 "search_url": "https://www.whoreshub.com/search/{}/"
@@ -1330,11 +1029,6 @@
 "base_url": "https://xbabe.com",
 "id": "xbabe",
 "search_url": "https://xbabe.com/search/?q={}"
-},
-{
-"base_url": "https://xcafe.com",
-"id": "xcafe",
-"search_url": "https://xcafe.com/videos/?q={}"
 },
 {
 "base_url": "https://www.xfreehd.com/",
@@ -1357,29 +1051,14 @@
 "search_url": "https://www.xmegadrive.com/search/{}/"
 },
 {
-"base_url": "https://xmoviesforyou.com",
-"id": "xmoviesforyou",
-"search_url": "https://xmoviesforyou.com/search?q={}"
-},
-{
 "base_url": "https://www.xnxx.com",
 "id": "xnxx",
 "search_url": "https://www.xnxx.com/search/{}"
 },
 {
-"base_url": "https://xopenload.net",
-"id": "xopenload",
-"search_url": "https://xopenload.net/?s={}"
-},
-{
 "base_url": "https://www.xozilla.com/",
 "id": "xozilla",
 "search_url": "https://www.xozilla.com/search/{}/"
-},
-{
-"base_url": "https://xtapes.org/",
-"id": "xtapes",
-"search_url": "https://xtapes.org/?s={}"
 },
 {
 "base_url": "https://www.xxbrits.com/",
@@ -1392,11 +1071,6 @@
 "search_url": "https://xxthots.com/search/{}/"
 },
 {
-"base_url": "https://xxvideoss.org",
-"id": "xxvideoss",
-"search_url": "https://xxvideoss.org/?s={}"
-},
-{
 "base_url": "https://www.xxxfiles.com",
 "id": "xxxfiles",
 "search_url": "https://www.xxxfiles.com/search/{}/"
@@ -1407,19 +1081,9 @@
 "search_url": "https://xxxperevod.com/search/{}/"
 },
 {
-"base_url": "https://x-x-x.tube",
-"id": "xxxtube",
-"search_url": "https://x-x-x.tube/search/{}/"
-},
-{
 "base_url": "https://www1.yabuchka.xyz/",
 "id": "yabuchka",
 "search_url": "https://www1.yabuchka.xyz/search/{}/"
-},
-{
-"base_url": "https://yespornpleasexxx.com/",
-"id": "yespornpleasexxx",
-"search_url": "https://yespornpleasexxx.com/?s={}"
 },
 {
 "base_url": "https://yesporn.vip/",
