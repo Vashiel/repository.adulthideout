@@ -1,0 +1,140 @@
+{
+ "_comment": "Site profiles: each module's own search patterns, run by the Rust Core (PhantomFlare src/site_profile.rs). A site listed here searches in the Core even if PYTHON_ONLY lists it. {} = Core with its generic/API parser.",
+ "cumlouder": {
+  "profile": {
+   "item": "<a\\b[^>]*class=[\"'][^\"']*\\bmuestra-escena\\b[^\"']*[\"'][^>]*>.*?</a>",
+   "fields": {
+    "url": [
+     "href=[\"']([^\"']*/porn-video/[^\"']+)"
+    ],
+    "thumb": [
+     "<img\\b[^>]*data-src=[\"']([^\"']+)[\"']",
+     "<img\\b[^>]*src=[\"']([^\"']+)[\"']"
+    ],
+    "title": [
+     "<img\\b[^>]*alt=[\"']([^\"']+)[\"']",
+     "<h[1-6][^>]*>(.*?)</h[1-6]>"
+    ],
+    "duration": [
+     "class=[\"']minutos[\"'][^>]*>.*?(\\d{1,2}:\\d{2})"
+    ]
+   }
+  }
+ },
+ "missav": {
+  "profile": {
+   "item": "<div class=\"thumbnail group[^\"]*\"(.*?)(?=<div class=\"thumbnail group|$)",
+   "fields": {
+    "url": [
+     "href=\"([^\"]+)\""
+    ],
+    "thumb": [
+     "<img[^>]+data-src=\"([^\"]+)\""
+    ],
+    "title": [
+     "<img[^>]+data-src=\"[^\"]+\"[^>]*alt=\"([^\"]*)\"",
+     "<img[^>]+alt=\"([^\"]*)\"[^>]*data-src="
+    ],
+    "duration": [
+     "class=\"[^\"]*absolute bottom-1[^\"]*\"[^>]*>\\s*([\\d:]+)"
+    ]
+   },
+   "warmup_url": "https://missav123.com/"
+  }
+ },
+ "porn300": {
+  "profile": {
+   "item": "<a\\s+[^>]*href=[\"'](?P<url>/video/[^\"']+)[\"'][^>]*>.*?<img[^>]+src=[\"'](?P<thumb>[^\"']+(?:\\.jpg|\\.webp)[^\"']*)[\"'][^>]*>.*?<h3[^>]*>\\s*(?P<title>[^<]+)\\s*</h3>",
+   "fields": {
+    "duration": [
+     "<span[^>]+class=[\"'][^\"']*duration[^\"']*[\"'][^>]*>\\s*([^<]*)\\s*</span>"
+    ]
+   }
+  }
+ },
+ "pornhoarder": {
+  "profile": {
+   "item": "<article>\\s*(.*?)</article>",
+   "fields": {
+    "url": [
+     "<a[^>]+href=\"([^\"]*/pornvideo/[^\"]+)\"[^>]*class=\"[^\"]*video-link"
+    ],
+    "title": [
+     "<h1>(.*?)</h1>"
+    ],
+    "thumb": [
+     "data-src=\"([^\"]+)\""
+    ],
+    "duration": [
+     "<div[^>]+class=\"[^\"]*video-length[^\"]*\"[^>]*>(.*?)</div>"
+    ]
+   }
+  }
+ },
+ "pornone": {
+  "profile": {
+   "item": "href=\"(?P<url>[^\"]+)\"[^>]*class=\"[^\"]*videocard[^\"]*\"[^>]*>.*?data-src=\"(?P<thumb>[^\"]+)\".*?class=\"videotitle[^\"]*\"[^>]*>(?P<title>[^<]+)"
+  }
+ },
+ "pussyspace": {
+  "profile": {
+   "item": "<div id=\"vid_\\d+\" class=\"video_div\">.*?<a[^>]*href=\"(?P<url>[^\"]+)\"[^>]*>.*?<img[^>]*src=\"(?P<thumb>[^\"]+)\"[^>]*>.*?<div class=\"ts3\"><a[^>]*>(?P<title>.*?)</a>",
+   "fields": {
+    "duration": [
+     "<span class=\"video_duration\">([^<]+)</span>"
+    ]
+   }
+  }
+ },
+ "redtube": {},
+ "tube8": {
+  "profile": {
+   "item": "(<article class=\"video-box[^\"]*.*?</article>)",
+   "fields": {
+    "url": [
+     "<a href=\"([^\"]+)\"[^>]*class=\"[^\"]*(?:tm_video_link|video-title-text)[^\"]*\""
+    ],
+    "title": [
+     "class=\"[^\"]*video-title-text[^\"]*\"[^>]*>\\s*(?:<span>)?(.*?)(?:</span>)?\\s*</a>",
+     "alt=\"([^\"]+)\""
+    ],
+    "thumb": [
+     "data-poster=\"([^\"]+)\"",
+     "data-src=\"([^\"]+)\"",
+     "poster=\"([^\"]+)\"",
+     "src=\"([^\"]+)\""
+    ],
+    "duration": [
+     "class=\"[^\"]*tm_video_duration[^\"]*\"[^>]*>\\s*<span>(.*?)</span>"
+    ]
+   }
+  }
+ },
+ "xtapes": {
+  "profile": {
+   "item": "<li\\b[^>]+class=[\"'][^\"']*border-radius-5[^\"']*[\"'](.*?)(?=<li\\b[^>]+class=[\"'][^\"']*border-radius-5|$)",
+   "fields": {
+    "url": [
+     "<a\\b[^>]+href=[\"'](https?://xtapes\\.org/[^\"']+/[^\"']+)[\"'][^>]*title="
+    ],
+    "title": [
+     "<img\\b[^>]*\\s(?:alt|title)=[\"']([^\"']+)[\"']",
+     "<a\\b[^>]+href=[\"'][^\"']+[\"'][^>]*title=[\"']([^\"']+)[\"']"
+    ],
+    "thumb": [
+     "<img\\b[^>]*\\sdata-src=[\"']([^\"']+)[\"']",
+     "<img\\b[^>]*\\sdata-original=[\"']([^\"']+)[\"']",
+     "<img\\b[^>]*\\ssrc=[\"']([^\"']+)[\"']"
+    ],
+    "duration": [
+     "class=[\"'][^\"']*time-infos[^\"']*[\"'][^>]*>(.*?)<span"
+    ]
+   }
+  }
+ },
+ "xxxtube": {
+  "profile": {
+   "item": "<a\\s+href=\"(?P<url>https://x-x-x\\.tube/videos/\\d+/[^\"]+/)\"\\s+title=\"(?P<title>[^\"]+)\"[^>]*>.*?<img[^>]+(?:src|data-src)=\"(?P<thumb>[^\"]+)\"[^>]+alt=\"[^\"]*\".*?<div\\s+class=\"duration\">\\s*(?P<duration>[^<]+)\\s*</div>"
+  }
+ }
+}

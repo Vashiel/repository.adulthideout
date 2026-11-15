@@ -170,6 +170,30 @@
 "search_url": "https://cosplayporntube.com/?s={}"
 },
 {
+"base_url": "https://www.cumlouder.com",
+"id": "cumlouder",
+"profile": {
+"fields": {
+"duration": [
+"class=[\"']minutos[\"'][^>]*>.*?(\\d{1,2}:\\d{2})"
+],
+"thumb": [
+"<img\\b[^>]*data-src=[\"']([^\"']+)[\"']",
+"<img\\b[^>]*src=[\"']([^\"']+)[\"']"
+],
+"title": [
+"<img\\b[^>]*alt=[\"']([^\"']+)[\"']",
+"<h[1-6][^>]*>(.*?)</h[1-6]>"
+],
+"url": [
+"href=[\"']([^\"']*/porn-video/[^\"']+)"
+]
+},
+"item": "<a\\b[^>]*class=[\"'][^\"']*\\bmuestra-escena\\b[^\"']*[\"'][^>]*>.*?</a>"
+},
+"search_url": "https://www.cumlouder.com/porn-videos/{}/"
+},
+{
 "base_url": "https://darknessporn.com",
 "id": "darknessporn",
 "search_url": "https://darknessporn.com/?s={}"
@@ -500,6 +524,30 @@
 "search_url": "https://milfzr.com/?s={}"
 },
 {
+"base_url": "https://missav123.com/",
+"id": "missav",
+"profile": {
+"fields": {
+"duration": [
+"class=\"[^\"]*absolute bottom-1[^\"]*\"[^>]*>\\s*([\\d:]+)"
+],
+"thumb": [
+"<img[^>]+data-src=\"([^\"]+)\""
+],
+"title": [
+"<img[^>]+data-src=\"[^\"]+\"[^>]*alt=\"([^\"]*)\"",
+"<img[^>]+alt=\"([^\"]*)\"[^>]*data-src="
+],
+"url": [
+"href=\"([^\"]+)\""
+]
+},
+"item": "<div class=\"thumbnail group[^\"]*\"(.*?)(?=<div class=\"thumbnail group|$)",
+"warmup_url": "https://missav123.com/"
+},
+"search_url": "https://missav123.com/en/search/{}"
+},
+{
 "base_url": "https://morehardporn.com/",
 "id": "morehardporn",
 "search_url": "https://morehardporn.com/search/{}/"
@@ -600,6 +648,19 @@
 "search_url": "https://porcore.com/show/{}?ajax"
 },
 {
+"base_url": "https://www.porn300.com",
+"id": "porn300",
+"profile": {
+"fields": {
+"duration": [
+"<span[^>]+class=[\"'][^\"']*duration[^\"']*[\"'][^>]*>\\s*([^<]*)\\s*</span>"
+]
+},
+"item": "<a\\s+[^>]*href=[\"'](?P<url>/video/[^\"']+)[\"'][^>]*>.*?<img[^>]+src=[\"'](?P<thumb>[^\"']+(?:\\.jpg|\\.webp)[^\"']*)[\"'][^>]*>.*?<h3[^>]*>\\s*(?P<title>[^<]+)\\s*</h3>"
+},
+"search_url": "https://www.porn300.com/search/?q={}"
+},
+{
 "base_url": "https://porn4days.pw/",
 "id": "porn4days",
 "search_url": "https://porn4days.pw/search/?s={}"
@@ -670,6 +731,29 @@
 "search_url": "https://www.pornheed.com/search/{}"
 },
 {
+"base_url": "https://pornhoarder.tv/",
+"id": "pornhoarder",
+"post_data": "search={}&sort=0&date=0&author=0&page=1&servers%5B%5D=47&servers%5B%5D=21&servers%5B%5D=40&servers%5B%5D=45&servers%5B%5D=12&servers%5B%5D=25&servers%5B%5D=41&servers%5B%5D=44&servers%5B%5D=42&servers%5B%5D=43&servers%5B%5D=48&servers%5B%5D=29",
+"profile": {
+"fields": {
+"duration": [
+"<div[^>]+class=\"[^\"]*video-length[^\"]*\"[^>]*>(.*?)</div>"
+],
+"thumb": [
+"data-src=\"([^\"]+)\""
+],
+"title": [
+"<h1>(.*?)</h1>"
+],
+"url": [
+"<a[^>]+href=\"([^\"]*/pornvideo/[^\"]+)\"[^>]*class=\"[^\"]*video-link"
+]
+},
+"item": "<article>\\s*(.*?)</article>"
+},
+"search_url": "https://pornhoarder.tv/ajax_search.php"
+},
+{
 "base_url": "https://www.pornktube.com",
 "id": "pornktube",
 "search_url": "https://www.pornktube.com/s/?q={}"
@@ -703,6 +787,14 @@
 "base_url": "https://ru.pornofeya.org/",
 "id": "pornofeya",
 "search_url": "https://ru.pornofeya.org/search/{}/"
+},
+{
+"base_url": "https://pornone.com",
+"id": "pornone",
+"profile": {
+"item": "href=\"(?P<url>[^\"]+)\"[^>]*class=\"[^\"]*videocard[^\"]*\"[^>]*>.*?data-src=\"(?P<thumb>[^\"]+)\".*?class=\"videotitle[^\"]*\"[^>]*>(?P<title>[^<]+)"
+},
+"search_url": "https://pornone.com/search/{}/"
 },
 {
 "base_url": "https://www.pornrabbit.com/",
@@ -765,9 +857,27 @@
 "search_url": "https://punishworld.com/?s={}"
 },
 {
+"base_url": "https://www.pussyspace.com/",
+"id": "pussyspace",
+"profile": {
+"fields": {
+"duration": [
+"<span class=\"video_duration\">([^<]+)</span>"
+]
+},
+"item": "<div id=\"vid_\\d+\" class=\"video_div\">.*?<a[^>]*href=\"(?P<url>[^\"]+)\"[^>]*>.*?<img[^>]*src=\"(?P<thumb>[^\"]+)\"[^>]*>.*?<div class=\"ts3\"><a[^>]*>(?P<title>.*?)</a>"
+},
+"search_url": "https://www.pussyspace.com/search?q={}"
+},
+{
 "base_url": "https://rapelust.com/",
 "id": "rapelust",
 "search_url": "https://rapelust.com/?s={}"
+},
+{
+"base_url": "https://www.redtube.com/",
+"id": "redtube",
+"search_url": "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&search={}"
 },
 {
 "base_url": "https://retropornarchives.com/",
@@ -946,6 +1056,32 @@
 "search_url": "https://www.trendyporn.com/search/{}/"
 },
 {
+"base_url": "https://www.tube8.com/",
+"id": "tube8",
+"profile": {
+"fields": {
+"duration": [
+"class=\"[^\"]*tm_video_duration[^\"]*\"[^>]*>\\s*<span>(.*?)</span>"
+],
+"thumb": [
+"data-poster=\"([^\"]+)\"",
+"data-src=\"([^\"]+)\"",
+"poster=\"([^\"]+)\"",
+"src=\"([^\"]+)\""
+],
+"title": [
+"class=\"[^\"]*video-title-text[^\"]*\"[^>]*>\\s*(?:<span>)?(.*?)(?:</span>)?\\s*</a>",
+"alt=\"([^\"]+)\""
+],
+"url": [
+"<a href=\"([^\"]+)\"[^>]*class=\"[^\"]*(?:tm_video_link|video-title-text)[^\"]*\""
+]
+},
+"item": "(<article class=\"video-box[^\"]*.*?</article>)"
+},
+"search_url": "https://www.tube8.com/searches.html?q={}"
+},
+{
 "base_url": "https://www.tubeorigin.com/",
 "id": "tubeorigin",
 "search_url": "https://www.tubeorigin.com/search?q={}"
@@ -1061,6 +1197,31 @@
 "search_url": "https://www.xozilla.com/search/{}/"
 },
 {
+"base_url": "https://xtapes.org/",
+"id": "xtapes",
+"profile": {
+"fields": {
+"duration": [
+"class=[\"'][^\"']*time-infos[^\"']*[\"'][^>]*>(.*?)<span"
+],
+"thumb": [
+"<img\\b[^>]*\\sdata-src=[\"']([^\"']+)[\"']",
+"<img\\b[^>]*\\sdata-original=[\"']([^\"']+)[\"']",
+"<img\\b[^>]*\\ssrc=[\"']([^\"']+)[\"']"
+],
+"title": [
+"<img\\b[^>]*\\s(?:alt|title)=[\"']([^\"']+)[\"']",
+"<a\\b[^>]+href=[\"'][^\"']+[\"'][^>]*title=[\"']([^\"']+)[\"']"
+],
+"url": [
+"<a\\b[^>]+href=[\"'](https?://xtapes\\.org/[^\"']+/[^\"']+)[\"'][^>]*title="
+]
+},
+"item": "<li\\b[^>]+class=[\"'][^\"']*border-radius-5[^\"']*[\"'](.*?)(?=<li\\b[^>]+class=[\"'][^\"']*border-radius-5|$)"
+},
+"search_url": "https://xtapes.org/?s={}"
+},
+{
 "base_url": "https://www.xxbrits.com/",
 "id": "xxbrits",
 "search_url": "https://www.xxbrits.com/search/{}/"
@@ -1079,6 +1240,14 @@
 "base_url": "https://xxxperevod.com/",
 "id": "xxxperevod",
 "search_url": "https://xxxperevod.com/search/{}/"
+},
+{
+"base_url": "https://x-x-x.tube",
+"id": "xxxtube",
+"profile": {
+"item": "<a\\s+href=\"(?P<url>https://x-x-x\\.tube/videos/\\d+/[^\"]+/)\"\\s+title=\"(?P<title>[^\"]+)\"[^>]*>.*?<img[^>]+(?:src|data-src)=\"(?P<thumb>[^\"]+)\"[^>]+alt=\"[^\"]*\".*?<div\\s+class=\"duration\">\\s*(?P<duration>[^<]+)\\s*</div>"
+},
+"search_url": "https://x-x-x.tube/search/{}/"
 },
 {
 "base_url": "https://www1.yabuchka.xyz/",

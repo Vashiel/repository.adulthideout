@@ -214,12 +214,15 @@ def main():
     sys.argv = ["plugin://plugin.video.adulthideout/", "1", ""]
     from resources.lib.base_website import BaseWebsite
 
+    # Sites with the module's own patterns search in the Core even if PYTHON_ONLY lists them.
+    with open(os.path.join(ADDON, "resources", "site_profiles.json"), encoding="utf-8") as handle:
+        profiles = {k: v for k, v in json.load(handle).items() if not k.startswith("_")}
     sources, skipped = [], {}
     for filename in sorted(os.listdir(WEBSITES)):
         if not filename.endswith(".py") or filename == "__init__.py":
             continue
         name = filename[:-3]
-        if name in PYTHON_ONLY:
+        if name in PYTHON_ONLY and name not in profiles:
             skipped[name] = "Python only"
             continue
         entry = {"id": name}
@@ -234,6 +237,7 @@ def main():
                 skipped[name] = "load error: {}".format(exc)
                 continue
         entry.update(OVERRIDES.get(name, {}))
+        entry.update(profiles.get(name, {}))
         if "{}" not in entry.get("search_url", "") + entry.get("post_data", ""):
             skipped[name] = "no usable search_url: {!r}".format(entry.get("search_url"))[:90]
             continue
