@@ -542,7 +542,7 @@
 "href=\"([^\"]+)\""
 ]
 },
-"item": "<div class=\"thumbnail group[^\"]*\"(.*?)(?=<div class=\"thumbnail group|$)",
+"item": "<div\\b[^>]*class=\"thumbnail group[^\"]*\"(.*?)(?=<div\\b[^>]*class=\"thumbnail group|$)",
 "warmup_url": "https://missav123.com/"
 },
 "search_url": "https://missav123.com/en/search/{}"
@@ -877,7 +877,25 @@
 {
 "base_url": "https://www.redtube.com/",
 "id": "redtube",
-"search_url": "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&search={}"
+"profile": {
+"fields": {
+"duration": [
+"tm_video_duration[\"\\s>]+(\\d+:\\d+)"
+],
+"thumb": [
+"data-src=\"([^\"]+)\""
+],
+"title": [
+"class=\"[^\"]*video-title-text[^\"]*\"[^>]*>\\s*([^<]+)",
+"title=\"([^\"]+)\""
+],
+"url": [
+"data-video-id=\"(\\d+)\""
+]
+},
+"item": "<li[^>]+data-video-id=\"\\d+\"[^>]*>.*?</li>"
+},
+"search_url": "https://www.redtube.com/?search={}"
 },
 {
 "base_url": "https://retropornarchives.com/",
@@ -1199,6 +1217,12 @@
 {
 "base_url": "https://xtapes.org/",
 "id": "xtapes",
+"link_replace": [
+[
+"://en.xtapes.tw/",
+"://xtapes.org/"
+]
+],
 "profile": {
 "fields": {
 "duration": [
@@ -1214,7 +1238,7 @@
 "<a\\b[^>]+href=[\"'][^\"']+[\"'][^>]*title=[\"']([^\"']+)[\"']"
 ],
 "url": [
-"<a\\b[^>]+href=[\"'](https?://xtapes\\.org/[^\"']+/[^\"']+)[\"'][^>]*title="
+"<a\\b[^>]+href=[\"'](https?://[^\"']+/[^\"']+/[^\"']*)[\"'][^>]*title="
 ]
 },
 "item": "<li\\b[^>]+class=[\"'][^\"']*border-radius-5[^\"']*[\"'](.*?)(?=<li\\b[^>]+class=[\"'][^\"']*border-radius-5|$)"

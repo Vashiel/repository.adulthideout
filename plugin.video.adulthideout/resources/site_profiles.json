@@ -23,7 +23,7 @@
  },
  "missav": {
   "profile": {
-   "item": "<div class=\"thumbnail group[^\"]*\"(.*?)(?=<div class=\"thumbnail group|$)",
+   "item": "<div\\b[^>]*class=\"thumbnail group[^\"]*\"(.*?)(?=<div\\b[^>]*class=\"thumbnail group|$)",
    "fields": {
     "url": [
      "href=\"([^\"]+)\""
@@ -86,7 +86,27 @@
    }
   }
  },
- "redtube": {},
+ "redtube": {
+  "search_url": "https://www.redtube.com/?search={}",
+  "profile": {
+   "item": "<li[^>]+data-video-id=\"\\d+\"[^>]*>.*?</li>",
+   "fields": {
+    "url": [
+     "data-video-id=\"(\\d+)\""
+    ],
+    "thumb": [
+     "data-src=\"([^\"]+)\""
+    ],
+    "duration": [
+     "tm_video_duration[\"\\s>]+(\\d+:\\d+)"
+    ],
+    "title": [
+     "class=\"[^\"]*video-title-text[^\"]*\"[^>]*>\\s*([^<]+)",
+     "title=\"([^\"]+)\""
+    ]
+   }
+  }
+ },
  "tube8": {
   "profile": {
    "item": "(<article class=\"video-box[^\"]*.*?</article>)",
@@ -115,7 +135,7 @@
    "item": "<li\\b[^>]+class=[\"'][^\"']*border-radius-5[^\"']*[\"'](.*?)(?=<li\\b[^>]+class=[\"'][^\"']*border-radius-5|$)",
    "fields": {
     "url": [
-     "<a\\b[^>]+href=[\"'](https?://xtapes\\.org/[^\"']+/[^\"']+)[\"'][^>]*title="
+     "<a\\b[^>]+href=[\"'](https?://[^\"']+/[^\"']+/[^\"']*)[\"'][^>]*title="
     ],
     "title": [
      "<img\\b[^>]*\\s(?:alt|title)=[\"']([^\"']+)[\"']",
@@ -130,7 +150,13 @@
      "class=[\"'][^\"']*time-infos[^\"']*[\"'][^>]*>(.*?)<span"
     ]
    }
-  }
+  },
+  "link_replace": [
+   [
+    "://en.xtapes.tw/",
+    "://xtapes.org/"
+   ]
+  ]
  },
  "xxxtube": {
   "profile": {
