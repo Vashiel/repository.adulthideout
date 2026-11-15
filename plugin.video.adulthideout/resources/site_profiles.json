@@ -1,5 +1,74 @@
 {
  "_comment": "Site profiles: each module's own search patterns, run by the Rust Core (PhantomFlare src/site_profile.rs). A site listed here searches in the Core even if PYTHON_ONLY lists it. {} = Core with its generic/API parser.",
+ "abxxx": {},
+ "anyporn": {
+  "profile": {
+   "item": "<a\\s+[^>]*href=[\"'](?P<url>/\\d+/)[\"'][^>]*>\\s*<img\\s+[^>]*data-original=[\"'](?P<thumb>[^\"']+)[\"'][^>]*alt=[\"'](?P<title>[^\"']+)[\"']"
+  }
+ },
+ "bestbondagevideos": {
+  "profile": {
+   "item": "<div\\b[^>]+class=[\"'][^\"']*video-block[^\"']*[\"'][^>]*>([\\s\\S]{0,2400}?)</div>\\s*</div>",
+   "fields": {
+    "url": [
+     "<a\\b[^>]+class=[\"']thumb[\"'][^>]+href=[\"'](https://bestbondagevideos\\.com/[^\"']+/)[\"']"
+    ],
+    "thumb": [
+     "<img\\b[^>]+(?:data-src|src)=[\"']([^\"']+)[\"'][^>]+alt="
+    ],
+    "title": [
+     "<img\\b[^>]+(?:data-src|src)=[\"'][^\"']+[\"'][^>]+alt=[\"']([^\"']+)[\"']"
+    ],
+    "duration": [
+     "class=[\"']duration[\"'][^>]*>\\s*([0-9:]+)"
+    ]
+   }
+  }
+ },
+ "bingato": {
+  "profile": {
+   "item": "<div\\b[^>]+class=[\"'][^\"']*\\bitem\\b[^\"']*[\"'].*?(?=<div\\b[^>]+class=[\"'][^\"']*\\bitem\\b[^\"']*[\"']|$)",
+   "fields": {
+    "url": [
+     "<a\\b[^>]+href=[\"']([^\"']*/item/[^\"']+)"
+    ],
+    "title": [
+     "<a\\b[^>]+title=[\"']([^\"']+)"
+    ],
+    "thumb": [
+     "<img\\b[^>]+(?:data-original|src)=[\"']([^\"']+)"
+    ],
+    "duration": [
+     "(?:duration|time)[^>]*>([^<]+)"
+    ]
+   }
+  }
+ },
+ "crazyshit": {
+  "profile": {
+   "item": "<a href=\"(?P<url>[^\"]*/cnt/medias/[^\"]+)\" title=\"(?P<title>[^\"]+)\"\\s+class=\"thumb\">.*?<img src=\"(?P<thumb>[^\"]+)\" alt=\"[^\"]+\" class=\"image-thumb\""
+  }
+ },
+ "cumdrinkingclips": {
+  "profile": {
+   "item": "<article\\b[^>]*class=[\"'][^\"']*\\bvideo-preview-item\\b[^\"']*[\"'][^>]*>[\\s\\S]{0,2600}?</article>",
+   "fields": {
+    "url": [
+     "<a\\b[^>]+href=[\"']([^\"']+)[\"'][^>]+title="
+    ],
+    "title": [
+     "<a\\b[^>]+href=[\"'][^\"']+[\"'][^>]+title=[\"']([^\"']+)[\"']"
+    ],
+    "thumb": [
+     "\\bdata-main-thumb=[\"']([^\"']+)[\"']",
+     "<img\\b[^>]+\\bsrc=[\"']([^\"']+)[\"']"
+    ],
+    "duration": [
+     "class=[\"'][^\"']*duration[^\"']*[\"'][^>]*>.*?(\\d{1,2}:\\d{2}(?::\\d{2})?)"
+    ]
+   }
+  }
+ },
  "cumlouder": {
   "profile": {
    "item": "<a\\b[^>]*class=[\"'][^\"']*\\bmuestra-escena\\b[^\"']*[\"'][^>]*>.*?</a>",
@@ -17,6 +86,295 @@
     ],
     "duration": [
      "class=[\"']minutos[\"'][^>]*>.*?(\\d{1,2}:\\d{2})"
+    ]
+   }
+  }
+ },
+ "daftporn": {
+  "profile": {
+   "item": "<div class=\"plugcontainer\">.*?<a href=\"(?P<url>(?![^\"]*out\\.php)[^\"]+)\".*?<img src=\"(?P<thumb>[^\"]+)\"[^>]*alt=\"(?P<title>[^\"]*)\""
+  }
+ },
+ "euroxxx": {
+  "profile": {
+   "item": "<article\\b[^>]*>(.*?)</article>",
+   "fields": {
+    "url": [
+     "<a\\b[^>]*href=[\"'](https://euroxxx\\.net/[^\"']+/)[\"'][^>]*title="
+    ],
+    "title": [
+     "<a\\b[^>]*href=[\"']https://euroxxx\\.net/[^\"']+/[\"'][^>]*title=[\"']([^\"']+)"
+    ],
+    "thumb": [
+     "<img\\b[^>]*(?:data-src|src)=[\"']([^\"']+)[\"']"
+    ],
+    "duration": [
+     "class=[\"'][^\"']*duration[^\"']*[\"'][^>]*>.*?(\\d{1,2}:\\d{2}(?::\\d{2})?)"
+    ]
+   }
+  }
+ },
+ "familypornhd": {
+  "profile": {
+   "item": "<article\\b[^>]*>(.*?)</article>",
+   "fields": {
+    "url": [
+     "<a\\b[^>]*class=[\"'][^\"']*entry-image-link[^\"']*[\"'][^>]*href=[\"']([^\"']+)[\"']",
+     "<a\\b[^>]*href=[\"']([^\"']+)[\"'][^>]*class=[\"'][^\"']*entry-image-link",
+     "<a[^>]+title=\"[^\"]*\"\\s*[^>]+href=\"(https?://familypornhd\\.com/(?!category/|tag/|author/|page/|reaction/)[^\"]+)\""
+    ],
+    "title": [
+     "<h[1-6]\\b[^>]*class=[\"'][^\"']*entry-title[^\"']*[\"'][^>]*>.*?<a\\b[^>]*>(.*?)</a>",
+     "<a[^>]+title=\"([^\"]*)\"\\s*[^>]+href=\"https?://familypornhd\\.com/(?!category/|tag/|author/|page/|reaction/)[^\"]+\""
+    ],
+    "thumb": [
+     "data-king-img-src=[\"']([^\"']+)[\"']",
+     "<img\\b[^>]*\\bsrc=[\"']([^\"']+)[\"']"
+    ]
+   }
+  }
+ },
+ "fapality": {
+  "profile": {
+   "item": "<li\\b[^>]*(?:\\buser_video\\b|\\bdata-id=\"\\d+\")[^>]*>(.*?)</li>",
+   "fields": {
+    "url": [
+     "<a\\b[^>]*\\bhref=\"((?:https?://(?:www\\.)?fapality\\.com)?/\\d+/?)\""
+    ],
+    "title": [
+     "<a\\b[^>]*\\bhref=\"(?:https?://(?:www\\.)?fapality\\.com)?/\\d+/?\"[^>]*\\btitle=\"([^\"]+)\"",
+     "<a\\b[^>]*\\btitle=\"([^\"]+)\"[^>]*\\bhref=\"(?:https?://(?:www\\.)?fapality\\.com)?/\\d+/?\"",
+     "<span\\b[^>]*class=\"[^\"]*\\btitle\\b[^\"]*\"[^>]*>(.*?)</span>"
+    ],
+    "thumb": [
+     "<(?:img|video)\\b[^>]*(?:data-src|src|poster)=\"([^\"]+)\""
+    ]
+   }
+  }
+ },
+ "feet9": {
+  "profile": {
+   "item": "<div\\s+id=[\"']video-\\d+[\"'][^>]*class=[\"']video-inner[\"'][^>]*>([\\s\\S]{0,5000}?)</div>\\s*</div>",
+   "fields": {
+    "url": [
+     "<a\\b[^>]+href=[\"'](/\\d+/[^\"']+)[\"'][^>]*title="
+    ],
+    "title": [
+     "<a\\b[^>]+href=[\"']/\\d+/[^\"']+[\"'][^>]*title=[\"']([^\"']+)[\"']"
+    ],
+    "thumb": [
+     "data-original=[\"']([^\"']+)[\"']"
+    ],
+    "duration": [
+     "class=[\"']duration[\"'][^>]*>([^<]+)"
+    ]
+   }
+  }
+ },
+ "freeomovie": {
+  "profile": {
+   "item": "<li[^>]+id=\"post-(.*?)(?=<li[^>]+id=\"post-|$)",
+   "fields": {
+    "url": [
+     "<a\\s+href=\"([^\"]*freeomovie[^\"]+)\""
+    ],
+    "thumb": [
+     "<img[^>]+data-src=\"([^\"]+)\"",
+     "<img[^>]+src=\"([^\"]+)\""
+    ],
+    "title": [
+     "<a[^>]+title=\"([^\"]+)\"",
+     "<img[^>]+alt=\"([^\"]+)\"",
+     "<h2>(.*?)</h2>"
+    ]
+   }
+  }
+ },
+ "freepornsex": {
+  "profile": {
+   "item": "<article\\b[^>]*>(.*?)</article>",
+   "fields": {
+    "url": [
+     "<h2\\b[^>]*class=[\"'][^\"']*\\btitle\\b[^\"']*[\"'][^>]*>\\s*<a\\b[^>]*href=[\"'](https?://www\\.freepornsex\\.net/[^\"']+/)[\"']"
+    ],
+    "title": [
+     "<h2\\b[^>]*class=[\"'][^\"']*\\btitle\\b[^\"']*[\"'][^>]*>\\s*<a\\b[^>]*title=[\"']([^\"']+)[\"']",
+     "<h2\\b[^>]*class=[\"'][^\"']*\\btitle\\b[^\"']*[\"'][^>]*>\\s*<a\\b[^>]*>(.*?)</a>"
+    ],
+    "thumb": [
+     "<img\\b[^>]*\\bsrc=[\"']([^\"']+)[\"']"
+    ]
+   }
+  }
+ },
+ "fullxcinema": {
+  "profile": {
+   "item": "<article\\s+[^>]*class=\"[^\"]*loop-video[^\"]*\"[^>]*>.*?</article>",
+   "fields": {
+    "url": [
+     "<a\\s+href=\"([^\"]+)\"\\s+title="
+    ],
+    "title": [
+     "<a\\s+href=\"[^\"]+\"\\s+title=\"([^\"]+)\""
+    ],
+    "thumb": [
+     "data-main-thumb=\"([^\"]+)\"",
+     "<img\\s+[^>]*(?:data-src|src)=\"([^\"]+)\""
+    ],
+    "duration": [
+     "<span\\s+class=\"duration\">.*?</i>\\s*([\\d:]+)\\s*</span>"
+    ]
+   }
+  }
+ },
+ "hanime": {
+  "profile": {
+   "item": "<a\\b[^>]*\\bhref=\"(?P<url>[^\"]+)\"[^>]*>(?:(?!</a>).)*?<img\\b[^>]*\\bsrc=\"(?P<thumb>/media/posters/[^\"]+)\"(?:(?!</a>).)*?<h3\\b[^>]*>(?P<title>.*?)</h3>"
+  }
+ },
+ "hclips": {},
+ "hdshemalez": {
+  "profile": {
+   "item": "<article\\b.*?</article>",
+   "fields": {
+    "url": [
+     "<a\\b[^>]*\\bhref\\s*=\\s*[\"']?(https?://hdshemalez\\.com/[^\"'\\s>]+)"
+    ],
+    "title": [
+     "<a\\b[^>]*\\bhref\\s*=\\s*[\"'][^\"']+[\"'][^>]*\\btitle\\s*=\\s*[\"']([^\"']+)",
+     "<header\\b[^>]*>.*?<span[^>]*>(.*?)</span>"
+    ],
+    "thumb": [
+     "data-main-thumb\\s*=\\s*[\"']?([^\"'\\s>]+)",
+     "<img\\b[^>]+data-src\\s*=\\s*[\"']?([^\"'\\s>]+)",
+     "<img\\b[^>]+src\\s*=\\s*[\"']?([^\"'\\s>]+)"
+    ],
+    "duration": [
+     "class\\s*=\\s*(?:\"[^\"]*duration[^\"]*\"|'[^']*duration[^']*'|duration)[^>]*>.*?((?:\\d{1,2}:)?\\d{1,2}:\\d{2})"
+    ]
+   }
+  }
+ },
+ "hdzog": {},
+ "hentaicosplay": {},
+ "hentaigasm": {
+  "profile": {
+   "item": "(<div id=\"post-.*?</div>\\s*</div>)",
+   "fields": {
+    "url": [
+     "<h2 class=\"title\"><a href=\"([^\"]+)\""
+    ],
+    "title": [
+     "<h2 class=\"title\"><a href=\"[^\"]+\"[^>]+title=\"[^\"]+\">([^<]+)</a>"
+    ],
+    "thumb": [
+     "<img src=\"([^\"]+)\""
+    ]
+   }
+  }
+ },
+ "hypnoporn": {
+  "profile": {
+   "item": "<div\\b[^>]*class=[\"'][^\"']*\\bitem\\b[^\"']*\\bpost\\b[^\"']*[\"'][^>]*>[\\s\\S]{0,3200}?</div>\\s*</div>",
+   "fields": {
+    "url": [
+     "<a\\b[^>]+href=[\"'](https?://hypnoporn\\.net/[^\"']+/)[\"']"
+    ],
+    "title": [
+     "\\stitle=[\"']([^\"']+)[\"']"
+    ],
+    "thumb": [
+     "<img\\b[^>]+\\bsrc=[\"']([^\"']+)[\"']"
+    ]
+   }
+  }
+ },
+ "iceporncasting": {
+  "profile": {
+   "item": "<article\\b.*?</article>",
+   "fields": {
+    "url": [
+     "<a\\b[^>]*\\bhref\\s*=\\s*[\"']?(https?://iceporncasting\\.net/[^\"'\\s>]+)"
+    ],
+    "title": [
+     "<a\\b[^>]*\\bhref\\s*=\\s*[\"'][^\"']+[\"'][^>]*\\btitle\\s*=\\s*[\"']([^\"']+)",
+     "<header\\b[^>]*>.*?<span[^>]*>(.*?)</span>"
+    ],
+    "thumb": [
+     "data-main-thumb\\s*=\\s*[\"']?([^\"'\\s>]+)",
+     "<img\\b[^>]+data-src\\s*=\\s*[\"']?([^\"'\\s>]+)",
+     "<img\\b[^>]+src\\s*=\\s*[\"']?([^\"'\\s>]+)"
+    ],
+    "duration": [
+     "class\\s*=\\s*(?:\"[^\"]*duration[^\"]*\"|'[^']*duration[^']*'|duration)[^>]*>.*?((?:\\d{1,2}:)?\\d{1,2}:\\d{2})"
+    ]
+   }
+  }
+ },
+ "internetchicks": {
+  "profile": {
+   "item": "<article\\b[^>]*class=[\"'][^\"']*\\bpost\\b[^\"']*[\"'][^>]*>(.*?)</article>",
+   "fields": {
+    "url": [
+     "<a\\b[^>]*href=[\"'](https?://internetchicks\\.com/[^\"']+/)[\"']"
+    ],
+    "title": [
+     "<h[23]\\b[^>]*>(.*?)</h[23]>"
+    ],
+    "thumb": [
+     "<img\\b[^>]*\\sdata-src=[\"']([^\"']+)",
+     "<img\\b[^>]*\\ssrc=[\"']([^\"']+)"
+    ]
+   }
+  }
+ },
+ "javguru": {
+  "profile": {
+   "item": "<div class=\"inside-article\">(.*?)</div>\\s*</div>\\s*</div>",
+   "fields": {
+    "url": [
+     "<a\\b[^>]+href=[\"'](https://jav\\.guru/[^\"']+/)[\"']"
+    ],
+    "title": [
+     "<h2\\b[^>]*>(.*?)</h2>",
+     "<img\\b[^>]+alt=[\"']([^\"']+)[\"']"
+    ],
+    "thumb": [
+     "<img\\b[^>]+src=[\"']([^\"']+)[\"']"
+    ]
+   }
+  }
+ },
+ "javsubbed": {
+  "profile": {
+   "item": "<article[^>]*class=\"[^\"]*post[^\"]*\"[^>]*>(.*?)</article>",
+   "fields": {
+    "url": [
+     "href=[\"']([^\"']+)[\"']"
+    ],
+    "title": [
+     "title=[\"']([^\"']+)[\"']"
+    ],
+    "thumb": [
+     "data-src=[\"']([^\"']+)[\"']",
+     "\\ssrc=[\"']((?!data:)[^\"']+)[\"']",
+     "data-srcset=[\"']([^\\\"\\s]+)"
+    ]
+   }
+  }
+ },
+ "justfullporn": {
+  "profile": {
+   "item": "<article\\b(?:(?!More Premium XXX Videos).)*?</article>",
+   "fields": {
+    "url": [
+     "<a[^>]+href=[\"']([^\"']+)"
+    ],
+    "thumb": [
+     "<img[^>]+(?:data-src|src)=[\"']([^\"']+)[\"'][^>]+alt="
+    ],
+    "title": [
+     "<img[^>]+(?:data-src|src)=[\"'][^\"']+[\"'][^>]+alt=[\"']([^\"']+)"
     ]
    }
   }
@@ -42,6 +400,17 @@
    "warmup_url": "https://missav123.com/"
   }
  },
+ "paradisehill": {
+  "profile": {
+   "item": "<div class=\"item list-film-item\".*?<a href=\"(?P<url>[^\"]+)\".*?<img.*?src=\"(?P<thumb>[^\"]+)\".*?alt=\"[^\"]+\".*?<span itemprop=\"name\">(?P<title>[^<]+)</span>"
+  }
+ },
+ "perverzija": {
+  "profile": {
+   "item": "<div id=\"post-\\d+\"[^>]*class=\"[^\"]*video-item[^\"]*\".+?<img[^>]+src=\"(?P<thumb>[^\"]+)\".+?<h[23]><a href=\"(?P<url>https://tube\\.perverzija\\.com/(?!tag/|studio/|featured-scenes/)[^\"]+/)\"[^>]*title=\"(?P<title>[^\"]+)\""
+  }
+ },
+ "porn00": {},
  "porn300": {
   "profile": {
    "item": "<a\\s+[^>]*href=[\"'](?P<url>/video/[^\"']+)[\"'][^>]*>.*?<img[^>]+src=[\"'](?P<thumb>[^\"']+(?:\\.jpg|\\.webp)[^\"']*)[\"'][^>]*>.*?<h3[^>]*>\\s*(?P<title>[^<]+)\\s*</h3>",
@@ -50,6 +419,28 @@
      "<span[^>]+class=[\"'][^\"']*duration[^\"']*[\"'][^>]*>\\s*([^<]*)\\s*</span>"
     ]
    }
+  }
+ },
+ "pornbusy": {
+  "search_url": "https://pornbusy.com/wp-json/wp/v2/posts?per_page=24&page=1&_embed=wp:featuredmedia&orderby=date&order=desc&search={}",
+  "profile": {
+   "item": "\\{\"id\":\\d+,\"date\":(?:(?!\\},\\{\"id\":\\d+,\"date\":).)*",
+   "fields": {
+    "url": [
+     "\"link\":\"([^\"]+)\""
+    ],
+    "title": [
+     "\"title\":\\{\"rendered\":\"(.*?)\"\\}"
+    ],
+    "thumb": [
+     "\"source_url\":\"([^\"]+)\""
+    ]
+   }
+  }
+ },
+ "pornflip": {
+  "profile": {
+   "item": "<div class=\"card thumbs_rotate itemVideo[^\"]*\"[^>]*>.*?<a href=\"(?P<url>/[^\"]+)\"[^>]*>\\s*<img class=\"card-img-top\" src=\"(?P<thumb>[^\"]+)\" alt=\"[^\"]+\".*?<span class=\"duration\">(?P<duration>[^<]+)</span>.*?<h5 class=\"card-title\">\\s*<a href=\"/[^\"]+\">(?P<title>[^<]+)</a>"
   }
  },
  "pornhoarder": {
@@ -71,9 +462,88 @@
    }
   }
  },
+ "pornobae": {
+  "profile": {
+   "item": "<a\\b[^>]+href=[\"'](?P<url>https?://pornobae\\.com/[^\"']+)[\"'][^>]*title=[\"'](?P<title>[^\"']+)[\"'](?=(?:(?!<a\\b[^>]+href=[\"']https?://pornobae\\.com/[^\"']+[\"'][^>]*title=|<a\\b).)*?<div class=\\\"post-thumbnail\\\">)(?:(?!<a\\b[^>]+href=[\"']https?://pornobae\\.com/[^\"']+[\"'][^>]*title=).)*",
+   "fields": {
+    "thumb": [
+     "<div class=\\\"post-thumbnail\\\">.*?<img\\b[^>]+src=[\"']([^\"']+)[\"']"
+    ],
+    "duration": [
+     "class=[\"']duration[\"'][^>]*>(.*?)</span>"
+    ]
+   }
+  }
+ },
+ "pornoente": {
+  "profile": {
+   "item": "<div\\b(?=[^>]*\\bclass\\s*=\\s*[\"'][^\"']*\\bcard\\b[^\"']*[\"'])[^>]*>(?:(?!<div\\b(?=[^>]*\\bclass\\s*=\\s*[\"'][^\"']*\\bcard\\b[^\"']*[\"'])[^>]*>).)*",
+   "fields": {
+    "url": [
+     "<a\\b[^>]*href=[\"']([^\"']*/filme/[^\"']+)[\"']"
+    ],
+    "title": [
+     "<div\\b[^>]*class=[\"'][^\"']*\\btitle\\b[^\"']*[\"'][^>]*>(.*?)</div>",
+     "<img\\b[^>]*\\balt\\s*=\\s*[\"']?([^\"'\\s>]+)"
+    ],
+    "thumb": [
+     "<img\\b[^>]*\\bdata-src\\s*=\\s*[\"']?([^\"'\\s>]+)",
+     "<img\\b[^>]*\\bdata-original\\s*=\\s*[\"']?([^\"'\\s>]+)",
+     "<img\\b[^>]*\\bsrc\\s*=\\s*[\"']?([^\"'\\s>]+)"
+    ],
+    "duration": [
+     "<span\\b[^>]*class=[\"'][^\"']*\\bdur\\b[^\"']*[\"'][^>]*>(.*?)</span>"
+    ]
+   }
+  }
+ },
+ "pornohirsch": {
+  "profile": {
+   "item": "<div[^>]+class=[\"']grid_box[\"'](?:(?!<div[^>]+class=[\"']grid_box[\"']).){0,2000}",
+   "fields": {
+    "url": [
+     "href=[\"'](/film/[^\"']+)[\"']"
+    ],
+    "title": [
+     "class=[\"']title[\"'][^>]*>\\s*<a[^>]*>([^<]+)</a>",
+     "alt=[\"']([^\"']+)[\"']",
+     "title=[\"']([^\"']+)[\"']"
+    ],
+    "thumb": [
+     "data-src=[\"']([^\"']+)[\"']",
+     "src=[\"']([^\"']+)[\"']"
+    ],
+    "duration": [
+     "class=[\"'][^\"']*duration[^\"']*[\"'][^>]*>([^<]+)</div>"
+    ]
+   }
+  }
+ },
  "pornone": {
   "profile": {
    "item": "href=\"(?P<url>[^\"]+)\"[^>]*class=\"[^\"]*videocard[^\"]*\"[^>]*>.*?data-src=\"(?P<thumb>[^\"]+)\".*?class=\"videotitle[^\"]*\"[^>]*>(?P<title>[^<]+)"
+  }
+ },
+ "premiumporn": {
+  "cookies": "rawx_age_gate_accepted=1",
+  "profile": {
+   "item": "<article\\b[^>]*class=[\"'][^\"']*v-card[^\"']*[\"'][^>]*>.*?</article>",
+   "fields": {
+    "url": [
+     "<a[^>]+href=[\"'](https://premiumporn\\.org/[^\"']+)[\"'][^>]*class=[\"'][^\"']*vc-thumb-wrap",
+     "<a[^>]+href=[\"'](https://premiumporn\\.org/[^\"']+)[\"']"
+    ],
+    "title": [
+     "<a[^>]+class=[\"'][^\"']*vc-title[^\"']*[\"'][^>]*>(.*?)</a>",
+     "<img[^>]+alt=[\"']([^\"']+)"
+    ],
+    "duration": [
+     "<div[^>]+class=[\"'][^\"']*vc-dur[^\"']*[\"'][^>]*>(.*?)</div>"
+    ],
+    "thumb": [
+     "<img[^>]+(?:data-src|src)=[\"']([^\"']+)"
+    ]
+   }
   }
  },
  "pussyspace": {
@@ -130,6 +600,58 @@
    }
   }
  },
+ "tubepornclassic": {},
+ "tubev": {},
+ "upornia": {},
+ "veporn": {
+  "profile": {
+   "item": "<a\\b[^>]*class=\"[^\"]*\\bgroup\\s+block\\b[^\"]*\"[^>]*href=\"(?P<url>[^\"]+)\"[^>]*>(?:(?!</a>).)*?<img\\b[^>]*alt=\"(?P<title>[^\"]+)\"[^>]*src=\"(?P<thumb>[^\"]+)\"[^>]*>(?:(?!</a>).)*?<span\\b[^>]*>(?P<duration>\\d{1,2}:\\d{2}(?::\\d{2})?)</span>"
+  }
+ },
+ "vjav": {},
+ "voyeurhit": {},
+ "vxxx": {},
+ "watchxxxfree": {
+  "search_url": "https://xxxfree.watch/wp-json/wp/v2/posts?per_page=24&page=1&_embed=wp:featuredmedia&orderby=date&order=desc&search={}",
+  "profile": {
+   "item": "\\{\"id\":\\d+,\"date\":(?:(?!\\},\\{\"id\":\\d+,\"date\":).)*",
+   "fields": {
+    "url": [
+     "\"link\":\"([^\"]+)\""
+    ],
+    "title": [
+     "\"title\":\\{\"rendered\":\"(.*?)\"\\}"
+    ],
+    "thumb": [
+     "\"source_url\":\"([^\"]+)\""
+    ]
+   }
+  }
+ },
+ "whereismyporn": {
+  "profile": {
+   "item": "<article\\b.*?</article>",
+   "fields": {
+    "url": [
+     "<a[^>]+href=[\"']((?:https?://(?:www\\.)?(?:moneypornvideo|whereismyporn)\\.com)?/(?!category/)[^\"']+)[\"']"
+    ],
+    "title": [
+     "<a[^>]+title=[\"']([^\"']+)[\"']",
+     "<header[^>]*class=[\"'][^\"']*entry-header[^\"']*[\"'][^>]*>.*?<span>(.*?)</span>",
+     "<img[^>]+alt=[\"']([^\"']+)[\"']"
+    ],
+    "thumb": [
+     "data-main-thumb=[\"']([^\"']+)[\"']",
+     "<img[^>]+(?:data-src|src)=[\"']([^\"']+)[\"']"
+    ]
+   }
+  }
+ },
+ "xcafe": {
+  "profile": {
+   "item": "<a href=\"(?P<url>https://xcafe\\.com/\\d+/)\"[^>]*>\\s*<img[^>]+src=\"(?P<thumb>https://i\\.xcafe\\.com/[^\"]+)\"[^>]+alt=\"(?P<title>[^\"]+)\""
+  }
+ },
  "xtapes": {
   "profile": {
    "item": "<li\\b[^>]+class=[\"'][^\"']*border-radius-5[^\"']*[\"'](.*?)(?=<li\\b[^>]+class=[\"'][^\"']*border-radius-5|$)",
@@ -158,9 +680,42 @@
    ]
   ]
  },
+ "xxvideoss": {
+  "profile": {
+   "item": "<article\\b(?![^>]*\\bclass=[\"'][^\"']*\\bsticky\\b).*?</article>",
+   "fields": {
+    "url": [
+     "<a[^>]+href=[\"']([^\"']+)"
+    ],
+    "thumb": [
+     "<img[^>]+src=[\"']([^\"']+)[\"'][^>]+alt="
+    ],
+    "title": [
+     "<img[^>]+src=[\"'][^\"']+[\"'][^>]+alt=[\"']([^\"']+)"
+    ]
+   }
+  }
+ },
  "xxxtube": {
   "profile": {
    "item": "<a\\s+href=\"(?P<url>https://x-x-x\\.tube/videos/\\d+/[^\"]+/)\"\\s+title=\"(?P<title>[^\"]+)\"[^>]*>.*?<img[^>]+(?:src|data-src)=\"(?P<thumb>[^\"]+)\"[^>]+alt=\"[^\"]*\".*?<div\\s+class=\"duration\">\\s*(?P<duration>[^<]+)\\s*</div>"
+  }
+ },
+ "yespornpleasexxx": {
+  "search_url": "https://yespornpleasexxx.com/wp-json/wp/v2/posts?per_page=24&page=1&_embed=wp:featuredmedia&orderby=date&order=desc&search={}",
+  "profile": {
+   "item": "\\{\"id\":\\d+,\"date\":(?:(?!\\},\\{\"id\":\\d+,\"date\":).)*",
+   "fields": {
+    "url": [
+     "\"link\":\"([^\"]+)\""
+    ],
+    "title": [
+     "\"title\":\\{\"rendered\":\"(.*?)\"\\}"
+    ],
+    "thumb": [
+     "\"source_url\":\"([^\"]+)\""
+    ]
+   }
   }
  }
 }

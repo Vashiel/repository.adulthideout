@@ -25,6 +25,12 @@
 "search_url": "https://8kporner.com/?link1=search&keyword={}"
 },
 {
+"api_page_url": "https://abxxx.com/video/{id}/{dir}/",
+"base_url": "https://abxxx.com/",
+"id": "abxxx",
+"search_url": "https://abxxx.com/api/videos2.php?params=259200/str/relevance/60/search..1.all..&s={}"
+},
+{
 "base_url": "https://allclassic.porn/",
 "id": "allclassic",
 "search_url": "https://allclassic.porn/search/{}/"
@@ -53,6 +59,14 @@
 "base_url": "https://www.analegg.com/",
 "id": "analegg",
 "search_url": "https://www.analegg.com/search/{}/"
+},
+{
+"base_url": "https://anyporn.com",
+"id": "anyporn",
+"profile": {
+"item": "<a\\s+[^>]*href=[\"'](?P<url>/\\d+/)[\"'][^>]*>\\s*<img\\s+[^>]*data-original=[\"'](?P<thumb>[^\"']+)[\"'][^>]*alt=[\"'](?P<title>[^\"']+)[\"']"
+},
+"search_url": "https://anyporn.com/search/{}/"
 },
 {
 "base_url": "https://anysex.com",
@@ -100,6 +114,28 @@
 "search_url": "https://bdsmvilla.com/search?q={}"
 },
 {
+"base_url": "https://bestbondagevideos.com/",
+"id": "bestbondagevideos",
+"profile": {
+"fields": {
+"duration": [
+"class=[\"']duration[\"'][^>]*>\\s*([0-9:]+)"
+],
+"thumb": [
+"<img\\b[^>]+(?:data-src|src)=[\"']([^\"']+)[\"'][^>]+alt="
+],
+"title": [
+"<img\\b[^>]+(?:data-src|src)=[\"'][^\"']+[\"'][^>]+alt=[\"']([^\"']+)[\"']"
+],
+"url": [
+"<a\\b[^>]+class=[\"']thumb[\"'][^>]+href=[\"'](https://bestbondagevideos\\.com/[^\"']+/)[\"']"
+]
+},
+"item": "<div\\b[^>]+class=[\"'][^\"']*video-block[^\"']*[\"'][^>]*>([\\s\\S]{0,2400}?)</div>\\s*</div>"
+},
+"search_url": "https://bestbondagevideos.com/?s={}"
+},
+{
 "base_url": "https://bigassporn.tv",
 "id": "bigassporn",
 "search_url": "https://bigassporn.tv/search/{}/"
@@ -108,6 +144,28 @@
 "base_url": "https://www.bigtitslust.com",
 "id": "bigtitslust",
 "search_url": "https://www.bigtitslust.com/search/{}/"
+},
+{
+"base_url": "https://bingato.com/",
+"id": "bingato",
+"profile": {
+"fields": {
+"duration": [
+"(?:duration|time)[^>]*>([^<]+)"
+],
+"thumb": [
+"<img\\b[^>]+(?:data-original|src)=[\"']([^\"']+)"
+],
+"title": [
+"<a\\b[^>]+title=[\"']([^\"']+)"
+],
+"url": [
+"<a\\b[^>]+href=[\"']([^\"']*/item/[^\"']+)"
+]
+},
+"item": "<div\\b[^>]+class=[\"'][^\"']*\\bitem\\b[^\"']*[\"'].*?(?=<div\\b[^>]+class=[\"'][^\"']*\\bitem\\b[^\"']*[\"']|$)"
+},
+"search_url": "https://bingato.com/search?q={}"
 },
 {
 "base_url": "https://blackporn24.com",
@@ -170,6 +228,37 @@
 "search_url": "https://cosplayporntube.com/?s={}"
 },
 {
+"base_url": "https://crazyshit.com",
+"id": "crazyshit",
+"profile": {
+"item": "<a href=\"(?P<url>[^\"]*/cnt/medias/[^\"]+)\" title=\"(?P<title>[^\"]+)\"\\s+class=\"thumb\">.*?<img src=\"(?P<thumb>[^\"]+)\" alt=\"[^\"]+\" class=\"image-thumb\""
+},
+"search_url": "https://crazyshit.com/search/?query={}"
+},
+{
+"base_url": "https://cumdrinkingclips.com/",
+"id": "cumdrinkingclips",
+"profile": {
+"fields": {
+"duration": [
+"class=[\"'][^\"']*duration[^\"']*[\"'][^>]*>.*?(\\d{1,2}:\\d{2}(?::\\d{2})?)"
+],
+"thumb": [
+"\\bdata-main-thumb=[\"']([^\"']+)[\"']",
+"<img\\b[^>]+\\bsrc=[\"']([^\"']+)[\"']"
+],
+"title": [
+"<a\\b[^>]+href=[\"'][^\"']+[\"'][^>]+title=[\"']([^\"']+)[\"']"
+],
+"url": [
+"<a\\b[^>]+href=[\"']([^\"']+)[\"'][^>]+title="
+]
+},
+"item": "<article\\b[^>]*class=[\"'][^\"']*\\bvideo-preview-item\\b[^\"']*[\"'][^>]*>[\\s\\S]{0,2600}?</article>"
+},
+"search_url": "https://cumdrinkingclips.com/?s={}"
+},
+{
 "base_url": "https://www.cumlouder.com",
 "id": "cumlouder",
 "profile": {
@@ -192,6 +281,14 @@
 "item": "<a\\b[^>]*class=[\"'][^\"']*\\bmuestra-escena\\b[^\"']*[\"'][^>]*>.*?</a>"
 },
 "search_url": "https://www.cumlouder.com/porn-videos/{}/"
+},
+{
+"base_url": "https://www.daftporn.com",
+"id": "daftporn",
+"profile": {
+"item": "<div class=\"plugcontainer\">.*?<a href=\"(?P<url>(?![^\"]*out\\.php)[^\"]+)\".*?<img src=\"(?P<thumb>[^\"]+)\"[^>]*alt=\"(?P<title>[^\"]*)\""
+},
+"search_url": "https://www.daftporn.com/?p=search&newstr={}&r=s"
 },
 {
 "base_url": "https://darknessporn.com",
@@ -259,9 +356,75 @@
 "search_url": "https://eroticmv.com/?s={}"
 },
 {
+"base_url": "https://euroxxx.net/",
+"id": "euroxxx",
+"profile": {
+"fields": {
+"duration": [
+"class=[\"'][^\"']*duration[^\"']*[\"'][^>]*>.*?(\\d{1,2}:\\d{2}(?::\\d{2})?)"
+],
+"thumb": [
+"<img\\b[^>]*(?:data-src|src)=[\"']([^\"']+)[\"']"
+],
+"title": [
+"<a\\b[^>]*href=[\"']https://euroxxx\\.net/[^\"']+/[\"'][^>]*title=[\"']([^\"']+)"
+],
+"url": [
+"<a\\b[^>]*href=[\"'](https://euroxxx\\.net/[^\"']+/)[\"'][^>]*title="
+]
+},
+"item": "<article\\b[^>]*>(.*?)</article>"
+},
+"search_url": "https://euroxxx.net/?s={}"
+},
+{
 "base_url": "https://faapy.com/",
 "id": "faapy",
 "search_url": "https://faapy.com/search/{}/"
+},
+{
+"base_url": "https://familypornhd.com/",
+"id": "familypornhd",
+"profile": {
+"fields": {
+"thumb": [
+"data-king-img-src=[\"']([^\"']+)[\"']",
+"<img\\b[^>]*\\bsrc=[\"']([^\"']+)[\"']"
+],
+"title": [
+"<h[1-6]\\b[^>]*class=[\"'][^\"']*entry-title[^\"']*[\"'][^>]*>.*?<a\\b[^>]*>(.*?)</a>",
+"<a[^>]+title=\"([^\"]*)\"\\s*[^>]+href=\"https?://familypornhd\\.com/(?!category/|tag/|author/|page/|reaction/)[^\"]+\""
+],
+"url": [
+"<a\\b[^>]*class=[\"'][^\"']*entry-image-link[^\"']*[\"'][^>]*href=[\"']([^\"']+)[\"']",
+"<a\\b[^>]*href=[\"']([^\"']+)[\"'][^>]*class=[\"'][^\"']*entry-image-link",
+"<a[^>]+title=\"[^\"]*\"\\s*[^>]+href=\"(https?://familypornhd\\.com/(?!category/|tag/|author/|page/|reaction/)[^\"]+)\""
+]
+},
+"item": "<article\\b[^>]*>(.*?)</article>"
+},
+"search_url": "https://familypornhd.com/?s={}"
+},
+{
+"base_url": "https://fapality.com/",
+"id": "fapality",
+"profile": {
+"fields": {
+"thumb": [
+"<(?:img|video)\\b[^>]*(?:data-src|src|poster)=\"([^\"]+)\""
+],
+"title": [
+"<a\\b[^>]*\\bhref=\"(?:https?://(?:www\\.)?fapality\\.com)?/\\d+/?\"[^>]*\\btitle=\"([^\"]+)\"",
+"<a\\b[^>]*\\btitle=\"([^\"]+)\"[^>]*\\bhref=\"(?:https?://(?:www\\.)?fapality\\.com)?/\\d+/?\"",
+"<span\\b[^>]*class=\"[^\"]*\\btitle\\b[^\"]*\"[^>]*>(.*?)</span>"
+],
+"url": [
+"<a\\b[^>]*\\bhref=\"((?:https?://(?:www\\.)?fapality\\.com)?/\\d+/?)\""
+]
+},
+"item": "<li\\b[^>]*(?:\\buser_video\\b|\\bdata-id=\"\\d+\")[^>]*>(.*?)</li>"
+},
+"search_url": "https://fapality.com/search/?q={}"
 },
 {
 "base_url": "https://fapello.com/",
@@ -272,6 +435,28 @@
 "base_url": "https://fapnfuck.com/",
 "id": "fapnfuck",
 "search_url": "https://fapnfuck.com/search/{}/"
+},
+{
+"base_url": "https://www.feet9.com/",
+"id": "feet9",
+"profile": {
+"fields": {
+"duration": [
+"class=[\"']duration[\"'][^>]*>([^<]+)"
+],
+"thumb": [
+"data-original=[\"']([^\"']+)[\"']"
+],
+"title": [
+"<a\\b[^>]+href=[\"']/\\d+/[^\"']+[\"'][^>]*title=[\"']([^\"']+)[\"']"
+],
+"url": [
+"<a\\b[^>]+href=[\"'](/\\d+/[^\"']+)[\"'][^>]*title="
+]
+},
+"item": "<div\\s+id=[\"']video-\\d+[\"'][^>]*class=[\"']video-inner[\"'][^>]*>([\\s\\S]{0,5000}?)</div>\\s*</div>"
+},
+"search_url": "https://www.feet9.com/search/video/{}/"
 },
 {
 "base_url": "https://www.femdomvc.com/",
@@ -314,9 +499,51 @@
 "search_url": "https://www.fpo.xxx/search/{}/"
 },
 {
+"base_url": "https://www.freeomovie.to/",
+"id": "freeomovie",
+"profile": {
+"fields": {
+"thumb": [
+"<img[^>]+data-src=\"([^\"]+)\"",
+"<img[^>]+src=\"([^\"]+)\""
+],
+"title": [
+"<a[^>]+title=\"([^\"]+)\"",
+"<img[^>]+alt=\"([^\"]+)\"",
+"<h2>(.*?)</h2>"
+],
+"url": [
+"<a\\s+href=\"([^\"]*freeomovie[^\"]+)\""
+]
+},
+"item": "<li[^>]+id=\"post-(.*?)(?=<li[^>]+id=\"post-|$)"
+},
+"search_url": "https://www.freeomovie.to/?s={}"
+},
+{
 "base_url": "https://freeonestube.com",
 "id": "freeonestube",
 "search_url": "https://freeonestube.com/?s={}"
+},
+{
+"base_url": "https://www.freepornsex.net/",
+"id": "freepornsex",
+"profile": {
+"fields": {
+"thumb": [
+"<img\\b[^>]*\\bsrc=[\"']([^\"']+)[\"']"
+],
+"title": [
+"<h2\\b[^>]*class=[\"'][^\"']*\\btitle\\b[^\"']*[\"'][^>]*>\\s*<a\\b[^>]*title=[\"']([^\"']+)[\"']",
+"<h2\\b[^>]*class=[\"'][^\"']*\\btitle\\b[^\"']*[\"'][^>]*>\\s*<a\\b[^>]*>(.*?)</a>"
+],
+"url": [
+"<h2\\b[^>]*class=[\"'][^\"']*\\btitle\\b[^\"']*[\"'][^>]*>\\s*<a\\b[^>]*href=[\"'](https?://www\\.freepornsex\\.net/[^\"']+/)[\"']"
+]
+},
+"item": "<article\\b[^>]*>(.*?)</article>"
+},
+"search_url": "https://www.freepornsex.net/?s={}"
 },
 {
 "base_url": "https://www.fulleroticmovies.net/",
@@ -327,6 +554,29 @@
 "base_url": "https://fullporner.com",
 "id": "fullporner",
 "search_url": "https://fullporner.com/search/{}/?sort={}"
+},
+{
+"base_url": "https://www.fullxcinema.com",
+"id": "fullxcinema",
+"profile": {
+"fields": {
+"duration": [
+"<span\\s+class=\"duration\">.*?</i>\\s*([\\d:]+)\\s*</span>"
+],
+"thumb": [
+"data-main-thumb=\"([^\"]+)\"",
+"<img\\s+[^>]*(?:data-src|src)=\"([^\"]+)\""
+],
+"title": [
+"<a\\s+href=\"[^\"]+\"\\s+title=\"([^\"]+)\""
+],
+"url": [
+"<a\\s+href=\"([^\"]+)\"\\s+title="
+]
+},
+"item": "<article\\s+[^>]*class=\"[^\"]*loop-video[^\"]*\"[^>]*>.*?</article>"
+},
+"search_url": "https://fullxcinema.com/?s={}"
 },
 {
 "base_url": "https://www.fuqer.com/",
@@ -354,9 +604,23 @@
 "search_url": "https://hairydivas.com/search/{}/"
 },
 {
+"base_url": "https://hanime.red/",
+"id": "hanime",
+"profile": {
+"item": "<a\\b[^>]*\\bhref=\"(?P<url>[^\"]+)\"[^>]*>(?:(?!</a>).)*?<img\\b[^>]*\\bsrc=\"(?P<thumb>/media/posters/[^\"]+)\"(?:(?!</a>).)*?<h3\\b[^>]*>(?P<title>.*?)</h3>"
+},
+"search_url": "https://hanime.red/search?q={}"
+},
+{
 "base_url": "https://hcbdsm.com/",
 "id": "hcbdsm",
 "search_url": "https://hcbdsm.com/search/{}/"
+},
+{
+"api_page_url": "https://hclips.com/videos/{id}/{dir}/",
+"base_url": "https://hclips.com/",
+"id": "hclips",
+"search_url": "https://hclips.com/api/videos2.php?params=86400/str/relevance/60/search..1.all..&s={}"
 },
 {
 "base_url": "https://www.hd-easyporn.com/",
@@ -367,6 +631,36 @@
 "base_url": "https://hdporn92.com/",
 "id": "hdporn92",
 "search_url": "https://hdporn92.com/?s={}"
+},
+{
+"base_url": "https://hdshemalez.com",
+"id": "hdshemalez",
+"profile": {
+"fields": {
+"duration": [
+"class\\s*=\\s*(?:\"[^\"]*duration[^\"]*\"|'[^']*duration[^']*'|duration)[^>]*>.*?((?:\\d{1,2}:)?\\d{1,2}:\\d{2})"
+],
+"thumb": [
+"data-main-thumb\\s*=\\s*[\"']?([^\"'\\s>]+)",
+"<img\\b[^>]+data-src\\s*=\\s*[\"']?([^\"'\\s>]+)",
+"<img\\b[^>]+src\\s*=\\s*[\"']?([^\"'\\s>]+)"
+],
+"title": [
+"<a\\b[^>]*\\bhref\\s*=\\s*[\"'][^\"']+[\"'][^>]*\\btitle\\s*=\\s*[\"']([^\"']+)",
+"<header\\b[^>]*>.*?<span[^>]*>(.*?)</span>"
+],
+"url": [
+"<a\\b[^>]*\\bhref\\s*=\\s*[\"']?(https?://hdshemalez\\.com/[^\"'\\s>]+)"
+]
+},
+"item": "<article\\b.*?</article>"
+},
+"search_url": "https://hdshemalez.com/?s={}"
+},
+{
+"base_url": "https://hdzog.com/",
+"id": "hdzog",
+"search_url": "https://hdzog.com/api/videos2.php?params=259200/str/relevance/60/search..1.all..&s={}"
 },
 {
 "base_url": "https://www.heavy-r.com/",
@@ -389,9 +683,33 @@
 "search_url": "https://www.hentaicity.com/search/video/{}"
 },
 {
+"base_url": "https://hentai-cosplay.com/",
+"id": "hentaicosplay",
+"search_url": "https://hentai-cosplay.com/search-video/keyword/{}/"
+},
+{
 "base_url": "https://hentaidude.xxx/",
 "id": "hentaidude",
 "search_url": "https://hentaidude.xxx/?s={}"
+},
+{
+"base_url": "https://hentaigasm.com",
+"id": "hentaigasm",
+"profile": {
+"fields": {
+"thumb": [
+"<img src=\"([^\"]+)\""
+],
+"title": [
+"<h2 class=\"title\"><a href=\"[^\"]+\"[^>]+title=\"[^\"]+\">([^<]+)</a>"
+],
+"url": [
+"<h2 class=\"title\"><a href=\"([^\"]+)\""
+]
+},
+"item": "(<div id=\"post-.*?</div>\\s*</div>)"
+},
+"search_url": "https://hentaigasm.com/?s={}"
 },
 {
 "base_url": "https://hentai-moon.com/",
@@ -429,9 +747,73 @@
 "search_url": "https://hqpornero.com/search/{}.html"
 },
 {
+"base_url": "https://hypnoporn.net/",
+"id": "hypnoporn",
+"profile": {
+"fields": {
+"thumb": [
+"<img\\b[^>]+\\bsrc=[\"']([^\"']+)[\"']"
+],
+"title": [
+"\\stitle=[\"']([^\"']+)[\"']"
+],
+"url": [
+"<a\\b[^>]+href=[\"'](https?://hypnoporn\\.net/[^\"']+/)[\"']"
+]
+},
+"item": "<div\\b[^>]*class=[\"'][^\"']*\\bitem\\b[^\"']*\\bpost\\b[^\"']*[\"'][^>]*>[\\s\\S]{0,3200}?</div>\\s*</div>"
+},
+"search_url": "https://hypnoporn.net/?s={}"
+},
+{
+"base_url": "https://iceporncasting.net",
+"id": "iceporncasting",
+"profile": {
+"fields": {
+"duration": [
+"class\\s*=\\s*(?:\"[^\"]*duration[^\"]*\"|'[^']*duration[^']*'|duration)[^>]*>.*?((?:\\d{1,2}:)?\\d{1,2}:\\d{2})"
+],
+"thumb": [
+"data-main-thumb\\s*=\\s*[\"']?([^\"'\\s>]+)",
+"<img\\b[^>]+data-src\\s*=\\s*[\"']?([^\"'\\s>]+)",
+"<img\\b[^>]+src\\s*=\\s*[\"']?([^\"'\\s>]+)"
+],
+"title": [
+"<a\\b[^>]*\\bhref\\s*=\\s*[\"'][^\"']+[\"'][^>]*\\btitle\\s*=\\s*[\"']([^\"']+)",
+"<header\\b[^>]*>.*?<span[^>]*>(.*?)</span>"
+],
+"url": [
+"<a\\b[^>]*\\bhref\\s*=\\s*[\"']?(https?://iceporncasting\\.net/[^\"'\\s>]+)"
+]
+},
+"item": "<article\\b.*?</article>"
+},
+"search_url": "https://iceporncasting.net/?s={}"
+},
+{
 "base_url": "https://ikisoda.com/",
 "id": "ikisoda",
 "search_url": "https://ikisoda.com/search/{}/"
+},
+{
+"base_url": "https://internetchicks.com/",
+"id": "internetchicks",
+"profile": {
+"fields": {
+"thumb": [
+"<img\\b[^>]*\\sdata-src=[\"']([^\"']+)",
+"<img\\b[^>]*\\ssrc=[\"']([^\"']+)"
+],
+"title": [
+"<h[23]\\b[^>]*>(.*?)</h[23]>"
+],
+"url": [
+"<a\\b[^>]*href=[\"'](https?://internetchicks\\.com/[^\"']+/)[\"']"
+]
+},
+"item": "<article\\b[^>]*class=[\"'][^\"']*\\bpost\\b[^\"']*[\"'][^>]*>(.*?)</article>"
+},
+"search_url": "https://internetchicks.com/?s={}"
 },
 {
 "base_url": "https://www.inxxx.com/",
@@ -442,6 +824,26 @@
 "base_url": "https://jable.tv/",
 "id": "jable",
 "search_url": "https://jable.tv/search/{}/"
+},
+{
+"base_url": "https://jav.guru/",
+"id": "javguru",
+"profile": {
+"fields": {
+"thumb": [
+"<img\\b[^>]+src=[\"']([^\"']+)[\"']"
+],
+"title": [
+"<h2\\b[^>]*>(.*?)</h2>",
+"<img\\b[^>]+alt=[\"']([^\"']+)[\"']"
+],
+"url": [
+"<a\\b[^>]+href=[\"'](https://jav\\.guru/[^\"']+/)[\"']"
+]
+},
+"item": "<div class=\"inside-article\">(.*?)</div>\\s*</div>\\s*</div>"
+},
+"search_url": "https://jav.guru/?s={}"
 },
 {
 "base_url": "https://www.javhdporn.net/",
@@ -459,6 +861,27 @@
 "search_url": "https://hongkong.javrate.com/search/{}"
 },
 {
+"base_url": "https://javsubbed.net",
+"id": "javsubbed",
+"profile": {
+"fields": {
+"thumb": [
+"data-src=[\"']([^\"']+)[\"']",
+"\\ssrc=[\"']((?!data:)[^\"']+)[\"']",
+"data-srcset=[\"']([^\\\"\\s]+)"
+],
+"title": [
+"title=[\"']([^\"']+)[\"']"
+],
+"url": [
+"href=[\"']([^\"']+)[\"']"
+]
+},
+"item": "<article[^>]*class=\"[^\"]*post[^\"]*\"[^>]*>(.*?)</article>"
+},
+"search_url": "https://javsubbed.net/?s={}"
+},
+{
 "base_url": "https://javtiful.com/",
 "id": "javtiful",
 "search_url": "https://javtiful.com/search?q={}"
@@ -467,6 +890,25 @@
 "base_url": "https://jizzberry.com/",
 "id": "jizzberry",
 "search_url": "https://jizzberry.com/s/{}/"
+},
+{
+"base_url": "https://bestporn4free.com",
+"id": "justfullporn",
+"profile": {
+"fields": {
+"thumb": [
+"<img[^>]+(?:data-src|src)=[\"']([^\"']+)[\"'][^>]+alt="
+],
+"title": [
+"<img[^>]+(?:data-src|src)=[\"'][^\"']+[\"'][^>]+alt=[\"']([^\"']+)"
+],
+"url": [
+"<a[^>]+href=[\"']([^\"']+)"
+]
+},
+"item": "<article\\b(?:(?!More Premium XXX Videos).)*?</article>"
+},
+"search_url": "https://bestporn4free.com/?s={}"
 },
 {
 "base_url": "https://www.justporn.com/",
@@ -613,6 +1055,14 @@
 "search_url": "https://pandamovies.org/?s={}"
 },
 {
+"base_url": "https://en.paradisehill.cc",
+"id": "paradisehill",
+"profile": {
+"item": "<div class=\"item list-film-item\".*?<a href=\"(?P<url>[^\"]+)\".*?<img.*?src=\"(?P<thumb>[^\"]+)\".*?alt=\"[^\"]+\".*?<span itemprop=\"name\">(?P<title>[^<]+)</span>"
+},
+"search_url": "https://en.paradisehill.cc/search/?pattern={}"
+},
+{
 "base_url": "https://www.perfectgirls.xxx",
 "id": "perfectgirls",
 "search_url": "https://www.perfectgirls.xxx/search/{}/?sort={}"
@@ -626,6 +1076,14 @@
 "base_url": "https://www.pervertium.com/",
 "id": "pervertium",
 "search_url": "https://www.pervertium.com/search/{}/"
+},
+{
+"base_url": "https://tube.perverzija.com/",
+"id": "perverzija",
+"profile": {
+"item": "<div id=\"post-\\d+\"[^>]*class=\"[^\"]*video-item[^\"]*\".+?<img[^>]+src=\"(?P<thumb>[^\"]+)\".+?<h[23]><a href=\"(?P<url>https://tube\\.perverzija\\.com/(?!tag/|studio/|featured-scenes/)[^\"]+/)\"[^>]*title=\"(?P<title>[^\"]+)\""
+},
+"search_url": "https://tube.perverzija.com/?s={}"
 },
 {
 "base_url": "https://pezdwood.com/",
@@ -646,6 +1104,11 @@
 "base_url": "https://porcore.com",
 "id": "porcore",
 "search_url": "https://porcore.com/show/{}?ajax"
+},
+{
+"base_url": "https://www.porn00.org",
+"id": "porn00",
+"search_url": "https://www.porn00.org/q/{}/"
 },
 {
 "base_url": "https://www.porn300.com",
@@ -686,6 +1149,25 @@
 "search_url": "https://pornbimbo.com/search/{}/"
 },
 {
+"base_url": "https://pornbusy.com/",
+"id": "pornbusy",
+"profile": {
+"fields": {
+"thumb": [
+"\"source_url\":\"([^\"]+)\""
+],
+"title": [
+"\"title\":\\{\"rendered\":\"(.*?)\"\\}"
+],
+"url": [
+"\"link\":\"([^\"]+)\""
+]
+},
+"item": "\\{\"id\":\\d+,\"date\":(?:(?!\\},\\{\"id\":\\d+,\"date\":).)*"
+},
+"search_url": "https://pornbusy.com/wp-json/wp/v2/posts?per_page=24&page=1&_embed=wp:featuredmedia&orderby=date&order=desc&search={}"
+},
+{
 "base_url": "https://www.porndig.com",
 "id": "porndig",
 "search_url": "https://www.porndig.com/videos/s={}"
@@ -709,6 +1191,14 @@
 "base_url": "https://pornez.cam/",
 "id": "pornez",
 "search_url": "https://pornez.cam/?s={}"
+},
+{
+"base_url": "https://www.pornflip.com",
+"id": "pornflip",
+"profile": {
+"item": "<div class=\"card thumbs_rotate itemVideo[^\"]*\"[^>]*>.*?<a href=\"(?P<url>/[^\"]+)\"[^>]*>\\s*<img class=\"card-img-top\" src=\"(?P<thumb>[^\"]+)\" alt=\"[^\"]+\".*?<span class=\"duration\">(?P<duration>[^<]+)</span>.*?<h5 class=\"card-title\">\\s*<a href=\"/[^\"]+\">(?P<title>[^<]+)</a>"
+},
+"search_url": "https://www.pornflip.com/search?q={}"
 },
 {
 "base_url": "https://www.porngo.com",
@@ -784,9 +1274,75 @@
 "search_url": "https://www.pornoaffe.net/suche/?k={}"
 },
 {
+"base_url": "https://pornobae.com/",
+"id": "pornobae",
+"profile": {
+"fields": {
+"duration": [
+"class=[\"']duration[\"'][^>]*>(.*?)</span>"
+],
+"thumb": [
+"<div class=\\\"post-thumbnail\\\">.*?<img\\b[^>]+src=[\"']([^\"']+)[\"']"
+]
+},
+"item": "<a\\b[^>]+href=[\"'](?P<url>https?://pornobae\\.com/[^\"']+)[\"'][^>]*title=[\"'](?P<title>[^\"']+)[\"'](?=(?:(?!<a\\b[^>]+href=[\"']https?://pornobae\\.com/[^\"']+[\"'][^>]*title=|<a\\b).)*?<div class=\\\"post-thumbnail\\\">)(?:(?!<a\\b[^>]+href=[\"']https?://pornobae\\.com/[^\"']+[\"'][^>]*title=).)*"
+},
+"search_url": "https://pornobae.com/?s={}"
+},
+{
+"base_url": "https://www.pornoente.net/",
+"id": "pornoente",
+"profile": {
+"fields": {
+"duration": [
+"<span\\b[^>]*class=[\"'][^\"']*\\bdur\\b[^\"']*[\"'][^>]*>(.*?)</span>"
+],
+"thumb": [
+"<img\\b[^>]*\\bdata-src\\s*=\\s*[\"']?([^\"'\\s>]+)",
+"<img\\b[^>]*\\bdata-original\\s*=\\s*[\"']?([^\"'\\s>]+)",
+"<img\\b[^>]*\\bsrc\\s*=\\s*[\"']?([^\"'\\s>]+)"
+],
+"title": [
+"<div\\b[^>]*class=[\"'][^\"']*\\btitle\\b[^\"']*[\"'][^>]*>(.*?)</div>",
+"<img\\b[^>]*\\balt\\s*=\\s*[\"']?([^\"'\\s>]+)"
+],
+"url": [
+"<a\\b[^>]*href=[\"']([^\"']*/filme/[^\"']+)[\"']"
+]
+},
+"item": "<div\\b(?=[^>]*\\bclass\\s*=\\s*[\"'][^\"']*\\bcard\\b[^\"']*[\"'])[^>]*>(?:(?!<div\\b(?=[^>]*\\bclass\\s*=\\s*[\"'][^\"']*\\bcard\\b[^\"']*[\"'])[^>]*>).)*"
+},
+"search_url": "https://www.pornoente.net/suche/?q={}"
+},
+{
 "base_url": "https://ru.pornofeya.org/",
 "id": "pornofeya",
 "search_url": "https://ru.pornofeya.org/search/{}/"
+},
+{
+"base_url": "https://www.pornohirsch.net/",
+"id": "pornohirsch",
+"profile": {
+"fields": {
+"duration": [
+"class=[\"'][^\"']*duration[^\"']*[\"'][^>]*>([^<]+)</div>"
+],
+"thumb": [
+"data-src=[\"']([^\"']+)[\"']",
+"src=[\"']([^\"']+)[\"']"
+],
+"title": [
+"class=[\"']title[\"'][^>]*>\\s*<a[^>]*>([^<]+)</a>",
+"alt=[\"']([^\"']+)[\"']",
+"title=[\"']([^\"']+)[\"']"
+],
+"url": [
+"href=[\"'](/film/[^\"']+)[\"']"
+]
+},
+"item": "<div[^>]+class=[\"']grid_box[\"'](?:(?!<div[^>]+class=[\"']grid_box[\"']).){0,2000}"
+},
+"search_url": "https://www.pornohirsch.net/suche/?k={}"
 },
 {
 "base_url": "https://pornone.com",
@@ -845,6 +1401,31 @@
 "base_url": "https://pornzog.com",
 "id": "pornzog",
 "search_url": "https://pornzog.com/search/?s={}&o=recent"
+},
+{
+"base_url": "https://premiumporn.org/",
+"cookies": "rawx_age_gate_accepted=1",
+"id": "premiumporn",
+"profile": {
+"fields": {
+"duration": [
+"<div[^>]+class=[\"'][^\"']*vc-dur[^\"']*[\"'][^>]*>(.*?)</div>"
+],
+"thumb": [
+"<img[^>]+(?:data-src|src)=[\"']([^\"']+)"
+],
+"title": [
+"<a[^>]+class=[\"'][^\"']*vc-title[^\"']*[\"'][^>]*>(.*?)</a>",
+"<img[^>]+alt=[\"']([^\"']+)"
+],
+"url": [
+"<a[^>]+href=[\"'](https://premiumporn\\.org/[^\"']+)[\"'][^>]*class=[\"'][^\"']*vc-thumb-wrap",
+"<a[^>]+href=[\"'](https://premiumporn\\.org/[^\"']+)[\"']"
+]
+},
+"item": "<article\\b[^>]*class=[\"'][^\"']*v-card[^\"']*[\"'][^>]*>.*?</article>"
+},
+"search_url": "https://premiumporn.org/?s={}"
 },
 {
 "base_url": "https://www.punishbang.com",
@@ -1105,9 +1686,34 @@
 "search_url": "https://www.tubeorigin.com/search?q={}"
 },
 {
+"api_page_url": "https://tubepornclassic.com/videos/{id}/",
+"base_url": "https://tubepornclassic.com/",
+"id": "tubepornclassic",
+"search_url": "https://tubepornclassic.com/api/videos2.php?params=86400/str/relevance/60/search..1.all..&s={}"
+},
+{
+"base_url": "https://www.tubev.sex",
+"id": "tubev",
+"search_url": "https://www.tubev.sex/search?q={}"
+},
+{
 "base_url": "https://txxx.com/",
 "id": "txxx",
 "search_url": "https://txxx.com/api/videos2.php?params=259200/str/relevance/60/search..1.all..&s={}"
+},
+{
+"api_page_url": "PLAY_VIDEO:{id}",
+"base_url": "https://upornia.com/",
+"id": "upornia",
+"search_url": "https://upornia.com/api/videos.php?params=86400/str/relevance/60/search..1.all..&s={}"
+},
+{
+"base_url": "https://veporn.com",
+"id": "veporn",
+"profile": {
+"item": "<a\\b[^>]*class=\"[^\"]*\\bgroup\\s+block\\b[^\"]*\"[^>]*href=\"(?P<url>[^\"]+)\"[^>]*>(?:(?!</a>).)*?<img\\b[^>]*alt=\"(?P<title>[^\"]+)\"[^>]*src=\"(?P<thumb>[^\"]+)\"[^>]*>(?:(?!</a>).)*?<span\\b[^>]*>(?P<duration>\\d{1,2}:\\d{2}(?::\\d{2})?)</span>"
+},
+"search_url": "https://veporn.com/search?q={}"
 },
 {
 "base_url": "https://www.vikiporn.com",
@@ -1133,6 +1739,22 @@
 "base_url": "https://viralxxxporn.com/",
 "id": "viralxxxporn",
 "search_url": "https://viralxxxporn.com/search/{}/"
+},
+{
+"base_url": "https://vjav.com/",
+"id": "vjav",
+"search_url": "https://vjav.com/api/videos2.php?params=259200/str/relevance/60/search..1.all..&s={}"
+},
+{
+"base_url": "https://voyeurhit.com/",
+"id": "voyeurhit",
+"search_url": "https://voyeurhit.com/api/videos2.php?params=259200/str/relevance/60/search..1.all..&s={}"
+},
+{
+"api_page_url": "https://vxxx.com/video/{id}/{dir}/",
+"base_url": "https://vxxx.com/",
+"id": "vxxx",
+"search_url": "https://vxxx.com/api/videos2.php?params=259200/str/relevance/60/search..1.all..&s={}"
 },
 {
 "base_url": "https://w1mp.com/",
@@ -1165,6 +1787,47 @@
 "search_url": "https://watchporn.to/search/{}/"
 },
 {
+"base_url": "https://xxxfree.watch/",
+"id": "watchxxxfree",
+"profile": {
+"fields": {
+"thumb": [
+"\"source_url\":\"([^\"]+)\""
+],
+"title": [
+"\"title\":\\{\"rendered\":\"(.*?)\"\\}"
+],
+"url": [
+"\"link\":\"([^\"]+)\""
+]
+},
+"item": "\\{\"id\":\\d+,\"date\":(?:(?!\\},\\{\"id\":\\d+,\"date\":).)*"
+},
+"search_url": "https://xxxfree.watch/wp-json/wp/v2/posts?per_page=24&page=1&_embed=wp:featuredmedia&orderby=date&order=desc&search={}"
+},
+{
+"base_url": "https://moneypornvideo.com/",
+"id": "whereismyporn",
+"profile": {
+"fields": {
+"thumb": [
+"data-main-thumb=[\"']([^\"']+)[\"']",
+"<img[^>]+(?:data-src|src)=[\"']([^\"']+)[\"']"
+],
+"title": [
+"<a[^>]+title=[\"']([^\"']+)[\"']",
+"<header[^>]*class=[\"'][^\"']*entry-header[^\"']*[\"'][^>]*>.*?<span>(.*?)</span>",
+"<img[^>]+alt=[\"']([^\"']+)[\"']"
+],
+"url": [
+"<a[^>]+href=[\"']((?:https?://(?:www\\.)?(?:moneypornvideo|whereismyporn)\\.com)?/(?!category/)[^\"']+)[\"']"
+]
+},
+"item": "<article\\b.*?</article>"
+},
+"search_url": "https://moneypornvideo.com/?s={}"
+},
+{
 "base_url": "https://www.whoreshub.com/",
 "id": "whoreshub",
 "search_url": "https://www.whoreshub.com/search/{}/"
@@ -1183,6 +1846,14 @@
 "base_url": "https://xbabe.com",
 "id": "xbabe",
 "search_url": "https://xbabe.com/search/?q={}"
+},
+{
+"base_url": "https://xcafe.com",
+"id": "xcafe",
+"profile": {
+"item": "<a href=\"(?P<url>https://xcafe\\.com/\\d+/)\"[^>]*>\\s*<img[^>]+src=\"(?P<thumb>https://i\\.xcafe\\.com/[^\"]+)\"[^>]+alt=\"(?P<title>[^\"]+)\""
+},
+"search_url": "https://xcafe.com/videos/?q={}"
 },
 {
 "base_url": "https://www.xfreehd.com/",
@@ -1256,6 +1927,25 @@
 "search_url": "https://xxthots.com/search/{}/"
 },
 {
+"base_url": "https://xxvideoss.org",
+"id": "xxvideoss",
+"profile": {
+"fields": {
+"thumb": [
+"<img[^>]+src=[\"']([^\"']+)[\"'][^>]+alt="
+],
+"title": [
+"<img[^>]+src=[\"'][^\"']+[\"'][^>]+alt=[\"']([^\"']+)"
+],
+"url": [
+"<a[^>]+href=[\"']([^\"']+)"
+]
+},
+"item": "<article\\b(?![^>]*\\bclass=[\"'][^\"']*\\bsticky\\b).*?</article>"
+},
+"search_url": "https://xxvideoss.org/?s={}"
+},
+{
 "base_url": "https://www.xxxfiles.com",
 "id": "xxxfiles",
 "search_url": "https://www.xxxfiles.com/search/{}/"
@@ -1277,6 +1967,25 @@
 "base_url": "https://www1.yabuchka.xyz/",
 "id": "yabuchka",
 "search_url": "https://www1.yabuchka.xyz/search/{}/"
+},
+{
+"base_url": "https://yespornpleasexxx.com/",
+"id": "yespornpleasexxx",
+"profile": {
+"fields": {
+"thumb": [
+"\"source_url\":\"([^\"]+)\""
+],
+"title": [
+"\"title\":\\{\"rendered\":\"(.*?)\"\\}"
+],
+"url": [
+"\"link\":\"([^\"]+)\""
+]
+},
+"item": "\\{\"id\":\\d+,\"date\":(?:(?!\\},\\{\"id\":\\d+,\"date\":).)*"
+},
+"search_url": "https://yespornpleasexxx.com/wp-json/wp/v2/posts?per_page=24&page=1&_embed=wp:featuredmedia&orderby=date&order=desc&search={}"
 },
 {
 "base_url": "https://yesporn.vip/",
