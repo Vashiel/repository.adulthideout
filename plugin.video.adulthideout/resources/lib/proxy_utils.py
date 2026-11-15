@@ -876,7 +876,13 @@ class _ProxyHandler(BaseHTTPRequestHandler):
             except Exception:
                 pass
             return
-        super().handle()
+        # Video and HLS proxy threads stream media; never route their fetches through the Core page path.
+        try:
+            from resources.lib.core_transport import bypass
+        except ImportError:
+            from core_transport import bypass
+        with bypass():
+            super().handle()
 
     def do_HEAD(self):
         if getattr(self.server, '_shutting_down', False):
@@ -1540,7 +1546,13 @@ class _HlsProxyHandler(BaseHTTPRequestHandler):
             except Exception:
                 pass
             return
-        super().handle()
+        # Video and HLS proxy threads stream media; never route their fetches through the Core page path.
+        try:
+            from resources.lib.core_transport import bypass
+        except ImportError:
+            from core_transport import bypass
+        with bypass():
+            super().handle()
 
     def do_GET(self):
         if getattr(self.server, '_shutting_down', False):

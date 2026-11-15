@@ -88,7 +88,10 @@ def fetch_text(
     # 2. Secondary path: Direct scraper session if provided
     if scraper is not None:
         try:
-            from resources.lib.core_transport import bypass
+            try:
+                from resources.lib.core_transport import bypass
+            except ImportError:
+                from core_transport import bypass
 
             def request():
                 with bypass():  # the Core was just asked above
@@ -109,7 +112,14 @@ def fetch_text(
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
         req = urllib.request.Request(url, headers=request_headers)
-        request = lambda: urllib.request.urlopen(req, timeout=fallback_timeout, context=ctx)
+        try:
+            from resources.lib.core_transport import bypass
+        except ImportError:
+            from core_transport import bypass
+
+        def request():
+            with bypass():  # the Core was already asked above
+                return urllib.request.urlopen(req, timeout=fallback_timeout, context=ctx)
         response = _ipv4_call(request) if prefer_ipv4 else request()
         with response:
             if 200 <= response.status < 300:

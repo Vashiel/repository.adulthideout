@@ -108,7 +108,11 @@ def ensure_embedded_image_proxy():
                             pass
                         try:
                             req = urllib.request.Request(req_url, headers=req_headers)
-                            with urllib.request.urlopen(req, timeout=12) as resp:
+                            try:
+                                from resources.lib.core_transport import bypass
+                            except ImportError:
+                                from core_transport import bypass
+                            with bypass(), urllib.request.urlopen(req, timeout=12) as resp:
                                 data = resp.read()
                                 content_type = resp.headers.get("Content-Type", "image/jpeg")
                                 if ";" in content_type:

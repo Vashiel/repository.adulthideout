@@ -16,7 +16,7 @@ class Core(BaseHTTPRequestHandler):
         seen["core"].append(body)
         reply = {"status": "ok", "solution": {"url": body["url"], "status": core_status["value"],
                                               "headers": {"content-type": "text/html"}, "response": core_status["body"],
-                                              "cookies": [{"name": "cf", "value": "1", "domain": "example.test", "path": "/"}]}}
+                                              "cookies": [{"name": "cf", "value": "1", "domain": "", "path": "/"}]}}
         data = json.dumps(reply).encode()
         self.send_response(200); self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
 
@@ -71,3 +71,26 @@ with ct.bypass():
     s.get(site_url, timeout=5)
 assert len(seen["core"]) == n, "post, stream, media and bypass skip the core"
 print("ok", ct.stats())
+
+# urllib: plain urlopen and a module's own cookie opener (missav style) go through the core too.
+import http.cookiejar, urllib.request
+n = len(seen["core"]); seen["site"].clear()
+assert urllib.request.urlopen(site_url, timeout=5).read().decode("utf-8") == "from core ü"
+jar = http.cookiejar.CookieJar()
+opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+jar.set_cookie(http.cookiejar.Cookie(0, "sess", "xyz", None, False, "127.0.0.1", False, False, "/", True,
+                                     False, None, True, None, None, {}))
+with opener.open(site_url, timeout=5) as resp:
+    assert resp.status == 200 and resp.read().decode("utf-8") == "from core ü"
+assert any(c["name"] == "sess" for c in seen["core"][-1]["cookies"]), "opener cookies go to the core"
+assert "cf" in {c.name for c in jar}, "core cookies land in the opener's jar"
+assert len(seen["core"]) == n + 2 and seen["site"] == []
+
+core_status["value"] = 403
+assert urllib.request.urlopen(site_url, timeout=5).read() == b"from python", "urllib falls back too"
+core_status["value"] = 200
+n = len(seen["core"])
+urllib.request.urlopen(urllib.request.Request(site_url, headers={"Range": "bytes=0-"}), timeout=5).read()
+urllib.request.urlopen(urllib.request.Request(site_url, data=b"x"), timeout=5).read()
+assert len(seen["core"]) == n, "range and post requests skip the core"
+print("urllib ok", ct.stats())
