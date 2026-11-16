@@ -347,6 +347,9 @@ class KVSTubeWebsite(BaseWebsite):
         if not value:
             return False
         value = value.lower()
+        # "preview.mp4.jpg" style screenshots are images, not streams.
+        if value.split("?", 1)[0].rstrip("/").endswith((".jpg", ".jpeg", ".png", ".webp", ".gif")):
+            return False
         return ".mp4" in value and ("get_file/" in value or value.startswith("http"))
 
     def _normalize_stream(self, value, license_code=None):
@@ -419,10 +422,28 @@ class KVSTubeWebsite(BaseWebsite):
 
     def resolve_recording_stream(self, url):
         html_content = self._get(url, referer=self.base_url)
-        stream_url = self._extract_stream_url(html_content, referer=url)
+        referer = url
+        stream_url = None
+        # Some sites play from a partner's KVS embed (<iframe src=".../embed/<id>">) instead of
+        # carrying the player variables themselves (extreme.adult, camhub via x-x-x.tube).
+        if not re.search(r'video_?url\s*:', html_content or "", re.IGNORECASE):
+            # iframes first, then the page's own "embedUrl"; the first one with a player wins.
+            embeds = re.findall(r'<iframe\b[^>]+src=["\'](https?://[^"\']+/embed/\d+/?)["\']', html_content or "", re.IGNORECASE)
+            embeds += re.findall(r'"embedUrl"\s*:\s*["\'](https?://[^"\']+/embed/\d+/?)["\']', html_content or "", re.IGNORECASE)
+            from resources.lib.core_transport import bypass
+            for embed_url in dict.fromkeys(embeds):
+                # Past the Core: the embed's signed link belongs to the session that fetched it.
+                with bypass():
+                    embed_html = self._get(embed_url, referer=url)
+                stream_url = self._extract_stream_url(embed_html, referer=embed_url)
+                if stream_url:
+                    referer = embed_url
+                    break
+        if not stream_url:
+            stream_url = self._extract_stream_url(html_content, referer=url)
         if not stream_url:
             return None
-        headers = self._headers(url, accept="*/*")
+        headers = self._headers(referer, accept="*/*")
         cookies = self.session.cookies.get_dict() if self.session else {}
         if cookies:
             headers["Cookie"] = "; ".join("{}={}".format(key, value) for key, value in cookies.items())

@@ -942,7 +942,16 @@ def probe_stream_reachability(stream_url, headers=None, timeout=15):
         except Exception:
             pass
 
-    try:
+    def fetch():
+        # requests like the add-on's playback proxy: on a redirect it drops the page's Cookie
+        # header and keeps cookies the redirect sets (KVS get_file -> CDN refuses otherwise).
+        try:
+            import requests
+        except ImportError:
+            requests = None
+        if requests is not None:
+            with requests.get(clean_url, headers=sanitized_headers, timeout=timeout, stream=True, verify=False) as resp:
+                return resp.status_code, resp.headers.get("Content-Type", ""), next(resp.iter_content(512), b"")
         import ssl
         try:
             ssl_ctx = ssl._create_unverified_context()
@@ -952,12 +961,12 @@ def probe_stream_reachability(stream_url, headers=None, timeout=15):
         if ssl_ctx:
             handlers.append(urllib.request.HTTPSHandler(context=ssl_ctx))
         opener = urllib.request.build_opener(*handlers)
-        req = urllib.request.Request(clean_url, headers=sanitized_headers)
-        with opener.open(req, timeout=timeout) as resp:
-            code = resp.status
-            content_type = resp.headers.get("Content-Type", "")
-            data = resp.read(512)
+        with opener.open(urllib.request.Request(clean_url, headers=sanitized_headers), timeout=timeout) as resp:
+            return resp.status, resp.headers.get("Content-Type", ""), resp.read(512)
 
+    try:
+        code, content_type, data = fetch()
+        if True:
             prefix = bytes(data[:64]).lstrip().lower()
             if prefix.startswith((b"<!doctype", b"<html", b"<head", b"<body")):
                 return {
