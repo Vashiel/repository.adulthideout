@@ -813,9 +813,13 @@ msgid "Any quality"
 msgstr "Qualsiasi qualità"
 
 msgctxt "#31027"
-msgid "HD"
-msgstr "HD"
+msgid "720p and better"
+msgstr "720p e superiore"
 
 msgctxt "#31028"
-msgid "4K"
-msgstr "4K"
+msgid "4K only"
+msgstr "Solo 4K"
+
+msgctxt "#31029"
+msgid "1080p and better"
+msgstr "1080p e superiore"

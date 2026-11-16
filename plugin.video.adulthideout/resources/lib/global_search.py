@@ -255,9 +255,11 @@ CORE_BLOCKED_TERMS = ("loli", "lolicon", "shota", "shotacon", "underage")
 # Chosen before a search; results that miss them are dropped while sources are collected.
 SEARCH_LENGTHS = [("any", 31020, "Any length", 0), ("10", 31021, "10+ minutes", 600), ("20", 31022, "20+ minutes", 1200),
                   ("40", 31023, "40+ minutes", 2400), ("movie", 31024, "Full movie (60+ minutes)", 3600)]
-SEARCH_QUALITIES = [("any", 31026, "Any quality"), ("hd", 31027, "HD"), ("4k", 31028, "4K")]
+SEARCH_QUALITIES = [("any", 31026, "Any quality"), ("hd", 31027, "720p and better"), ("fhd", 31029, "1080p and better"),
+                    ("4k", 31028, "4K only")]
 _QUALITY_HINTS = {
     "hd": re.compile(r"\b(?:hd|720p|1080p|1440p|2160p|4k|uhd|fhd|full ?hd)\b", re.I),
+    "fhd": re.compile(r"\b(?:1080p|1440p|2160p|4k|uhd|fhd|full ?hd)\b", re.I),
     "4k": re.compile(r"\b(?:4k|2160p|uhd)\b", re.I),
 }
 _LABEL_DURATION = re.compile(r"\b(\d{1,2}:\d{2}(?::\d{2})?)\b")
@@ -273,7 +275,9 @@ NATIVE_FILTER_SETTINGS = {
     ("length", "movie"): {"eporner_min_duration": "4", "spankbang_duration": "3", "tubepornclassic_min_duration": "5", "xnxx_duration": "4",
                           "xhamster_min_duration": "30+ min"},
     ("quality", "hd"): {"eporner_quality_filter": "1", "spankbang_quality": "1", "xnxx_quality": "1", "xhamster_resolution": "720p+"},
-    ("quality", "4k"): {"eporner_quality_filter": "3", "spankbang_quality": "3", "xnxx_quality": "2", "xhamster_resolution": "4K"},
+    ("quality", "fhd"): {"eporner_quality_filter": "2", "spankbang_quality": "2", "xnxx_quality": "2", "xhamster_resolution": "1080p+"},
+    # xnxx has no 4K level; it is checked by title like the sites without own filters.
+    ("quality", "4k"): {"eporner_quality_filter": "3", "spankbang_quality": "3", "xhamster_resolution": "4K"},
 }
 
 

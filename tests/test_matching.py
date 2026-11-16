@@ -124,3 +124,11 @@ assert gs._cached_results("other", search_mode="selected") is None
 gs._save_state(gs._state_cache)
 assert "result_cache" not in json.load(open(os.path.join(gs.profile_path, "global_search.json")))
 print("result files ok")
+
+# Quality levels: 720p+, 1080p+, 4K only. xnxx has no 4K level, so it is checked by title there.
+assert ok({"quality": "fhd"}, "Clip 1080p", "") and ok({"quality": "fhd"}, "Clip 4K", "")
+assert not ok({"quality": "fhd"}, "Clip 720p", "") and not ok({"quality": "fhd"}, "Clip HD", "")
+assert native_filter_settings({"quality": "fhd"})["xnxx_quality"] == "2"
+assert native_filter_dimensions({"quality": "4k"}, "xnxx") == set()
+assert native_filter_dimensions({"quality": "4k"}, "eporner") == {"quality"}
+print("quality levels ok")
