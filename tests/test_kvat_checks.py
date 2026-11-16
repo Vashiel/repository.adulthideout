@@ -88,3 +88,14 @@ assert not core.is_placeholder_thumb(cached)
 assert core.is_placeholder_thumb(os.path.join(PROFILE, "missing.jpg"))
 assert core.is_placeholder_thumb(os.path.join(addon_path, "resources", "logos", "x.png"))
 print("local thumbs ok")
+
+# Bare Addon() means AdultHideout only for AdultHideout's own code; ids and other callers pass through.
+import xbmcaddon
+asked = []
+inner = core._orig_xbmcaddon_Addon if hasattr(core, "_orig_xbmcaddon_Addon") else None
+core.xbmcaddon.Addon.__globals__["_orig_xbmcaddon_Addon"] = lambda *a, **k: asked.append((a, k))
+plugin_code = compile("Addon()", "/x/plugin.video.adulthideout/resources/websites/m.py", "eval")
+eval(plugin_code, {"Addon": xbmcaddon.Addon})
+xbmcaddon.Addon(); xbmcaddon.Addon(id="script.common.plugin.cache")
+assert asked == [(("plugin.video.adulthideout",), {}), ((), {}), ((), {"id": "script.common.plugin.cache"})], asked
+print("addon ok")

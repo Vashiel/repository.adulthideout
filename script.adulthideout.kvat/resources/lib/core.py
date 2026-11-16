@@ -22,20 +22,19 @@ import xbmcvfs
 
 
 try:
-    # Kodi only: the plugin modules run inside this script there, and their bare Addon() must mean
-    # AdultHideout. Tactile runs every add-on in one process and resolves Addon() itself, so a
-    # global swap would hand AdultHideout to other add-ons.
-    if "tactile" not in str(xbmc.getInfoLabel("System.BuildVersion")).lower():
+    # The plugin modules run inside this script, so their bare Addon() would give this script's
+    # settings (resolvers then count as switched off). Only callers from AdultHideout's own files
+    # get AdultHideout; Tactile runs all add-ons in one process, so everyone else is untouched.
+    if not getattr(xbmcaddon.Addon, "_kvat_wrapped", False):
         _orig_xbmcaddon_Addon = xbmcaddon.Addon
 
-        def _safe_xbmcaddon_Addon(addon_id=None, **kwargs):
-            addon_id = addon_id or kwargs.get("id")
-            if not addon_id:
-                try:
+        def _safe_xbmcaddon_Addon(*args, **kwargs):
+            if not args and not kwargs:
+                caller = sys._getframe(1).f_code.co_filename.replace("\\", "/")
+                if "/plugin.video.adulthideout/" in caller:
                     return _orig_xbmcaddon_Addon("plugin.video.adulthideout")
-                except Exception:
-                    return _orig_xbmcaddon_Addon()
-            return _orig_xbmcaddon_Addon(addon_id)
+            return _orig_xbmcaddon_Addon(*args, **kwargs)
+        _safe_xbmcaddon_Addon._kvat_wrapped = True
         xbmcaddon.Addon = _safe_xbmcaddon_Addon
 except Exception:
     pass

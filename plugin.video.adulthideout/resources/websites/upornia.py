@@ -2,6 +2,7 @@ import xbmcgui
 import xbmcplugin
 import json
 import re
+import time
 import base64
 import urllib.parse
 from resources.lib.base_website import BaseWebsite
@@ -204,7 +205,11 @@ class Upornia(BaseWebsite):
             
             import xbmc
             monitor = xbmc.Monitor()
+            # Bounded: if playback never starts, the proxy must not keep this thread forever.
+            start_deadline = time.time() + 30
             while not monitor.abortRequested() and not xbmc.Player().isPlaying():
+                if time.time() > start_deadline:
+                    break
                 monitor.waitForAbort(0.5)
             while not monitor.abortRequested() and xbmc.Player().isPlaying():
                 monitor.waitForAbort(1)
