@@ -1224,6 +1224,8 @@ def handle_routing():
         )
 
     elif mode == '4':
+        # Tells the view service a video is being resolved, so it does not press Next meanwhile.
+        xbmcgui.Window(10000).setProperty("AdultHideout.ResolvingSince", str(time.time()))
         try:
             if ADDON.getSetting("enable_playback_history") == "true" and not xbmcgui.Window(10000).getProperty("AdultHideout.SmartChannel"):
                 xbmcgui.Window(10000).setProperty("AdultHideout.PendingHistory", json.dumps({
@@ -1241,6 +1243,8 @@ def handle_routing():
             active_channel = xbmcgui.Window(10000).getProperty("AdultHideout.SmartChannel")
             if active_channel:
                 log(f"[AdultHideout] Smart Channel '{active_channel}' active: skipping broken video silently to next", xbmc.LOGINFO)
+        finally:
+            xbmcgui.Window(10000).clearProperty("AdultHideout.ResolvingSince")
     elif mode == '3':
         try:
             if hasattr(target_website, 'process_categories'):

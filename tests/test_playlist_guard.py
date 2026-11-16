@@ -39,3 +39,33 @@ monitor = vs.SmartPlayerMonitor()
 monitor.onPlayBackStopped()
 assert monitor.recover_at is not None, "smart stream: stop while loading skips"
 print("stop ok")
+
+# While default.py resolves a video, the idle check must not press Next (that piled up resolves).
+w = Window()
+assert not vs._resolving(w, 1000.0), "nothing resolving"
+w.setProperty("AdultHideout.ResolvingSince", "990")
+assert vs._resolving(w, 1000.0), "resolve started 10 s ago"
+assert not vs._resolving(w, 1100.0), "a resolve older than 60 s counts as hung"
+w.setProperty("AdultHideout.ResolvingSince", "garbage")
+assert not vs._resolving(w, 1000.0)
+print("resolving ok")
+
+# A Trans pool switches the modules to their trans sections while harvesting, then restores them.
+from resources.lib import smart_playlists as sp
+class Addon:
+    def __init__(self): self.values = {"xnxx_content_type": "0"}
+    def getSetting(self, key): return self.values.get(key, "")
+    def setSetting(self, key, value): self.values[key] = value
+spl = sp.SmartPlaylists.__new__(sp.SmartPlaylists)
+spl.addon = Addon()
+spl._get_temp_stream = lambda channel: {"pool": "trans", "query": "cumpilation"} if channel == "custom_x" else None
+spl._load_custom_streams = lambda: []
+seen = {}
+spl._get_fast_seed_unfiltered = lambda channel: seen.setdefault(channel, spl.addon.getSetting("xnxx_content_type"))
+spl._get_fast_seed("custom_x")
+assert seen["custom_x"] == "2", "harvest runs with xnxx switched to trans"
+assert spl.addon.getSetting("xnxx_content_type") == "0", "setting restored afterwards"
+spl._get_fast_seed_unfiltered = lambda channel: seen.setdefault(channel, spl.addon.getSetting("xnxx_content_type"))
+spl._get_fast_seed("4k")
+assert seen["4k"] == "0", "pools without orientation leave settings alone"
+print("orientation ok")

@@ -121,6 +121,14 @@ class ViewSettingsMonitor(xbmc.Monitor):
         self._mark_pending_if_changed()
 
 
+def _resolving(window, now):
+    """True while default.py resolves a video; a resolve older than 60 s is treated as hung."""
+    try:
+        return now - float(window.getProperty("AdultHideout.ResolvingSince") or 0) < 60.0
+    except ValueError:
+        return False
+
+
 def _addon_playlist():
     """True while a multi-item AdultHideout list plays, so broken items get skipped there too."""
     try:
@@ -585,6 +593,9 @@ def run():
                 playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
                 if not active_channel and playlist.getposition() >= len(playlist) - 1:
                     player_monitor.recover_at = None  # end of a normal list: nothing to skip to
+                if player_monitor.recover_at and _resolving(window, now):
+                    # Not idle, still resolving: each Next here started another resolve until Tactile hung.
+                    player_monitor.recover_at = now + 5.0
                 if player_monitor.recover_at and now >= player_monitor.recover_at:
                     _log("Smart channel idle after failed item - advancing to next video")
                     # Retry once more if Kodi ignores Next without emitting a callback.

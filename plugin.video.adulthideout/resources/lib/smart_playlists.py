@@ -4,6 +4,7 @@
 import os
 import re
 import sys
+import contextlib
 import json
 import time
 import random
@@ -867,7 +868,39 @@ class SmartPlaylists:
             )
         return seed[:4]
 
+    def _pool_of(self, channel):
+        if channel in CHANNEL_POOLS:
+            return channel
+        if channel.startswith("custom_"):
+            cs = self._get_temp_stream(channel)
+            if cs is None:
+                cs = next((s for s in self._load_custom_streams() if s.get("id") == channel), None)
+            return (cs or {}).get("pool", "")
+        return ""
+
+    @contextlib.contextmanager
+    def _orientation(self, channel):
+        """Trans/gay pools switch the modules to that section while harvesting, as Global Search does.
+
+        Without it a query went to xnxx/eporner/spankbang as a plain search and the Trans pool
+        returned straight videos.
+        """
+        from resources.lib.global_search import PROFILE_OVERRIDES
+        overrides = PROFILE_OVERRIDES.get(self._pool_of(channel), {})
+        previous = {key: self.addon.getSetting(key) for key in overrides}
+        for key, value in overrides.items():
+            self.addon.setSetting(key, value)
+        try:
+            yield bool(overrides)
+        finally:
+            for key, value in previous.items():
+                self.addon.setSetting(key, value)
+
     def _get_fast_seed(self, channel):
+        with self._orientation(channel):
+            return self._get_fast_seed_unfiltered(channel)
+
+    def _get_fast_seed_unfiltered(self, channel):
         """Quickly harvests 8-12 videos across primary scrapers for instant 1-click playback."""
         if channel == "vault":
             data = load_library()
@@ -962,7 +995,9 @@ class SmartPlaylists:
                     # Fast-path: try AdultHideout Core Smart Playlist Generator (< 1s parallel harvesting)
                     try:
                         from resources.lib.thumb_proxy import is_core_healthy
-                        if is_core_healthy() and q:
+                        # The Core searches plainly; pools with an orientation need the modules' settings.
+                        from resources.lib.global_search import PROFILE_OVERRIDES
+                        if is_core_healthy() and q and pool_name not in PROFILE_OVERRIDES:
                             core_targets = []
                             for s in selected:
                                 try:
@@ -1065,6 +1100,10 @@ class SmartPlaylists:
         return []
 
     def _get_channel_videos(self, channel, force_refresh=False, page=1):
+        with self._orientation(channel):
+            return self._get_channel_videos_unfiltered(channel, force_refresh=force_refresh, page=page)
+
+    def _get_channel_videos_unfiltered(self, channel, force_refresh=False, page=1):
         global _CHANNEL_CACHE
         cache_key = f"{channel}_p{page}"
         if not force_refresh and cache_key in _CHANNEL_CACHE and _CHANNEL_CACHE[cache_key]:
