@@ -320,6 +320,9 @@ class PornDoe(BaseWebsite):
                 continue
             
             video_url = url_match.group(1)
+            # Ads sit in the grid as "/redirect/..." cards; only "/watch/..." are videos.
+            if '/redirect/' in video_url:
+                continue
             if not video_url.startswith('http'):
                 video_url = f"{self.base_url}{video_url}"
 

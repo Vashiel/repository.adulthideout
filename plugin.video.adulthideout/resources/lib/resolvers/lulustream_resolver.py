@@ -45,7 +45,14 @@ def _unpack_packed_js(page_html):
         return ""
 
 
+# Mirror domains sites still embed although they no longer exist; the same ids live on lulustream.com.
+_DEAD_MIRRORS = ("luluvid.com",)
+
+
 def resolve(embed_url, referer, headers):
+    host = urllib.parse.urlsplit(embed_url).netloc.lower()
+    if host.replace("www.", "") in _DEAD_MIRRORS:
+        embed_url = embed_url.replace(host, "lulustream.com", 1)
     headers = dict(headers) if headers else {}
     ua = headers.get("User-Agent") or "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
     req_headers = {
@@ -56,9 +63,16 @@ def resolve(embed_url, referer, headers):
     html = ""
     # Lulu/TNMR flags cloudscraper TLS fingerprints and generates 403 tokens;
     # use a clean requests.Session first for legitimate stream token generation.
+    # Past the Core too: the token must belong to the client that later fetches the stream.
     try:
-        session = requests.Session()
-        resp = session.get(embed_url, headers=req_headers, timeout=15)
+        from resources.lib.core_transport import bypass
+    except ImportError:
+        import contextlib
+        bypass = contextlib.nullcontext
+    try:
+        with bypass():
+            session = requests.Session()
+            resp = session.get(embed_url, headers=req_headers, timeout=15)
         if resp.status_code == 200:
             html = resp.text
     except Exception:

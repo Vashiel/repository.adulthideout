@@ -115,9 +115,19 @@ class Taxi69(BaseWebsite):
         match = re.search(r'https://videos\.rubias19\.com/[^"\'\\]+\.mp4', content or "", re.I)
         return {"url": html.unescape(match.group(0)), "headers": self._headers(url), "extension": "mp4"} if match else None
 
+    def _pornhub_view_url(self, url):
+        """Newer Taxi69 pages embed Pornhub's player instead of hosting the file themselves."""
+        content = self._get(url, self.base_url)
+        match = re.search(r'pornhub\.com/embed/([A-Za-z0-9]+)', content or "", re.I)
+        return "https://www.pornhub.com/view_video.php?viewkey={}".format(match.group(1)) if match else None
+
     def play_video(self, url):
         resolved = self.resolve_recording_stream(url)
         if not resolved:
+            view_url = self._pornhub_view_url(url)
+            if view_url:
+                from resources.websites.pornhub import PornhubWebsite
+                return PornhubWebsite(self.addon_handle).play_video(view_url)
             self.notify_error("No Taxi69 stream found")
             return xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
         controller = ProxyController(resolved["url"], upstream_headers=resolved["headers"], session=self.session, skip_resolve=True, probe_size=True, use_urllib=True)
