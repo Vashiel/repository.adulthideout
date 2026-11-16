@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 from resources.lib.global_search import GlobalSearch
 
 gs = GlobalSearch.__new__(GlobalSearch)
+gs._state_cache = {}  # no saved search state, so no length or quality filter
 assert gs._matches_all_query_words("Hospital ASMR Roleplay", "asmr hospital")
 assert not gs._matches_all_query_words("ASMR Nurse", "asmr hospital")
 assert gs._matches_query_strictly("Soft ASMR", "asmr")
@@ -83,3 +84,43 @@ gs._sources_for_search = lambda q, m: ["3movs", "missav", "zzsite"]
 mixed = [{"source": "3movs", "label": "Banged in the hospital"}, {"source": "zzsite", "label": "Hospital ASMR roleplay"}]
 assert gs._display_results("asmr hospital", mixed, search_mode="selected")[0]["source"] == "zzsite"
 print("sort ok")
+
+# Length and quality chosen before the search: results that miss them are dropped while collecting.
+from resources.lib.global_search import passes_search_filters as ok
+assert ok({}, "anything", "")
+assert ok({"length": "20"}, "Long one", "25:10") and not ok({"length": "20"}, "Short one", "12:00")
+assert ok({"length": "20"}, "Long one [COLOR lime](31:02)[/COLOR]", ""), "length from the label"
+assert not ok({"length": "10"}, "No length at all", ""), "unknown length fails an active length filter"
+assert ok({"length": "movie"}, "x", "1:32:00") and not ok({"length": "movie"}, "x", "45:00")
+assert ok({"quality": "hd"}, "Nurse 1080p", "") and ok({"quality": "hd"}, "Clip in 4K", "")
+assert not ok({"quality": "hd"}, "Plain title", "") and not ok({"quality": "4k"}, "Clip 1080p", "")
+print("filters ok")
+
+# Sites with their own length/quality filter: settings set while searching, searched via their module.
+from resources.lib.global_search import native_filter_settings, native_filter_dimensions
+f = {"length": "20", "quality": "hd"}
+s = native_filter_settings(f)
+assert s["xnxx_duration"] == "4" and s["spankbang_quality"] == "1" and s["xhamster_resolution"] == "720p+"
+assert native_filter_dimensions(f, "xnxx") == {"length", "quality"}
+assert native_filter_dimensions(f, "xhamster") == {"quality"}, "xhamster has no 20+ setting"
+assert native_filter_dimensions(f, "missav") == set() and native_filter_settings({}) == {}
+assert ok(f, "Plain title", "", {"length", "quality"}), "native filters: unknown length and no HD word are fine"
+assert not ok(f, "Plain title", "5:00", {"length", "quality"}), "a known short length still fails"
+gs._state_cache = {"search_filters": f}
+gs.websites_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "plugin.video.adulthideout", "resources", "websites")
+assert "xnxx" not in {e["id"] for e in GlobalSearch._load_core_targets(gs, ["xnxx", "eroasmr"])}
+gs._state_cache = {}
+print("native filters ok")
+
+# Results are stored per search in their own file, not in the state file read on every action.
+import tempfile
+gs.profile_path = tempfile.mkdtemp()
+gs._state_cache = {"result_cache": {"old": "26 MB"}}
+gs._selected_profile = lambda: "balanced"; gs._selected_sources = lambda: ["a"]
+gs._filter_results = lambda r: r
+gs._save_results("milf", [{"source": "a", "url": "u1", "label": "x"}], search_mode="selected")
+assert gs._cached_results("milf", search_mode="selected")[0]["url"] == "u1"
+assert gs._cached_results("other", search_mode="selected") is None
+gs._save_state(gs._state_cache)
+assert "result_cache" not in json.load(open(os.path.join(gs.profile_path, "global_search.json")))
+print("result files ok")

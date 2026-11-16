@@ -779,3 +779,43 @@ msgstr "Core ({}) installato e attivo!"
 msgctxt "#31018"
 msgid "Download failed for {}. Using Python fallback."
 msgstr "Download fallito per {}. Utilizzo fallback Python."
+
+msgctxt "#31019"
+msgid "Length"
+msgstr "Durata"
+
+msgctxt "#31020"
+msgid "Any length"
+msgstr "Qualsiasi durata"
+
+msgctxt "#31021"
+msgid "10+ minutes"
+msgstr "10+ minuti"
+
+msgctxt "#31022"
+msgid "20+ minutes"
+msgstr "20+ minuti"
+
+msgctxt "#31023"
+msgid "40+ minutes"
+msgstr "40+ minuti"
+
+msgctxt "#31024"
+msgid "Full movie (60+ minutes)"
+msgstr "Film completo (60+ minuti)"
+
+msgctxt "#31025"
+msgid "Quality"
+msgstr "Qualità"
+
+msgctxt "#31026"
+msgid "Any quality"
+msgstr "Qualsiasi qualità"
+
+msgctxt "#31027"
+msgid "HD"
+msgstr "HD"
+
+msgctxt "#31028"
+msgid "4K"
+msgstr "4K"

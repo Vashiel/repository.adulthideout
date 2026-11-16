@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import hashlib
 import os
 import queue
 import re
@@ -251,6 +252,56 @@ SOURCE_PRESETS = [
 
 CORE_BLOCKED_TERMS = ("loli", "lolicon", "shota", "shotacon", "underage")
 
+# Chosen before a search; results that miss them are dropped while sources are collected.
+SEARCH_LENGTHS = [("any", 31020, "Any length", 0), ("10", 31021, "10+ minutes", 600), ("20", 31022, "20+ minutes", 1200),
+                  ("40", 31023, "40+ minutes", 2400), ("movie", 31024, "Full movie (60+ minutes)", 3600)]
+SEARCH_QUALITIES = [("any", 31026, "Any quality"), ("hd", 31027, "HD"), ("4k", 31028, "4K")]
+_QUALITY_HINTS = {
+    "hd": re.compile(r"\b(?:hd|720p|1080p|1440p|2160p|4k|uhd|fhd|full ?hd)\b", re.I),
+    "4k": re.compile(r"\b(?:4k|2160p|uhd)\b", re.I),
+}
+_LABEL_DURATION = re.compile(r"\b(\d{1,2}:\d{2}(?::\d{2})?)\b")
+
+
+# Filters these sites apply in their own search, as their module settings (like PROFILE_OVERRIDES).
+# Set while searching, so the site only returns matching videos on every page.
+NATIVE_FILTER_SETTINGS = {
+    ("length", "10"): {"eporner_min_duration": "2", "spankbang_duration": "1", "tubepornclassic_min_duration": "2", "xnxx_duration": "3"},
+    ("length", "20"): {"eporner_min_duration": "3", "spankbang_duration": "2", "tubepornclassic_min_duration": "4", "xnxx_duration": "4"},
+    ("length", "40"): {"eporner_min_duration": "4", "spankbang_duration": "3", "tubepornclassic_min_duration": "5", "xnxx_duration": "4",
+                       "xhamster_min_duration": "30+ min"},
+    ("length", "movie"): {"eporner_min_duration": "4", "spankbang_duration": "3", "tubepornclassic_min_duration": "5", "xnxx_duration": "4",
+                          "xhamster_min_duration": "30+ min"},
+    ("quality", "hd"): {"eporner_quality_filter": "1", "spankbang_quality": "1", "xnxx_quality": "1", "xhamster_resolution": "720p+"},
+    ("quality", "4k"): {"eporner_quality_filter": "3", "spankbang_quality": "3", "xnxx_quality": "2", "xhamster_resolution": "4K"},
+}
+
+
+def native_filter_settings(filters):
+    settings = {}
+    for dimension in ("length", "quality"):
+        settings.update(NATIVE_FILTER_SETTINGS.get((dimension, (filters or {}).get(dimension)), {}))
+    return settings
+
+
+def native_filter_dimensions(filters, site):
+    """Which of the chosen filters the site applies itself, e.g. {"length"} for xnxx and 20+ min."""
+    return {dimension for dimension in ("length", "quality")
+            if any(key.split("_", 1)[0] == site for key in NATIVE_FILTER_SETTINGS.get((dimension, (filters or {}).get(dimension)), {}))}
+
+
+def passes_search_filters(filters, label, duration, native=()):
+    """Length and quality chosen before the search. Unknown length fails an active length filter,
+    unless the site filtered by length itself; a site's own quality filter needs no title hint."""
+    min_secs = next((secs for key, _, _, secs in SEARCH_LENGTHS if key == (filters or {}).get("length")), 0)
+    if min_secs:
+        found = _LABEL_DURATION.search(label or "")
+        seconds = parse_duration_seconds(duration) or (parse_duration_seconds(found.group(1)) if found else 0)
+        if seconds < min_secs and not (seconds == 0 and "length" in native):
+            return False
+    hint = _QUALITY_HINTS.get((filters or {}).get("quality"))
+    return not hint or "quality" in native or bool(hint.search(label or ""))
+
 PROFILE_OVERRIDES = {
     "trans": {
         "ashemaletube_pf_gender": "1",
@@ -378,6 +429,7 @@ class GlobalSearch:
         return state
 
     def _save_state(self, state):
+        state.pop("result_cache", None)  # results live in global_search_results/ now; drops old 26 MB caches
         try:
             # ASCII on purpose: _load_state reads with the platform's default encoding.
             write_json_atomic(self._state_path(), state, ensure_ascii=True)
@@ -416,9 +468,33 @@ class GlobalSearch:
             return history_modes.get(query, "selected")
         return "selected"
 
+    def _search_filters(self):
+        filters = self._load_state().get("search_filters")
+        return dict(filters) if isinstance(filters, dict) else {}
+
+    def _ask_search_filters(self):
+        """Length and quality before the search, preselected with the last choice. False on cancel."""
+        current = self._search_filters()
+        chosen = {}
+        for key, heading_id, heading, options in (("length", 31019, "Length", SEARCH_LENGTHS), ("quality", 31025, "Quality", SEARCH_QUALITIES)):
+            keys = [option[0] for option in options]
+            labels = [self._tr(option[1], option[2]) for option in options]
+            preselect = keys.index(current.get(key)) if current.get(key) in keys else 0
+            idx = xbmcgui.Dialog().select(self._tr(heading_id, heading), labels, preselect=preselect)
+            if idx < 0:
+                return False
+            chosen[key] = keys[idx]
+        state = self._load_state()
+        state["search_filters"] = chosen
+        self._save_state(state)
+        return True
+
     def _cache_key(self, query, search_mode="selected"):
+        filters = self._search_filters()
         signature = "|".join(
-            [PLAYLIST_SAFE_CACHE_VERSION, search_mode, self._selected_profile()] + self._selected_sources()
+            [PLAYLIST_SAFE_CACHE_VERSION, search_mode, self._selected_profile(),
+             "len={}".format(filters.get("length", "any")), "q={}".format(filters.get("quality", "any"))]
+            + self._selected_sources()
         )
         return "{}::{}".format(query.strip().lower(), signature)
 
@@ -584,37 +660,46 @@ class GlobalSearch:
             displayed.sort(key=lambda result: (self._source_label(result.get("source", "")).lower(), str(result.get("label") or "").lower()))
         return displayed
 
+    def _results_dir(self):
+        # One file per search: a search can hold thousands of results, and the state file
+        # (read on every menu action) grew to 26 MB when they lived inside it.
+        path = os.path.join(self.profile_path, "global_search_results")
+        if not os.path.isdir(path):
+            os.makedirs(path)
+        return path
+
+    def _results_file(self, query, search_mode):
+        key = hashlib.md5(self._cache_key(query, search_mode).encode("utf-8")).hexdigest()
+        return os.path.join(self._results_dir(), key + ".json")
+
     def _cached_results(self, query, search_mode="selected"):
-        cache = self._load_state().get("result_cache")
-        if not isinstance(cache, dict):
+        try:
+            with open(self._results_file(query, search_mode), "r", encoding="utf-8") as handle:
+                results = json.load(handle).get("results")
+        except (OSError, ValueError, AttributeError):
             return None
-        entry = cache.get(self._cache_key(query, search_mode))
-        if not isinstance(entry, dict):
+        if not results or not isinstance(results, list):
             return None
-        results = entry.get("results")
-        if not results:
-            return None
-        return self._filter_results(results) if isinstance(results, list) else None
+        return self._filter_results(results)
 
     def _save_results(self, query, results, search_mode="selected", sources=None):
         if not results:
             return
-        state = self._load_state()
-        cache = state.get("result_cache")
-        if not isinstance(cache, dict):
-            cache = {}
-        cache[self._cache_key(query, search_mode)] = {
+        write_json_atomic(self._results_file(query, search_mode), {
             "query": query,
             "search_mode": search_mode,
             "profile": self._selected_profile(),
             "sources": sources or self._selected_sources(),
             "saved_at": int(time.time()),
             "results": results,
-        }
-        while len(cache) > RESULT_CACHE_LIMIT:
-            cache.pop(min(cache, key=lambda k: (cache[k] or {}).get("saved_at", 0) if isinstance(cache[k], dict) else 0))
-        state["result_cache"] = cache
-        self._save_state(state)
+        })
+        folder = self._results_dir()
+        files = sorted((os.path.join(folder, name) for name in os.listdir(folder) if name.endswith(".json")), key=os.path.getmtime)
+        for old in files[:-RESULT_CACHE_LIMIT]:
+            try:
+                os.remove(old)
+            except OSError:
+                pass
 
     def _save_filmography_batch(self, query, titles):
         state = self._load_state()
@@ -901,9 +986,14 @@ class GlobalSearch:
     def clear_history(self):
         state = self._load_state()
         state["history"] = []
-        state["result_cache"] = {}
         state["result_options"] = {}
         self._save_state(state)
+        folder = self._results_dir()
+        for name in os.listdir(folder):
+            try:
+                os.remove(os.path.join(folder, name))
+            except OSError:
+                pass
         return self.show_menu()
 
     def edit_search(self, query, search_mode="selected"):
@@ -1165,7 +1255,7 @@ class GlobalSearch:
         if not keyboard.isConfirmed():
             return self.show_menu()
         query = keyboard.getText().strip()
-        if not query:
+        if not query or not self._ask_search_filters():
             return self.show_menu()
         self._remember_query(query, search_mode=search_mode)
         self._open_results(query, refresh=True, search_mode=search_mode)
@@ -1291,7 +1381,8 @@ class GlobalSearch:
         return captured
 
     def _apply_profile_overrides(self, profile):
-        overrides = PROFILE_OVERRIDES.get(profile, {})
+        overrides = dict(PROFILE_OVERRIDES.get(profile, {}))
+        overrides.update(native_filter_settings(self._search_filters()))
         previous = {}
         for setting_id, value in overrides.items():
             try:
@@ -1592,7 +1683,8 @@ class GlobalSearch:
         sources = self._sources_for_search(query, search_mode)
         profile = self._profile_for_search(search_mode)
         max_results_per_site = 25
-        self.logger("Global search mode '{}' profile '{}' using sources: {}".format(search_mode, profile, ", ".join(sources)))
+        search_filters = self._search_filters()
+        self.logger("Global search mode '{}' profile '{}' filters {} using sources: {}".format(search_mode, profile, search_filters, ", ".join(sources)))
         progress = xbmcgui.DialogProgress()
         progress.create(self._search_mode_label(search_mode), self._tr(30983, "Searching {} sources...", len(sources)))
 
@@ -1645,7 +1737,11 @@ class GlobalSearch:
                         if not target_url or not site.validate_search_result(target_url):
                             self.logger("Skipping unavailable movie mirror from {}: {}".format(src, item_label))
                             continue
-                    site_items.append(self._result_from_item(src, url, listitem, is_folder=False))
+                    result = self._result_from_item(src, url, listitem, is_folder=False)
+                    if not passes_search_filters(search_filters, result["label"], result["duration"],
+                                                 native_filter_dimensions(search_filters, src)):
+                        continue
+                    site_items.append(result)
                     if len(site_items) >= max_results_per_site:
                         break
                 return src, site_items, None
@@ -1747,7 +1843,9 @@ class GlobalSearch:
         except Exception as exc:
             self.logger("Core source list unavailable: {}".format(exc), xbmc.LOGWARNING)
             return []
-        wanted = set(sources)
+        # Sites that filter by length/quality themselves need their module (it builds the filter URL).
+        filters = self._search_filters()
+        wanted = {name for name in sources if not native_filter_dimensions(filters, name)}
         return [entry for entry in manifest if entry.get("id") in wanted]
 
     def _run_core_search(self, query, sources, progress, max_results_per_site, matcher):
@@ -1769,7 +1867,8 @@ class GlobalSearch:
             "max_results_per_site": max_results_per_site,
             # Python re-checks every label; phrase filtering in the Core would drop word matches.
             "strict_match": matcher is not None and matcher == self._matches_query_strictly,
-            "min_duration_secs": 0,
+            # The Core drops shorter results while parsing; unknown lengths are dropped below.
+            "min_duration_secs": next((secs for key, _, _, secs in SEARCH_LENGTHS if key == self._search_filters().get("length")), 0),
         }).encode("utf-8")
         response = {}
 
@@ -1810,6 +1909,8 @@ class GlobalSearch:
             if any(term in marker for term in CORE_BLOCKED_TERMS):
                 continue
             if per_source.get(site_name, 0) >= max_results_per_site:
+                continue
+            if not passes_search_filters(self._search_filters(), label, item.get("duration", "")):
                 continue
             seen.add(page_url)
             per_source[site_name] = per_source.get(site_name, 0) + 1
