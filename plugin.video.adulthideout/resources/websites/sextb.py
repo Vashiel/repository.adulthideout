@@ -158,7 +158,12 @@ class Sextb(BaseWebsite):
                 return response.text.replace("\x00", "")
             except Exception as exc:
                 self.logger.error("[sextb] cloudscraper request failed: %s", exc)
-        
+
+        if method == "POST":
+            # The page came through the Core, which holds the site's session; a direct POST with
+            # cloudscraper's own fingerprint is refused (HTTP 403 on Android).
+            return self._core_post(url, data, req_headers)
+
         if method == "GET":
             try:
                 import urllib.request
@@ -168,6 +173,29 @@ class Sextb(BaseWebsite):
                     return html_bytes.decode('utf-8', errors='ignore').replace("\x00", "")
             except Exception as exc:
                 self.logger.error("[sextb] urllib request failed: %s", exc)
+        return ""
+
+    def _core_post(self, url, data, headers):
+        try:
+            import http.client
+            body = json.dumps({
+                "cmd": "request.post",
+                "url": url,
+                "postData": urllib.parse.urlencode(data or {}),
+                "maxTimeout": 20000,
+                "headers": {k: v for k, v in headers.items() if k.lower() not in ("user-agent", "cookie")},
+            })
+            connection = http.client.HTTPConnection("127.0.0.1", 8191, timeout=25)
+            try:
+                connection.request("POST", "/v1", body, {"Content-Type": "application/json"})
+                solution = (json.loads(connection.getresponse().read().decode("utf-8")) or {}).get("solution") or {}
+            finally:
+                connection.close()
+            if int(solution.get("status") or 0) == 200 and solution.get("response"):
+                return solution["response"].replace("\x00", "")
+            self.logger.error("[sextb] Core POST returned HTTP %s", solution.get("status"))
+        except Exception as exc:
+            self.logger.error("[sextb] Core POST failed: %s", exc)
         return ""
 
     def get_page_url(self, base_url, page_num):
