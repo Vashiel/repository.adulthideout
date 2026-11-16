@@ -54,3 +54,37 @@ assert core.check_core({"core": 1, "fallback": 0}, {"core": 4, "fallback": 0}, "
 assert core.check_core({"core": 1, "fallback": 0}, {"core": 1, "fallback": 2}, "python")["status"] == "WARNING"
 assert core.search_engine("anyporn") == "core profile"
 print("summary ok")
+
+# Parallel sites: each thread gets only its own listing; threads without hooks reach the original.
+import threading, xbmcplugin
+calls = []
+xbmcplugin.addDirectoryItem = lambda *a, **k: calls.append("plugin")
+core._install_routing()
+seen = {"a": [], "b": []}
+barrier = threading.Barrier(2)
+def lister(name):
+    with core.thread_hooks(addDirectoryItem=lambda *a, **k: seen[name].append(a[0])):
+        barrier.wait()
+        for i in range(50):
+            xbmcplugin.addDirectoryItem(name)
+threads = [threading.Thread(target=lister, args=(n,)) for n in "ab"]
+[t.start() for t in threads]; [t.join() for t in threads]
+xbmcplugin.addDirectoryItem("x")
+assert seen == {"a": ["a"] * 50, "b": ["b"] * 50} and calls == ["plugin"], (seen, calls)
+print("parallel hooks ok")
+
+# Tactile loads the diagnostics anew per run; a second copy must still reach the routing.
+spec2 = importlib.util.spec_from_file_location("kvat_core2", spec.origin)
+core2 = importlib.util.module_from_spec(spec2); spec2.loader.exec_module(core2)
+got = []
+with core2.thread_hooks(addDirectoryItem=lambda *a, **k: got.append(a[0])):
+    xbmcplugin.addDirectoryItem("second run")
+assert got == ["second run"], got
+print("reload ok")
+
+# Tactile caches thumbnails as local files: an existing file is a real image, the logo is not.
+cached = os.path.join(PROFILE, "thumb.jpg"); open(cached, "wb").write(b"\xff\xd8\xff")
+assert not core.is_placeholder_thumb(cached)
+assert core.is_placeholder_thumb(os.path.join(PROFILE, "missing.jpg"))
+assert core.is_placeholder_thumb(os.path.join(addon_path, "resources", "logos", "x.png"))
+print("local thumbs ok")

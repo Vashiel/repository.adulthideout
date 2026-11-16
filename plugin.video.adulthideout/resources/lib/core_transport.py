@@ -50,9 +50,21 @@ def stats():
         return dict(_STATS)
 
 
+_THREAD_STATS = threading.local()
+
+
+def thread_stats():
+    """Counts of the calling thread only, for callers that test several sites at once."""
+    return dict(getattr(_THREAD_STATS, "counts", None) or {"core": 0, "fallback": 0})
+
+
 def _count(key):
     with _STATS_LOCK:
         _STATS[key] += 1
+    counts = getattr(_THREAD_STATS, "counts", None)
+    if counts is None:
+        counts = _THREAD_STATS.counts = {"core": 0, "fallback": 0}
+    counts[key] += 1
 
 
 def record(used_core):

@@ -1,3 +1,4 @@
+import contextlib
 import importlib
 import inspect
 import json
@@ -6,6 +7,7 @@ import platform
 import re
 import socket
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -213,6 +215,50 @@ _DIRECTORY_HANDLERS = {
 _INTERNAL_BOOTSTRAP = ("drtuber", "cumlouder", "pornhat")
 
 
+# Kept on xbmcplugin, not here: Tactile loads this file anew on every run, while the routing
+# installed by the first run stays in the process and must see the hooks of later runs.
+_HOOKS = xbmcplugin.__dict__.setdefault("_kvat_hooks", threading.local())
+_HOOK_LOCK = xbmcplugin.__dict__.setdefault("_kvat_hook_lock", threading.Lock())
+
+
+def _install_routing():
+    """Routes xbmcplugin calls and PlaybackGuard.join to the hooks of the calling thread.
+
+    Sites are tested in parallel, and in Tactile the add-on runs in this same process, so a
+    global swap would hand one site's items to another or swallow a real listing. Threads
+    without hooks reach the original functions.
+    """
+    with _HOOK_LOCK:
+        if xbmcplugin.__dict__.get("_kvat_routed"):
+            return
+        targets = [(xbmcplugin, name, name) for name in ("addDirectoryItem", "endOfDirectory", "setResolvedUrl")]
+        try:
+            from resources.lib import proxy_utils
+            targets.append((proxy_utils.PlaybackGuard, "join", "PlaybackGuardJoin"))
+        except Exception:
+            pass
+        for owner, attr, key in targets:
+            original = getattr(owner, attr)
+
+            def routed(*args, _original=original, _key=key, **kwargs):
+                hook = (getattr(_HOOKS, "active", None) or {}).get(_key)
+                return (hook or _original)(*args, **kwargs)
+
+            setattr(owner, attr, routed)
+        xbmcplugin._kvat_routed = True
+
+
+@contextlib.contextmanager
+def thread_hooks(**hooks):
+    _install_routing()
+    previous = getattr(_HOOKS, "active", None)
+    _HOOKS.active = dict(previous or {}, **hooks)
+    try:
+        yield
+    finally:
+        _HOOKS.active = previous
+
+
 def list_module_directory(url):
     """Runs the site module in this process and returns its items in Files.GetDirectory form.
 
@@ -256,16 +302,11 @@ def list_module_directory(url):
         })
         return True
 
-    originals = (xbmcplugin.addDirectoryItem, xbmcplugin.endOfDirectory)
-    xbmcplugin.addDirectoryItem = capture
-    xbmcplugin.endOfDirectory = lambda *args, **kwargs: None
-    try:
+    with thread_hooks(addDirectoryItem=capture, endOfDirectory=lambda *args, **kwargs: None):
         if params.get("page") and "page" in inspect.signature(handler).parameters:
             handler(target, page=int(params["page"]))
         else:
             handler(target)
-    finally:
-        xbmcplugin.addDirectoryItem, xbmcplugin.endOfDirectory = originals
     return items
 
 
@@ -668,7 +709,9 @@ def module_start_url(site):
     inst = load_website_instance(site)
     try:
         if inst is not None and site not in _INTERNAL_BOOTSTRAP:
-            return inst.get_start_url_and_label()[0]
+            start = str(inst.get_start_url_and_label()[0] or "")
+            if start.startswith(("http://", "https://")):  # not module tokens like "listing:..."
+                return start
     except Exception:
         pass
     return get_website_base_url(site)
@@ -996,8 +1039,6 @@ def resolve_and_probe_stream(site, playback_url):
     if not stream_url:
         play_video_fn = getattr(inst, "play_video", None)
         if play_video_fn and callable(play_video_fn):
-            orig_set_resolved = getattr(xbmcplugin, "setResolvedUrl", None)
-
             def mock_set_resolved(handle=None, succeeded=True, item=None, listitem=None, *args, **kwargs):
                 li = item or listitem or (args[0] if args else None)
                 captured["succeeded"] = succeeded
@@ -1010,28 +1051,11 @@ def resolve_and_probe_stream(site, playback_url):
                     except Exception as probe_err:
                         captured["probe_err"] = str(probe_err)
 
-            orig_guard_join = None
             try:
-                from resources.lib import proxy_utils
-                orig_guard_join = getattr(proxy_utils.PlaybackGuard, "join", None)
-                proxy_utils.PlaybackGuard.join = lambda self, *a, **kw: None
-            except Exception:
-                pass
-
-            try:
-                xbmcplugin.setResolvedUrl = mock_set_resolved
-                play_video_fn(page_url)
+                with thread_hooks(setResolvedUrl=mock_set_resolved, PlaybackGuardJoin=lambda *a, **kw: None):
+                    play_video_fn(page_url)
             except Exception as exc:
                 log("[{}] play_video error: {}".format(site, exc), xbmc.LOGWARNING)
-            finally:
-                if orig_set_resolved:
-                    xbmcplugin.setResolvedUrl = orig_set_resolved
-                if orig_guard_join:
-                    try:
-                        from resources.lib import proxy_utils
-                        proxy_utils.PlaybackGuard.join = orig_guard_join
-                    except Exception:
-                        pass
 
             if captured.get("probe") and captured["probe"].get("status") == "PASS":
                 return captured["probe"]
@@ -1151,12 +1175,13 @@ def _thumb_source(url):
 
 
 def is_placeholder_thumb(source, icon=""):
-    lowered = source.lower()
-    return bool(
-        not lowered.startswith(("http://", "https://"))
-        or (icon and source == icon)
-        or any(word in lowered for word in _PLACEHOLDER_WORDS)
-    )
+    lowered = source.lower().replace("\\", "/")
+    if (icon and source == icon) or any(word in lowered for word in _PLACEHOLDER_WORDS):
+        return True
+    if lowered.startswith(("http://", "https://")):
+        return False
+    # In Tactile modules cache thumbnails as local files; those are real images.
+    return not (os.path.isfile(source) and os.path.getsize(source) > 0)
 
 
 def check_thumbnails(thumbs, probe, icon=""):
@@ -1168,7 +1193,8 @@ def check_thumbnails(thumbs, probe, icon=""):
     most_common = max(sources.count(source) for source in set(sources))
     test_index = min(TEST_VIDEO_INDEX, total - 1)
     if placeholders * 2 > total:
-        return make_check("WARNING", "{} of {} thumbnails are placeholders".format(placeholders, total))
+        return make_check("WARNING", "{} of {} thumbnails are placeholders, e.g. {}".format(
+            placeholders, total, sanitize_text(sources[test_index])[:120]))
     if total >= 4 and most_common * 2 > total:
         return make_check("WARNING", "{} of {} videos share the same image".format(most_common, total))
     if is_placeholder_thumb(sources[test_index], icon):
@@ -1246,12 +1272,14 @@ def run_checklist(site, result, core_result):
             checks["reachable"] = make_check("PASS", "HTTP {}".format(core_result.get("http_status")))
 
     transport = _core_transport()
-    before = transport.stats() if transport else None
+    # Older add-ons have no per-thread counts; their global counts are right when run serially.
+    count = (getattr(transport, "thread_stats", None) or transport.stats) if transport else None
+    before = count() if count else None
     try:
         listing = inspect_listing(site, verify_thumbnail=True, deep=True)
     except Exception as exc:
         listing = {"status": "FAILED", "messages": [sanitize_text(exc)], "videos": 0}
-    after = transport.stats() if transport else None
+    after = count() if count else None
     playback_urls = listing.pop("playback_urls", [])
     thumbs = listing.pop("video_thumbs", [])
     buttons = listing.pop("buttons", [])

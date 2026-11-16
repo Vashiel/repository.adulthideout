@@ -217,7 +217,8 @@ class Xnxx(BaseWebsite):
         blocks = re.split(r'<div[^>]*class="[^"]*thumb-block[^"]*"', content)[1:]
 
         for b in blocks:
-            href_m = re.search(r'href="(/video-[^"]+)"', b)
+            # Some visitors get encoded "/search-video/<token>" links that redirect to the video page.
+            href_m = re.search(r'href="(/video-[^"]+|/search-video/[^"]+)"', b)
             if not href_m: continue
             href = href_m.group(1)
             full_url = urllib.parse.urljoin(self.base_url, href)
@@ -244,7 +245,7 @@ class Xnxx(BaseWebsite):
             items.append((full_url, title, thumb, dur))
 
         if not items:
-            anchors = re.findall(r'<a[^>]+href="(/video-[^"]+)"[^>]*title="([^"]+)".*?(?:data-src|src)="([^"]+)"', content, re.DOTALL | re.IGNORECASE)
+            anchors = re.findall(r'<a[^>]+href="(/video-[^"]+|/search-video/[^"]+)"[^>]*title="([^"]+)".*?(?:data-src|src)="([^"]+)"', content, re.DOTALL | re.IGNORECASE)
             for href, title, thumb in anchors:
                 full_url = urllib.parse.urljoin(self.base_url, href)
                 if full_url not in seen:

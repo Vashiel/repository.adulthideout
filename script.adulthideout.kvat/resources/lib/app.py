@@ -1,3 +1,4 @@
+import concurrent.futures
 import os
 import re
 import sys
@@ -119,18 +120,54 @@ def timeout_result(site, mode):
     }
 
 
+PARALLEL_SITES = 32
+SITE_TIMEOUT = 90
+
+
+def run_parallel(sites, mode, progress_callback=None, cancelled_callback=None):
+    """Tests sites in threads; a site still running after SITE_TIMEOUT is reported as TIMEOUT."""
+    started = {}
+
+    def test(site):
+        started[site] = time.time()
+        try:
+            return run_site_test(site, mode=mode)
+        except Exception as exc:
+            return {"site": site, "label": website_label(site), "status": "FAILED", "mode": mode,
+                    "error": sanitize_text(exc)}
+
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=PARALLEL_SITES)
+    futures = {pool.submit(test, site): site for site in sites}
+    results = {}
+    cancelled = False
+    pending = set(futures)
+    while pending:
+        done, pending = concurrent.futures.wait(pending, timeout=1.0)
+        for future in done:
+            results[futures[future]] = future.result()
+        now = time.time()
+        for future in list(pending):
+            site = futures[future]
+            if site in started and now - started[site] > SITE_TIMEOUT:
+                pending.discard(future)
+                results[site] = dict(timeout_result(site, mode),
+                                     error="website test exceeded {} seconds".format(SITE_TIMEOUT))
+        if progress_callback:
+            progress_callback(len(results), next((futures[f] for f in pending), ""))
+        if (cancelled_callback and cancelled_callback()) or MONITOR.abortRequested():
+            cancelled = True
+            for future in pending:
+                future.cancel()
+            break
+    pool.shutdown(wait=False)  # hung sites keep their thread; the report does not wait for them
+    return [results[site] for site in sites if site in results], cancelled
+
+
 def run_worker_batch(sites, mode, progress_callback=None, cancelled_callback=None):
     ensure_directories()
     if "tactile" in xbmc.getInfoLabel("System.BuildVersion").lower():
-        # Tactile has no RunScript, so the sites are tested here, one after another.
-        results = []
-        for site in sites or []:
-            if cancelled_callback and cancelled_callback():
-                return results, True
-            if progress_callback:
-                progress_callback(len(results), site)
-            results.append(run_site_test(site, mode=mode))
-        return results, False
+        # Tactile has no RunScript, so the sites are tested here, many at once.
+        return run_parallel(list(sites or []), mode, progress_callback, cancelled_callback)
     pending = list(sites or [])
     completed = []
     cancelled = False
