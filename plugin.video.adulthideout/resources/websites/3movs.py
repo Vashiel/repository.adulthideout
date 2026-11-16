@@ -49,16 +49,14 @@ class ThreeMovs(BaseWebsite):
         current_url = url
         if page > 1:
             # Explicit pagination URL construction
+            # Search and categories page by query parameter: "/search_videos/2/?q=" served page 1
+            # again and "/categories/<name>/2/" is HTTP 404.
             if '/search_videos/' in url:
-                # https://www.3movs.com/search_videos/2/?q=teen
-                if '?' in url:
-                    base, query_str = url.split('?', 1)
-                    current_url = f"{base.rstrip('/')}/{page}/?{query_str}"
-                else:
-                    current_url = f"{url.rstrip('/')}/{page}/"
+                # https://www.3movs.com/search_videos/?q=teen&from_videos=2
+                current_url = f"{url}{'&' if '?' in url else '?'}from_videos={page}"
             elif '/categories/' in url:
-                # https://www.3movs.com/categories/cat-name/2/
-                current_url = f"{url.rstrip('/')}/{page}/"
+                # https://www.3movs.com/categories/cat-name/?from=2
+                current_url = f"{url}{'&' if '?' in url else '?'}from={page}"
             elif '/videos/' in url:
                 # https://www.3movs.com/videos/2/
                 current_url = f"{url.rstrip('/')}/{page}/"
