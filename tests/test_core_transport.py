@@ -29,12 +29,15 @@ class Site(BaseHTTPRequestHandler):
         data = b"from python"
         self.send_response(200); self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
 
-    do_POST = do_GET
+    def do_POST(self):
+        # Read the body first: answering with it unread makes Windows abort the connection.
+        self.rfile.read(int(self.headers.get("Content-Length") or 0))
+        self.do_GET()
 
     def log_message(self, *a): pass
 
 
-core = HTTPServer(("127.0.0.1", 0), Core); site = HTTPServer(("127.0.0.1", 0), Site)
+core =HTTPServer(("127.0.0.1", 0), Core); site = HTTPServer(("127.0.0.1", 0), Site)
 for server in (core, site):
     threading.Thread(target=server.serve_forever, daemon=True).start()
 ct.CORE_ENDPOINT = "http://127.0.0.1:%d/v1" % core.server_port

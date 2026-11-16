@@ -66,7 +66,9 @@ KNOWN_EXTERNAL_ISSUES = {
     "czechvideo": "The former video website is currently unavailable; czechvideo.org now serves unrelated editorial content.",
     "hentaimama": "The website currently serves a managed Cloudflare challenge to Kodi.",
     "hqporner": "The website currently serves a managed Cloudflare challenge to Kodi.",
-    "javhdporn": "Upstream video player is protected by custom JS obfuscation and encrypted API token.",
+    "myclassicp": "The website currently serves a managed Cloudflare challenge to Kodi.",
+    "vintageworldp": "The website currently serves a managed Cloudflare challenge to Kodi.",
+    "javhdporn":"Upstream video player is protected by custom JS obfuscation and encrypted API token.",
     "ogporn": "The website currently does not respond reliably.",
     "pornktube": "Upstream video stream token gate is protected by a Cloudflare Turnstile managed challenge.",
     "pornrabbit": "The website discontinued its video tube archive and converted into a webcam directory.",
@@ -868,7 +870,8 @@ def load_website_instance(site):
 
         if cls:
             try:
-                inst = cls(-1, target)
+                # By keyword: in some modules the second parameter is "name", not "addon".
+                inst = cls(-1, addon=target)
             except TypeError:
                 inst = cls(-1)
             _LOADED_WEBSITES[site] = inst
@@ -994,6 +997,7 @@ def resolve_and_probe_stream(site, playback_url):
         return {"status": "FAILED", "error": "No playable video found to test"}
 
     page_url = playback_url
+    original_site = site
     if playback_url.startswith("plugin://"):
         parsed = urllib.parse.urlsplit(playback_url)
         params = dict(urllib.parse.parse_qsl(parsed.query))
@@ -1007,7 +1011,8 @@ def resolve_and_probe_stream(site, playback_url):
     ):
         return probe_stream_reachability(page_url)
 
-    inst = load_website_instance(site)
+    # The link names the module's own name (e.g. "Rapelust"), which may differ from its file.
+    inst = load_website_instance(site) or load_website_instance(original_site)
     if not inst:
         return {
             "status": "FAILED",
@@ -1293,6 +1298,9 @@ def run_checklist(site, result, core_result):
         checks["videos"] = make_check("PASS", "{} videos".format(video_count))
     else:
         checks["videos"] = make_check("FAILED", "; ".join(listing.get("messages") or []) or "no videos listed")
+    if video_count and checks["reachable"]["status"] == "FAILED":
+        # The Core's bare probe was turned away, but the module got through with its own headers.
+        checks["reachable"] = make_check("WARNING", "probe: {}; module lists videos".format(checks["reachable"]["detail"]))
     checks["buttons"] = check_buttons(buttons, offered_buttons(site), video_count)
     inst = load_website_instance(site)
     checks["thumbnails"] = check_thumbnails(thumbs, listing.get("thumbnail"), getattr(inst, "icon", ""))

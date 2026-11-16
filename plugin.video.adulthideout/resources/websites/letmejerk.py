@@ -153,7 +153,8 @@ class LetmejerkWebsite(BaseWebsite):
             return
 
         modern_blocks = re.findall(
-            r'<a[^>]+href="((?:https?://[^"]+)?/(?:video|short)s?/[^"]+)"[^>]*>([\s\S]*?)</a>',
+            # Video links are "/j/<id>/<slug>" now; "/video/" and "/short/" are the older forms.
+            r'<a[^>]+href="((?:https?://[^"]+)?/(?:(?:video|short)s?|j)/[^"]+)"[^>]*>([\s\S]*?)</a>',
             content, re.IGNORECASE
         )
         
@@ -161,6 +162,8 @@ class LetmejerkWebsite(BaseWebsite):
         for path, block in modern_blocks:
             src_match = re.search(r'(?:data-src|src)="([^"]+)"', block)
             thumb = src_match.group(1) if src_match else self.icons.get('default', '')
+            if thumb.startswith('/') and not thumb.startswith('//'):
+                thumb = self.BASE_URL + thumb
             alt_match = re.search(r'alt="([^"]+)"', block)
             if alt_match:
                 title = alt_match.group(1)
@@ -359,7 +362,7 @@ class LetmejerkWebsite(BaseWebsite):
         xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
 
     def resolve_recording_stream(self, url):
-        vid_match = re.search(r'/(?:video|short)s?/([A-Za-z0-9]+)', url or "")
+        vid_match = re.search(r'/(?:(?:video|short)s?|j)/([A-Za-z0-9]+)', url or "")
         if not vid_match:
             return None
         vid = vid_match.group(1)

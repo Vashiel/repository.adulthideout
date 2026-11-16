@@ -54,9 +54,12 @@ def fetch_text(
 
     # 1. Primary path: High-speed Rust Core Engine with browser-compatible session handling
     try:
-        from resources.lib.core_transport import english_unless_set, record
+        from resources.lib.core_transport import _CORE_OWNED_HEADERS, english_unless_set, record
 
-        core_headers = english_unless_set({k: str(v) for k, v in request_headers.items() if k.lower() != "user-agent"})
+        # Session headers like "Accept-Encoding: gzip" make sites send bodies the Core cannot unpack.
+        core_headers = english_unless_set(
+            {k: str(v) for k, v in request_headers.items() if k.lower() not in _CORE_OWNED_HEADERS}
+        )
         req_body = {
             "cmd": "request.get",
             "url": url,

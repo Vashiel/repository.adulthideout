@@ -127,6 +127,11 @@ class YoujizzWebsite(BaseWebsite):
     def select_sort(self, original_url=None):
         self._select_generic("youjizz_sort_by", self.sort_options, "Sort by...")
 
+    def get_start_url_and_label(self):
+        # The base version gives "/most-popular", which is HTTP 404; pages are "/<sort>/<n>.html".
+        sort = self.addon.getSetting("youjizz_sort_by") or self.sort_options[0]
+        return self._build_filtered_url(1), "{} [COLOR yellow]{}[/COLOR]".format(self.name.capitalize(), sort)
+
     def _build_filtered_url(self, page=1):
         sort = self.addon.getSetting("youjizz_sort_by") or self.sort_options[0]
         sort_path = self.sort_paths.get(sort, 'most-popular')

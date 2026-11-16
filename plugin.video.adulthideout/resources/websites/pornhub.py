@@ -59,10 +59,11 @@ class PornhubWebsite(BaseWebsite):
         })
 
         self.sorting_options = ["Newest", "Most Viewed", "Top Rated"]
+        # Pornhub's current codes; "newest", "mostviewed" and "rating" answer HTTP 404 now.
         self.sorting_paths = {
-            "Newest": "newest",
-            "Most Viewed": "mostviewed",
-            "Top Rated": "rating"
+            "Newest": "cm",
+            "Most Viewed": "mv",
+            "Top Rated": "tr"
         }
         
         self.period_options = ["All Time", "This Month", "This Week"]
@@ -77,7 +78,7 @@ class PornhubWebsite(BaseWebsite):
     def get_start_url_and_label(self):
         addon = xbmcaddon.Addon()
         selected_sort_name = addon.getSetting('pornhub_sort_by') or "Newest"
-        sort_param = self.sorting_paths.get(selected_sort_name, 'newest')
+        sort_param = self.sorting_paths.get(selected_sort_name, 'cm')
         start_url = f"{self.base_url}/video?o={sort_param}"
         label = f"{self.label} [COLOR yellow]{selected_sort_name}[/COLOR]"
         return start_url, label
@@ -694,7 +695,7 @@ class PornhubWebsite(BaseWebsite):
 
     def search(self, query):
         if not query: return
-        url = f"{self.base_url}/video/search?search={urllib.parse.quote_plus(query)}&o=newest"
+        url = f"{self.base_url}/video/search?search={urllib.parse.quote_plus(query)}&o=mr"
         self.process_content(url)
 
     def select_sort(self, original_url):

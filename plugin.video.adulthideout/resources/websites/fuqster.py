@@ -94,8 +94,17 @@ class Fuqster(BaseWebsite):
             r'href="(https://fuqster\.com/video/\d+/[a-z0-9-]+/)"\s+title="([^"]+)"\s*>\s*'
             r'<div class="card-img">\s*<img[^>]*data-original="([^"]+)"'
         )
+        matches = re.findall(pattern, content)
+        # Current layout: <article class="card"><a class="card-a" href="/video/..."><img src=...>
+        # <span class="card-t">Title</span>
+        new_pattern = (
+            r'<a class="card-a" href="(/video/\d+/[^"]+/)".*?<img[^>]*?\ssrc="([^"]+)".*?'
+            r'<span class="card-t">([^<]+)</span>'
+        )
+        for href, thumb, title in re.findall(new_pattern, content, re.S):
+            matches.append((urllib.parse.urljoin(self.base_url, href), title, thumb))
         seen = set()
-        for video_url, title, thumb in re.findall(pattern, content):
+        for video_url, title, thumb in matches:
             if video_url in seen:
                 continue
             seen.add(video_url)
@@ -120,7 +129,7 @@ class Fuqster(BaseWebsite):
             current_page = 1
         next_url = "{}/{}/".format(base.rstrip('/'), current_page + 1)
         # only add if the page looks full
-        if content.count('class="card-img"') >= 20:
+        if content.count('class="card-img"') + content.count('<article class="card"') >= 20:
             self.add_dir('[COLOR blue]Next Page >>[/COLOR]', next_url, 2, self.icons['default'])
 
     def play_video(self, url):
