@@ -472,22 +472,25 @@ class GlobalSearch:
         filters = self._load_state().get("search_filters")
         return dict(filters) if isinstance(filters, dict) else {}
 
-    def _ask_search_filters(self):
-        """Length and quality before the search, preselected with the last choice. False on cancel."""
-        current = self._search_filters()
-        chosen = {}
-        for key, heading_id, heading, options in (("length", 31019, "Length", SEARCH_LENGTHS), ("quality", 31025, "Quality", SEARCH_QUALITIES)):
+    def select_search_filter(self, kind):
+        """Optional length or quality limit from the Global Search menu; kept until changed.
+
+        One dialog per call on purpose: Tactile answers a dialog by rerunning the add-on with
+        only that answer, so a dialog after the search keyboard looped back to the keyboard.
+        """
+        heading_id, heading, options = {"length": (31019, "Length", SEARCH_LENGTHS),
+                                        "quality": (31025, "Quality", SEARCH_QUALITIES)}.get(kind, (None, None, None))
+        if options:
+            filters = self._search_filters()
             keys = [option[0] for option in options]
-            labels = [self._tr(option[1], option[2]) for option in options]
-            preselect = keys.index(current.get(key)) if current.get(key) in keys else 0
-            idx = xbmcgui.Dialog().select(self._tr(heading_id, heading), labels, preselect=preselect)
-            if idx < 0:
-                return False
-            chosen[key] = keys[idx]
-        state = self._load_state()
-        state["search_filters"] = chosen
-        self._save_state(state)
-        return True
+            preselect = keys.index(filters.get(kind)) if filters.get(kind) in keys else 0
+            idx = xbmcgui.Dialog().select(self._tr(heading_id, heading), [self._tr(o[1], o[2]) for o in options], preselect=preselect)
+            if idx >= 0:
+                filters[kind] = keys[idx]
+                state = self._load_state()
+                state["search_filters"] = filters
+                self._save_state(state)
+        return self.show_menu()
 
     def _cache_key(self, query, search_mode="selected"):
         filters = self._search_filters()
@@ -945,6 +948,15 @@ class GlobalSearch:
             "choose_sources",
             self.search_icon,
         )
+        filters = self._search_filters()
+        for kind, heading_id, heading, options in (("length", 31019, "Length", SEARCH_LENGTHS), ("quality", 31025, "Quality", SEARCH_QUALITIES)):
+            current = next((option for option in options if option[0] == filters.get(kind)), options[0])
+            self._add_dir(
+                "{}: [COLOR yellow]{}[/COLOR]".format(self._tr(heading_id, heading), self._tr(current[1], current[2])),
+                "select_search_filter",
+                self.search_icon,
+                kind=kind,
+            )
         self._add_dir(
             "[COLOR cyan]{}[/COLOR] [COLOR yellow](300+)[/COLOR]".format(
                 self._tr(30972, "Search All Sites")
@@ -1255,7 +1267,7 @@ class GlobalSearch:
         if not keyboard.isConfirmed():
             return self.show_menu()
         query = keyboard.getText().strip()
-        if not query or not self._ask_search_filters():
+        if not query:
             return self.show_menu()
         self._remember_query(query, search_mode=search_mode)
         self._open_results(query, refresh=True, search_mode=search_mode)

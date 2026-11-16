@@ -1080,6 +1080,8 @@ def handle_routing():
             return
         elif action == 'new_search':
             global_search.new_search(params.get('search_mode', 'selected'))
+        elif action == 'select_search_filter':
+            global_search.select_search_filter(params.get('kind'))
         elif action == 'show_presets':
             global_search.show_presets()
         elif action == 'apply_preset':
