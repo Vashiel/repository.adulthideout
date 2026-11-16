@@ -18,22 +18,22 @@ from resources.lib.proxy_utils import ProxyController, PlaybackGuard
 
 
 class BalbumsWebsite(BaseWebsite):
-    """Bunkr album archive with direct playback from Bunkr CDN files."""
+    """Bunkr album archive with direct playback from Bunkr CDN files (powered by Findr / Bunkr)."""
 
     def __init__(self, addon_handle, addon=None):
         super().__init__(
             name="balbums",
-            base_url="https://balbums.st",
-            search_url="https://balbums.st/?search={}&mode=broad&per=20&sort=latest&page=1",
+            base_url="https://findr.to",
+            search_url="https://findr.to/search?q={}&view=albums&albumPage=1",
             addon_handle=addon_handle,
             addon=addon,
         )
         self.sort_options = ["Latest", "Oldest", "Most Files"]
         self.sort_values = ["latest", "oldest", "files"]
         self.sort_paths = {
-            "Latest": "/?search=&mode=broad&per=20&sort=latest&page=1",
-            "Oldest": "/?search=&mode=broad&per=20&sort=oldest&page=1",
-            "Most Files": "/?search=&mode=broad&per=20&sort=files&page=1",
+            "Latest": "/search?q=video&view=albums&sort=latest&albumPage=1",
+            "Oldest": "/search?q=video&view=albums&sort=oldest&albumPage=1",
+            "Most Files": "/search?q=video&view=albums&sort=files&albumPage=1",
         }
         self.icon = os.path.join(self.addon.getAddonInfo("path"), "resources", "logos", "balbums.png")
         self._sign_cache = {}
@@ -92,7 +92,7 @@ class BalbumsWebsite(BaseWebsite):
             self.end_directory()
             return
 
-        if re.search(r"/a/[A-Za-z0-9]+", urllib.parse.urlparse(url).path):
+        if re.search(r"/a/[A-Za-z0-9_\-]+", urllib.parse.urlparse(url).path):
             self.process_album(content, url)
         else:
             self.add_basic_dirs()
@@ -101,51 +101,134 @@ class BalbumsWebsite(BaseWebsite):
 
     def add_basic_dirs(self):
         self.add_dir("[COLOR blue]Search[/COLOR]", "", 5, self.icons.get("search", self.icon), self.fanart)
-        self.add_dir("[COLOR yellow]Top Albums[/COLOR]", "https://balbums.st/topalbums", 2, self.icon, self.fanart)
+        self.add_dir("[COLOR yellow]Recent Releases[/COLOR]", "https://findr.to", 2, self.icon, self.fanart)
+
+    def _extract_findr_albums(self, content):
+        """Extract albums list from Findr Next.js hydration payload or HTML."""
+        pushes = re.findall(r'self\.__next_f\.push\(\[1,"(.*?)"\]\)', content)
+        data = "".join(pushes).replace('\\"', '"').replace('\\\\', '\\')
+
+        # 1. Search results payload
+        pos = data.find('"albumResult":')
+        if pos != -1:
+            start = pos + len('"albumResult":')
+            brace = 0
+            end = start
+            for i in range(start, len(data)):
+                if data[i] == '{':
+                    brace += 1
+                elif data[i] == '}':
+                    brace -= 1
+                    if brace == 0:
+                        end = i + 1
+                        break
+            try:
+                res = json.loads(data[start:end])
+                return res.get('albums', []), res.get('page', 1), res.get('total_pages', 1)
+            except Exception:
+                pass
+
+        # 2. Homepage results payload
+        pos = data.find('{"albums":[')
+        if pos != -1:
+            start = pos + len('{"albums":')
+            bracket = 0
+            end = start
+            for i in range(start, len(data)):
+                if data[i] == '[':
+                    bracket += 1
+                elif data[i] == ']':
+                    bracket -= 1
+                    if bracket == 0:
+                        end = i + 1
+                        break
+            try:
+                res = json.loads(data[start:end])
+                return res, 1, 1
+            except Exception:
+                pass
+
+        return [], 1, 1
 
     def process_album_list(self, content, current_url):
+        albums, current_page, total_pages = self._extract_findr_albums(content)
         seen = set()
         count = 0
-        pattern = re.compile(
-            r'<a[^>]+href=["\'](https?://bunkr\.cr/a/[A-Za-z0-9]+|/a/[A-Za-z0-9]+)["\'][^>]*>(.*?)</a>',
-            re.IGNORECASE | re.DOTALL,
-        )
-        for match in pattern.finditer(content):
-            album_url = urllib.parse.urljoin("https://bunkr.cr/", html.unescape(match.group(1)))
+
+        # Handle structured albums from Findr JSON
+        for album in albums:
+            album_url = album.get("original_url")
+            if not album_url:
+                continue
             if album_url in seen:
                 continue
             seen.add(album_url)
-            block = match.group(2)
-            title_match = re.search(r'<h[1-6][^>]*>(.*?)</h[1-6]>|alt=["\']([^"\']+)', block, re.I | re.S)
-            title = next((html.unescape(value).strip() for value in title_match.groups() if value), "Bunkr Album") if title_match else "Bunkr Album"
-            count_match = re.search(r'(\d+)\s+files?', block, re.I)
-            if count_match:
-                title = "%s (%s files)" % (title, count_match.group(1))
-            thumb_values = re.findall(r'(?:data-src|src)=["\']([^"\']+)', block, re.I)
-            thumb = self.icon
-            for thumb_value in thumb_values:
-                candidate = urllib.parse.urljoin(current_url, html.unescape(thumb_value))
-                if "/img/bunkr.svg" not in candidate.lower():
-                    thumb = candidate
-                    break
+
+            name = album.get("name") or "Bunkr Album"
+            file_count = album.get("file_count")
+            if file_count is not None:
+                title = f"{name} ({file_count} files)"
+            else:
+                title = name
+
+            thumbs = album.get("thumbnails") or []
+            thumb = thumbs[0] if thumbs else self.icon
+
             context = [
                 ("Play Album", "RunPlugin(%s?mode=7&action=play_album&website=%s&original_url=%s)" % (sys.argv[0], self.name, urllib.parse.quote_plus(album_url))),
                 ("Play All From Here", "RunPlugin(%s?mode=7&action=play_all_from_here&website=%s&original_url=%s)" % (sys.argv[0], self.name, urllib.parse.quote_plus(album_url + "|" + current_url))),
                 ("Sort by...", "RunPlugin(%s?mode=7&action=select_sort&website=%s)" % (sys.argv[0], self.name)),
             ]
-            self.add_dir(title, album_url, 2, thumb, self.fanart, context_menu=context)
+            self.add_dir(html.unescape(title), album_url, 2, thumb, self.fanart, context_menu=context)
             count += 1
 
-        match = re.search(r'[?&]page=(\d+)', current_url)
-        current_page = int(match.group(1)) if match else 1
-        next_page = current_page + 1
-        next_pattern = re.compile(r'href=["\']([^"\']*page=' + str(next_page) + r'\b[^"\']*)["\']', re.I)
-        next_match = next_pattern.search(content)
-        if not next_match:
-            next_match = re.search(r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>[\s\S]*?(?:Next|›)[\s\S]*?</a>', content, re.I)
-        if next_match:
-            next_url = urllib.parse.urljoin(current_url, html.unescape(next_match.group(1)))
+        # Fallback to HTML scraping if no Next.js payload matched
+        if not albums:
+            pattern = re.compile(
+                r'<a[^>]+href=["\'](https?://(?:bunkr\.[a-z]+|turbo\.[a-z]+)/a/[A-Za-z0-9_\-]+|/a/[A-Za-z0-9_\-]+)["\'][^>]*>(.*?)</a>',
+                re.IGNORECASE | re.DOTALL,
+            )
+            for match in pattern.finditer(content):
+                album_url = urllib.parse.urljoin("https://bunkr.cr/", html.unescape(match.group(1)))
+                if album_url in seen:
+                    continue
+                seen.add(album_url)
+                block = match.group(2)
+                title_match = re.search(r'<h[1-6][^>]*>(.*?)</h[1-6]>|alt=["\']([^"\']+)', block, re.I | re.S)
+                title = next((html.unescape(value).strip() for value in title_match.groups() if value), "Bunkr Album") if title_match else "Bunkr Album"
+                count_match = re.search(r'(\d+)\s+files?', block, re.I)
+                if count_match:
+                    title = "%s (%s files)" % (title, count_match.group(1))
+                thumb_values = re.findall(r'(?:data-src|src)=["\']([^"\']+)', block, re.I)
+                thumb = self.icon
+                for thumb_value in thumb_values:
+                    candidate = urllib.parse.urljoin(current_url, html.unescape(thumb_value))
+                    if "/img/bunkr.svg" not in candidate.lower():
+                        thumb = candidate
+                        break
+                context = [
+                    ("Play Album", "RunPlugin(%s?mode=7&action=play_album&website=%s&original_url=%s)" % (sys.argv[0], self.name, urllib.parse.quote_plus(album_url))),
+                    ("Play All From Here", "RunPlugin(%s?mode=7&action=play_all_from_here&website=%s&original_url=%s)" % (sys.argv[0], self.name, urllib.parse.quote_plus(album_url + "|" + current_url))),
+                    ("Sort by...", "RunPlugin(%s?mode=7&action=select_sort&website=%s)" % (sys.argv[0], self.name)),
+                ]
+                self.add_dir(title, album_url, 2, thumb, self.fanart, context_menu=context)
+                count += 1
+
+        # Pagination
+        match = re.search(r'[?&](?:albumPage|page)=(\d+)', current_url)
+        c_page = int(match.group(1)) if match else current_page
+        if total_pages > c_page or (not albums and count > 0):
+            next_page = c_page + 1
+            if "albumPage=" in current_url:
+                next_url = re.sub(r'albumPage=\d+', f'albumPage={next_page}', current_url)
+            elif "page=" in current_url:
+                next_url = re.sub(r'page=\d+', f'albumPage={next_page}', current_url)
+            elif "?" in current_url:
+                next_url = f"{current_url}&albumPage={next_page}"
+            else:
+                next_url = f"{current_url}?albumPage={next_page}"
             self.add_dir("[COLOR blue]Next Page >>[/COLOR]", next_url, 2, self.icon, self.fanart)
+
         self.logger.info("[Balbums] Found %s albums", count)
 
     VIDEO_EXTENSIONS = ('.mp4', '.m4v', '.mkv', '.webm', '.mov', '.avi', '.wmv', '.flv', '.ts', '.m3u8')
@@ -178,7 +261,7 @@ class BalbumsWebsite(BaseWebsite):
         album_title = next((html.unescape(value).strip() for value in title_match.groups() if value), "Bunkr Album") if title_match else "Bunkr Album"
 
         card_pattern = re.compile(
-            r'<div\b[^>]*class="[^"]*theItem[^"]*"[^>]*title="([^"]*)"[^>]*>([\s\S]*?)href=["\']((?:https?://bunkr\.cr)?/f/[A-Za-z0-9]+)["\']',
+            r'<div\b[^>]*class="[^"]*theItem[^"]*"[^>]*title="([^"]*)"[^>]*>([\s\S]*?)href=["\']((?:https?://bunkr\.[a-z]+)?/f/[A-Za-z0-9]+)["\']',
             re.I
         )
 
@@ -186,7 +269,7 @@ class BalbumsWebsite(BaseWebsite):
         for match in card_pattern.finditer(content):
             filename = html.unescape(match.group(1)).strip()
             inner = match.group(2)
-            slug_url = urllib.parse.urljoin("https://bunkr.cr/", html.unescape(match.group(3)))
+            slug_url = urllib.parse.urljoin(album_url, html.unescape(match.group(3)))
 
             is_video = False
             if 'type-Video' in inner or 'type-video' in inner:
@@ -198,7 +281,7 @@ class BalbumsWebsite(BaseWebsite):
             thumb_match = re.search(r'(?:data-src|src)=["\']([^"\']+)["\']', image_tag.group(0) if image_tag else inner)
             thumb = html.unescape(thumb_match.group(1)) if thumb_match else ''
             if thumb and not thumb.startswith('http'):
-                thumb = urllib.parse.urljoin("https://bunkr.cr/", thumb)
+                thumb = urllib.parse.urljoin(album_url, thumb)
             if any('/images/' + kind + '.svg' in thumb for kind in ('file', 'image', 'video', 'audio')):
                 thumb = ''
 
@@ -210,10 +293,10 @@ class BalbumsWebsite(BaseWebsite):
             })
 
         if not cards:
-            links = re.findall(r'href=["\']((?:https?://bunkr\.cr)?/f/[A-Za-z0-9]+)["\']', content, re.I)
+            links = re.findall(r'href=["\']((?:https?://bunkr\.[a-z]+)?/f/[A-Za-z0-9]+)["\']', content, re.I)
             seen = set()
             for link in links:
-                full = urllib.parse.urljoin("https://bunkr.cr/", html.unescape(link))
+                full = urllib.parse.urljoin(album_url, html.unescape(link))
                 if full not in seen:
                     seen.add(full)
                     cards.append({
@@ -266,7 +349,7 @@ class BalbumsWebsite(BaseWebsite):
         # 2. Download button with API endpoint
         dl_match = re.search(r'id=["\']download-btn["\'][^>]*data-id=["\']([^"\']+)["\']', file_content, re.I)
         if not dl_match:
-            dl_match = re.search(r'href=["\'](?:https?://dl\.bunkr\.cr)?/file/(\d+)["\']', file_content, re.I)
+            dl_match = re.search(r'href=["\'](?:https?://dl\.bunkr\.[a-z]+)?/file/(\d+)["\']', file_content, re.I)
 
         if dl_match:
             file_id = dl_match.group(1)
@@ -333,14 +416,14 @@ class BalbumsWebsite(BaseWebsite):
 
     def resolve_recording_stream(self, url):
         target_stream = None
-        if "/f/" in url or "bunkr.cr" in url:
+        if "/f/" in url or "bunkr" in url:
             file_results = self._fetch_single_file(url)
             if file_results and file_results[0] and file_results[0][0]:
                 target_stream = file_results[0][0]
-        elif url.startswith("http") and not url.startswith("https://bunkr.cr/"):
+        elif url.startswith("http") and not any(k in url for k in ("bunkr.", "turbo.")):
             target_stream = self._sign_media_url(url)
 
-        if not target_stream or not target_stream.startswith("http") or target_stream.startswith("https://bunkr.cr/"):
+        if not target_stream or not target_stream.startswith("http") or any(k in target_stream for k in ("bunkr.", "turbo.")):
             return None
 
         headers = {
@@ -355,14 +438,14 @@ class BalbumsWebsite(BaseWebsite):
 
     def play_video(self, url):
         target_stream = None
-        if "/f/" in url or "bunkr.cr" in url:
+        if "/f/" in url or "bunkr" in url:
             file_results = self._fetch_single_file(url)
             if file_results and file_results[0] and file_results[0][0]:
                 target_stream = file_results[0][0]
-        elif url.startswith("http") and not url.startswith("https://bunkr.cr/"):
+        elif url.startswith("http") and not any(k in url for k in ("bunkr.", "turbo.")):
             target_stream = self._sign_media_url(url)
 
-        if not target_stream or not target_stream.startswith("http") or target_stream.startswith("https://bunkr.cr/"):
+        if not target_stream or not target_stream.startswith("http") or any(k in target_stream for k in ("bunkr.", "turbo.")):
             self.notify_error("Could not resolve video stream")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
             return
@@ -415,7 +498,7 @@ class BalbumsWebsite(BaseWebsite):
                 res = self._fetch_single_file(item_url)
                 if res and res[0] and res[0][0]:
                     media_url, thumb = res[0]
-                    if media_url.startswith("http") and not media_url.startswith("https://bunkr.cr/"):
+                    if media_url.startswith("http") and not any(k in media_url for k in ("bunkr.", "turbo.")):
                         controller = ProxyController(
                             media_url,
                             upstream_headers={
@@ -473,7 +556,7 @@ class BalbumsWebsite(BaseWebsite):
             self.notify_error("Failed to load page")
             return
         albums = []
-        for match in re.findall(r'href=["\'](https?://bunkr\.cr/a/[A-Za-z0-9]+|/a/[A-Za-z0-9]+)["\']', content, re.I):
+        for match in re.findall(r'href=["\'](https?://(?:bunkr\.[a-z]+|turbo\.[a-z]+)/a/[A-Za-z0-9_\-]+|/a/[A-Za-z0-9_\-]+)["\']', content, re.I):
             full = urllib.parse.urljoin("https://bunkr.cr/", html.unescape(match))
             if full not in albums:
                 albums.append(full)

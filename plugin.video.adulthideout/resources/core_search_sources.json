@@ -94,9 +94,9 @@
 "search_url": "https://en.avjoy.me/search/videos/{}"
 },
 {
-"base_url": "https://balbums.st",
+"base_url": "https://findr.to",
 "id": "balbums",
-"search_url": "https://balbums.st/?search={}&mode=broad&per=20&sort=latest&page=1"
+"search_url": "https://findr.to/search?q={}&view=albums&albumPage=1"
 },
 {
 "base_url": "https://bananamovies.org",
