@@ -123,7 +123,7 @@ class PornAVHD(BaseWebsite):
 
     def resolve_recording_stream(self, url):
         page = self._get(url, self.base_url)
-        embeds = re.findall(r'<iframe\b[^>]*src=["\'](https?://(?:recordplay|playrecord)\.biz/(?:e|embed)/[^"\']+)', page or "", re.I)
+        embeds = re.findall(r'<iframe\b[^>]*src=["\'](https?://(?:[a-z0-9-]+\.)?(?:recordplay|playrecord|playerrecord)\.[a-z]+/(?:e|embed)/[^"\']+)', page or "", re.I)
         for embed in embeds:
             stream, headers = resolver.resolve(embed, referer=url, headers=self._headers(url))
             if stream:

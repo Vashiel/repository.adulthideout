@@ -366,7 +366,12 @@ class LetmejerkWebsite(BaseWebsite):
         if not vid_match:
             return None
         vid = vid_match.group(1)
-        stream_url = f"https://videos.letmejerk.com/hls/{vid}.m3u8"
+        # The page names its stream (stream.letmejerk.com/live/...m3u8); videos.letmejerk.com is gone.
+        page = self.make_request(url) or ""
+        live = re.search(r'https?://stream\.letmejerk\.com/live/[^"\'\s<>]+\.m3u8[^"\'\s<>]*', page)
+        if not live:
+            return None
+        stream_url = self._normalize_stream_url(live.group(0))
         headers = {
             "User-Agent": self.ua,
             "Referer": f"{self.BASE_URL}/video/{vid}/",

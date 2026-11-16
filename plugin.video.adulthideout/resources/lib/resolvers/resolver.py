@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import html
 import importlib
 import time
 import urllib.parse
@@ -16,7 +17,7 @@ RESOLVERS = [
         "key": "recordplay",
         "setting": "",
         "module": "recordplay_resolver",
-        "hosts": ("recordplay.biz", "playrecord.biz"),
+        "hosts": ("recordplay.biz", "playrecord.biz", "playerrecord.cfd"),
     },
     {
         "key": "loadvid",
@@ -485,6 +486,8 @@ def resolve(url, referer="", headers=None):
             data = json.loads(resp.read().decode("utf-8"))
             resolved_stream = data.get("stream_url")
             if data.get("status") == "ok" and resolved_stream and str(resolved_stream).strip().startswith(("http://", "https://", "//")):
+                # The Core copies links out of HTML as they stand; "&amp;" in a signed URL gets HTTP 403.
+                resolved_stream = html.unescape(str(resolved_stream).strip())
                 if resolved_stream.startswith("//"):
                     resolved_stream = "https:" + resolved_stream
                 xbmc.log(
