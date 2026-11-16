@@ -22,15 +22,21 @@ import xbmcvfs
 
 
 try:
-    _orig_xbmcaddon_Addon = xbmcaddon.Addon
-    def _safe_xbmcaddon_Addon(addon_id=None):
-        if not addon_id:
-            try:
-                return _orig_xbmcaddon_Addon("plugin.video.adulthideout")
-            except Exception:
-                return _orig_xbmcaddon_Addon()
-        return _orig_xbmcaddon_Addon(addon_id)
-    xbmcaddon.Addon = _safe_xbmcaddon_Addon
+    # Kodi only: the plugin modules run inside this script there, and their bare Addon() must mean
+    # AdultHideout. Tactile runs every add-on in one process and resolves Addon() itself, so a
+    # global swap would hand AdultHideout to other add-ons.
+    if "tactile" not in str(xbmc.getInfoLabel("System.BuildVersion")).lower():
+        _orig_xbmcaddon_Addon = xbmcaddon.Addon
+
+        def _safe_xbmcaddon_Addon(addon_id=None, **kwargs):
+            addon_id = addon_id or kwargs.get("id")
+            if not addon_id:
+                try:
+                    return _orig_xbmcaddon_Addon("plugin.video.adulthideout")
+                except Exception:
+                    return _orig_xbmcaddon_Addon()
+            return _orig_xbmcaddon_Addon(addon_id)
+        xbmcaddon.Addon = _safe_xbmcaddon_Addon
 except Exception:
     pass
 
@@ -1050,7 +1056,8 @@ def resolve_and_probe_stream(site, playback_url):
                 path = li.getPath() if li and hasattr(li, "getPath") else ""
                 captured["path"] = path
                 captured["item"] = li
-                if succeeded and path:
+                # A local stream proxy serves only after play_video returns; probing it here deadlocks.
+                if succeeded and path and not path.startswith(("http://127.0.0.1", "http://localhost")):
                     try:
                         captured["probe"] = probe_stream_reachability(path, headers=stream_headers)
                     except Exception as probe_err:

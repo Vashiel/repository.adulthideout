@@ -120,7 +120,7 @@ def timeout_result(site, mode):
     }
 
 
-PARALLEL_SITES = 32
+PARALLEL_SITES = 16
 SITE_TIMEOUT = 90
 
 
