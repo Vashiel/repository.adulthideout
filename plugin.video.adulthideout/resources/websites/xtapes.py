@@ -6,11 +6,13 @@ import sys
 import urllib.parse
 
 import requests
+import xbmc
 import xbmcgui
 import xbmcplugin
 
 from resources.lib.base_website import BaseWebsite
-from resources.lib.resolvers import resolver
+from resources.lib.proxy_utils import HlsProxyController, PlaybackGuard
+from resources.lib.resolvers import eightyeightz_resolver, hglink_resolver, resolver
 
 
 class Xtapes(BaseWebsite):
@@ -166,7 +168,7 @@ class Xtapes(BaseWebsite):
     def _extract_next_page(self, page_html, current_url, page):
         next_match = re.search(r'<a\b[^>]+class=["\'][^"\']*next page-numbers[^"\']*["\'][^>]+href=["\']([^"\']+)["\']', page_html or "", re.IGNORECASE)
         if next_match:
-            next_url = html.unescape(next_match.group(1))
+            next_url = self._absolute(next_match.group(1))
             parsed = urllib.parse.urlparse(next_url)
             return urllib.parse.urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, parsed.query, ""))
         next_url = self.get_page_url(current_url, page + 1)
@@ -238,43 +240,114 @@ class Xtapes(BaseWebsite):
 
         self.end_directory("videos")
 
+    def _extract_embed_urls(self, page_html):
+        """Return candidate embed iframe URLs ordered from the player container."""
+        container_match = re.search(
+            r'<div\b[^>]+class=["\'][^"\']*video-embed[^"\']*["\'][^>]*>([\s\S]*?)</div>',
+            page_html or "",
+            re.IGNORECASE,
+        )
+        scope = container_match.group(1) if container_match else (page_html or "")
+        embeds = []
+        seen = set()
+        for raw_src in re.findall(r'<iframe\b[^>]+src=["\']([^"\']+)["\']', scope, re.IGNORECASE):
+            candidate = urllib.parse.urljoin(self.base_url, html.unescape(raw_src).strip())
+            if candidate in seen or not candidate.startswith(("http://", "https://")):
+                continue
+            if resolver.resolver_entry_for_url(candidate):
+                seen.add(candidate)
+                embeds.append(candidate)
+        return embeds
+
     def _extract_embed_url(self, page_html):
-        match = re.search(r'<iframe\b[^>]+src=["\']([^"\']*88z\.io/[^"\']+)["\']', page_html or "", re.IGNORECASE)
-        return html.unescape(match.group(1)).strip() if match else ""
+        embeds = self._extract_embed_urls(page_html)
+        return embeds[0] if embeds else ""
 
     def resolve_recording_stream(self, url):
         page_html = self._get(url)
         if not page_html:
             return None
-        embed_url = self._extract_embed_url(page_html)
-        if not embed_url:
-            return None
-        stream_url, headers = resolver.resolve(embed_url, referer=url, headers={"User-Agent": self.ua, "Referer": url})
-        if stream_url and stream_url.startswith("http"):
-            return {"url": stream_url, "headers": headers or {}, "extension": "mp4"}
+        embeds = resolver.sort_urls_by_resolver_preference(
+            self._extract_embed_urls(page_html), self.addon
+        )
+        req_headers = {"User-Agent": self.ua, "Referer": url}
+        for embed_url in embeds:
+            if not resolver.is_resolver_enabled(embed_url, self.addon):
+                continue
+            key = resolver.resolver_key_for_url(embed_url)
+            if key == "88z":
+                stream_url, headers = eightyeightz_resolver.resolve(embed_url, referer=url, headers=req_headers)
+            elif key == "hglink":
+                stream_url, headers = hglink_resolver.resolve(embed_url, referer=url, headers=req_headers)
+            else:
+                stream_url, headers = resolver.resolve(embed_url, referer=url, headers=req_headers)
+
+            if not stream_url or not stream_url.startswith("http"):
+                continue
+            if key not in ("88z",) and resolver.resolver_preflight_enabled(self.addon):
+                if not resolver.probe_resolved_stream(stream_url, headers):
+                    continue
+
+            lowered = stream_url.lower().split("?", 1)[0]
+            is_hls = (
+                ".m3u8" in lowered
+                or "cf-master" in lowered
+                or lowered.endswith(".txt")
+                or "/hls" in lowered
+            )
+            return {
+                "url": stream_url,
+                "headers": headers or {},
+                "extension": "m3u8" if is_hls else "mp4",
+                "hls_proxy": is_hls,
+            }
         return None
 
     def play_video(self, url):
         resolved = self.resolve_recording_stream(url)
         if not resolved:
-            self.notify_error("Could not resolve Xtapes/88z stream")
+            self.notify_error("Could not resolve Xtapes stream")
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
 
         stream_url = resolved["url"]
         headers = resolved.get("headers") or {}
-        play_url = stream_url
-        header_str = urllib.parse.urlencode(headers) if headers else ""
-        if "|" not in play_url and header_str:
-            play_url += "|" + header_str
+        if resolved.get("extension") == "m3u8":
+            controller = None
+            try:
+                controller = HlsProxyController(
+                    stream_url,
+                    headers=headers,
+                    session=self.session,
+                    force_local=True,
+                )
+                play_url = controller.start()
+            except Exception as exc:
+                controller = None
+                self.logger.warning("[xtapes] HLS proxy failed, falling back direct: %s", exc)
+                header_str = urllib.parse.urlencode(headers) if headers else ""
+                play_url = f"{stream_url}|{header_str}" if header_str else stream_url
 
-        list_item = xbmcgui.ListItem(path=play_url)
-        list_item.setProperty("IsPlayable", "true")
-        
-        # Identify HLS streams (either .m3u8 or .txt Cloudflare master playlists)
-        is_hls = ".m3u8" in stream_url.lower() or "cf-master" in stream_url.lower() or ".txt" in stream_url.lower()
-        if is_hls:
+            list_item = xbmcgui.ListItem(path=play_url)
+            list_item.setProperty("IsPlayable", "true")
             list_item.setMimeType("application/vnd.apple.mpegurl")
             list_item.setContentLookup(False)
+            if controller is None and xbmc.getCondVisibility("System.HasAddon(inputstream.adaptive)"):
+                list_item.setProperty("inputstream", "inputstream.adaptive")
+                list_item.setProperty("inputstream.adaptive.manifest_type", "hls")
+                if headers:
+                    encoded_headers = urllib.parse.urlencode(headers)
+                    list_item.setProperty("inputstream.adaptive.manifest_headers", encoded_headers)
+                    list_item.setProperty("inputstream.adaptive.stream_headers", encoded_headers)
+            xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
+            if controller:
+                PlaybackGuard(xbmc.Player(), xbmc.Monitor(), play_url, controller).start()
+            return
 
+        header_str = urllib.parse.urlencode(headers) if headers else ""
+        play_url = f"{stream_url}|{header_str}" if "|" not in stream_url and header_str else stream_url
+        list_item = xbmcgui.ListItem(path=play_url)
+        list_item.setProperty("IsPlayable", "true")
+        list_item.setMimeType("video/mp4")
+        list_item.setContentLookup(False)
         xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)

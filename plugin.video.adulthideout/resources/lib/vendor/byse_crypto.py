@@ -372,6 +372,18 @@ def cbc_decrypt(key, iv, ciphertext):
         prev_block = block
     return bytes(decrypted)
 
+def cbc_encrypt(key, iv, plaintext):
+    round_keys = expand_key(key)
+    nr = len(key) // 4 + 6
+    encrypted = bytearray()
+    prev_block = iv
+    for i in range(0, len(plaintext), 16):
+        block = bytes(plaintext[i + j] ^ prev_block[j] for j in range(16))
+        encrypted_block = aes_encrypt(block, round_keys, nr)
+        encrypted.extend(encrypted_block)
+        prev_block = encrypted_block
+    return bytes(encrypted)
+
 def pbkdf2_sha512(password, salt, dklen, count):
     import hmac
     def prf(k, m):
@@ -388,6 +400,10 @@ def pbkdf2_sha512(password, salt, dklen, count):
         result.extend(tmp)
         block_num += 1
     return bytes(result[:dklen])
+
+def pkcs7_pad(data, block_size=16):
+    padding_len = block_size - (len(data) % block_size)
+    return data + bytes([padding_len] * padding_len)
 
 def pkcs7_unpad(data, block_size=16):
     padding_len = data[-1]

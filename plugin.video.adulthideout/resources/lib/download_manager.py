@@ -401,7 +401,7 @@ def normalize_resolved(result):
     return None, {}, "", {}
 
 
-def _backend_for(stream_url):
+def _backend_for(stream_url, is_hls=None):
     values = ("auto", "internal", "ffmpeg", "aria2", "jdownloader")
     try:
         index = int(_setting("download_backend", "0"))
@@ -409,7 +409,9 @@ def _backend_for(stream_url):
         index = 0
     requested = values[index] if 0 <= index < len(values) else "auto"
     if requested == "auto":
-        return "ffmpeg" if _looks_hls(stream_url) else "internal"
+        if is_hls is None:
+            is_hls = _looks_hls(stream_url)
+        return "ffmpeg" if is_hls else "internal"
     return requested
 
 
@@ -446,8 +448,9 @@ def enqueue_download(website, page_url, title="", thumbnail=""):
         _notify(_lang(30753, "Could not resolve a downloadable stream."), error=True)
         return False
 
-    backend = _backend_for(stream_url)
-    if backend == "internal" and _looks_hls(stream_url):
+    is_hls = _looks_hls(stream_url) or explicit_extension.lower() == "m3u8" or bool(resolved_options.get("hls_proxy"))
+    backend = _backend_for(stream_url, is_hls=is_hls)
+    if backend == "internal" and is_hls:
         _notify(_addon().getLocalizedString(30661) or "HLS downloads require FFmpeg.", error=True)
         return False
     if backend == "ffmpeg" and not _resolve_ffmpeg():
@@ -618,8 +621,9 @@ def _refresh_job_stream(job):
         if not stream_url:
             raise RuntimeError(_lang(30753, "Could not resolve a downloadable stream."))
 
-        backend = _backend_for(stream_url)
-        if backend == "internal" and _looks_hls(stream_url):
+        is_hls = _looks_hls(stream_url) or explicit_extension.lower() == "m3u8" or bool(resolved_options.get("hls_proxy"))
+        backend = _backend_for(stream_url, is_hls=is_hls)
+        if backend == "internal" and is_hls:
             raise RuntimeError(_addon().getLocalizedString(30661) or "HLS downloads require FFmpeg.")
         if backend == "ffmpeg" and not _resolve_ffmpeg():
             raise RuntimeError(_addon().getLocalizedString(30635) or "FFmpeg executable was not found.")

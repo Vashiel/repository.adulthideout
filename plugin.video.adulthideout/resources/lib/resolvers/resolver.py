@@ -53,7 +53,7 @@ RESOLVERS = [
         "key": "hglink",
         "setting": "resolver_enable_hglink",
         "module": "hglink_resolver",
-        "hosts": ("hglink.to", "hanerix.com", "hgcloud.to"),
+        "hosts": ("hglink.to", "hanerix.com", "hgcloud.to", "74k.io"),
     },
     {
         "key": "vidara",
@@ -138,7 +138,7 @@ RESOLVERS = [
         "key": "88z",
         "setting": "resolver_enable_88z",
         "module": "eightyeightz_resolver",
-        "hosts": ("88z.io",),
+        "hosts": ("88z.io", "65s.io", "38x.io"),
     },
     {
         "key": "lulustream",

@@ -1554,6 +1554,69 @@ class _HlsProxyHandler(BaseHTTPRequestHandler):
         with bypass():
             super().handle()
 
+    def _proxy_url(self, resource_url, parent_url="", is_variant=False, is_media_playlist=False, is_map=False):
+        if self.controller.preserve_query and parent_url:
+            parent_query = urllib.parse.urlparse(parent_url).query
+            parsed_resource = urllib.parse.urlparse(resource_url)
+            if parent_query and not parsed_resource.query:
+                resource_url = urllib.parse.urlunparse(
+                    parsed_resource._replace(query=parent_query)
+                )
+        resource_file = urllib.parse.urlparse(resource_url).path.lower()
+        if is_variant or is_media_playlist or resource_file.endswith(".m3u8"):
+            resource_path = "/playlist.m3u8"
+            ext_param = ""
+        elif is_map or resource_file.endswith((".m4s", ".mp4", ".m4f", ".woff", ".woff2")):
+            resource_path = "/resource.m4s"
+            ext_param = "&ext=.m4s"
+        else:
+            resource_path = "/resource.ts"
+            ext_param = "&ext=.ts"
+        return "http://{}:{}{}?url={}{}".format(
+            self.controller.host,
+            self.server.server_address[1],
+            resource_path,
+            urllib.parse.quote_plus(resource_url),
+            ext_param,
+        )
+
+    def _rewrite_playlist(self, playlist, base_url):
+        lines = []
+        previous_tag = ""
+        for raw_line in playlist.splitlines():
+            sline = raw_line.strip()
+            if not sline:
+                lines.append(raw_line)
+                continue
+            if sline.startswith("#"):
+                if sline.startswith(("#EXT-X-MEDIA", "#EXT-X-MAP", "#EXT-X-KEY", "#EXT-X-I-FRAME-STREAM-INF")):
+                    is_media_pl = sline.startswith(("#EXT-X-MEDIA", "#EXT-X-I-FRAME-STREAM-INF"))
+                    is_map = sline.startswith("#EXT-X-MAP")
+
+                    def _replace_uri(match):
+                        abs_uri = urllib.parse.urljoin(base_url, match.group(1))
+                        return 'URI="{}"'.format(
+                            self._proxy_url(
+                                abs_uri,
+                                parent_url=base_url,
+                                is_media_playlist=is_media_pl,
+                                is_map=is_map,
+                            )
+                        )
+
+                    sline = re.sub(r'URI="([^"]+)"', _replace_uri, sline)
+                lines.append(sline)
+                previous_tag = sline
+                continue
+
+            resource_url = urllib.parse.urljoin(base_url, sline)
+            is_variant = previous_tag.startswith("#EXT-X-STREAM-INF")
+            lines.append(
+                self._proxy_url(resource_url, parent_url=base_url, is_variant=is_variant)
+            )
+            previous_tag = sline
+        return "\n".join(lines).encode("utf-8")
+
     def do_GET(self):
         if getattr(self.server, '_shutting_down', False):
             self.send_error(503, "Service shutting down")
@@ -1573,6 +1636,16 @@ class _HlsProxyHandler(BaseHTTPRequestHandler):
             if parsed.path in ("/playlist.m3u8", "/resource", "/resource.ts", "/resource.m4s"):
                 url = query.get("url", [""])[0]
                 if parsed.path == "/playlist.m3u8" and not url:
+                    custom_master = getattr(self.controller, "custom_master_playlist", None)
+                    if custom_master:
+                        content = self._rewrite_playlist(custom_master, getattr(self.controller, "master_url", ""))
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/vnd.apple.mpegurl")
+                        self.send_header("Content-Length", str(len(content)))
+                        self.send_header("Cache-Control", "no-store")
+                        self.end_headers()
+                        self.wfile.write(content)
+                        return
                     url = getattr(self.controller, "master_url", "")
                 if not url:
                     self.send_error(400, "Missing URL")
@@ -1587,42 +1660,7 @@ class _HlsProxyHandler(BaseHTTPRequestHandler):
 
                 if res.content.startswith(b"#EXTM3U"):
                     playlist = res.content.decode("utf-8", "replace")
-                    lines = []
-                    previous_tag = ""
-                    for line in playlist.splitlines():
-                        if line.strip() and not line.startswith("#"):
-                            resource_url = urllib.parse.urljoin(url, line.strip())
-                            if self.controller.preserve_query:
-                                parent_query = urllib.parse.urlparse(url).query
-                                parsed_resource = urllib.parse.urlparse(resource_url)
-                                if parent_query and not parsed_resource.query:
-                                    resource_url = urllib.parse.urlunparse(
-                                        parsed_resource._replace(query=parent_query)
-                                    )
-                            resource_file = urllib.parse.urlparse(resource_url).path.lower()
-                            is_variant = previous_tag.startswith("#EXT-X-STREAM-INF")
-                            if resource_file.endswith(".m3u8") or is_variant:
-                                resource_path = "/playlist.m3u8"
-                            elif resource_file.endswith((".m4s", ".mp4")):
-                                resource_path = "/resource.m4s"
-                            else:
-                                resource_path = "/resource.ts"
-                            ext_param = ""
-                            if resource_path == "/resource.ts":
-                                ext_param = "&ext=.ts"
-                            elif resource_path == "/resource.m4s":
-                                ext_param = "&ext=.m4s"
-                            line = "http://{}:{}{}?url={}{}".format(
-                                self.controller.host,
-                                self.server.server_address[1],
-                                resource_path,
-                                urllib.parse.quote_plus(resource_url),
-                                ext_param,
-                            )
-                        lines.append(line)
-                        if line.startswith("#"):
-                            previous_tag = line
-                    content = "\n".join(lines).encode("utf-8")
+                    content = self._rewrite_playlist(playlist, url)
                     self.send_response(200)
                     self.send_header("Content-Type", "application/vnd.apple.mpegurl")
                     self.send_header("Content-Length", str(len(content)))
@@ -1661,7 +1699,7 @@ class _HlsProxyHandler(BaseHTTPRequestHandler):
                     if not content_type or not content_type.startswith("video/") or "image" in content_type.lower():
                         content_type = "video/mp2t"
                 elif parsed.path == "/resource.m4s":
-                    if not content_type or not content_type.startswith("video/"):
+                    if not content_type or not content_type.startswith(("video/", "audio/")):
                         content_type = "video/mp4"
                 self.send_response(200)
                 self.send_header("Content-Type", content_type)
@@ -1688,6 +1726,7 @@ class HlsProxyController:
         host="127.0.0.1",
         port=0,
         preserve_query=False,
+        force_local=False,
     ):
         self.master_url = master_playlist_url
         self.headers = headers or {}
@@ -1696,6 +1735,8 @@ class HlsProxyController:
         self.host = host
         self.port = port
         self.preserve_query = bool(preserve_query)
+        self.force_local = bool(force_local)
+        self.custom_master_playlist = None
         self.httpd = None
         self.thread = None
         self.local_url = None
@@ -1707,12 +1748,22 @@ class HlsProxyController:
         return (time.time() - self.last_activity) < idle_seconds
 
     def start(self):
+        use_local = self.force_local
+        lower_master = (self.master_url or "").lower().split("?", 1)[0]
+        if lower_master.endswith(".txt") or "/play-tt/" in lower_master:
+            use_local = True
+
         try:
             response = self.session.get(self.master_url, headers=self.headers, timeout=10)
             response.raise_for_status()
             text = response.content.decode("utf-8", "replace")
+            if "#EXT-X-MAP" in text or ".woff" in text.lower():
+                use_local = True
             if "#EXT-X-STREAM-INF" in text:
+                has_media_group = "#EXT-X-MEDIA:" in text
                 quality_variants = []
+                variant_lines = {}
+                header_lines = []
                 current_inf = None
                 for line in text.splitlines():
                     sline = line.strip()
@@ -1721,6 +1772,8 @@ class HlsProxyController:
                     if sline.startswith("#EXT-X-STREAM-INF:"):
                         current_inf = sline
                     elif not sline.startswith("#"):
+                        if current_inf is None:
+                            continue
                         variant_url = urllib.parse.urljoin(self.master_url, sline)
                         if self.preserve_query:
                             parent_query = urllib.parse.urlparse(self.master_url).query
@@ -1730,38 +1783,49 @@ class HlsProxyController:
                                     parsed_variant._replace(query=parent_query)
                                 )
                         q = 0
-                        if current_inf:
-                            res_m = re.search(r'RESOLUTION=\d+x(\d+)', current_inf, re.IGNORECASE)
-                            if res_m:
-                                q = int(res_m.group(1))
-                            if not q:
-                                name_m = re.search(r'NAME="?(\d+)p?"?', current_inf, re.IGNORECASE)
-                                if name_m:
-                                    q = int(name_m.group(1))
+                        res_m = re.search(r'RESOLUTION=\d+x(\d+)', current_inf, re.IGNORECASE)
+                        if res_m:
+                            q = int(res_m.group(1))
+                        if not q:
+                            name_m = re.search(r'NAME="?(\d+)p?"?', current_inf, re.IGNORECASE)
+                            if name_m:
+                                q = int(name_m.group(1))
                         if not q:
                             q = quality_from_value(variant_url)
                         quality_variants.append((q, variant_url))
+                        variant_lines[variant_url] = current_inf
                         current_inf = None
+                    elif sline.startswith("#EXT-X-MEDIA:") or (not quality_variants and current_inf is None):
+                        header_lines.append(sline)
 
                 if quality_variants:
-                    selected = select_quality_variant(quality_variants)
-                    if selected:
+                    selected = select_quality_variant(quality_variants) or quality_variants[0][1]
+                    if has_media_group:
+                        # Keep separate audio/rendition tags so demuxed HLS keeps sound.
+                        selected_inf = variant_lines.get(selected)
+                        filtered = list(header_lines)
+                        if selected_inf:
+                            filtered.append(selected_inf)
+                        filtered.append(selected)
+                        self.custom_master_playlist = "\n".join(filtered)
+                        use_local = True
+                        xbmc.log(f"[AHHlsProxy] Master filtered (preserving media groups): {selected}", xbmc.LOGINFO)
+                    else:
                         self.master_url = selected
                         xbmc.log(f"[AHHlsProxy] Master flattened to preferred quality variant: {selected}", xbmc.LOGINFO)
-                    else:
-                        self.master_url = quality_variants[0][1]
         except Exception as exc:
             xbmc.log(f"[AHHlsProxy] Master flatten skipped: {exc}", xbmc.LOGDEBUG)
 
-        try:
-            from resources.lib.thumb_proxy import is_core_healthy, build_stream_url
-            if is_core_healthy():
-                referer = (self.headers or {}).get("Referer")
-                self.local_url = build_stream_url(self.master_url, referer=referer)
-                xbmc.log(f"[AHHlsProxy] Delegated to service.adulthideout.core: {self.local_url}", xbmc.LOGINFO)
-                return self.local_url
-        except Exception as exc:
-            xbmc.log(f"[AHHlsProxy] Core delegation check skipped: {exc}", xbmc.LOGDEBUG)
+        if not use_local:
+            try:
+                from resources.lib.thumb_proxy import is_core_healthy, build_stream_url
+                if is_core_healthy():
+                    referer = (self.headers or {}).get("Referer")
+                    self.local_url = build_stream_url(self.master_url, referer=referer)
+                    xbmc.log(f"[AHHlsProxy] Delegated to service.adulthideout.core: {self.local_url}", xbmc.LOGINFO)
+                    return self.local_url
+            except Exception as exc:
+                xbmc.log(f"[AHHlsProxy] Core delegation check skipped: {exc}", xbmc.LOGDEBUG)
 
         def _handler_factory(controller_obj):
             class _H(_HlsProxyHandler):
