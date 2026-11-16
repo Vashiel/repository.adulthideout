@@ -55,6 +55,11 @@ def _count(key):
         _STATS[key] += 1
 
 
+def record(used_core):
+    """For callers that ask the Core themselves (resilient_http), so stats() sees every page."""
+    _count("core" if used_core else "fallback")
+
+
 def _eligible(method, url, headers):
     if getattr(threading.current_thread(), _BYPASS_ATTR, False) or method != "GET":
         return False

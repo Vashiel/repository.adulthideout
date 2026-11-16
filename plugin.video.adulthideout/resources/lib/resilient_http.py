@@ -54,7 +54,7 @@ def fetch_text(
 
     # 1. Primary path: High-speed Rust Core Engine with browser-compatible session handling
     try:
-        from resources.lib.core_transport import english_unless_set
+        from resources.lib.core_transport import english_unless_set, record
 
         core_headers = english_unless_set({k: str(v) for k, v in request_headers.items() if k.lower() != "user-agent"})
         req_body = {
@@ -79,7 +79,9 @@ def fetch_text(
                             scraper.cookies.set(c["name"], c["value"])
                     except Exception:
                         pass
+                record(True)
                 return body
+        record(False)
     except Exception as exc:
         _log(logger, "debug", f"Core engine bypassed: {exc}")
 

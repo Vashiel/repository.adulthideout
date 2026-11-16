@@ -16,6 +16,7 @@ from adulthideout_kvat_core import (
     JOBS_PATH,
     REPORTS_PATH,
     TARGET_ADDON_ID,
+    CHECK_ORDER,
     build_report,
     cleanup_old_reports,
     ensure_directories,
@@ -23,6 +24,7 @@ from adulthideout_kvat_core import (
     now_iso,
     read_json,
     report_summary,
+    run_site_test,
     sanitize_text,
     website_label,
     write_json,
@@ -119,6 +121,16 @@ def timeout_result(site, mode):
 
 def run_worker_batch(sites, mode, progress_callback=None, cancelled_callback=None):
     ensure_directories()
+    if "tactile" in xbmc.getInfoLabel("System.BuildVersion").lower():
+        # Tactile has no RunScript, so the sites are tested here, one after another.
+        results = []
+        for site in sites or []:
+            if cancelled_callback and cancelled_callback():
+                return results, True
+            if progress_callback:
+                progress_callback(len(results), site)
+            results.append(run_site_test(site, mode=mode))
+        return results, False
     pending = list(sites or [])
     completed = []
     cancelled = False
@@ -211,9 +223,29 @@ def show_report(report, path=""):
         item for item in report.get("sites") or []
         if item.get("status") not in ("PASS", "IGNORED")
     ]
+    checked = [item.get("checks") or {} for item in report.get("sites") or [] if item.get("checks")]
+    if checked:
+        for name in CHECK_ORDER:
+            counts = {}
+            for checks in checked:
+                status = (checks.get(name) or {}).get("status")
+                if status:
+                    counts[status] = counts.get(status, 0) + 1
+            lines.append("{:<11} {}".format(name, "  ".join(
+                "{} {}".format(status, counts[status]) for status in ("PASS", "WARNING", "FAILED") if status in counts
+            )))
+        lines.append("")
     if problem_sites:
         lines.append(text(30025, "Problems"))
         for item in problem_sites:
+            checks = item.get("checks") or {}
+            if checks:
+                lines.append("{}  {}".format(item.get("status", "FAILED"), item.get("label") or item.get("site")))
+                for name in CHECK_ORDER:
+                    entry = checks.get(name) or {}
+                    if entry.get("status") not in (None, "PASS"):
+                        lines.append("    {} {}: {}".format(entry["status"], name, sanitize_text(entry.get("detail"))))
+                continue
             detail = item.get("error")
             if not detail:
                 detail = "; ".join((item.get("listing") or {}).get("messages") or [])

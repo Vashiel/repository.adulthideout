@@ -1,4 +1,5 @@
 import importlib
+import inspect
 import json
 import os
 import platform
@@ -200,7 +201,78 @@ def execute_jsonrpc(method, params=None):
     return response.get("result") or {}
 
 
+# Same routing as plugin default.py, so the module lists exactly what the user would see.
+_DIRECTORY_HANDLERS = {
+    "2": ("process_content",),
+    "3": ("process_categories", "process_content"),
+    "8": ("process_categories",),
+    "9": ("process_pornstars", "process_actresses_list"),
+    "10": ("process_channels",),
+    "11": ("process_collections",),
+}
+_INTERNAL_BOOTSTRAP = ("drtuber", "cumlouder", "pornhat")
+
+
+def list_module_directory(url):
+    """Runs the site module in this process and returns its items in Files.GetDirectory form.
+
+    Works in Kodi and in Tactile (whose JSON-RPC has no Files.GetDirectory). None if the
+    plugin URL is not a module listing.
+    """
+    query = urllib.parse.urlsplit(str(url)).query
+    params = dict(urllib.parse.parse_qsl(query))
+    site = (params.get("website") or "").replace("-", "_")
+    inst = load_website_instance(site) if site else None
+    handler = None
+    for name in _DIRECTORY_HANDLERS.get(params.get("mode", ""), ()):
+        if inst is not None and callable(getattr(inst, name, None)):
+            handler = getattr(inst, name)
+            break
+    if handler is None:
+        return None
+    target = params.get("url") or ""
+    if target == "BOOTSTRAP" and site not in _INTERNAL_BOOTSTRAP:
+        if hasattr(inst, "get_start_url_and_label"):
+            target = inst.get_start_url_and_label()[0]
+        else:
+            target = inst.base_url
+
+    items = []
+
+    def capture(handle=None, url="", listitem=None, isFolder=False, *args, **kwargs):
+        item_query = urllib.parse.urlsplit(str(url)).query
+        values = dict(urllib.parse.parse_qsl(item_query))
+        label = thumb = ""
+        try:
+            label = listitem.getLabel()
+            thumb = listitem.getArt("thumb")
+        except Exception:
+            pass
+        items.append({
+            "file": "plugin://{}/?{}".format(TARGET_ADDON_ID, item_query) if item_query else str(url),
+            "filetype": "directory" if isFolder else "file",
+            "label": label or values.get("name", ""),
+            "thumbnail": thumb or values.get("thumbnail", ""),
+        })
+        return True
+
+    originals = (xbmcplugin.addDirectoryItem, xbmcplugin.endOfDirectory)
+    xbmcplugin.addDirectoryItem = capture
+    xbmcplugin.endOfDirectory = lambda *args, **kwargs: None
+    try:
+        if params.get("page") and "page" in inspect.signature(handler).parameters:
+            handler(target, page=int(params["page"]))
+        else:
+            handler(target)
+    finally:
+        xbmcplugin.addDirectoryItem, xbmcplugin.endOfDirectory = originals
+    return items
+
+
 def get_directory(url):
+    items = list_module_directory(url)
+    if items is not None:
+        return items
     params = {
         "directory": url,
         "media": "video",
@@ -364,7 +436,8 @@ def inspect_listing(site, verify_thumbnail=True, deep=False):
     folders = [item for item in root_items if is_folder_item(item)]
     thumbnail = {"status": "missing"}
     if videos:
-        for attempt, video in enumerate(videos[:3], start=1):
+        # The 5th video first: the first ones are often promoted or pinned and not typical.
+        for attempt, video in enumerate(videos[4:5] + videos[:3], start=1):
             thumbnail_url = thumbnail_from_item(video)
             if not thumbnail_url:
                 continue
@@ -403,7 +476,13 @@ def inspect_listing(site, verify_thumbnail=True, deep=False):
         "folder_errors": folder_errors[:3],
         "thumbnail": thumbnail,
         "messages": messages,
-        "playback_urls": [str(item.get("file") or "") for item in videos[:3]],
+        "playback_urls": [str(item.get("file") or "") for item in videos],
+        "video_thumbs": [thumbnail_from_item(item) for item in videos],
+        "buttons": [
+            (clean_label(item.get("label")), query.get("mode", ""), query.get("url", ""))
+            for item in root_items if is_folder_item(item)
+            for query in [dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(str(item.get("file") or "")).query))]
+        ],
     }
 
 
@@ -584,8 +663,19 @@ def get_website_base_url(site):
     return None
 
 
-def run_core_diagnostic(site, mode="quick"):
-    base_url = get_website_base_url(site)
+def module_start_url(site):
+    """The page the module opens first (e.g. missav's /en/ section), else the site root."""
+    inst = load_website_instance(site)
+    try:
+        if inst is not None and site not in _INTERNAL_BOOTSTRAP:
+            return inst.get_start_url_and_label()[0]
+    except Exception:
+        pass
+    return get_website_base_url(site)
+
+
+def run_core_diagnostic(site, mode="quick", url=None):
+    base_url = url or get_website_base_url(site)
     if not base_url:
         return None
     try:
@@ -636,6 +726,10 @@ def run_core_diagnostic(site, mode="quick"):
                     "http_status": data.get("http_status", 200),
                     "challenge_detected": data.get("challenge_detected", False),
                     "challenge_solved": data.get("challenge_solved", False),
+                    "core_page": {
+                        key: data.get(key)
+                        for key in ("final_url", "html_lang", "content_language")
+                    },
                 }
                 if messages:
                     res["advisories"] = messages
@@ -963,6 +1057,238 @@ def resolve_and_probe_stream(site, playback_url):
     return probe
 
 
+# The user's checklist per website: reachable, English by default, buttons, videos, real
+# thumbnails, the 5th video plays, and whether the pages came through the Rust Core.
+CHECK_ORDER = ("reachable", "english", "buttons", "videos", "thumbnails", "playback", "core")
+# Only these make a website FAILED; the others warn. "core" is information only.
+BLOCKING_CHECKS = ("reachable", "videos", "playback")
+TEST_VIDEO_INDEX = 4  # the 5th video; the first ones are often pinned or promoted
+_LANGUAGE_CODES = {
+    "de", "fr", "es", "it", "nl", "pt", "ru", "pl", "cs", "cz", "ja", "jp", "zh", "cn", "tr",
+    "sv", "da", "fi", "hu", "ro", "ko", "ar", "el", "he", "th", "vi", "uk", "kategorien",
+}
+_PLACEHOLDER_WORDS = (
+    "placeholder", "no-image", "noimage", "no_image", "no-thumb", "nothumb", "blank.", "lazy.",
+    "loading.", "spacer.", "pixel.gif", "default.jpg", "default.png", "/logos/",
+)
+_BUTTON_RULES = (
+    ("Search", lambda label, mode: mode == "5" or "search" in label),
+    ("Next", lambda label, mode: "next" in label or ">>" in label),
+    ("Categories", lambda label, mode: mode == "8" or "categor" in label or "genre" in label),
+    ("Tags", lambda label, mode: "tags" in label),
+    ("Models", lambda label, mode: mode == "9" or any(w in label for w in ("pornstar", "model", "actress"))),
+    ("Channels", lambda label, mode: mode == "10" or "channel" in label or "studio" in label),
+)
+_SOURCE_LABEL_RE = re.compile(r"""(?:add_dir\(\s*|['"]name['"]\s*:\s*)f?["']([^"'\n]+)["']""")
+_SEARCH_ENGINES = None
+
+
+def make_check(status, detail):
+    return {"status": status, "detail": detail}
+
+
+def _language_marker(url):
+    parts = urllib.parse.urlsplit(str(url or ""))
+    host_label = parts.netloc.lower().split(".")[0]
+    path_label = parts.path.strip("/").split("/")[0].lower()
+    for code in (host_label, path_label):
+        if code in _LANGUAGE_CODES:
+            return code
+    return ""
+
+
+def check_language(base_url, core_page, button_urls=()):
+    core_page = core_page or {}
+    for url in [base_url, core_page.get("final_url")] + list(button_urls):
+        code = _language_marker(url)
+        if code:
+            parts = urllib.parse.urlsplit(url)
+            return make_check("WARNING", "non-English URL '{}' ({}{})".format(code, parts.netloc, parts.path))
+    lang = str(core_page.get("html_lang") or core_page.get("content_language") or "").lower()
+    if not lang:
+        return make_check("PASS", "language not declared")
+    if lang.startswith("en"):
+        return make_check("PASS", lang)
+    return make_check("WARNING", "page language '{}'".format(lang))
+
+
+def offered_buttons(site):
+    """Buttons the module creates somewhere, found by their literal labels in its source."""
+    try:
+        target = get_target_addon()
+        path = os.path.join(
+            xbmcvfs.translatePath(target.getAddonInfo("path")), "resources", "websites", "{}.py".format(site)
+        )
+        with open(path, "r", encoding="utf-8", errors="ignore") as handle:
+            labels = [clean_label(label).lower() for label in _SOURCE_LABEL_RE.findall(handle.read())]
+    except Exception:
+        return set()
+    # "All Tags >>>>" style links sit inside sub-listings, not on the start page.
+    labels = [label for label in labels if ">>" not in label]
+    return {name for name, rule in _BUTTON_RULES if any(rule(label, "") for label in labels)}
+
+
+def check_buttons(buttons, offered, video_count):
+    present = {
+        name for name, rule in _BUTTON_RULES
+        if any(rule(str(label).lower(), mode) for label, mode, _ in buttons)
+    }
+    expected = set(offered) | {"Search"}
+    if video_count:
+        expected.add("Next")
+    missing = [name for name, _ in _BUTTON_RULES if name in expected and name not in present]
+    shown = ", ".join(name for name, _ in _BUTTON_RULES if name in present) or "none"
+    if missing:
+        return make_check("WARNING", "missing: {} (shown: {})".format(", ".join(missing), shown))
+    return make_check("PASS", shown)
+
+
+def _thumb_source(url):
+    value = unwrap_image_url(url)
+    if "/thumb?" in value and value.startswith(("http://127.0.0.1", "http://localhost")):
+        value = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(value).query)).get("u", value)
+    return value.split("|", 1)[0].strip()
+
+
+def is_placeholder_thumb(source, icon=""):
+    lowered = source.lower()
+    return bool(
+        not lowered.startswith(("http://", "https://"))
+        or (icon and source == icon)
+        or any(word in lowered for word in _PLACEHOLDER_WORDS)
+    )
+
+
+def check_thumbnails(thumbs, probe, icon=""):
+    sources = [_thumb_source(thumb) for thumb in thumbs]
+    if not sources:
+        return make_check("FAILED", "no videos to check")
+    total = len(sources)
+    placeholders = sum(1 for source in sources if is_placeholder_thumb(source, icon))
+    most_common = max(sources.count(source) for source in set(sources))
+    test_index = min(TEST_VIDEO_INDEX, total - 1)
+    if placeholders * 2 > total:
+        return make_check("WARNING", "{} of {} thumbnails are placeholders".format(placeholders, total))
+    if total >= 4 and most_common * 2 > total:
+        return make_check("WARNING", "{} of {} videos share the same image".format(most_common, total))
+    if is_placeholder_thumb(sources[test_index], icon):
+        return make_check("WARNING", "thumbnail of video #{} is a placeholder".format(test_index + 1))
+    if (probe or {}).get("status") in ("missing", "failed"):
+        return make_check("WARNING", "thumbnail did not load: {}".format((probe or {}).get("error") or "missing"))
+    return make_check("PASS", "{} thumbnails, video #{} loaded".format(total, test_index + 1))
+
+
+def search_engine(site):
+    """How Global Search reaches the site: Core with a site profile, Core generic, or Python."""
+    global _SEARCH_ENGINES
+    if _SEARCH_ENGINES is None:
+        _SEARCH_ENGINES = {}
+        try:
+            target = get_target_addon()
+            path = os.path.join(
+                xbmcvfs.translatePath(target.getAddonInfo("path")), "resources", "core_search_sources.json"
+            )
+            for entry in read_json(path, []) or []:
+                _SEARCH_ENGINES[entry.get("id")] = "core profile" if entry.get("profile") else "core generic"
+        except Exception:
+            pass
+    return _SEARCH_ENGINES.get(site, "python")
+
+
+def _core_transport():
+    try:
+        from resources.lib import core_transport
+        core_transport.install()
+        return core_transport
+    except Exception:
+        return None
+
+
+def check_core(before, after, engine):
+    if before is None or after is None:
+        return make_check("WARNING", "core transport unavailable; search: {}".format(engine))
+    via_core = after.get("core", 0) - before.get("core", 0)
+    fallback = after.get("fallback", 0) - before.get("fallback", 0)
+    detail = "pages: {} via core, {} via python fallback; search: {}".format(via_core, fallback, engine)
+    if via_core and not fallback:
+        return make_check("PASS", detail)
+    return make_check("WARNING", detail)
+
+
+def summarize_checks(checks):
+    status = "PASS"
+    problems = []
+    for name in CHECK_ORDER:
+        entry = checks.get(name)
+        if not entry or entry["status"] == "PASS" or name == "core":
+            continue
+        problems.append("{}: {}".format(name, entry["detail"]))
+        if entry["status"] == "FAILED" and name in BLOCKING_CHECKS:
+            status = "FAILED"
+        elif status == "PASS":
+            status = "WARNING"
+    return status, problems
+
+
+def run_checklist(site, result, core_result):
+    checks = {}
+    core_page = None
+    if core_result is None:
+        checks["reachable"] = make_check("WARNING", "core not running, domain not checked")
+    else:
+        core_page = core_result.get("core_page")
+        if core_result.get("status") == "FAILED":
+            messages = (core_result.get("listing") or {}).get("messages") or []
+            checks["reachable"] = make_check(
+                "FAILED", "; ".join(messages) or "HTTP {}".format(core_result.get("http_status"))
+            )
+        else:
+            checks["reachable"] = make_check("PASS", "HTTP {}".format(core_result.get("http_status")))
+
+    transport = _core_transport()
+    before = transport.stats() if transport else None
+    try:
+        listing = inspect_listing(site, verify_thumbnail=True, deep=True)
+    except Exception as exc:
+        listing = {"status": "FAILED", "messages": [sanitize_text(exc)], "videos": 0}
+    after = transport.stats() if transport else None
+    playback_urls = listing.pop("playback_urls", [])
+    thumbs = listing.pop("video_thumbs", [])
+    buttons = listing.pop("buttons", [])
+    result["listing"] = listing
+
+    checks["english"] = check_language(
+        module_start_url(site), core_page, [url for _, _, url in buttons]
+    )
+    video_count = len(playback_urls)
+    if video_count:
+        checks["videos"] = make_check("PASS", "{} videos".format(video_count))
+    else:
+        checks["videos"] = make_check("FAILED", "; ".join(listing.get("messages") or []) or "no videos listed")
+    checks["buttons"] = check_buttons(buttons, offered_buttons(site), video_count)
+    inst = load_website_instance(site)
+    checks["thumbnails"] = check_thumbnails(thumbs, listing.get("thumbnail"), getattr(inst, "icon", ""))
+    if video_count:
+        index = min(TEST_VIDEO_INDEX, video_count - 1)
+        stream = resolve_and_probe_stream(site, playback_urls[index])
+        result["stream_probe"] = stream
+        if stream.get("status") == "PASS":
+            checks["playback"] = make_check("PASS", "video #{} resolved and reachable".format(index + 1))
+        else:
+            checks["playback"] = make_check(
+                "FAILED", "video #{}: {}".format(index + 1, stream.get("error") or "stream test failed")
+            )
+    else:
+        checks["playback"] = make_check("FAILED", "no video to play")
+    checks["core"] = check_core(before, after, search_engine(site))
+
+    result["checks"] = checks
+    result["status"], problems = summarize_checks(checks)
+    if problems:
+        result["error"] = "; ".join(problems)
+    return result
+
+
 def run_site_test(site, mode="smart"):
     started = time.time()
     result = {
@@ -987,7 +1313,16 @@ def run_site_test(site, mode="smart"):
             return core_result
 
     # In smart/detail/full mode: fast-fail if Core detected DNS or domain failure
-    core_fast = run_core_diagnostic(site, mode=mode)
+    core_fast = run_core_diagnostic(site, mode=mode, url=module_start_url(site) if mode != "full" else None)
+    if mode != "full":
+        try:
+            run_checklist(site, result, core_fast)
+        except Exception as exc:
+            result["status"] = "FAILED"
+            result["error"] = sanitize_text(exc)
+        result["elapsed_seconds"] = round(time.time() - started, 2)
+        result["finished_at"] = now_iso()
+        return result
     if core_fast is not None and core_fast.get("status") == "FAILED":
         return core_fast
 
