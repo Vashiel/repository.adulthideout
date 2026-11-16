@@ -1027,6 +1027,15 @@ def handle_routing():
         xbmcplugin.endOfDirectory(ADDON_HANDLE, succeeded=True, updateListing=False, cacheToDisc=False)
         return
 
+    if mode is None:
+        # Warns when AdultHideout was installed from somewhere else than the official repository.
+        # Lost in 1.0.21 when this routing was rebuilt.
+        try:
+            from resources.lib.official_source import verify_and_warn
+            verify_and_warn(ADDON, show_dialog=True)
+        except Exception as exc:
+            log(f"Official source check failed unexpectedly: {exc}", xbmc.LOGWARNING)
+
     if mode is None and action != 'direct_search':
         ensure_core_running(interactive=True)
         build_main_menu_fast()
