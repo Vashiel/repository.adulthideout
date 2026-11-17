@@ -1,6 +1,6 @@
 {
     "addon_id": "plugin.video.adulthideout",
-    "generated_utc": "2026-11-17T17:55:12Z",
+    "generated_utc": "2026-11-17T17:59:47Z",
     "hash_algorithm": "sha256",
     "hashes": {
         "LICENSE.txt": "fc6e2e8c4b76f7ee65e8f6153e44d8a197ac992767582fd9cd01d393a38298cc",
@@ -97,7 +97,7 @@
         "resources/lib/resolvers/vsonic_resolver.py": "ce40b2a6105af1bb30e83496e521d68ba91db094037f43d6a2bce5e4de23bb8e",
         "resources/lib/resolvers/vtube_resolver.py": "a23a328b07cfa43ee4ddc4fad589dfc6b7f1fb7d4e7750973c153de9c56113ff",
         "resources/lib/resolvers/watchstreamhd_resolver.py": "592356e6baa941739b3d321a4f59f5fb329f5bddc97a4c8d8e890e64f8310ae5",
-        "resources/lib/retro_stream_network.py": "89c8014a5b08ff75c233fe45a22842567a347fe5498acae67ad99c5f14c2dfb8",
+        "resources/lib/retro_stream_network.py": "688f2e3047516c71e5863fd39f46028aa09fd037572cd31048e6592782389329",
         "resources/lib/smart_playlists.py": "8c0d26bd69b36d396fc621e520bfb4334cf257fdd4da37e397330fb376de9f73",
         "resources/lib/star_database.py": "032c6de2fbfab6bfd882f2e841477f751b6e330d7abcc650b552abe3d60101e4",
         "resources/lib/stream_validation.py": "cbf9a4989009371cf9e04ca8a480755a69fa19eeaf3576264bf545419971ff83",

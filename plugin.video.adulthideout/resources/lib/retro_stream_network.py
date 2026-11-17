@@ -17,6 +17,41 @@ import xbmcvfs
 from resources.lib.base_website import BaseWebsite
 
 
+def normalize_clearance(payload):
+    """Bring an exported browser cookie file into the shape the cache uses.
+
+    Accepted inputs: {"cookies": {"name": "value"}}, {"cookies": [{"name":…, "value":…}]},
+    a plain {"name": "value"} map, or a browser-extension export (a list of cookie
+    objects). Files written by hand carry no "ts"; they count as fresh instead of expired.
+    """
+    if isinstance(payload, list):
+        payload = {"cookies": payload}
+    if not isinstance(payload, dict):
+        return {}
+    cookies = payload.get("cookies")
+    pairs = {}
+    export_domain = ""
+    if isinstance(cookies, dict):
+        pairs = {str(k): str(v) for k, v in cookies.items() if k and v not in (None, "")}
+    elif isinstance(cookies, list):
+        for entry in cookies:
+            if isinstance(entry, dict) and entry.get("name"):
+                pairs[str(entry["name"])] = str(entry.get("value", ""))
+                export_domain = export_domain or str(entry.get("domain") or "")
+    elif cookies is None:
+        pairs = {str(k): str(v) for k, v in payload.items()
+                 if isinstance(v, (str, int, float)) and k not in ("domain", "ua", "ts")}
+    if not pairs:
+        return {}
+    result = {
+        "cookies": pairs,
+        "domain": payload.get("domain") or export_domain or "",
+        "ua": payload.get("ua") or "",
+        "ts": payload.get("ts") or time.time(),
+    }
+    return result
+
+
 class RetroStreamNetworkWebsite(BaseWebsite):
     label = "Retro Stream"
     search_param = "s"
@@ -69,9 +104,15 @@ class RetroStreamNetworkWebsite(BaseWebsite):
                         self.logger.info("[%s] Loaded clearance from file into property", self.name)
 
             if cached:
+                cached = normalize_clearance(cached)
+            if cached:
                 age = time.time() - cached.get("ts", 0)
                 if age < 86400:
                     domain = cached.get("domain", "")
+                    if not domain:
+                        # Never leave an imported cookie domain-less: requests would send it
+                        # to every host the add-on talks to.
+                        domain = urllib.parse.urlsplit(self.base_url).hostname or ""
                     if domain and not domain.startswith("."):
                         domain = "." + domain
                     self.session.cookies.clear()
