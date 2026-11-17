@@ -1306,13 +1306,7 @@ def run_checklist(site, result, core_result):
         checks["videos"] = make_check("FAILED", "; ".join(listing.get("messages") or []) or "no videos listed")
     if video_count and checks["reachable"]["status"] == "FAILED":
         # The Core's bare probe was turned away, but the module got through with its own headers.
-        if has_clearance(site):
-            # The challenge only lets the imported clearance through; the listing is the proof.
-            checks["reachable"] = make_check(
-                "PASS", "clearance imported; module listed {} videos".format(video_count)
-            )
-        else:
-            checks["reachable"] = make_check("WARNING", "probe: {}; module lists videos".format(checks["reachable"]["detail"]))
+        checks["reachable"] = make_check("WARNING", "probe: {}; module lists videos".format(checks["reachable"]["detail"]))
     checks["buttons"] = check_buttons(buttons, offered_buttons(site), video_count)
     inst = load_website_instance(site)
     checks["thumbnails"] = check_thumbnails(thumbs, listing.get("thumbnail"), getattr(inst, "icon", ""))
