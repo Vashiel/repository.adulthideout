@@ -56,6 +56,18 @@ Next step for these two is therefore PhantomFlare work, not addon work: instrume
 port the finding to `src/sandbox/dom_runtime.js` and rebuild `core-binaries/`. The addon
 side is unchanged and shows a clear failure instead of a silent empty listing.
 
+### Deliberately not bypassed with an external browser
+
+A local Chrome does load these pages: headless fails, a normal window passes without any
+click and hands out a `cf_clearance` cookie that plain HTTP requests can reuse. Driving that
+from a script (start Chrome invisibly, wait for the page to be released, store the cookie)
+is an automated bypass of the bot check, not a verification - the same line that was drawn
+for the `fulltaboo` player. It also only exists on desktop: Kodi on Android or LibreELEC
+has neither Node nor Chrome. Such a helper was built during this work and removed again.
+
+The supported path is the core's browser-environment emulator: it runs in-process as a
+shared library on every platform, and the challenge has to be solved inside it.
+
 ## Verification tools added
 
 `tools/headless/` runs the addon's site modules outside Kodi (stubs for `xbmc*`):
