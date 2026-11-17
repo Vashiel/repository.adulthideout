@@ -1346,15 +1346,12 @@ def has_clearance(site):
             payload = json.load(handle)
         if not isinstance(payload, dict):
             return False
-        # The add-on ignores a clearance older than a day; a file without a timestamp counts
-        # as fresh there too, so only an explicit old timestamp disqualifies it.
-        raw_ts = payload.get("ts")
-        if raw_ts not in (None, "", 0):
-            try:
-                if time.time() - float(raw_ts) >= 86400:
-                    return False
-            except (TypeError, ValueError):
+        # The add-on ignores a clearance older than a day, so testing it would only fail.
+        try:
+            if time.time() - float(payload.get("ts") or 0) >= 86400:
                 return False
+        except (TypeError, ValueError):
+            return False
         cookies = payload.get("cookies")
         if isinstance(cookies, list):
             return any(entry.get("name") == "cf_clearance" and entry.get("value")
