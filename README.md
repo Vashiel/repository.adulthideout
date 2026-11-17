@@ -13,57 +13,27 @@ AdultHideout does not host videos. It organizes publicly available listings and 
 
 ---
 
-## Current Release: AdultHideout 1.0.27 "Quicksilver"
+## Current Release: AdultHideout 1.0.28 "Lighthouse"
+
+**Released November 17, 2026**
+
+Lighthouse brings 14 new websites, length and quality filters for Global Search, page fetches through AdultHideout Core and a diagnostics checklist that tested every website.
+
+- **14 new websites:** Anybunny, CamHub, CamWhoresBay, Erogarga, Extreme.Adult, FullTaboo, Incesto69, PervTube, PlayVids, TabooDude, TabooJizz, TabooTube, WatchPornX and WildKittys.
+- **Global Search filters:** length (up to full movie) and quality (up to 4K only) as menu entries; five big sites filter on their own side.
+- **281 sources searched in the Core**, multi-word queries matched by words.
+- **More stable playback:** failed resolves end cleanly, playlists no longer pile up resolves.
+- **21 websites repaired**, PornRabbit and SaintPorn removed.
+
+Full notes: [Lighthouse 1.0.28](docs/releases/1.0.28-lighthouse.md)
+
+---
+
+## Previous Release: AdultHideout 1.0.27 "Quicksilver"
 
 **Released November 9, 2026**
 
-AdultHideout 1.0.27 unlocks the full potential of **AdultHideout Core**. Global Search and Mega Shuffle now run natively in Rust from the first request to the last result: every source is queried by the Core in a single pass, with AdultHideout's website modules seamlessly covering the rest. The result is our fastest, most complete and cleanest search ever, backed by more than two dozen refreshed websites.
-
-### Native Core Search
-
-Quicksilver hands the entire Global Search to the native engine introduced with Core Horizon:
-
-- **One Pass, Every Source:** All 300+ websites are queried by AdultHideout Core in a single concurrent request, with AdultHideout's website modules taking over wherever a site needs its dedicated logic.
-- **Smarter Result Recognition:** The Core now understands site APIs, WordPress and RSS feeds, search forms, regional domains and Cyrillic titles, so far more sources deliver matches.
-- **Cleaner Results:** Ads, redirect links, category, tag and listing pages are filtered out automatically, leaving only real videos.
-- **Streamlined Network Layer:** Lean, direct requests make the Core search more than twice as fast as before.
-
----
-
-### Real-World Search Benchmark (300+ Sources)
-
-| Search Scope | AdultHideout 1.0.26 | Quicksilver (Desktop) | Quicksilver Core (Mobile / ARM64) |
-| :--- | :--- | :--- | :--- |
-| **All 302 Sources, "milf"** | 24 sec · 3,344 results | **18 sec · 4,018 results** | – |
-| **Mega Shuffle, "sex"** | – | **~18 sec · ~3,370 results** | **~12 sec · ~3,800 results** |
-
-> **Real-World Test**: Across **all 302 enabled websites** on a Windows desktop, Quicksilver returns **20% more results in 25% less time** than the previous release.
-
----
-
-### Key Technical Subsystems in AdultHideout Core
-
-The native Core service (`service.adulthideout.core`) runs as a local engine on `127.0.0.1:8191` (in-process via C-ABI `ctypes` on Android) and provides:
-
-- **Concurrent Multi-Site Search Engine:** Queries every source in one pass with parallel workers, a global time budget, automatic retries and intelligent result filtering.
-- **Local HLS & MP4 Stream Relay:** Rewrites adaptive HLS (`.m3u8`) playlists to auto-select 1080p Full HD variants and handles HTTP 206 byte-range seeking for smooth MP4 playback.
-- **Embedded QuickJS Runtime:** Evaluates packed player scripts and signed stream ticket APIs in milliseconds.
-- **On-Demand Platform Binary Delivery (~3 MB):** The Core Service add-on detects the device and downloads only the matching binary, starting it instantly with no Kodi restart:
-  - **macOS**: Apple Silicon (`darwin-arm64`) & Intel (`darwin-x86_64`)
-  - **Android / Google TV / Fire TV**: 64-bit (`android-arm64-v8a`) & 32-bit (`android-armeabi-v7a`)
-  - **Windows**: 64-bit Desktop (`windows-x86_64`)
-  - **Linux / LibreELEC / CoreELEC / Raspberry Pi**: `linux-x86_64` & `linux-aarch64`
-
----
-
-### Website Refresh & Playback
-
-- **27 Websites Refreshed:** Search and playback modernized for Aki-H, BDSMVilla, Erome, EroticMV, FapNFuck, FullPorner, Fuqster, Hanime, HDEasyPorn, HDShemalez, Heavy-R, HentaiCity, HentaiMama, Hentaisea, IcePornCasting, LeakGallery, MixPorn, PMVHaven, PornKTube, PornZog, ShowCamRips, StreamPorn, SunPorno, ThisVid, W1mp, WOW.xxx and X24Video.
-- **New Embedded Player Resolver:** Native support for the txxx player network across partner sites.
-- **Direct CDN Streaming:** Signed CDN delivery for KVS-powered websites.
-- **Universal Stream Headers:** Stream headers are encoded so every player and device reads them correctly.
-
-For detailed scraper repairs and full commit history, consult [changelog.txt](plugin.video.adulthideout/changelog.txt) and the [Quicksilver Release Notes](docs/releases/1.0.27-quicksilver.md).
+Global Search and Mega Shuffle run natively in AdultHideout Core: all 300+ sources in a single pass, 20% more results in 25% less time. Full notes: [Quicksilver 1.0.27](docs/releases/1.0.27-quicksilver.md)
 
 ---
 
@@ -125,7 +95,7 @@ The official **[AdultHideout Wiki](https://github.com/Vashiel/repository.adulthi
 - **Issues:** [Bug reports and feature requests](https://github.com/Vashiel/repository.adulthideout/issues)
 - **Discussions:** [Announcements and community discussion](https://github.com/Vashiel/repository.adulthideout/discussions)
 - **Changelog:** [Complete release history](plugin.video.adulthideout/changelog.txt)
-- **Release notes:** [Quicksilver 1.0.27](docs/releases/1.0.27-quicksilver.md) · [Core Horizon 1.0.26](docs/releases/1.0.26-core-horizon.md) · [Prism 1.0.25](docs/releases/1.0.25-prism.md)
+- **Release notes:** [Lighthouse 1.0.28](docs/releases/1.0.28-lighthouse.md) · [Quicksilver 1.0.27](docs/releases/1.0.27-quicksilver.md) · [Core Horizon 1.0.26](docs/releases/1.0.26-core-horizon.md) · [Prism 1.0.25](docs/releases/1.0.25-prism.md)
 
 ## Disclaimer
 

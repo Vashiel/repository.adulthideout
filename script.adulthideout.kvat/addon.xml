@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="script.adulthideout.kvat" name="AdultHideout Diagnostics" version="0.2.4" provider-name="Vashiel">
+<addon id="script.adulthideout.kvat" name="AdultHideout Diagnostics" version="0.3.0" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
-        <import addon="plugin.video.adulthideout" version="1.0.20"/>
+        <import addon="plugin.video.adulthideout" version="1.0.28"/>
         <import addon="script.module.requests" version="2.25.1"/>
     </requires>
     <extension point="xbmc.python.script" library="default.py">
         <provides>executable</provides>
     </extension>
     <extension point="xbmc.addon.metadata">
-        <news>v. 0.2.4 - 2026-11-01
-- Hardened stream probe reachability with CDN-compatible headers (stripping browser-only Accept-Language/Accept-Encoding).
-- Fixed dynamic scraper module loading for hyphenated site names (e.g. heavy-r -> heavy_r).
-- Resolved namespace conflicts for resources.lib.base_website during dynamic diagnostic runs.
-- Updated KNOWN_EXTERNAL_ISSUES catalog to verify healthy domains and document external subscriber/challenge gates.</news>
+        <news>v. 0.3.0 - 2026-11-17
+- Site checklist: domain, English start page, buttons, videos, thumbnails, 5th video playback and Core use.
+- Works in every player, checks 16 websites at once.
+- Stream probes keep CDN cookies; blocked probes on listing sites only warn.
+- Known-issue list re-tested: only MyClassicP and VintageWorldP remain.</news>
         <summary lang="en_GB">Platform-native diagnostics for AdultHideout</summary>
         <summary lang="de_DE">Plattformnahe Diagnose fuer AdultHideout</summary>
         <summary lang="es_ES">Diagnóstico nativo para AdultHideout</summary>

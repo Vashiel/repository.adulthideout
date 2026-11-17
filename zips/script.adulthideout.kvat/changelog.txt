@@ -1,3 +1,10 @@
+v. 0.3.0 - 2026-11-17
+- **Site Checklist**: Every website is checked for a reachable domain, an English start page, its buttons (Search, Next, Categories, Tags, Models, Channels), listed videos, real thumbnails, a playable 5th video and whether its pages came through AdultHideout Core.
+- **Runs Everywhere**: Modules are listed in-process instead of via JSON-RPC, so the check also works in players without Files.GetDirectory or RunScript.
+- **Parallel Checks**: 16 websites are checked at once with a fixed time limit per site.
+- **Honest Stream Probes**: Redirects keep the cookies a CDN sets; a probe blocked by the site counts as a warning while the module still lists videos.
+- **Known Issues Cleaned Up**: Re-tested every listed site; only MyClassicP and VintageWorldP remain, both behind an interactive Cloudflare challenge.
+
 v. 0.2.4 - 2026-11-01
 - **Stream Reachability Probing**: Hardened stream reachability probes by stripping browser-only headers (`Accept-Language`, `Accept-Encoding`, `Connection`, `Upgrade-Insecure-Requests`) on media playlist requests.
 - **Scraper Dynamic Loading**: Fixed hyphenated site name module resolution (`site.replace('-', '_')`) so sites like `heavy-r` load reliably.

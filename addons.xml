@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.27" provider-name="Vashiel">
+<addon id="plugin.video.adulthideout" name="AdultHideout" version="1.0.28" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.requests" version="2.25.1"/>
-        <import addon="service.adulthideout.core" version="1.0.1"/>
+        <import addon="service.adulthideout.core" version="1.0.2"/>
     </requires>
     <extension point="xbmc.python.pluginsource" library="default.py">
         <provides>video</provides>
@@ -13,21 +13,20 @@
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
+v. 1.0.28 "Lighthouse" - 2026-11-17
+- 14 New Websites: Anybunny, CamHub, CamWhoresBay, Erogarga, Extreme.Adult, FullTaboo, Incesto69, PervTube, PlayVids, TabooDude, TabooJizz, TabooTube, WatchPornX and WildKittys.
+- Global Search Filters: length and quality as menu entries (up to 4K only).
+- Smarter Global Search: word-based matching, 281 sources searched in the Core.
+- Page fetches through AdultHideout Core, more stable playback.
+- Official source check active again.
+- Website Repairs: 21 websites and the LuLuStream resolver; removed PornRabbit and SaintPorn.
+
 v. 1.0.27 "Quicksilver" - 2026-11-09
 - Native Core Search: Global Search and Mega Shuffle run natively in AdultHideout Core, all 300+ sources in a single pass. 20% more results in 25% less time.
 - Smarter &amp; Cleaner Results: Site APIs, feeds and search forms understood; ads, category and tag pages filtered out.
 - Streamlined Network Layer: Core search more than twice as fast.
 - Fresh Core for all seven platforms.
 - 27 Websites Refreshed: including Aki-H, Hanime, HentaiMama, HentaiCity, LeakGallery, MixPorn, PornZog, StreamPorn, SunPorno, ThisVid and WOW.xxx.
-
-v. 1.0.26 "Core Horizon" - 2026-11-03
-- AdultHideout Core (Public Architecture Preview): New native engine for search, stream relaying and script evaluation. Falls back automatically to the classic Python engine if Core is not installed or unsupported.
-- On-Demand Core Installer: Downloads only the ~3 MB binary for your device on first use and starts it without restarting Kodi.
-- Global Search &amp; Mega Shuffle: All 302 sources searched concurrently, about 56 s on a phone and 12-18 s on desktop.
-- Playback &amp; Network: Local HLS and byte-range relay for reliable seeking and 1080p selection, encrypted DNS fallback.
-- Website Catalog: Re-enabled nine previously hidden websites (CrazyShit stays optional), removed OGPorn, One43Porn and VintageHuyamba.
-- Website Repairs: 37 websites and the DoodStream, LuLuStream and StreamTape resolvers repaired. Added Porner.tv.
-- Localization: English, German, French, Spanish and Italian updated.
 </news>
         <summary>[COLOR red]XXX[/COLOR] Porn videos</summary>
         <description>
@@ -84,20 +83,21 @@ https://github.com/Vashiel/repository.adulthideout
   </extension>
 </addon>
 
-<addon id="script.adulthideout.kvat" name="AdultHideout Diagnostics" version="0.2.4" provider-name="Vashiel">
+<addon id="script.adulthideout.kvat" name="AdultHideout Diagnostics" version="0.3.0" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
-        <import addon="plugin.video.adulthideout" version="1.0.20"/>
+        <import addon="plugin.video.adulthideout" version="1.0.28"/>
+        <import addon="script.module.requests" version="2.25.1"/>
     </requires>
     <extension point="xbmc.python.script" library="default.py">
         <provides>executable</provides>
     </extension>
     <extension point="xbmc.addon.metadata">
-        <news>v. 0.2.4 - 2026-11-01
-- Hardened stream probe reachability with CDN-compatible headers (stripping browser-only Accept-Language/Accept-Encoding).
-- Fixed dynamic scraper module loading for hyphenated site names (e.g. heavy-r -> heavy_r).
-- Resolved namespace conflicts for resources.lib.base_website during dynamic diagnostic runs.
-- Updated KNOWN_EXTERNAL_ISSUES catalog to verify healthy domains and document external subscriber/challenge gates.</news>
+        <news>v. 0.3.0 - 2026-11-17
+- Site checklist: domain, English start page, buttons, videos, thumbnails, 5th video playback and Core use.
+- Works in every player, checks 16 websites at once.
+- Stream probes keep CDN cookies; blocked probes on listing sites only warn.
+- Known-issue list re-tested: only MyClassicP and VintageWorldP remain.</news>
         <summary lang="en_GB">Platform-native diagnostics for AdultHideout</summary>
         <summary lang="de_DE">Plattformnahe Diagnose fuer AdultHideout</summary>
         <summary lang="es_ES">Diagnóstico nativo para AdultHideout</summary>
