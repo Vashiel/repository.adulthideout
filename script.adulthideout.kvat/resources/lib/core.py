@@ -67,19 +67,8 @@ REPORT_SCHEMA_VERSION = 2
 
 # External outages are reported separately and never sent into the repair loop.
 KNOWN_EXTERNAL_ISSUES = {
-    "borntobefuck": "Videos on the website are locked behind a mandatory Telegram gate (btbf.link/telegram).",
-    "czechvideo": "The former video website is currently unavailable; czechvideo.org now serves unrelated editorial content.",
-    "hentaimama": "The website currently serves a managed Cloudflare challenge to Kodi.",
-    "hqporner": "The website currently serves a managed Cloudflare challenge to Kodi.",
     "myclassicp": "The website currently serves a managed Cloudflare challenge to Kodi.",
     "vintageworldp": "The website currently serves a managed Cloudflare challenge to Kodi.",
-    "javhdporn":"Upstream video player is protected by custom JS obfuscation and encrypted API token.",
-    "ogporn": "The website currently does not respond reliably.",
-    "pornktube": "Upstream video stream token gate is protected by a Cloudflare Turnstile managed challenge.",
-    "pornrabbit": "The website discontinued its video tube archive and converted into a webcam directory.",
-    "saintporn": "The website currently returns HTTP 503.",
-    "swingerpornfun": "The website currently serves a managed Cloudflare challenge to Kodi.",
-    "vintagepornfun": "The website currently serves a managed Cloudflare challenge to Kodi.",
 }
 
 ADDON = xbmcaddon.Addon(ADDON_ID)

@@ -44,13 +44,10 @@ OPT_IN_WEBSITE_SETTINGS = {
 TEMPORARILY_UNAVAILABLE_WEBSITES = set()
 CLOUDFLARE_BLOCKED_WEBSITES = set()
 FACTORY_DISABLED_MIGRATION_WEBSITES = {
-    "czechvideo",
     "hentaimama",
     "hqporner",
-    "ogporn",
     "pervclips",
     "retropornarchives",
-    "saintporn",
     "swingerpornfun",
     "vintagepornfun",
     "vintageworldp",
@@ -198,7 +195,7 @@ def migrate_recovered_websites():
         return
     hidden = get_hidden_websites()
     hidden.difference_update({
-        "hentaimama", "hqporner", "saintporn",
+        "hentaimama", "hqporner",
         "swingerpornfun", "vintagepornfun",
     })
     save_hidden_websites(hidden)

@@ -52,9 +52,19 @@ class BornToBeFuck(BaseWebsite):
             if title:name=self._clean(title.group(1))
             if name and u not in seen:seen.add(u);self.add_dir(name,u,2,self.icons.get('categories',self.icon))
         self.end_directory('videos')
+    @staticmethod
+    def _stream_from(content):
+        content=(content or '').replace('\\/','/')
+        m=re.search(r'https?://[^"\'\s<>]+\.m3u8[^"\'\s<>]*',content,re.I)
+        if m:return html.unescape(m.group(0))
+        # Telegram-gated pages ship no player markup, but the watch page still names the
+        # public CDN folder (thumbnail/poster); its index.m3u8 is the same stream.
+        m=re.search(r'(https://content\.zavastream\.com/\d+/[0-9a-f-]{36})/',content,re.I)
+        return m.group(1)+'/index.m3u8' if m else ''
     def play_video(self,url):
         video_id=re.search(r'/watch/(\d+)',url)
         if not video_id:return self.notify_error('Could not resolve BornToBeFuck stream')
-        p=self._get(self.base_url+'videos/'+video_id.group(1)+'/player?lang=de');m=re.search(r'https?://[^"\'\s<>]+\.m3u8[^"\'\s<>]*',p,re.I)
-        if not m:return self.notify_error('Could not resolve BornToBeFuck stream')
-        stream=html.unescape(m.group(0));item=xbmcgui.ListItem(path=stream+'|'+urllib.parse.urlencode(self.headers));item.setProperty('IsPlayable','true');item.setMimeType('application/vnd.apple.mpegurl');item.setContentLookup(False);xbmcplugin.setResolvedUrl(self.addon_handle,True,item)
+        vid=video_id.group(1)
+        stream=self._stream_from(self._get(self.base_url+'videos/'+vid+'/player?lang=de')) or self._stream_from(self._get(self.base_url+'watch/'+vid))
+        if not stream:return self.notify_error('Could not resolve BornToBeFuck stream')
+        item=xbmcgui.ListItem(path=stream+'|'+urllib.parse.urlencode(self.headers));item.setProperty('IsPlayable','true');item.setMimeType('application/vnd.apple.mpegurl');item.setContentLookup(False);xbmcplugin.setResolvedUrl(self.addon_handle,True,item)

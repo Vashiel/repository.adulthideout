@@ -93,9 +93,16 @@ def _player_decode_config(config_token, player_url):
     key_seed = parsed.path
     if parsed.query:
         key_seed += "?" + parsed.query
-    key = _b64encode(_b64encode(key_seed)[4:20] + "_0x59a0e4")[::-1]
-    decoded = _rc4_b64(config_token, key)
-    return json.loads(decoded)
+    encoded_seed = _b64encode(key_seed)
+    last_error = None
+    for start, end in ((6, 22), (4, 20)):
+        key = _b64encode(encoded_seed[start:end] + "_0x59a0e4")[::-1]
+        try:
+            decoded = _rc4_b64(config_token, key)
+            return json.loads(decoded)
+        except Exception as exc:
+            last_error = exc
+    raise last_error
 
 
 def _make_scraper():
@@ -186,6 +193,15 @@ def resolve(url, referer=None, headers=None):
     _log("Resolved {} via {}".format(url, urllib.parse.urlparse(stream_url).netloc))
     return stream_url, stream_headers
 
+def _find_ts_sync_offset(chunk, min_packets=3, scan_limit=4096):
+    """Return byte offset of an embedded MPEG-TS stream after an image header, or -1."""
+    limit = min(len(chunk) - (min_packets - 1) * 188, scan_limit)
+    for idx in range(max(0, limit)):
+        if all(chunk[idx + step * 188] == 0x47 for step in range(min_packets)):
+            return idx
+    return -1
+
+
 class ImageStripHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
@@ -196,42 +212,66 @@ class ImageStripHandler(BaseHTTPRequestHandler):
             self.send_response(400)
             self.end_headers()
             return
-            
+
         target_url = base64.b64decode(qs['url'][0]).decode('utf-8')
         headers = {
             'User-Agent': UA,
-            'Referer': 'https://video.javhdporn.net/'
+            'Referer': 'https://video.javhdporn.net/',
+            'Accept-Encoding': 'identity',
         }
-        
+
         try:
             scraper = _make_scraper()
-            resp = scraper.get(target_url, headers=headers, stream=True, timeout=15)
-            self.send_response(resp.status_code)
-            for k, v in resp.headers.items():
-                if k.lower() in ('content-type', 'content-length', 'accept-ranges'):
-                    self.send_header(k, v)
-            self.send_header('Connection', 'close')
-            self.end_headers()
-            
-            # Check for TikTok .image header if streamhls.click
-            if "streamhls.click" in target_url:
-                first_chunk = resp.raw.read(1024)
-                ts_start = -1
-                for i in range(len(first_chunk) - 188):
-                    if first_chunk[i] == 0x47 and first_chunk[i+188] == 0x47:
-                        ts_start = i
+            with scraper.get(target_url, headers=headers, stream=True, timeout=15) as resp:
+                chunks = resp.iter_content(chunk_size=32768)
+                buf = bytearray()
+                for chunk in chunks:
+                    if not chunk:
+                        continue
+                    buf.extend(chunk)
+                    if len(buf) >= 2048:
                         break
-                if ts_start != -1:
-                    self.wfile.write(first_chunk[ts_start:])
-                else:
-                    self.wfile.write(first_chunk)
-            
-            while True:
-                chunk = resp.raw.read(32768)
-                if not chunk:
-                    break
-                self.wfile.write(chunk)
-                
+
+                first_data = bytes(buf)
+                ts_start = 0
+                looks_obfuscated = (
+                    ".image" in target_url.lower()
+                    or "tiktokcdn" in target_url.lower()
+                    or "streamhls.click" in target_url.lower()
+                    or first_data.startswith((b"\x89PNG", b"GIF8", b"\xff\xd8\xff"))
+                )
+                if looks_obfuscated and not first_data.startswith(b"\x47"):
+                    found = _find_ts_sync_offset(first_data)
+                    if found > 0:
+                        ts_start = found
+                        first_data = first_data[ts_start:]
+
+                has_encoding = bool(resp.headers.get('Content-Encoding'))
+                self.send_response(resp.status_code)
+                for k, v in resp.headers.items():
+                    kl = k.lower()
+                    if kl == 'content-type':
+                        self.send_header('Content-Type', 'video/mp2t' if ts_start > 0 else v)
+                    elif kl == 'content-length' and not has_encoding:
+                        if ts_start == 0:
+                            self.send_header('Content-Length', v)
+                        else:
+                            try:
+                                adjusted = int(v) - ts_start
+                                if adjusted >= 0:
+                                    self.send_header('Content-Length', str(adjusted))
+                            except (TypeError, ValueError):
+                                pass
+                if ts_start > 0 and 'content-type' not in {k.lower() for k in resp.headers}:
+                    self.send_header('Content-Type', 'video/mp2t')
+                self.send_header('Connection', 'close')
+                self.end_headers()
+
+                if first_data:
+                    self.wfile.write(first_data)
+                for chunk in chunks:
+                    if chunk:
+                        self.wfile.write(chunk)
         except Exception as e:
             _log("Proxy error: {}".format(e))
 
@@ -289,8 +329,8 @@ def rewrite_playlist(master_url, headers, proxy_base_url):
                 k_url = match.group(1)
                 if not k_url.startswith("http"):
                     k_url = urllib.parse.urljoin(best_index_url, k_url)
-                b64 = base64.b64encode(k_url.encode('utf-8')).decode('utf-8')
-                return f'URI="{proxy_base_url}/?url={b64}"'
+                b64 = urllib.parse.quote(base64.b64encode(k_url.encode('utf-8')).decode('utf-8'), safe="")
+                return f'URI="{proxy_base_url}/seg.key?url={b64}"'
             rewritten_key = re.sub(r'URI="([^"]+)"', rep_uri, line)
             new_lines.append(rewritten_key)
         elif line.startswith("#") or not line.strip():
@@ -300,8 +340,8 @@ def rewrite_playlist(master_url, headers, proxy_base_url):
             if not seg_url.startswith("http"):
                 seg_url = urllib.parse.urljoin(best_index_url, seg_url)
             
-            b64_url = base64.b64encode(seg_url.encode('utf-8')).decode('utf-8')
-            new_lines.append("{}/?url={}".format(proxy_base_url, b64_url))
+            b64_url = urllib.parse.quote(base64.b64encode(seg_url.encode('utf-8')).decode('utf-8'), safe="")
+            new_lines.append("{}/seg.ts?url={}".format(proxy_base_url, b64_url))
             
     temp_dir = None
     try:

@@ -302,8 +302,21 @@ class ThumbProxy:
 def build_thumb_url(image_url, referer=None):
     """Return a local Rust-core proxy URL for protected thumbnails if core is running,
     otherwise fallback to Kodi's native pipe syntax with Referer and User-Agent."""
-    if not _valid_image_url(image_url):
+    if not image_url or not isinstance(image_url, str):
         return image_url
+
+    # Sites hand over thumbs already in Kodi's "url|Header=Value&..." pipe form. Passing that
+    # whole string as the Core's "u" parameter makes the Core fetch a URL that cannot exist,
+    # so split the headers off and keep the Referer for the proxy request.
+    pipe_headers = ""
+    if "|" in image_url:
+        image_url, _, pipe_headers = image_url.partition("|")
+        if not referer:
+            supplied = urllib.parse.parse_qs(pipe_headers)
+            referer = (supplied.get("Referer") or [None])[0]
+
+    if not _valid_image_url(image_url):
+        return image_url + ("|" + pipe_headers if pipe_headers else "")
 
     # Strip existing localhost proxy wrapping if passed recursively
     if image_url.startswith("http://127.0.0.1:8191/thumb?"):

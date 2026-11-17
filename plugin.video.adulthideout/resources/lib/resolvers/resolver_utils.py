@@ -14,7 +14,7 @@ import logging
 sys.path.append(
     os.path.join(
         xbmcaddon.Addon().getAddonInfo("path"),
-        "resources", "lib", "vendor", "cloudscraper"
+        "resources", "lib", "vendor"
     )
 )
 try:

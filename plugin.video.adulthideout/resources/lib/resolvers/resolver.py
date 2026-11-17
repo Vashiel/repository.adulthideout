@@ -119,7 +119,7 @@ RESOLVERS = [
             "voe.sx", "voe-unblock", "voeunblock", "un-block-voe",
             "v-o-e-unblock", "audaciousdefaulthouse.com",
             "launchreliantcleaverriver.com", "fittingcentermondaysunday.com",
-            "matthewhotelscience.com",
+            "matthewhotelscience.com", "hentaisword.com",
         ),
     },
     {
@@ -141,10 +141,16 @@ RESOLVERS = [
         "hosts": ("88z.io", "65s.io", "38x.io"),
     },
     {
+        "key": "byse_frontend",
+        "setting": "",
+        "module": "byse_frontend_resolver",
+        "hosts": ("klcams.com", "klcams", "bysewihe.com", "bysewihe"),
+    },
+    {
         "key": "lulustream",
         "setting": "resolver_enable_lulustream",
         "module": "lulustream_resolver",
-        "hosts": ("lulu", "lulustream", "luluvdo"),
+        "hosts": ("lulu", "lulustream", "luluvdo", "lplaygo.com", "lplaygo"),
     },
     {
         "key": "vtube",
@@ -426,8 +432,11 @@ def resolve_first_working(urls, referer="", headers=None, addon=None):
         )
         with urllib.request.urlopen(req, timeout=7) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            if data.get("status") == "ok" and data.get("stream_url"):
-                stream_url = data["stream_url"]
+            resolved_stream = data.get("stream_url")
+            if data.get("status") == "ok" and resolved_stream and str(resolved_stream).strip().startswith(("http://", "https://", "//")):
+                stream_url = html.unescape(str(resolved_stream).strip())
+                if stream_url.startswith("//"):
+                    stream_url = "https:" + stream_url
                 stream_headers = data.get("headers") or {}
                 winner_candidate = data.get("candidate_url") or urls[0]
                 xbmc.log(

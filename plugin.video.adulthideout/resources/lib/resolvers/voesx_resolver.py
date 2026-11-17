@@ -1,5 +1,12 @@
 import re
 import logging
+import os
+import sys
+
+_vendor_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "resources", "lib", "vendor"))
+if os.path.isdir(_vendor_path) and _vendor_path not in sys.path:
+    sys.path.insert(0, _vendor_path)
+
 import cloudscraper
 import json
 import base64

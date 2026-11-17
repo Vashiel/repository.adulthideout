@@ -163,8 +163,8 @@ class WordPressApiTube(BaseWebsite):
         page_html = self._get(self._html_listing_url(url, page), referer=self.base_url)
         items = []
         seen = set()
-        for block in re.findall(
-            r'<article\b[^>]+class=["\'][^"\']*(?:loop-video|post-item)[^"\']*["\'][^>]*>([\s\S]*?)</article>',
+        for attributes, block in re.findall(
+            r'<article\b([^>]*\sclass=["\'][^"\']*(?:loop-video|post-item)[^"\']*["\'][^>]*)>([\s\S]*?)</article>',
             page_html or "", re.IGNORECASE,
         ):
             link = re.search(
@@ -194,7 +194,9 @@ class WordPressApiTube(BaseWebsite):
             if not title:
                 continue
             seen.add(video_url)
-            thumb = self._absolute(image.group(1)) if image else self.icon
+            main_thumb = re.search(r'\sdata-main-thumb=["\']([^"\']+)', attributes, re.I)
+            artwork = main_thumb or image
+            thumb = self._absolute(artwork.group(1)) if artwork else self.icon
             items.append({
                 "title": title,
                 "url": video_url,
@@ -208,14 +210,7 @@ class WordPressApiTube(BaseWebsite):
         ))
         return items, has_next
 
-    def process_content(self, url, page=1):
-        url = self.base_url if not url or url == "BOOTSTRAP" else url
-        if self.is_primary_listing_url(url):
-            self.add_dir("Search", "", 5, self.icons.get("search", self.icon))
-            self.add_dir("Categories", "WP_CATEGORIES", 8, self.icons.get("categories", self.icon))
-            if getattr(self, "show_pornstars", False):
-                self.add_dir("Pornstars", "WP_TAGS", 9, self.icons.get("pornstars", self.icon))
-
+    def _listing_items(self, url, page):
         posts, headers = self._get_json(self._post_api_url(url, page), referer=self.base_url)
         has_next = False
         if isinstance(posts, list):
@@ -237,6 +232,17 @@ class WordPressApiTube(BaseWebsite):
                 if not item.get("thumb") or item["thumb"] == self.icon:
                     item["thumb"] = artwork.get(item["url"].rstrip("/"), item.get("thumb"))
 
+        return items, has_next
+
+    def process_content(self, url, page=1):
+        url = self.base_url if not url or url == "BOOTSTRAP" else url
+        if self.is_primary_listing_url(url):
+            self.add_dir("Search", "", 5, self.icons.get("search", self.icon))
+            self.add_dir("Categories", "WP_CATEGORIES", 8, self.icons.get("categories", self.icon))
+            if getattr(self, "show_pornstars", False):
+                self.add_dir("Pornstars", "WP_TAGS", 9, self.icons.get("pornstars", self.icon))
+
+        items, has_next = self._listing_items(url, page)
         if not items:
             self.notify_error("Could not load {} content".format(self.label))
             self.end_directory("videos")

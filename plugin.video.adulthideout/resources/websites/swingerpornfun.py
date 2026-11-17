@@ -30,23 +30,14 @@ class SwingerPornFun(WordPressApiTube):
         for item in items:
             item["thumb"] = build_thumb_url(item.get("thumb"), referer=self.base_url)
 
-        # Recent posts can contain only BYSE, whose mandatory browser
-        # attestation cannot be completed by Kodi. Keep entries that expose at
-        # least one resolver-backed mirror instead of listing dead videos.
+        # Skip entries whose embed hosts are unsupported by any configured resolver.
         def playable(item):
             try:
-                content = self._get(item.get("url"), referer=url)
-                for value in re.findall(r'<iframe\b[^>]+src=["\']([^"\']+)', content or "", re.IGNORECASE):
-                    embed = html.unescape(value).strip()
-                    if embed.startswith("//"):
-                        embed = "https:" + embed
-                    else:
-                        embed = urllib.parse.urljoin(item.get("url") or url, embed)
-                    if resolver.resolver_entry_for_url(embed):
-                        return True
+                item_url = item.get("url")
+                content = self._get(item_url, referer=url)
+                return bool(self._extract_supported_embeds(content, item_url or url))
             except Exception:
-                pass
-            return False
+                return False
 
         if items:
             with ThreadPoolExecutor(max_workers=min(8, len(items))) as pool:
@@ -54,17 +45,22 @@ class SwingerPornFun(WordPressApiTube):
             items = [item for item, supported in zip(items, keep) if supported]
         return items, has_next
 
+    def _extract_supported_embeds(self, page_html, page_url):
+        embeds = []
+        base = page_url or self.base_url
+        for tag in re.findall(r"<iframe\b[^>]+>", page_html or "", re.IGNORECASE):
+            for value in re.findall(r'(?:data-lazy-src|src)=["\']([^"\']+)', tag, re.IGNORECASE):
+                embed = html.unescape(value).strip()
+                if not embed:
+                    continue
+                embed = "https:" + embed if embed.startswith("//") else urllib.parse.urljoin(base, embed)
+                if resolver.resolver_entry_for_url(embed) and embed not in embeds:
+                    embeds.append(embed)
+        return embeds
+
     def resolve_recording_stream(self, url):
         page = self._get(url, referer=self.base_url)
-        embeds = []
-        for value in re.findall(r'<iframe\b[^>]+src=["\']([^"\']+)', page or "", re.IGNORECASE):
-            embed = html.unescape(value).strip()
-            if embed.startswith("//"):
-                embed = "https:" + embed
-            else:
-                embed = urllib.parse.urljoin(url, embed)
-            if resolver.resolver_entry_for_url(embed) and embed not in embeds:
-                embeds.append(embed)
+        embeds = self._extract_supported_embeds(page, url)
         stream, headers, _ = resolver.resolve_first_working(
             embeds,
             referer=url,
@@ -72,6 +68,7 @@ class SwingerPornFun(WordPressApiTube):
             addon=self.addon,
         )
         if stream:
-            return {"url": stream, "headers": headers or {}, "extension": "mp4"}
+            ext = "m3u8" if ".m3u8" in stream.lower() else "mp4"
+            return {"url": stream, "headers": headers or {}, "extension": ext}
 
         return None

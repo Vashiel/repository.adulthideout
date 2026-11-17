@@ -136,7 +136,6 @@
         "notfans",
         "nudez",
         "porn4fans",
-        "pornrabbit",
         "ruleporn",
         "sxyprn",
         "thothub",
@@ -168,7 +167,6 @@
         "notfans",
         "nudez",
         "porn4fans",
-        "pornrabbit",
         "ruleporn",
         "sxyprn",
         "thothub",
@@ -981,10 +979,6 @@
       "catalog_id": 83,
       "introduced": "1.0.7"
     },
-    "pornrabbit": {
-      "catalog_id": 187,
-      "introduced": "1.0.17"
-    },
     "pornslash": {
       "catalog_id": 82,
       "introduced": "1.0.7"
@@ -1064,10 +1058,6 @@
     "ruporno": {
       "catalog_id": 307,
       "introduced": "1.0.24"
-    },
-    "saintporn": {
-      "catalog_id": 78,
-      "introduced": "1.0.7"
     },
     "sextb": {
       "catalog_id": 135,

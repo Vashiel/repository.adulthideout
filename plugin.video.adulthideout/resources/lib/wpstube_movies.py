@@ -169,12 +169,19 @@ class WPSTubeMoviesWebsite(BaseWebsite):
         for title, target, thumb, duration, info in self._videos(listing_html):
             label = title + (" [COLOR lime]({})[/COLOR]".format(duration) if duration else "")
             self.add_link(label, target, 4, thumb, self.fanart, info_labels=info)
-        next_url = self._next_url(listing_html, url)
+        next_url = self._next_url(page_html, url) or self._next_url(listing_html, url)
         if next_url:
             self.add_dir("[COLOR blue]Next Page >>>[/COLOR]", next_url, 2, self.icons.get("default", self.icon))
         self.end_directory("videos")
 
     def _next_url(self, page_html, current_url):
+        # WordPress themes declare the next page in the document head; the visible pager
+        # inside <main> often only shows page numbers.
+        head_link = re.search(r"<link[^>]+rel\s*=\s*['\"]next['\"][^>]*>", page_html or "", re.I)
+        if head_link:
+            href = re.search(r"href\s*=\s*['\"]([^'\"]+)", head_link.group(0), re.I)
+            if href:
+                return self._absolute(href.group(1))
         patterns = (
             r"<a[^>]+rel\s*=\s*['\"]next['\"][^>]+href\s*=\s*['\"]([^'\"]+)",
             r"<a[^>]+href\s*=\s*['\"]([^'\"]+)['\"][^>]+rel\s*=\s*['\"]next['\"]",

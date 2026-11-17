@@ -152,7 +152,6 @@
     <setting id="pornwhite_sort_by" type="enum" label="30004" values="Latest|Popular|Top Rated" default="0" visible="false" />
     <setting id="pornflip_sort_by" type="enum" label="30004" values="Latest|Trending" default="0" visible="false" />
     <setting id="porntry_sort_by" type="enum" label="30004" values="Latest|Top Rated|Most Viewed" default="0" visible="false" />
-    <setting id="saintporn_sort_by" type="enum" label="30004" values="Latest|Top Rated|Most Viewed" default="0" visible="false" />
     <setting id="watchporn_sort_by" type="enum" label="30004" values="Latest|Most Popular|Top Rated" default="0" visible="false" />
     <setting id="watchporn_pornstar_sort_by" type="enum" label="30232" values="Alphabet|Most Viewed|Most Videos" default="0" visible="false" />
     <setting id="wowxxx_sort_by" type="enum" label="30004" values="Latest|Top Rated|Most Viewed" default="0" visible="false" />

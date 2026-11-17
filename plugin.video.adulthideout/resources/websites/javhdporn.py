@@ -197,6 +197,14 @@ class JavhdpornWebsite(BaseWebsite):
         return items
 
     def _extract_next_page(self, html_content):
+        # 0. The theme declares the following page in the document head, not with a link
+        #    labelled "Next" (the numbered pager has no rel/next anchor).
+        match = re.search(r'<link[^>]+rel=["\']next["\'][^>]*>', html_content or "", re.IGNORECASE)
+        if match:
+            href = re.search(r'href=["\']([^"\']+)', match.group(0), re.IGNORECASE)
+            if href:
+                return self._absolute(href.group(1))
+
         # 1. Look for an 'a' tag with "Next" or "&raquo;" text
         match = re.search(r'<a[^>]+href="([^"]+)"[^>]*>\s*(?:Next|Next\s*&raquo;|Next\s*»|&raquo;|»)\s*</a>', html_content, re.IGNORECASE)
         if match:
@@ -207,6 +215,11 @@ class JavhdpornWebsite(BaseWebsite):
         if match:
             return self._absolute(match.group(1))
         match = re.search(r'<a[^>]+href="([^"]+)"[^>]+class="[^"]*next[^"]*"', html_content, re.IGNORECASE)
+        if match:
+            return self._absolute(match.group(1))
+
+        # 3. Numbered pager: the second page exists as soon as /page/2/ is linked.
+        match = re.search(r'<a[^>]+href="([^"]*/page/2/?)"', html_content or "", re.IGNORECASE)
         if match:
             return self._absolute(match.group(1))
 
@@ -256,49 +269,22 @@ class JavhdpornWebsite(BaseWebsite):
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
             
-        proxy_ctrl = None
-        local_m3u8_path = None
-        
-        # If it's an m3u8 stream (maxstream.org, streamhls.click, etc.), proxy it for TLS & AES-128 keys
-        if stream_url and "m3u8" in stream_url:
-            try:
-                self.logger.info("JavHDPorn: Processing HLS playlist via local proxy...")
-                from resources.lib.resolvers.javhdporn_resolver import rewrite_playlist, TiktokImageProxy
-                
-                proxy_ctrl = TiktokImageProxy()
-                proxy_base_url = proxy_ctrl.start()
-                
-                local_m3u8_path = rewrite_playlist(stream_url, headers, proxy_base_url)
-                if local_m3u8_path:
-                    stream_url = local_m3u8_path
-            except Exception as e:
-                self.logger.error("JavHDPorn: Failed to rewrite playlist: %s", e)
-                import traceback
-                self.logger.error(traceback.format_exc())
+        # The Core's stream relay rewrites the playlist and fetches its AES-128 keys and
+        # segments with these headers. Kodi then only sees plain localhost URLs, which also
+        # keeps the stream testable (".../stream/playlist.m3u8") instead of a temp file path.
+        if stream_url and ".m3u8" in stream_url:
+            from resources.lib.thumb_proxy import build_stream_url
+            stream_url = build_stream_url(stream_url, referer=headers.get("Referer") or self.base_url)
+            headers = {}
 
-        if local_m3u8_path:
-            list_item = xbmcgui.ListItem(path=local_m3u8_path)
-        else:
-            header_string = urllib.parse.urlencode(headers)
-            list_item = xbmcgui.ListItem(path=stream_url + "|" + header_string)
-            
+        header_string = urllib.parse.urlencode(headers)
+        list_item = xbmcgui.ListItem(path=stream_url + ("|" + header_string if header_string else ""))
+
         list_item.setProperty("IsPlayable", "true")
-        if ".m3u8" in stream_url or (local_m3u8_path and ".m3u8" in local_m3u8_path):
+        if ".m3u8" in stream_url:
             list_item.setMimeType("application/vnd.apple.mpegurl")
             list_item.setContentLookup(False)
         else:
             list_item.setMimeType("video/mp4")
-            
+
         xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
-        
-        if proxy_ctrl and local_m3u8_path:
-            from resources.lib.proxy_utils import PlaybackGuard
-            try:
-                import xbmc
-                player = xbmc.Player()
-                monitor = xbmc.Monitor()
-                guard = PlaybackGuard(player, monitor, local_m3u8_path, proxy_ctrl, idle_timeout=60 * 60)
-                guard.start()
-                self.logger.info("JavHDPorn: PlaybackGuard started for TiktokImageProxy.")
-            except Exception:
-                pass
