@@ -117,7 +117,9 @@
         "camwhores",
         "showcamrips",
         "chaturbate",
-        "stripchat"
+        "stripchat",
+        "camwhoresbay",
+        "camhub"
       ],
       "creator": [
         "amateur8",
@@ -141,7 +143,8 @@
         "watchmygf",
         "xfreehd",
         "youramateurporn",
-        "iceporncasting"
+        "iceporncasting",
+        "wildkittys"
       ]
     },
     "types": {
@@ -173,7 +176,9 @@
         "xfreehd",
         "youramateurporn",
         "homemoviestube",
-        "porno24"
+        "porno24",
+        "camwhoresbay",
+        "camhub"
       ],
       "live": [
         "chaturbate",
@@ -198,7 +203,9 @@
         "watchxxxfree",
         "xopenload",
         "xxxfiles",
-        "yourdailypornvideos"
+        "yourdailypornvideos",
+        "pervtube",
+        "watchpornx"
       ],
       "tube": [
         "porner"
@@ -1417,6 +1424,58 @@
     "porner": {
       "catalog_id": 316,
       "introduced": "1.0.26"
+    },
+    "tabootube": {
+      "catalog_id": 317,
+      "introduced": "1.0.28"
+    },
+    "extremeadult": {
+      "catalog_id": 318,
+      "introduced": "1.0.28"
+    },
+    "camwhoresbay": {
+      "catalog_id": 319,
+      "introduced": "1.0.28"
+    },
+    "camhub": {
+      "catalog_id": 320,
+      "introduced": "1.0.28"
+    },
+    "erogarga": {
+      "catalog_id": 321,
+      "introduced": "1.0.28"
+    },
+    "taboojizz": {
+      "catalog_id": 322,
+      "introduced": "1.0.28"
+    },
+    "pervtube": {
+      "catalog_id": 323,
+      "introduced": "1.0.28"
+    },
+    "watchpornx": {
+      "catalog_id": 324,
+      "introduced": "1.0.28"
+    },
+    "taboodude": {
+      "catalog_id": 325,
+      "introduced": "1.0.28"
+    },
+    "wildkittys": {
+      "catalog_id": 326,
+      "introduced": "1.0.28"
+    },
+    "anybunny": {
+      "catalog_id": 327,
+      "introduced": "1.0.28"
+    },
+    "incesto69": {
+      "catalog_id": 328,
+      "introduced": "1.0.28"
+    },
+    "playvids": {
+      "catalog_id": 329,
+      "introduced": "1.0.28"
     }
   }
 }

@@ -109,6 +109,11 @@
     <setting id="camcaps_sort_by" type="enum" label="30004" values="Most Recent|Featured|Most Viewed|Top Rated|Top Favorites|Being Watched" default="0" visible="false" />
     <setting id="camgirlfap_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="camstreams_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
+    <setting id="tabootube_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
+    <setting id="extremeadult_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
+    <setting id="camwhoresbay_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
+    <setting id="camhub_sort_by" type="enum" label="30004" values="Most Viewed|Latest|Top Rated" default="0" visible="false" />
+    <setting id="taboodude_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Longest|Quality" default="0" visible="false" />
     <setting id="camwhores_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="hqfap_sort_by" type="enum" label="30004" values="Latest|Trending|Top Rated" default="0" visible="false" />
     <setting id="morehardporn_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />

@@ -208,6 +208,11 @@
 "search_url": "https://camgirlfap.com/search/{}/"
 },
 {
+"base_url": "https://www.camhub.cc/",
+"id": "camhub",
+"search_url": "https://www.camhub.cc/search/{}/"
+},
+{
 "base_url": "https://camstreams.tv/",
 "id": "camstreams",
 "search_url": "https://camstreams.tv/search/{}/"
@@ -216,6 +221,11 @@
 "base_url": "https://www.camwhores.tv/",
 "id": "camwhores",
 "search_url": "https://www.camwhores.tv/search/{}/"
+},
+{
+"base_url": "https://www.camwhoresbay.com/",
+"id": "camwhoresbay",
+"search_url": "https://www.camwhoresbay.com/search/{}/"
 },
 {
 "base_url": "https://cherrygasp.com/",
@@ -376,6 +386,11 @@
 "item": "<article\\b[^>]*>(.*?)</article>"
 },
 "search_url": "https://euroxxx.net/?s={}"
+},
+{
+"base_url": "https://www.extreme.adult/",
+"id": "extremeadult",
+"search_url": "https://www.extreme.adult/search/{}/"
 },
 {
 "base_url": "https://faapy.com/",
@@ -1590,6 +1605,16 @@
 "search_url": "https://sxyprn.net/{}.html"
 },
 {
+"base_url": "https://taboodude.com",
+"id": "taboodude",
+"search_url": "https://taboodude.com/search?q={}"
+},
+{
+"base_url": "https://www.tabootube.xxx/",
+"id": "tabootube",
+"search_url": "https://www.tabootube.xxx/search/{}/"
+},
+{
 "base_url": "https://taxi69.com/",
 "id": "taxi69",
 "search_url": "https://taxi69.com/search/{}"
@@ -1831,6 +1856,11 @@
 "base_url": "https://www.whoreshub.com/",
 "id": "whoreshub",
 "search_url": "https://www.whoreshub.com/search/{}/"
+},
+{
+"base_url": "https://wildkittys.com",
+"id": "wildkittys",
+"search_url": "https://wildkittys.com/search?q={}"
 },
 {
 "base_url": "https://www.wowxxx.to/",

@@ -432,12 +432,21 @@ class KVSTubeWebsite(BaseWebsite):
             embeds += re.findall(r'"embedUrl"\s*:\s*["\'](https?://[^"\']+/embed/\d+/?)["\']', html_content or "", re.IGNORECASE)
             from resources.lib.core_transport import bypass
             for embed_url in dict.fromkeys(embeds):
-                # Past the Core: the embed's signed link belongs to the session that fetched it.
-                with bypass():
-                    embed_html = self._get(embed_url, referer=url)
-                stream_url = self._extract_stream_url(embed_html, referer=embed_url)
+                parent = url
+                # An embed may itself frame a sister site's embed (camhub.cc -> camhub.world); two hops.
+                for _hop in range(2):
+                    # Past the Core: the embed's signed link belongs to the session that fetched it.
+                    with bypass():
+                        embed_html = self._get(embed_url, referer=parent)
+                    stream_url = self._extract_stream_url(embed_html, referer=embed_url)
+                    if stream_url:
+                        referer = embed_url
+                        break
+                    nested = re.search(r'<iframe\b[^>]+src=["\'](https?://[^"\']+/embed/\d+[^"\']*)["\']', embed_html or "", re.IGNORECASE)
+                    if not nested:
+                        break
+                    parent, embed_url = embed_url, nested.group(1)
                 if stream_url:
-                    referer = embed_url
                     break
         if not stream_url:
             stream_url = self._extract_stream_url(html_content, referer=url)

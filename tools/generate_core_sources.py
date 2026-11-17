@@ -32,6 +32,15 @@ PYTHON_ONLY = {
     "leakgallery",  # search results are Angular transfer-state media records
     "mixporn",      # Core reports success but extracts no cards on the current site
     "showcamrips",  # model search and per-recording artwork decoded by the module
+    "incesto69",    # JSON API search (/api/videos?q=), no HTML cards
+    "anybunny",     # search words go into a tag path joined by "_", built by the module
+    # WordPress themes and playvids' cards the generic parser misses (0-2 hits for "milf");
+    # their modules search the WordPress API / own cards.
+    "erogarga",
+    "taboojizz",
+    "pervtube",
+    "watchpornx",
+    "playvids",
     # These modules filter their results (blocked terms, ratings, orientation).
     # The Core cannot apply those filters, so they must keep searching in Python.
     "iwara",

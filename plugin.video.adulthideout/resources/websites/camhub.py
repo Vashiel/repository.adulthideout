@@ -8,10 +8,11 @@ from resources.lib.kvs_tube import KVSTubeWebsite
 
 class CamHub(KVSTubeWebsite):
     label = "CamHub"
-    sort_options = ["Latest", "Most Viewed", "Top Rated"]
+    # Most Viewed first: on "Latest" whole pages are members-only videos, which are hidden.
+    sort_options = ["Most Viewed", "Latest", "Top Rated"]
     sort_paths = {
-        "Latest": "/latest-updates/",
         "Most Viewed": "/most-popular/",
+        "Latest": "/latest-updates/",
         "Top Rated": "/top-rated/",
     }
     categories_path = "/categories/"
