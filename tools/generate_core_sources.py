@@ -38,6 +38,7 @@ PYTHON_ONLY = {
     # their modules search the WordPress API / own cards.
     "erogarga",
     "taboojizz",
+    "fulltaboo",
     "pervtube",
     "watchpornx",
     "playvids",

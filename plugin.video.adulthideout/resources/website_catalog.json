@@ -1476,6 +1476,10 @@
     "playvids": {
       "catalog_id": 329,
       "introduced": "1.0.28"
+    },
+    "fulltaboo": {
+      "catalog_id": 330,
+      "introduced": "1.0.28"
     }
   }
 }

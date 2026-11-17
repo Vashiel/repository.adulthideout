@@ -1,6 +1,6 @@
 {
     "addon_id": "plugin.video.adulthideout",
-    "generated_utc": "2026-11-17T11:26:31Z",
+    "generated_utc": "2026-11-17T12:56:26Z",
     "hash_algorithm": "sha256",
     "hashes": {
         "LICENSE.txt": "fc6e2e8c4b76f7ee65e8f6153e44d8a197ac992767582fd9cd01d393a38298cc",
@@ -205,6 +205,7 @@
         "resources/logos/freepornsex.png": "1264dadfa1d50f55605c70b84fff82fc598fb9a25ea3b8278f47c4eb734e5d1f",
         "resources/logos/fulleroticmovies.png": "3544bc8b3ddbea47cdeaf9c69feec0b11f470ecbbc534308293fa474de55edf5",
         "resources/logos/fullporner.png": "3d125c7397512023c993b07af4f21caad32fc4472e8615aab763b76933752277",
+        "resources/logos/fulltaboo.png": "fe36f541301795b5bc444251b0c6463cc724150f6c6e109c9f0541e4b4ce6f08",
         "resources/logos/fullxcinema.png": "9b4932cbd8ae1627f3413c86da870656f5b3421c0b96698918e36fa34932202a",
         "resources/logos/fuqer.png": "796abd59d68500a930bc9900d0259ef8f92c464371fc21c9adfe6aba0572677d",
         "resources/logos/fuqster.png": "05b7b7591efc5d9f76a934f08005683e06656b31bf55694d48b6acad1dec90af",
@@ -452,7 +453,7 @@
         "resources/settings.xml": "3e5fcdcd18432e530cb217075e516797e2d19e935350dc6f8dcc4078843b5c41",
         "resources/site_options.py": "0709214ee745291dde6e9f009493fbc5f27f7572e6cbbc44041ed1aed97b3786",
         "resources/site_profiles.json": "99cfa1b0b26725b081417c150f6a9efb3f091c888e82a3797401934317750425",
-        "resources/website_catalog.json": "3cde50ab5ff12e3f3434adbda6072dbfffaab5e4abbc15fd5770356e009e2c64",
+        "resources/website_catalog.json": "5c489b7623b00f27ad8922c839c8ae283cd3b90e3e990c004a8b89a4e6b2b048",
         "resources/websites/123av.py": "c081908833918939465d2e0d27f29f46a166c202f361c86795a27c84381197e2",
         "resources/websites/321tube.py": "551d32f5d4a20887350b2e927afb39211163e8fbc6754017d61d913aa6609a1c",
         "resources/websites/3movs.py": "238ff57317bb056784cb8f9cc2534f58184e56f15f185afa89180995ac3df7b3",
@@ -538,6 +539,7 @@
         "resources/websites/freepornsex.py": "3fa53e330ee2b95c3cae369997c50dd07ce76c62a5790c4644e56175f3c9e87b",
         "resources/websites/fulleroticmovies.py": "c7b708c4495cf36d341f794ed79ddf2a5ca4854bb65e0aa851a3bb49cf0bcfd2",
         "resources/websites/fullporner.py": "63171a99367bdecfae6abf26c7ec5f33a40a945c816e8d477e4ab4c2d10505d2",
+        "resources/websites/fulltaboo.py": "e1f272bf2ce349d512abe596fd82096edd5837598f3b314f32bb838b57c74f54",
         "resources/websites/fullxcinema.py": "9c716145e413039a88e83c23110807a615392224bbdd058791962f3bf9f7066e",
         "resources/websites/fuqer.py": "2491c2c8fb487a0c123d0aed2c1ba173c52a7f42325a5f8f2f8a56e985c98103",
         "resources/websites/fuqster.py": "19b0cbe25e3dbcb147e3105207561682804628c65e2f2e730cdb7c63b3582ccf",
