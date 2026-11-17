@@ -384,7 +384,8 @@ class Wowxxx(BaseWebsite):
     def _extract_sources(self, html_content):
         sources = []
         for tag in re.findall(r"<source\b[^>]+>", html_content or "", re.IGNORECASE):
-            src_match = re.search(r'\ssrc=["\']([^"\']+\.mp4/?)["\']', tag, re.IGNORECASE)
+            # Sources now carry a signed token after the .mp4 (".../x.mp4/?v-acctoken=...").
+            src_match = re.search(r'\ssrc=["\']([^"\']+\.mp4[^"\']*)["\']', tag, re.IGNORECASE)
             if not src_match:
                 continue
             label_match = re.search(r'\slabel=["\']([^"\']+)["\']', tag, re.IGNORECASE)

@@ -96,3 +96,6 @@ python tools/headless/kvat_run.py hqporner javhdporn --force
 * `resources/official_hashes.json` was regenerated (`python tools/generate_official_hashes.py`)
   after the removals.
 * Add-on versions were not bumped; that stays part of the release step.
+* Side finding while re-testing: `wowxxx` (not on the list) had lost playback because its
+  `<source>` tags now carry a signed token after the `.mp4` (`…/x.mp4/?v-acctoken=…`) and the
+  extractor only accepted `.mp4` as the last thing in the attribute. Fixed; KVAT passes.

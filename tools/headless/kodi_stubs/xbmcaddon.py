@@ -3,9 +3,12 @@
 
 import json
 import os
+import tempfile
 
 ADDON_ID = "plugin.video.adulthideout"
 _ADDON_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "plugin.video.adulthideout"))
+# Never inside the checkout: modules write page caches and clearances into their profile.
+_PROFILE_PATH = os.path.join(tempfile.gettempdir(), "adulthideout-headless-profile")
 _STORE = {}
 _CALLS = []
 
@@ -47,12 +50,13 @@ class Addon(object):
 
     def getAddonInfo(self, key):
         addon_path = PATHS.get(self.id) or _ADDON_PATH
+        profile_path = PATHS.get("__profile__") or _PROFILE_PATH
         return {
             "id": self.id,
             "name": self.id,
             "version": "0.0.0",
             "path": addon_path,
-            "profile": os.path.join(addon_path, "..", "_profile"),
+            "profile": profile_path,
             "icon": os.path.join(addon_path, "icon.png"),
             "fanart": os.path.join(addon_path, "fanart.jpg"),
             "author": "headless",

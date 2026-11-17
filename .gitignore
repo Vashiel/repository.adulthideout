@@ -2,3 +2,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+
+# headless harness scratch profile
+_profile/

@@ -1,6 +1,6 @@
 {
     "addon_id": "plugin.video.adulthideout",
-    "generated_utc": "2026-11-17T17:59:47Z",
+    "generated_utc": "2026-11-17T18:01:36Z",
     "hash_algorithm": "sha256",
     "hashes": {
         "LICENSE.txt": "fc6e2e8c4b76f7ee65e8f6153e44d8a197ac992767582fd9cd01d393a38298cc",
@@ -737,7 +737,7 @@
         "resources/websites/whereismyporn.py": "c5a4edaa83d90f42265771d483547ce96c29059a92fa4c407c426d2a55460dd9",
         "resources/websites/whoreshub.py": "0910ed34e6fd9608d3c9f2a4e390c94b987459ddc5ce8622f56ee9324299e6e2",
         "resources/websites/wildkittys.py": "a732d38dd5a2bb895e4409154b0ce7d9845ebd1cb778a61a26ac74edef9bd631",
-        "resources/websites/wowxxx.py": "43b4f6f6d1eb5d776e8d97b9fd1b9203482f00d315ca162ceeae23786c3c7d70",
+        "resources/websites/wowxxx.py": "bd0a93c879aea203c4e3517aeae1218f56fcf94551f27ab8e7c1c8ffe58d818b",
         "resources/websites/x24video.py": "d863e136d75eb76353288d9b24778ad98abad11f91f543cad761be87d37fffd5",
         "resources/websites/xbabe.py": "3337dad712dd3d301357b858ac269fa8417c79150561bd9247766bdf1308dfeb",
         "resources/websites/xcafe.py": "ccb5867a1571a3919bae8701d98f3835f455b6612e2e6f84cf1581ecdacf4afb",
