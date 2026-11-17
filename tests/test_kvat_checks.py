@@ -89,6 +89,24 @@ assert core.is_placeholder_thumb(os.path.join(PROFILE, "missing.jpg"))
 assert core.is_placeholder_thumb(os.path.join(addon_path, "resources", "logos", "x.png"))
 print("local thumbs ok")
 
+# A listed site is only skipped while no usable clearance exists; an expired one does not count.
+import json as _json
+import time as _time
+
+clearance = os.path.join(PROFILE, "clearance_myclassicp.json")
+assert core.has_clearance("myclassicp") is False
+with open(clearance, "w", encoding="utf-8") as handle:
+    _json.dump({"cookies": [{"name": "cf_clearance", "value": "x"}]}, handle)
+assert core.has_clearance("myclassicp") is True  # no timestamp counts as fresh
+with open(clearance, "w", encoding="utf-8") as handle:
+    _json.dump({"cookies": {"cf_clearance": "x"}, "ts": _time.time() - 90000}, handle)
+assert core.has_clearance("myclassicp") is False  # older than a day
+with open(clearance, "w", encoding="utf-8") as handle:
+    _json.dump({"cookies": {"other": "x"}}, handle)
+assert core.has_clearance("myclassicp") is False
+os.remove(clearance)
+print("clearance ok")
+
 # Bare Addon() means AdultHideout only for AdultHideout's own code; ids and other callers pass through.
 import xbmcaddon
 asked = []
