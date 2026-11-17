@@ -67,10 +67,8 @@ REPORT_SCHEMA_VERSION = 2
 
 # External outages are reported separately and never sent into the repair loop.
 KNOWN_EXTERNAL_ISSUES = {
-    "myclassicp": "Interactive Cloudflare Turnstile. Run tools/clearance_bootstrap.js myclassicp once; "
-                  "with an imported clearance the site is tested normally.",
-    "vintageworldp": "Interactive Cloudflare Turnstile. Run tools/clearance_bootstrap.js vintageworldp once; "
-                     "with an imported clearance the site is tested normally.",
+    "myclassicp": "The website currently serves a managed Cloudflare challenge to Kodi.",
+    "vintageworldp": "The website currently serves a managed Cloudflare challenge to Kodi.",
 }
 
 ADDON = xbmcaddon.Addon(ADDON_ID)
@@ -1331,36 +1329,6 @@ def run_checklist(site, result, core_result):
     return result
 
 
-def has_clearance(site):
-    """True when the target add-on has an imported cf_clearance for this site."""
-    try:
-        target = get_target_addon()
-        profile = target.getAddonInfo("profile") or ""
-        if not profile:
-            profile = "special://profile/addon_data/{}".format(TARGET_ADDON_ID)
-        profile = xbmcvfs.translatePath(profile)
-        path = os.path.join(profile, "clearance_{}.json".format(site))
-        if not os.path.isfile(path):
-            return False
-        with open(path, "r", encoding="utf-8") as handle:
-            payload = json.load(handle)
-        if not isinstance(payload, dict):
-            return False
-        # The add-on ignores a clearance older than a day, so testing it would only fail.
-        try:
-            if time.time() - float(payload.get("ts") or 0) >= 86400:
-                return False
-        except (TypeError, ValueError):
-            return False
-        cookies = payload.get("cookies")
-        if isinstance(cookies, list):
-            return any(entry.get("name") == "cf_clearance" and entry.get("value")
-                       for entry in cookies if isinstance(entry, dict))
-        return bool(isinstance(cookies, dict) and cookies.get("cf_clearance"))
-    except Exception:
-        return False
-
-
 def run_site_test(site, mode="smart"):
     started = time.time()
     result = {
@@ -1371,14 +1339,11 @@ def run_site_test(site, mode="smart"):
         "mode": mode,
     }
     if site in KNOWN_EXTERNAL_ISSUES:
-        if not has_clearance(site):
-            result["status"] = "IGNORED"
-            result["external_issue"] = KNOWN_EXTERNAL_ISSUES[site]
-            result["elapsed_seconds"] = round(time.time() - started, 2)
-            result["finished_at"] = now_iso()
-            return result
-        # A clearance was imported: the site is testable like any other.
-        result["clearance_used"] = True
+        result["status"] = "IGNORED"
+        result["external_issue"] = KNOWN_EXTERNAL_ISSUES[site]
+        result["elapsed_seconds"] = round(time.time() - started, 2)
+        result["finished_at"] = now_iso()
+        return result
 
     # 1. High-speed native Rust Core diagnostic
     # In quick mode: return immediately
