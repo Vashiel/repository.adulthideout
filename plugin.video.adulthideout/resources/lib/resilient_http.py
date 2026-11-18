@@ -159,11 +159,14 @@ def fetch_text_with_solution(url, headers=None, logger=None, timeout=120):
         resp = requests.post(CORE_ENDPOINT, json=req_body, timeout=timeout + 5)
         if resp.status_code == 200:
             sol = resp.json().get("solution", {})
+            _log(logger, "info", f"Core {url}: HTTP {resp.status_code}, solution status {sol.get('status')}, len {len(sol.get('response') or '')}")
             if sol.get("status") in (200, 206) and sol.get("response"):
                 _log(logger, "debug", "HTTP response solution accepted via service.adulthideout.core")
                 return sol
+        else:
+            _log(logger, "info", f"Core {url}: HTTP {resp.status_code} from core endpoint")
     except Exception as exc:
-        _log(logger, "debug", f"Core engine error: {exc}")
+        _log(logger, "info", f"Core {url}: {type(exc).__name__}: {exc}")
 
     body = fetch_text(url, headers=headers, logger=logger, timeout=timeout)
     if body:

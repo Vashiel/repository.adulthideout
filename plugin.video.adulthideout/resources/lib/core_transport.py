@@ -27,6 +27,7 @@ _LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1", ""}
 # compressed bodies the Core cannot unpack, which arrive here as empty pages.
 _CORE_OWNED_HEADERS = {"cookie", "user-agent", "accept-encoding", "connection", "host", "content-length"}
 _STATS = {"core": 0, "fallback": 0}
+_CHALLENGE_HOSTS = set()
 _STATS_LOCK = threading.Lock()
 _INSTALLED = False
 _BYPASS_ATTR = "_adulthideout_core_bypass"
@@ -111,6 +112,39 @@ def english_unless_set(headers):
     return headers
 
 
+def _log(message):
+    try:
+        import xbmc
+        xbmc.log("[AdultHideout] " + message, xbmc.LOGWARNING)
+    except Exception:
+        pass
+
+
+def _log_core_error(reply):
+    """The Core answers HTTP 500 with a JSON body when it could not solve a page; log why."""
+    try:
+        payload = json.loads(reply.read().decode("utf-8"))
+    except Exception:
+        return
+    if isinstance(payload, dict):
+        message = str(payload.get("message") or "").strip()
+        if message:
+            _log("Core: " + message)
+
+
+def _log_challenge(url, solution):
+    """One line per host when the Core returned the challenge page instead of the site."""
+    body = solution.get("response") or ""
+    if "_cf_chl_opt" not in body and "Just a moment" not in body:
+        return
+    host = urllib.parse.urlsplit(url).hostname or url
+    if host in _CHALLENGE_HOSTS:
+        return
+    _CHALLENGE_HOSTS.add(host)
+    _log("Core: Cloudflare challenge not solved for %s (HTTP %s); the Python fallback will "
+         "most likely get the same challenge." % (host, solution.get("status")))
+
+
 def _core_solution(url, headers, timeout):
     """The Core's answer for a page, or None when the caller should use its own path."""
     cookie_header = next((v for k, v in headers.items() if k.lower() == "cookie"), "")
@@ -128,12 +162,14 @@ def _core_solution(url, headers, timeout):
         connection.request("POST", parts.path, json.dumps(body), {"Content-Type": "application/json"})
         reply = connection.getresponse()
         if reply.status != 200:
+            _log_core_error(reply)
             return None
         solution = (json.loads(reply.read().decode("utf-8")) or {}).get("solution") or {}
     finally:
         connection.close()
     status = int(solution.get("status") or 0)
     if not status or status in _FALLBACK_STATUSES or status >= 500:
+        _log_challenge(url, solution)
         return None
     if status == 200 and not solution.get("response"):
         return None  # the Core could not decode the body (e.g. not UTF-8); Python can

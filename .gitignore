@@ -5,3 +5,5 @@ __pycache__/
 
 # headless harness scratch profile
 _profile/
+
+mk_*.py
