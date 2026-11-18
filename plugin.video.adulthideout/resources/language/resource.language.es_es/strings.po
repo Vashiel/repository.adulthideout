@@ -1746,3 +1746,11 @@ msgstr "Solo 4K"
 msgctxt "#31029"
 msgid "1080p and better"
 msgstr "1080p o superior"
+
+msgctxt "#30890"
+msgid "Delete All Custom Streams"
+msgstr "Eliminar todos los streams propios"
+
+msgctxt "#30891"
+msgid "Delete all custom streams?"
+msgstr "¿Seguro que quieres eliminar todos los streams propios?"

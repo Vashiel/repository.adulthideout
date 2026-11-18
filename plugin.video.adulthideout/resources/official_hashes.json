@@ -1,6 +1,6 @@
 {
     "addon_id": "plugin.video.adulthideout",
-    "generated_utc": "2026-11-18T10:39:26Z",
+    "generated_utc": "2026-11-18T11:14:09Z",
     "hash_algorithm": "sha256",
     "hashes": {
         "LICENSE.txt": "fc6e2e8c4b76f7ee65e8f6153e44d8a197ac992767582fd9cd01d393a38298cc",
@@ -31,9 +31,9 @@
         "resources/data/star_movies_manifest.json": "77230cde879718fa95d7527db037a925b8ec041554d723a8a6fcf6a456bcebdf",
         "resources/language/resource.language.de_de/strings.po": "a392246a55d66346f1d0fadc1d291e8853415bc02469a4034814e111214cec60",
         "resources/language/resource.language.en_gb/strings.po": "cb8bee0ff818a3cf3a0d9d298c880413d696a9231e3bc4c82810007d5fe5c350",
-        "resources/language/resource.language.es_es/strings.po": "73460f46b08ee51e486cfdbc6c1fd651bcec1ee97192b6fb8b03fdaad4fcf828",
-        "resources/language/resource.language.fr_fr/strings.po": "c2471acb80ba02ab17aad4334b294a74984ec12ac489892bbcb932101ffb8437",
-        "resources/language/resource.language.it_it/strings.po": "7f2d35431decf9626dd5fab3f0b5ba01b39dc04127ff2f0ae33ca5bbc9224db8",
+        "resources/language/resource.language.es_es/strings.po": "88b8d60a5b2166004113fff622fc1726c0d79a0a632722ce06b74a8f54ac1d4c",
+        "resources/language/resource.language.fr_fr/strings.po": "2ff8c2ab4787676c3ed3ec61fb2c93c81ad1739c416456eb0472d228eb44b403",
+        "resources/language/resource.language.it_it/strings.po": "3735a5ec6856c7c1f748570b8baac4250d36547930b3378277d63d5bc46e8866",
         "resources/lib/base_website.py": "17c869d0ea3fcccd8d26f85e46ba0267bbae38e87bc32cdac2daae3cf7c24062",
         "resources/lib/cam_favorites.py": "ff52daf783766d9dcb6b837a3edc96258484c92de1ece76800b12d2076a813e7",
         "resources/lib/core_transport.py": "bd96e8c4cfa77f1fb3f5af42a23f07cc3817f7d451dc17a2879d084a56dfeaca",
