@@ -53,6 +53,7 @@
     <setting id="cloudflare_blocked_migrated_1025" type="bool" default="false" visible="false" />
     <setting id="cloudflare_blocked_migrated_1026_restored" type="bool" default="false" visible="false" />
     <setting id="factory_websites_enabled_1026" type="bool" default="false" visible="false" />
+    <setting id="challenge_gated_hidden_1028" type="bool" default="false" visible="false" />
     <setting id="asianviralhub_sort_by" type="enum" label="30004" values="Latest|Most Viewed|Top Rated" default="0" visible="false" />
     <setting id="ebalka26_sort_by" type="enum" label="30004" values="Newest|Top Rated|Most Popular" default="0" visible="false" />
     <setting id="ruporno_sort_by" type="enum" label="30004" values="Newest|Top Rated|Most Popular" default="0" visible="false" />

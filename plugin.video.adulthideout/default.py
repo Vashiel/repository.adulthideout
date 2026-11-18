@@ -211,6 +211,15 @@ def migrate_cloudflare_blocked_websites():
     ADDON.setSetting("cloudflare_blocked_migrated_1026_restored", "true")
     ADDON.setSetting("factory_websites_enabled_1026", "true")
 
+def migrate_challenge_gated_websites():
+    # Interactive Cloudflare Turnstile on every page; hidden once, users may show them again.
+    if ADDON.getSetting("challenge_gated_hidden_1028") == "true":
+        return
+    hidden = get_hidden_websites()
+    hidden.update({"myclassicp", "vintageworldp"})
+    save_hidden_websites(hidden)
+    ADDON.setSetting("challenge_gated_hidden_1028", "true")
+
 def is_website_hidden(name):
     opt_in_setting = OPT_IN_WEBSITE_SETTINGS.get(name)
     if opt_in_setting and ADDON.getSetting(opt_in_setting) != "true":
@@ -623,6 +632,7 @@ def build_main_menu_fast():
     migrate_atlas_unavailable_websites()
     migrate_recovered_websites()
     migrate_cloudflare_blocked_websites()
+    migrate_challenge_gated_websites()
 
     enable_collections = (ADDON.getSetting("enable_website_collections") == "true")
     selected_content, selected_types = get_active_website_filters()
