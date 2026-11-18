@@ -1,13 +1,14 @@
-v. 1.0.28 "Lighthouse" - 2026-11-17
+v. 1.0.28 "Lighthouse" - 2026-11-18
 - **14 New Websites**: Added Anybunny, CamHub, CamWhoresBay, Erogarga, Extreme.Adult, FullTaboo, Incesto69, PervTube, PlayVids, TabooDude, TabooJizz, TabooTube, WatchPornX and WildKittys. All of them list, search and play, each with its own original logo.
 - **Global Search Filters**: Global Search has two new menu entries, length (any, 10+, 20+, 40+ minutes, full movie) and quality (any, 720p and better, 1080p and better, 4K only). eporner, SpankBang, XNXX, xHamster and TubePornClassic filter on their own side, so every page holds only matching videos.
 - **Smarter Global Search**: Multi-word queries match by words in any order, results keep everything a site returns, relevance sorts first, and the Core's failure reasons decide which sources are worth a Python retry. Site profiles let 57 more sources search directly in the Core (281 in total); 66 sources whose pages need their module keep searching in Python.
+- **AdultHideout Core 1.0.3**: Site profiles let 57 more sources search natively, the Core reports why a website failed and no longer reports an unsolved Cloudflare challenge as a success; freshly built for all eight platform builds including 32-bit ARM Linux.
 - **Page Fetches through the Core**: Website pages, including urllib-based modules, are fetched through AdultHideout Core, while video, HLS and thumbnail transfers stay direct.
 - **Playback Stability**: A failed resolve now ends cleanly instead of stalling, slow resolves are no longer skipped and restarted over and over, and playlists skip errors and stalls.
 - **Leaner Data**: Global Search results are stored per search instead of in the shared state file, which had grown to 26 MB.
 - **Official Source Check**: The check that warns about AdultHideout installed from unofficial sources runs again when the main menu opens; its file manifest matches the current files.
 - **Website Repairs**: Listings, search or playback repaired on 3Movs, Balbums, BornToBeFuck, Fuqster, HentaiMama, HQPorner, JavHDPorn, JustFullPorn, LetMeJerk, PornAVHD, PornDoe, Pornhub, SexTB, Taxi69, Upornia, VintagePornFun, WOW.xxx, XHamster, XNXX, XTapes and YouJizz, plus the LuLuStream resolver.
-- **Website Cleanup**: Removed PornRabbit (the tube is closed) and SaintPorn (the domain now redirects to a paywall).
+- **Website Cleanup**: Removed PornRabbit (the tube is closed) and SaintPorn (the domain now redirects to a paywall). MyClassicP and VintageWorldP are hidden by default because an interactive Cloudflare challenge now guards every page; they can be shown again under Manage hidden websites.
 
 v. 1.0.27 "Quicksilver" - 2026-11-09
 - **Native Core Search**: Global Search and Mega Shuffle now run natively in AdultHideout Core. All 300+ sources are queried in a single concurrent pass with a global time budget and automatic retries, and AdultHideout's website modules seamlessly cover any site that needs its dedicated logic. Across all 302 sources on desktop, Quicksilver returns 20% more results in 25% less time (4,018 results in 18 seconds for "milf").

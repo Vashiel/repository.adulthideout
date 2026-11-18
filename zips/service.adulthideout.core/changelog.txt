@@ -1,3 +1,10 @@
+v. 1.0.3 - 2026-11-18
+- **Site Profiles**: the Core runs AdultHideout's own search patterns for 57 more websites, so 281 sources now search directly in the Core.
+- **Failure Reasons**: the Core reports why a website failed (offline, not found, rate limited, Cloudflare) and does not retry after a timeout, so Global Search skips pointless retries.
+- **Honest Challenge Status**: an unsolved Cloudflare challenge is reported as an error instead of a success.
+- **Diagnostics Support**: the Core reports the final address and page language of every website.
+- **Fresh Core for All Platforms**: newly built for Windows, macOS (Apple Silicon & Intel), Android (64-bit & 32-bit) and Linux (x86_64, aarch64 & armv7).
+
 v. 1.0.2 - 2026-11-11
 - **Core for 32-bit ARM Linux**: CoreELEC, LibreELEC and Raspberry Pi systems running a 32-bit Kodi now get the native Core engine (`linux-armv7`), with full Core search.
 - **Precise Platform Detection**: Kodi's own architecture decides which Core is installed.

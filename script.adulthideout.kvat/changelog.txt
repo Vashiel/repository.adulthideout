@@ -1,4 +1,4 @@
-v. 0.3.0 - 2026-11-17
+v. 0.3.0 - 2026-11-18
 - **Site Checklist**: Every website is checked for a reachable domain, an English start page, its buttons (Search, Next, Categories, Tags, Models, Channels), listed videos, real thumbnails, a playable 5th video and whether its pages came through AdultHideout Core.
 - **Runs Everywhere**: Modules are listed in-process instead of via JSON-RPC, so the check also works in players without Files.GetDirectory or RunScript.
 - **Parallel Checks**: 16 websites are checked at once with a fixed time limit per site.

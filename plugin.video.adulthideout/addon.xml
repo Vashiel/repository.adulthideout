@@ -3,7 +3,7 @@
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.requests" version="2.25.1"/>
-        <import addon="service.adulthideout.core" version="1.0.2"/>
+        <import addon="service.adulthideout.core" version="1.0.3"/>
     </requires>
     <extension point="xbmc.python.pluginsource" library="default.py">
         <provides>video</provides>
@@ -12,13 +12,14 @@
     <extension point="xbmc.addon.metadata">
         <settingfile>resources/settings.xml</settingfile>
         <news>
-v. 1.0.28 "Lighthouse" - 2026-11-17
+v. 1.0.28 "Lighthouse" - 2026-11-18
 - 14 New Websites: Anybunny, CamHub, CamWhoresBay, Erogarga, Extreme.Adult, FullTaboo, Incesto69, PervTube, PlayVids, TabooDude, TabooJizz, TabooTube, WatchPornX and WildKittys.
 - Global Search Filters: length and quality as menu entries (up to 4K only).
 - Smarter Global Search: word-based matching, 281 sources searched in the Core.
+- AdultHideout Core 1.0.3: site profiles, clear failure reasons, fresh build for all platforms.
 - Page fetches through AdultHideout Core, more stable playback.
 - Official source check active again.
-- Website Repairs: 21 websites and the LuLuStream resolver; removed PornRabbit and SaintPorn.
+- Website Repairs: 21 websites and the LuLuStream resolver; removed PornRabbit and SaintPorn; MyClassicP and VintageWorldP hidden by default.
 
 v. 1.0.27 "Quicksilver" - 2026-11-09
 - Native Core Search: Global Search and Mega Shuffle run natively in AdultHideout Core, all 300+ sources in a single pass. 20% more results in 25% less time.

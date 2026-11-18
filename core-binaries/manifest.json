@@ -1,23 +1,23 @@
 {
-    "version": "1.0.1",
+    "version": "1.0.3",
     "platforms": {
         "android-armeabi-v7a": [
             {
                 "name": "libadulthideout_core.so",
-                "size": 2630340,
-                "sha256": "eee50cbfb73e195333fcf458623b9def0c38fb0bea4c03bacf239390fb698c5b"
+                "size": 3683516,
+                "sha256": "95a56916d0069ccbc060924cf35d4dac91f15c3d368274ee201e057add3fea8d"
             }
         ],
         "windows-x86_64": [
             {
                 "name": "adulthideout-core.exe",
-                "size": 3915776,
-                "sha256": "c52e53908992c1b526b4c0211bd4f3b366bd3824a43cefedc9ac0df1ef0d15db"
+                "size": 5504512,
+                "sha256": "41e7c94a0571b185f1634d901b552485b81531d1341273e2a3f2a4f1482ce800"
             },
             {
                 "name": "adulthideout_core.dll",
-                "size": 3759616,
-                "sha256": "b9a52b3d046749239b4ef4d15cffe64aa059d31e1c1564600bc52ae507dc2cfb"
+                "size": 5283840,
+                "sha256": "d077df2cec73e9a6e50e533239b0d81f46c6280f86d69cb55c02072f9207eae7"
             },
             {
                 "name": "libwinpthread-1.dll",
@@ -28,68 +28,68 @@
         "darwin-arm64": [
             {
                 "name": "adulthideout-core",
-                "size": 3382352,
-                "sha256": "d462233fbc91d897190c018da88f779aab758e73cd1e5c410fffc7dc2ecd3a29"
+                "size": 4729696,
+                "sha256": "3016bc2d9511413cf5b8f255fb52c615c36501125fb017565e43d497d03e234c"
             },
             {
                 "name": "libadulthideout_core.dylib",
-                "size": 5255872,
-                "sha256": "a5ba697bbd78828b00d5e1d43be09b8ac7d76185e315ced9e6a8ec50499cacc6"
+                "size": 6801696,
+                "sha256": "9414153550a0f3e06ab891f72ad2936dedf73c8b8b52142978ecf35a7f765a89"
             }
         ],
         "linux-aarch64": [
             {
                 "name": "adulthideout-core",
-                "size": 3513544,
-                "sha256": "1858f76002e805577f60831bcf8318c11e3de0127d73b8c8f8237a49fdd9184d"
+                "size": 5104024,
+                "sha256": "960035cc189261e2bff89a1a2d87502706171ef55a8ae5780a1f7b2268bd113d"
             },
             {
                 "name": "libadulthideout_core.so",
-                "size": 3423280,
-                "sha256": "39889dd31f1b9fa87c21c68394828568ec94d44ee24bf67fb489ef1132a01f9b"
+                "size": 4960920,
+                "sha256": "6e24de0a31fa5a925d8891e9c74187ed9dbfbc2a5a463f318e83d95c4a50f937"
             }
         ],
         "android-arm64-v8a": [
             {
                 "name": "libadulthideout_core.so",
-                "size": 3504952,
-                "sha256": "c4a8a8d1e046cab6a42934b8fba31246efb21a002a90beb2bffa555623a383a9"
+                "size": 5055472,
+                "sha256": "da6b7a9c8d698a88ccc09d8bd03ff925c993c0f4e6b9e2e012d0985a356f37b6"
             }
         ],
         "darwin-x86_64": [
             {
                 "name": "adulthideout-core",
-                "size": 3720136,
-                "sha256": "98ebc98c3b767ac2806e3bb27332b7b1074c29bf46f59f706ff6425d6071981f"
+                "size": 5253568,
+                "sha256": "f1cf5232fafaa5ccef0a1f83fd144f0001ae0d1f171de952dee3cf8a509a9fb7"
             },
             {
                 "name": "libadulthideout_core.dylib",
-                "size": 5637352,
-                "sha256": "0805b6a0725d5cd8176ccb8044f55d2c22b2f80eece7e8fd0054f8ee5dc9515d"
+                "size": 8279903,
+                "sha256": "a7fa4537a400bb2430161a38d14135fab0dce5485d1b0ac43e5d17a16f2a2af1"
             }
         ],
         "linux-x86_64": [
             {
                 "name": "adulthideout-core",
-                "size": 4046680,
-                "sha256": "97782312e9a1951bc95abde96b547b550ef952f28a9ba3c09649ae9a7ed1de66"
+                "size": 5869320,
+                "sha256": "c3ad8fa6f270a8d48db67ec27295729adbc7a603b71d45dda6edbcd4ac79d6a8"
             },
             {
                 "name": "libadulthideout_core.so",
-                "size": 3949816,
-                "sha256": "f44efe9ae43ed6220ae54329ebc11b88060bf8e70989296f14c691cda294ab28"
+                "size": 5718336,
+                "sha256": "5200442ebdbb9ab68caba1bc345e657200984758c3ae517c87c582f3af2467c8"
             }
         ],
         "linux-armv7": [
             {
                 "name": "adulthideout-core",
-                "size": 3343216,
-                "sha256": "7d0f192dc537a851fa6682c5060490d6d64ff15c5254cfc3b482e0cd9fecc161"
+                "size": 4738912,
+                "sha256": "eeb316a1da7870c9743d277a664a9d7fe3d0a1eb5d58843e73cb7584319c80dd"
             },
             {
                 "name": "libadulthideout_core.so",
-                "size": 3154512,
-                "sha256": "1d715add194243211f062ab03b4ed23f64f98419966d4cb7650c10ebb1ff5f49"
+                "size": 4487524,
+                "sha256": "0f9bc7de87aa77d8dfd6bafdbede316b03719663433d25ab7dc57be3c9f40e1a"
             }
         ]
     }

@@ -24,7 +24,7 @@ DEFAULT_BIND = "127.0.0.1:8191"
 HEALTH_URL = f"http://{DEFAULT_BIND}/health"
 # Bump with every release of new binaries in core-binaries/; installs with another
 # version.txt download them on the next start.
-CORE_VERSION = "1.0.1"
+CORE_VERSION = "1.0.3"
 RAW_BASE_URLS = (
     "https://raw.githubusercontent.com/Vashiel/repository.adulthideout/master/core-binaries",
     "https://github.com/Vashiel/repository.adulthideout/raw/master/core-binaries",

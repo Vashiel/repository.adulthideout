@@ -15,25 +15,53 @@ AdultHideout does not host videos. It organizes publicly available listings and 
 
 ## Current Release: AdultHideout 1.0.28 "Lighthouse"
 
-**Released November 17, 2026**
+**Released November 18, 2026**
 
-Lighthouse brings 14 new websites, length and quality filters for Global Search, page fetches through AdultHideout Core and a diagnostics checklist that tested every website.
+Lighthouse brings 14 new websites, length and quality filters for Global Search, a renewed AdultHideout Core 1.0.3 that searches 281 sources natively, page fetches through the Core and a diagnostics checklist that tested every single website and led to repairs on 21 of them.
 
-- **14 new websites:** Anybunny, CamHub, CamWhoresBay, Erogarga, Extreme.Adult, FullTaboo, Incesto69, PervTube, PlayVids, TabooDude, TabooJizz, TabooTube, WatchPornX and WildKittys.
-- **Global Search filters:** length (up to full movie) and quality (up to 4K only) as menu entries; five big sites filter on their own side.
-- **281 sources searched in the Core**, multi-word queries matched by words.
-- **More stable playback:** failed resolves end cleanly, playlists no longer pile up resolves.
-- **21 websites repaired**, PornRabbit and SaintPorn removed.
+### 14 New Websites
 
-Full notes: [Lighthouse 1.0.28](docs/releases/1.0.28-lighthouse.md)
+Anybunny, CamHub, CamWhoresBay, Erogarga, Extreme.Adult, FullTaboo, Incesto69, PervTube, PlayVids, TabooDude, TabooJizz, TabooTube, WatchPornX and WildKittys. Every one lists, searches and plays, each with its own original logo.
 
----
+### Global Search
 
-## Previous Release: AdultHideout 1.0.27 "Quicksilver"
+- **Length & Quality Filters:** Two new entries in the Global Search menu. Length: any, 10+, 20+, 40+ minutes or full movie. Quality: any, 720p and better, 1080p and better, 4K only.
+- **Filters at the Source:** eporner, SpankBang, XNXX, xHamster and TubePornClassic filter on their own side, so every page holds only matching videos; the Core drops videos that are too short while it parses.
+- **Word Matching:** Multi-word queries match by words in any order ("asmr hospital" finds "Hospital ASMR ...").
+- **One Pass, Every Source:** All 300+ websites are queried by AdultHideout Core in a single concurrent request, with the website modules taking over wherever a site needs its dedicated logic.
+- **Cleaner Results:** Ads, redirect links, category, tag and listing pages are filtered out automatically.
 
-**Released November 9, 2026**
+### AdultHideout Core 1.0.3
 
-Global Search and Mega Shuffle run natively in AdultHideout Core: all 300+ sources in a single pass, 20% more results in 25% less time. Full notes: [Quicksilver 1.0.27](docs/releases/1.0.27-quicksilver.md)
+- **Site Profiles:** The Core runs AdultHideout's own search patterns for 57 more websites, so 281 sources now search natively, with at least 90% of the results of the dedicated module and about three times faster per site.
+- **Failure Reasons:** The Core reports why a website failed (offline, not found, rate limited, Cloudflare), and Global Search skips retries that cannot succeed.
+- **Honest Challenge Status:** An unsolved Cloudflare challenge is reported as an error instead of a success.
+- **Page Fetches through the Core:** Website pages, including modules built on urllib, are fetched through the Core, while video, HLS and thumbnail transfers stay direct.
+- **Local HLS & MP4 Stream Relay:** Adaptive HLS playlists auto-select 1080p variants, and HTTP 206 byte-range seeking keeps MP4 playback smooth.
+- **Embedded QuickJS Runtime:** Packed player scripts and signed stream tickets are evaluated in milliseconds.
+- **On-Demand Platform Binary Delivery:** The Core Service detects the device and downloads only the matching binary, replacing older Core versions automatically on the next start:
+  - **Windows**: 64-bit Desktop (`windows-x86_64`)
+  - **macOS**: Apple Silicon (`darwin-arm64`) & Intel (`darwin-x86_64`)
+  - **Android / Google TV / Fire TV**: 64-bit (`android-arm64-v8a`) & 32-bit (`android-armeabi-v7a`)
+  - **Linux / LibreELEC / CoreELEC / Raspberry Pi**: `linux-x86_64`, `linux-aarch64` & `linux-armv7`
+
+### Playback & Stability
+
+- **No More Stalls:** A failed resolve ends cleanly, and playlists no longer press Next while a video is still resolving.
+- **Leaner Data:** Global Search results are stored per search instead of in the shared state file.
+- **Official Source Check:** Warns again when AdultHideout was installed from an unofficial source.
+
+### Diagnostics 0.3.0
+
+Every website is checked for a reachable domain, an English start page, its buttons, listed videos, real thumbnails, a playable 5th video and Core use, 16 websites at a time.
+
+### Website Repairs & Cleanup
+
+- **Repaired:** 3Movs, Balbums, BornToBeFuck, Fuqster, HentaiMama, HQPorner, JavHDPorn, JustFullPorn, LetMeJerk, PornAVHD, PornDoe, Pornhub, SexTB, Taxi69, Upornia, VintagePornFun, WOW.xxx, XHamster, XNXX, XTapes and YouJizz, plus the LuLuStream resolver.
+- **Removed:** PornRabbit (the tube is closed) and SaintPorn (the domain redirects to a paywall).
+- **Hidden by default:** MyClassicP and VintageWorldP now put an interactive Cloudflare challenge in front of every page; they can be shown again under Settings > Website options > Manage hidden websites.
+
+Full notes: [Lighthouse 1.0.28](docs/releases/1.0.28-lighthouse.md) · [changelog.txt](plugin.video.adulthideout/changelog.txt)
 
 ---
 
@@ -58,7 +86,7 @@ AdultHideout targets **Kodi 19 or newer** and uses Kodi's Python 3 runtime along
 - **Windows** (`x86_64`)
 - **macOS** (Apple Silicon `M1/M2/M3/M4` & Intel `x86_64`)
 - **Android, Google TV & Amazon Fire TV** (`arm64-v8a` & `armeabi-v7a`)
-- **Linux, LibreELEC, CoreELEC & Raspberry Pi** (`x86_64` & `aarch64`)
+- **Linux, LibreELEC, CoreELEC & Raspberry Pi** (`x86_64`, `aarch64` & `armv7`)
 
 Individual websites can behave differently across platforms because their servers, CDNs and delivery systems change independently of AdultHideout. Diagnostics can test the addon directly on the affected device.
 

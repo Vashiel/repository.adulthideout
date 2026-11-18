@@ -9,7 +9,7 @@
         <provides>executable</provides>
     </extension>
     <extension point="xbmc.addon.metadata">
-        <news>v. 0.3.0 - 2026-11-17
+        <news>v. 0.3.0 - 2026-11-18
 - Site checklist: domain, English start page, buttons, videos, thumbnails, 5th video playback and Core use.
 - Works in every player, checks 16 websites at once.
 - Stream probes keep CDN cookies; blocked probes on listing sites only warn.
