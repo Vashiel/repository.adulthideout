@@ -13,6 +13,19 @@ AdultHideout does not host videos. It organizes publicly available listings and 
 
 ---
 
+## After the Anniversary Year
+
+2026 was AdultHideout's 10th anniversary year, and with Lighthouse that year comes to a close. A lot has changed since the big **1.0.0** rewrite in August 2025:
+
+- **From fewer than 25 to more than 300 websites**, across 28 releases.
+- **AdultHideout Core**, a native engine for Windows, macOS, Android and Linux that handles page fetches, Global Search and stream relaying.
+- **Global Search, Mega Shuffle, Vault, Smart Streams, Star Finder** and managed downloads, built on top of the 1.0.0 foundation.
+- **AdultHideout Diagnostics**, which tests every single website before a release.
+
+To mark the end of the anniversary year, AdultHideout gets a new fanart: the AdultHideout club, now without the anniversary cake, as a lasting home for everything that comes next.
+
+---
+
 ## Current Release: AdultHideout 1.0.28 "Lighthouse"
 
 **Released November 18, 2026**
@@ -21,7 +34,7 @@ Lighthouse brings 14 new websites, length and quality filters for Global Search,
 
 ### 14 New Websites
 
-Anybunny, CamHub, CamWhoresBay, Erogarga, Extreme.Adult, FullTaboo, Incesto69, PervTube, PlayVids, TabooDude, TabooJizz, TabooTube, WatchPornX and WildKittys. Every one lists, searches and plays, each with its own original logo.
+Anybunny, CamHub, CamWhoresBay, Erogarga, Extreme.Adult, FullTaboo, Incesto69, PervTube, PlayVids, TabooDude, TabooJizz, TabooTube, WatchPornX and WildKittys.
 
 ### Global Search
 
