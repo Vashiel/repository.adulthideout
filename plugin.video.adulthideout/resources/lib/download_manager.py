@@ -211,7 +211,14 @@ def start_next_download():
         if not queued:
             return False
 
-        job = queued[0]
+        # Stream links expire while a job waits, so resolve again just before it starts.
+        job = None
+        for candidate in queued:
+            if _refresh_job_stream(candidate):
+                job = candidate
+                break
+        if job is None:
+            return False
         job.update({"status": "running", "error": "", "run_token": uuid.uuid4().hex})
         save_job(job)
         _launch_worker(job)
@@ -220,17 +227,50 @@ def start_next_download():
         _release_queue_lock()
 
 
-def add_download_context(website, context_menu, page_url, title, thumbnail=""):
-    items = list(context_menu or [])
+_DOWNLOAD_SUPPORT = {}
+
+
+def site_supports_download(name):
+    # Same test base_website uses: the site must override resolve_recording_stream.
+    key = (name or "").strip().lower()
+    if not key:
+        return False
+    if key not in _DOWNLOAD_SUPPORT:
+        supported = False
+        try:
+            from resources.lib.base_website import BaseWebsite
+            module = importlib.import_module("resources.websites.{}".format(key))
+            for attribute in dir(module):
+                candidate = getattr(module, attribute)
+                if (
+                    isinstance(candidate, type)
+                    and issubclass(candidate, BaseWebsite)
+                    and candidate is not BaseWebsite
+                    and candidate.__module__ == module.__name__
+                ):
+                    supported = candidate.resolve_recording_stream is not BaseWebsite.resolve_recording_stream
+                    break
+        except Exception as exc:
+            xbmc.log("[AdultHideout][downloads] support check failed for {}: {}".format(key, exc), xbmc.LOGWARNING)
+        _DOWNLOAD_SUPPORT[key] = supported
+    return _DOWNLOAD_SUPPORT[key]
+
+
+def download_command(plugin_url, website, page_url, title="", thumbnail=""):
     params = {
         "mode": "30",
         "action": "enqueue",
-        "website": website.name,
+        "website": website or "",
         "original_url": page_url or "",
         "name": title or "",
         "thumbnail": thumbnail or "",
     }
-    command = "RunPlugin({}?{})".format(sys.argv[0], urllib.parse.urlencode(params))
+    return "RunPlugin({}?{})".format(plugin_url, urllib.parse.urlencode(params))
+
+
+def add_download_context(website, context_menu, page_url, title, thumbnail=""):
+    items = list(context_menu or [])
+    command = download_command(sys.argv[0], website.name, page_url, title, thumbnail)
     label = website.addon.getLocalizedString(30633) or "Download video"
     items.append((label, command))
     return items
@@ -430,6 +470,7 @@ def _resolve_ffmpeg():
 
 def enqueue_download(website, page_url, title="", thumbnail=""):
     folder = ensure_download_folder(interactive=True)
+    xbmc.log("[AdultHideout][downloads] enqueue folder={!r} site={} url={}".format(folder, website.name, page_url), xbmc.LOGINFO)
     if not folder:
         return False
     resolver = getattr(website, "resolve_recording_stream", None)
@@ -444,6 +485,7 @@ def enqueue_download(website, page_url, title="", thumbnail=""):
         headers = {}
         explicit_extension = ""
         resolved_options = {}
+    xbmc.log("[AdultHideout][downloads] enqueue resolved stream={!r} headers={}".format(stream_url, sorted((headers or {}).keys())), xbmc.LOGINFO)
     if not stream_url:
         _notify(_lang(30753, "Could not resolve a downloadable stream."), error=True)
         return False
@@ -484,6 +526,7 @@ def enqueue_download(website, page_url, title="", thumbnail=""):
         "run_token": uuid.uuid4().hex,
     }
     save_job(job)
+    xbmc.log("[AdultHideout][downloads] enqueue saved job {} backend={}".format(job["id"], backend), xbmc.LOGINFO)
 
     if backend == "aria2":
         return _submit_aria2(job)
@@ -596,6 +639,10 @@ def cancel_job(job_id):
 
 
 def _load_website_for_download(name):
+    # The worker process can import this module without the addon root on sys.path.
+    addon_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    if addon_root not in sys.path:
+        sys.path.insert(0, addon_root)
     from resources.lib.base_website import BaseWebsite
 
     module = importlib.import_module("resources.websites.{}".format(name))

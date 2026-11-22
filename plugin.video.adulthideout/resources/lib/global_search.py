@@ -1512,9 +1512,10 @@ class GlobalSearch:
         is_folder = bool(result.get("is_folder"))
         if not is_folder:
             item.setProperty("IsPlayable", "true")
+            context = []
             try:
                 from resources.lib.personal_library import build_save_command
-                item.addContextMenuItems([(
+                context.append((
                     self.addon.getLocalizedString(30706) or "Save to Vault",
                     build_save_command(
                         sys_argv0(),
@@ -1525,9 +1526,20 @@ class GlobalSearch:
                         art.get("fanart", ""),
                         "video",
                     ),
-                )])
+                ))
             except Exception as exc:
                 self.logger("Vault context failed: {}".format(exc), xbmc.LOGWARNING)
+            try:
+                from resources.lib.download_manager import download_command, site_supports_download
+                if site_supports_download(source):
+                    context.append((
+                        self.addon.getLocalizedString(30633) or "Download video",
+                        download_command(sys_argv0(), source, result.get("url", ""), result.get("label") or "Video", art.get("thumb", "")),
+                    ))
+            except Exception as exc:
+                self.logger("Download context failed: {}".format(exc), xbmc.LOGWARNING)
+            if context:
+                item.addContextMenuItems(context)
         xbmcplugin.addDirectoryItem(self.addon_handle, result.get("url", ""), item, is_folder)
 
     def _add_refresh_item(self, query, page=1, search_mode="selected"):

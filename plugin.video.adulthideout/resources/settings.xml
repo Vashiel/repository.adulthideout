@@ -343,6 +343,7 @@
     <setting id="download_folder" type="folder" label="30643" default="" />
     <setting id="download_backend" type="enum" label="30644" lvalues="30754|30755|30756|30757|30758" default="0" />
     <setting id="show_download_manager" type="bool" label="30645" default="false" />
+    <setting id="download_on_play" type="bool" label="Also download when a video is played" default="false" />
     <setting id="download_progress_display" type="enum" label="30734" lvalues="30735|30736|30737" default="0" />
     <setting id="enable_offline_library" type="bool" label="30646" default="false" />
     <setting id="offline_library_folder" type="folder" label="30650" default="" />

@@ -1253,6 +1253,13 @@ def handle_routing():
                     "thumbnail": params.get("thumbnail", ""),
                     "fanart": params.get("fanart", ""),
                 }, ensure_ascii=False))
+            if ADDON.getSetting("download_on_play") == "true":
+                try:
+                    from resources.lib.download_manager import enqueue_download, site_supports_download
+                    if site_supports_download(website_name):
+                        enqueue_download(target_website, url, title=params.get("name", ""), thumbnail=params.get("thumbnail", ""))
+                except Exception as exc:
+                    log(f"Download on play failed on {website_name}: {exc}", xbmc.LOGWARNING)
             target_website.play_video(url)
         except Exception as exc:
             log(f"Error playing video on {website_name}: {exc}", xbmc.LOGERROR)
