@@ -7,6 +7,7 @@ from resources.lib.kvs_tube import KVSTubeWebsite
 
 # Anything smaller than this is a placeholder clip, not a video.
 MIN_VIDEO_BYTES = 1024 * 1024
+IP_LIMIT_MESSAGE = "justporn is blocking downloads from this connection (IP limit). Try another network."
 
 
 class JustPorn(KVSTubeWebsite):
@@ -54,6 +55,7 @@ class JustPorn(KVSTubeWebsite):
             return None
         if "ip-limit" in final_url.lower():
             self.logger.warning("%s stream redirected to a limit placeholder: %s", self.label or self.name, final_url)
+            self.download_error = IP_LIMIT_MESSAGE
             return None
         if "video" not in ctype and "octet-stream" not in ctype:
             return None
@@ -65,6 +67,7 @@ class JustPorn(KVSTubeWebsite):
     def resolve_recording_stream(self, url):
         # Download entry point. The KVS player variables are missing on this site, so the page's
         # JSON-LD "contentUrl" (a get_file link) is the only stream. Note: play_video shares this.
+        self.download_error = ""
         html_content = self._get(url, referer=self.base_url)
         candidates = []
         for pattern in (

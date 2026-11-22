@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
@@ -281,6 +282,46 @@ def _notify(message, error=False):
     xbmcgui.Dialog().notification("AdultHideout", str(message), icon, 5000)
 
 
+# Known block pages, checked when a site's resolver finds no stream.
+BLOCK_PAGE_MARKERS = (
+    ("This video is members-only on the site. A members login is needed.",
+     ("only active members", "only members can", "members-only video", "private video")),
+    ("The site is asking for a login before it shows this video.",
+     ("log in to watch", "login required", "please log in or sign up")),
+    ("The site is blocking this connection (IP limit). Try another network.",
+     ("ip-limit", "ip limit", "your ip has been")),
+)
+
+
+def _diagnose_page(page_url):
+    """Explain why a page has no stream, using the page's own wording. Returns "" when unsure."""
+    if not page_url:
+        return ""
+    request = urllib.request.Request(page_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"})
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            text = response.read(400000).decode("utf-8", "replace").lower()
+    except urllib.error.HTTPError as exc:
+        if exc.code in (404, 410):
+            return "The video page is gone (HTTP {}).".format(exc.code)
+        return ""
+    except Exception:
+        return ""
+    for message, markers in BLOCK_PAGE_MARKERS:
+        if any(marker in text for marker in markers):
+            return message
+    return ""
+
+
+def _resolve_failure_message(website, page_url):
+    # A site's own message wins; otherwise look at the page; otherwise the generic text.
+    return (
+        getattr(website, "download_error", "")
+        or _diagnose_page(page_url)
+        or _lang(30753, "Could not resolve a downloadable stream.")
+    )
+
+
 def _setting(name, fallback=""):
     try:
         value = _addon().getSetting(name)
@@ -487,7 +528,7 @@ def enqueue_download(website, page_url, title="", thumbnail=""):
         resolved_options = {}
     xbmc.log("[AdultHideout][downloads] enqueue resolved stream={!r} headers={}".format(stream_url, sorted((headers or {}).keys())), xbmc.LOGINFO)
     if not stream_url:
-        _notify(_lang(30753, "Could not resolve a downloadable stream."), error=True)
+        _notify(_resolve_failure_message(website, page_url), error=True)
         return False
 
     is_hls = _looks_hls(stream_url) or explicit_extension.lower() == "m3u8" or bool(resolved_options.get("hls_proxy"))
@@ -666,7 +707,7 @@ def _refresh_job_stream(job):
             raise RuntimeError(_lang(30753, "Could not resolve a downloadable stream."))
         stream_url, headers, explicit_extension, resolved_options = normalize_resolved(resolver(job.get("page_url", "")))
         if not stream_url:
-            raise RuntimeError(_lang(30753, "Could not resolve a downloadable stream."))
+            raise RuntimeError(_resolve_failure_message(website, job.get("page_url", "")))
 
         is_hls = _looks_hls(stream_url) or explicit_extension.lower() == "m3u8" or bool(resolved_options.get("hls_proxy"))
         backend = _backend_for(stream_url, is_hls=is_hls)
