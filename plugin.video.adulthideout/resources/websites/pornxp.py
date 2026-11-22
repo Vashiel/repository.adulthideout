@@ -176,3 +176,11 @@ class PornXP(BaseWebsite):
         li.setContentLookup(False)
         xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
         guard.join()
+
+    def resolve_recording_stream(self, url):
+        # Download entry point: the same signed CDN mp4 that play_video() streams.
+        stream_url = self._resolve_stream(url)
+        if not stream_url:
+            return None
+        headers = {"User-Agent": self.ua, "Referer": self.base_url}
+        return {"url": stream_url, "headers": headers, "extension": "mp4", "hls_proxy": False}

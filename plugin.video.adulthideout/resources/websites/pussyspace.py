@@ -93,19 +93,20 @@ class PussySpace(BaseWebsite):
         except:
             return text
 
-    def resolve(self, url):
-        xbmc.log(f"PussySpace: Resolving {url}", xbmc.LOGINFO)
+    def _find_cdn_stream(self, url):
+        # Shared by resolve() (playback) and resolve_recording_stream() (downloads).
+        # Returns (final_cdn_url, cookie_str) or None.
         headers = self.get_headers()
-        
+
         r = self.make_request(url)
         if not r or r.status_code != 200:
             return None
         html = r.text
-        
+
         u64hash = None
         pattern = r"\}\s*\(\s*'((?:[^'\\]|\\.)*)'\s*,\s*['\"]?(\d+)['\"]?\s*,\s*['\"]?(\d+)['\"]?\s*,\s*'((?:[^'\\]|\\.)*)'\.split\('\|'\)"
         packed_matches = re.finditer(pattern, html)
-        
+
         for match in packed_matches:
             try:
                 p, a, c, k_str = match.groups()
@@ -116,12 +117,12 @@ class PussySpace(BaseWebsite):
                         u64hash = msp_match.group(1)
                         break
             except Exception: pass
-            
+
         if not u64hash:
             msp_match = re.search(r"multiShowPlayer\s*\(\s*\\?['\"]([^'\\]+)\\?['\"]", html)
             if msp_match:
                 u64hash = msp_match.group(1)
-        
+
         if not u64hash:
             xbmc.log("PussySpace: Could not find player KEY", xbmc.LOGERROR)
             return None
@@ -131,16 +132,16 @@ class PussySpace(BaseWebsite):
         hs_headers = headers.copy()
         hs_headers['X-Requested-With'] = 'XMLHttpRequest'
         hs_headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
-        
+
         r_hs = self.make_request(hs_url, method='POST', data=hs_data, headers=hs_headers)
         if not r_hs or r_hs.status_code != 200:
             return None
-            
+
         stream_url = None
         rb_match = re.search(r'reversebuffer\?u64hash=([^"&\s]+)', r_hs.text)
         if rb_match:
             stream_url = f"https://www.pussyspace.com/reversebuffer?u64hash={rb_match.group(1)}&hls.m3u8"
-        
+
         if not stream_url:
             file_match = re.search(r'file:"([^"]+hls\.m3u8[^"]*)"', r_hs.text)
             if file_match:
@@ -152,18 +153,39 @@ class PussySpace(BaseWebsite):
                 r_rb = scraper.head(stream_url, headers=headers, allow_redirects=True, timeout=10)
                 final_url = r_rb.url
                 xbmc.log(f"PussySpace: Final CDN URL: {final_url}", xbmc.LOGINFO)
-                
+
                 cookie_str = "; ".join([f"{k}={v}" for k, v in scraper.cookies.items()])
-                
-                play_url = f"{final_url}|User-Agent={urllib.parse.quote(headers['User-Agent'])}&Referer={urllib.parse.quote(self.BASE_URL)}"
-                if cookie_str:
-                     play_url += f"&Cookie={urllib.parse.quote(cookie_str)}"
-                return play_url
-                
+                return final_url, cookie_str
+
             except Exception as e:
                 xbmc.log(f"PussySpace Redirect Error: {e}", xbmc.LOGERROR)
-        
+
         return None
+
+    def resolve(self, url):
+        xbmc.log(f"PussySpace: Resolving {url}", xbmc.LOGINFO)
+        found = self._find_cdn_stream(url)
+        if not found:
+            return None
+        final_url, cookie_str = found
+
+        headers = self.get_headers()
+        play_url = f"{final_url}|User-Agent={urllib.parse.quote(headers['User-Agent'])}&Referer={urllib.parse.quote(self.BASE_URL)}"
+        if cookie_str:
+            play_url += f"&Cookie={urllib.parse.quote(cookie_str)}"
+        return play_url
+
+    def resolve_recording_stream(self, url):
+        # Download entry point: returns the CDN URL plus the headers it needs.
+        found = self._find_cdn_stream(url)
+        if not found:
+            return None
+        final_url, cookie_str = found
+
+        headers = self.get_headers()
+        if cookie_str:
+            headers['Cookie'] = cookie_str
+        return {"url": final_url, "headers": headers, "extension": "m3u8", "hls_proxy": True}
 
     def play_video(self, url):
         video_url = self.resolve(url)
