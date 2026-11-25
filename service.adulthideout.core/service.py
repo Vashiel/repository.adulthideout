@@ -25,6 +25,7 @@ HEALTH_URL = f"http://{DEFAULT_BIND}/health"
 # Bump with every release of new binaries in core-binaries/; installs with another
 # version.txt download them on the next start.
 CORE_VERSION = "1.0.3"
+MAX_AUTO_START_ATTEMPTS = 5
 RAW_BASE_URLS = (
     "https://raw.githubusercontent.com/Vashiel/repository.adulthideout/master/core-binaries",
     "https://github.com/Vashiel/repository.adulthideout/raw/master/core-binaries",
@@ -411,6 +412,140 @@ def is_healthy() -> bool:
         return False
 
 
+def _file_sha256(path: str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        while True:
+            chunk = handle.read(65536)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _android_candidate_dirs() -> list:
+    # Android linker namespaces block dlopen from external storage (/storage or /sdcard).
+    # Prefer internal app storage directories where classloader-namespace has permitted paths.
+    android_user = (os.getuid() // 100000) if hasattr(os, "getuid") else 0
+    pkg_name = None
+    try:
+        with open("/proc/self/cmdline", "rb") as cf:
+            raw_cmd = cf.read().split(b"\x00")[0].decode("utf-8", "ignore").strip()
+            pkg_name = raw_cmd.split(":", 1)[0].strip() or None
+    except Exception:
+        pass
+
+    packages = []
+    for pkg in (pkg_name, "org.xbmc.kodi"):
+        if pkg and pkg not in packages:
+            packages.append(pkg)
+
+    bases = []
+    for base in (f"/data/user/{android_user}", "/data/user/0", "/data/data"):
+        if base not in bases:
+            bases.append(base)
+
+    target_dirs = []
+    seen = set()
+    for pkg in packages:
+        for base in bases:
+            for sub in ("code_cache", "cache", "files"):
+                path = os.path.join(base, pkg, sub)
+                if path not in seen:
+                    seen.add(path)
+                    target_dirs.append(path)
+
+    if xbmcvfs:
+        try:
+            temp_dir = (xbmcvfs.translatePath("special://temp") or "").rstrip("/\\")
+            if temp_dir and temp_dir not in seen and not temp_dir.startswith(("/storage/", "/sdcard/", "/mnt/")):
+                seen.add(temp_dir)
+                target_dirs.append(temp_dir)
+        except Exception:
+            pass
+
+    return target_dirs
+
+
+def _stage_android_library(lib_path: str, target_dir: str) -> str:
+    candidate = os.path.join(target_dir, "libadulthideout_core.so")
+    try:
+        if os.path.isfile(candidate) and os.path.getsize(candidate) == os.path.getsize(lib_path):
+            if _file_sha256(candidate) == _file_sha256(lib_path):
+                try:
+                    os.chmod(candidate, 0o555)
+                except OSError as exc:
+                    _log(f"chmod 0555 warning for {candidate}: {exc}", xbmc.LOGWARNING if xbmc else None)
+                return candidate
+    except OSError:
+        pass
+
+    # Use raw byte copy (never shutil.copy2): Android 14 SELinux blocks copystat metadata replication.
+    tmp_path = candidate + ".tmp"
+    if os.path.exists(tmp_path):
+        try:
+            os.chmod(tmp_path, 0o600)
+        except OSError:
+            pass
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+
+    step = "copy"
+    try:
+        shutil.copyfile(lib_path, tmp_path)
+        step = "chmod"
+        try:
+            os.chmod(tmp_path, 0o555)
+        except OSError as exc:
+            _log(f"chmod 0555 warning for {tmp_path}: {exc}", xbmc.LOGWARNING if xbmc else None)
+
+        step = "replace"
+        try:
+            os.replace(tmp_path, candidate)
+        except PermissionError:
+            try:
+                os.chmod(candidate, 0o600)
+            except OSError:
+                pass
+            try:
+                os.remove(candidate)
+            except OSError:
+                pass
+            os.replace(tmp_path, candidate)
+
+        return candidate
+    except Exception as exc:
+        if os.path.exists(tmp_path):
+            try:
+                os.chmod(tmp_path, 0o600)
+            except OSError:
+                pass
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+        raise OSError(getattr(exc, "errno", None), f"{step} failed for {candidate}: {exc}") from exc
+
+
+def _load_in_process_library(actual_lib_path: str):
+    _log(f"Loading in-process engine from {actual_lib_path}")
+    loaded_lib = ctypes.CDLL(actual_lib_path)
+    loaded_lib.start_core_service.argtypes = [ctypes.c_uint16]
+    loaded_lib.start_core_service.restype = ctypes.c_int32
+    loaded_lib.stop_core_service.restype = ctypes.c_int32
+
+    res = loaded_lib.start_core_service(8191)
+    _log(f"In-process engine started (result={res})")
+
+    for _ in range(15):
+        if is_healthy():
+            break
+        time.sleep(0.1)
+    return loaded_lib
+
+
 def start_engine(addon_dir: str):
     lib_path, bin_path = resolve_paths(addon_dir)
     loaded_lib = None
@@ -420,82 +555,39 @@ def start_engine(addon_dir: str):
 
     # 1. Try In-Process native library (cdylib via ctypes: works everywhere, including Android)
     if lib_path and os.path.exists(lib_path):
-        actual_lib_path = lib_path
-
         if is_android:
-            # Android linker namespace blocks dlopen from external storage (/storage or /sdcard).
-            # Copy to internal app storage under /data (especially code_cache) where classloader-namespace has permitted paths.
-            pkg_name = None
-            try:
-                with open("/proc/self/cmdline", "rb") as cf:
-                    pkg_name = cf.read().split(b"\x00")[0].decode("utf-8", "ignore").strip()
-            except Exception:
-                pass
-
-            target_dirs = []
-            if pkg_name:
-                for base in ("/data/user/0", "/data/data"):
-                    target_dirs.extend([
-                        os.path.join(base, pkg_name, "code_cache"),
-                        os.path.join(base, pkg_name, "cache"),
-                        os.path.join(base, pkg_name, "files"),
-                    ])
-
-            target_dirs.extend([
-                "/data/user/0/org.xbmc.kodi/code_cache",
-                "/data/data/org.xbmc.kodi/code_cache",
-                "/data/user/0/org.xbmc.kodi/cache",
-                "/data/data/org.xbmc.kodi/cache",
-                "/data/user/0/org.xbmc.kodi/files",
-                "/data/data/org.xbmc.kodi/files",
-            ])
-
-            if xbmcvfs:
+            for tdir in _android_candidate_dirs():
+                if not os.path.isdir(tdir):
+                    continue
                 try:
-                    temp_dir = xbmcvfs.translatePath("special://temp")
-                    if temp_dir and temp_dir not in target_dirs:
-                        target_dirs.append(temp_dir)
+                    candidate = _stage_android_library(lib_path, tdir)
+                except Exception as ce:
+                    _log(f"Failed to stage library in {tdir}: {ce}", xbmc.LOGWARNING if xbmc else None)
+                    continue
+                _log(f"Staged library at internal path: {candidate}")
+                try:
+                    loaded_lib = _load_in_process_library(candidate)
+                    if loaded_lib is not None:
+                        break
+                except Exception as e:
+                    _log(f"In-process ctypes load failed from {candidate}: {e}", xbmc.LOGWARNING if xbmc else None)
+                    loaded_lib = None
+            if loaded_lib is None:
+                _log(
+                    "Android in-process Core could not be loaded from any internal directory.",
+                    xbmc.LOGWARNING if xbmc else None,
+                )
+        else:
+            if sys_name == "windows" and hasattr(os, "add_dll_directory"):
+                try:
+                    os.add_dll_directory(os.path.dirname(lib_path))
                 except Exception:
                     pass
-
-            for tdir in target_dirs:
-                try:
-                    if os.path.isdir(tdir):
-                        candidate = os.path.join(tdir, "libadulthideout_core.so")
-                        shutil.copy2(lib_path, candidate)
-                        try:
-                            os.chmod(candidate, 0o755)
-                        except Exception:
-                            pass
-                        actual_lib_path = candidate
-                        _log(f"Copied library to internal path: {actual_lib_path}")
-                        break
-                except Exception as ce:
-                    _log(f"Failed to copy to {tdir}: {ce}", xbmc.LOGWARNING if xbmc else None)
-
-        if sys_name == "windows" and hasattr(os, "add_dll_directory"):
             try:
-                os.add_dll_directory(os.path.dirname(actual_lib_path))
-            except Exception:
-                pass
-
-        try:
-            _log(f"Loading in-process engine from {actual_lib_path}")
-            loaded_lib = ctypes.CDLL(actual_lib_path)
-            loaded_lib.start_core_service.argtypes = [ctypes.c_uint16]
-            loaded_lib.start_core_service.restype = ctypes.c_int32
-            loaded_lib.stop_core_service.restype = ctypes.c_int32
-
-            res = loaded_lib.start_core_service(8191)
-            _log(f"In-process engine started (result={res})")
-
-            for _ in range(15):
-                if is_healthy():
-                    break
-                time.sleep(0.1)
-        except Exception as e:
-            _log(f"In-process ctypes load failed: {e}", xbmc.LOGWARNING if xbmc else None)
-            loaded_lib = None
+                loaded_lib = _load_in_process_library(lib_path)
+            except Exception as e:
+                _log(f"In-process ctypes load failed: {e}", xbmc.LOGWARNING if xbmc else None)
+                loaded_lib = None
 
     # 2. Fallback to subprocess if in-process library was not available (non-Android only)
     if not is_healthy() and bin_path and os.path.exists(bin_path):
@@ -569,7 +661,11 @@ def run_kodi_service() -> None:
     monitor = xbmc.Monitor()
     while not monitor.abortRequested():
         # Poll faster (1.0s) while binary is not yet running so post-install activation is instant without restart
-        wait_interval = 10.0 if (loaded_lib is not None or proc is not None or is_healthy()) else 1.0
+        wait_interval = (
+            10.0
+            if (loaded_lib is not None or proc is not None or is_healthy() or next_start_at == float("inf"))
+            else 1.0
+        )
         if monitor.waitForAbort(wait_interval):
             break
 
@@ -583,17 +679,28 @@ def run_kodi_service() -> None:
             new_trigger = bool(trigger and trigger != last_trigger)
             if new_trigger or is_binary_installed(addon_dir):
                 last_trigger = trigger
+                if new_trigger:
+                    failed_starts = 0
+                    next_start_at = 0.0
                 # After a failed start, wait longer each time instead of retrying every second.
                 if is_binary_installed(addon_dir) and (new_trigger or time.time() >= next_start_at):
                     _log("Detected newly installed Core binary; starting engine immediately...")
                     loaded_lib, proc = start_engine(addon_dir)
                     if loaded_lib is None and proc is None:
                         failed_starts += 1
-                        delay = min(300.0, 5.0 * (2 ** (failed_starts - 1)))
-                        next_start_at = time.time() + delay
-                        _log(f"Core engine did not start; next attempt in {int(delay)}s", xbmc.LOGWARNING)
+                        if failed_starts >= MAX_AUTO_START_ATTEMPTS:
+                            next_start_at = float("inf")
+                            _log(
+                                f"Core engine could not start after {failed_starts} attempts; staying on Python fallback until restart or reinstall.",
+                                xbmc.LOGWARNING,
+                            )
+                        else:
+                            delay = min(300.0, 5.0 * (2 ** (failed_starts - 1)))
+                            next_start_at = time.time() + delay
+                            _log(f"Core engine did not start; next attempt in {int(delay)}s", xbmc.LOGWARNING)
                     else:
                         failed_starts = 0
+                        next_start_at = 0.0
             elif not is_binary_installed(addon_dir) and (xbmcgui is None or xbmcgui.Window(10000).getProperty("AdultHideoutCore.Downloading") != "1"):
                 try:
                     if download_platform_binaries(addon_dir, show_progress=False):

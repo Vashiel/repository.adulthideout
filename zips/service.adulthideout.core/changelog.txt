@@ -1,3 +1,7 @@
+v. 1.0.4 - 2026-11-25
+- **Android / Google TV Loader**: Copy the shared library with raw byte copy (`copyfile`), apply read-only `0555` permissions, fall back across all internal app directories before skipping external `/storage/` paths, and handle existing read-only files cleanly.
+- **Retry Cap**: Stop automatic Core startup retries after 5 consecutive failures so Kodi logs stay clean when an OS/device policy blocks execution.
+
 v. 1.0.3 - 2026-11-18
 - **Site Profiles**: the Core runs AdultHideout's own search patterns for 57 more websites, so 281 sources now search directly in the Core.
 - **Failure Reasons**: the Core reports why a website failed (offline, not found, rate limited, Cloudflare) and does not retry after a timeout, so Global Search skips pointless retries.

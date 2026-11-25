@@ -124,7 +124,7 @@ https://github.com/Vashiel/repository.adulthideout
     </extension>
 </addon>
 
-<addon id="service.adulthideout.core" name="AdultHideout Core Service" version="1.0.3" provider-name="Vashiel">
+<addon id="service.adulthideout.core" name="AdultHideout Core Service" version="1.0.4" provider-name="Vashiel">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
     </requires>
@@ -143,6 +143,9 @@ https://github.com/Vashiel/repository.adulthideout
         <platform>all</platform>
         <license>GPL-2.0-only</license>
         <news>
+v. 1.0.4 - 2026-11-25
+- Improved Android/Google TV library staging: use raw byte copy without metadata replication, read-only 0555 permissions, broader internal app directory fallback, and stop retrying after 5 consecutive start failures.
+
 v. 1.0.3 - 2026-11-18
 - Updated Core engine: 281 sources search directly in the Core, clear failure reasons, honest challenge status and diagnostics support, freshly built for all platforms.
 
