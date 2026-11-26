@@ -1530,11 +1530,11 @@ class GlobalSearch:
             except Exception as exc:
                 self.logger("Vault context failed: {}".format(exc), xbmc.LOGWARNING)
             try:
-                from resources.lib.download_manager import download_command, site_supports_download
+                from resources.lib.download_manager import download_command, page_url_from_target, site_supports_download
                 if site_supports_download(source):
                     context.append((
                         self.addon.getLocalizedString(30633) or "Download video",
-                        download_command(sys_argv0(), source, result.get("url", ""), result.get("label") or "Video", art.get("thumb", "")),
+                        download_command(sys_argv0(), source, page_url_from_target(result.get("url", "")), result.get("label") or "Video", art.get("thumb", "")),
                     ))
             except Exception as exc:
                 self.logger("Download context failed: {}".format(exc), xbmc.LOGWARNING)

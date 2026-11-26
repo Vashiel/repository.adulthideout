@@ -114,10 +114,8 @@ def build_save_command(plugin_url, target_url, title, website="", thumbnail="", 
 
 
 def build_download_command(plugin_url, entry):
-    from resources.lib.download_manager import download_command
-    # Saved videos store the plugin URL, so the page URL is in its "url" parameter.
-    target_url = entry.get("target_url", "")
-    page_url = urllib.parse.parse_qs(urllib.parse.urlparse(target_url).query).get("url", [target_url])[0]
+    from resources.lib.download_manager import download_command, page_url_from_target
+    page_url = page_url_from_target(entry.get("target_url", ""))
     return download_command(plugin_url, entry.get("source", ""), page_url, entry.get("title", ""), entry.get("thumbnail", ""))
 
 
@@ -311,9 +309,12 @@ class PersonalLibrary:
             (_text(30710, "Remove from Collection"), "RunPlugin({})".format(self._url("remove_item", item_id=entry["id"], collection_id=collection_id))),
             (_text(30731, "Delete from Vault"), "RunPlugin({})".format(self._url("remove_item", item_id=entry["id"], collection_id="all"))),
         ]
-        from resources.lib.download_manager import site_supports_download
-        if not is_folder and site_supports_download(entry.get("source")):
-            context.append((_text(30633, "Download video"), build_download_command(self.plugin_url, entry)))
+        try:
+            from resources.lib.download_manager import site_supports_download
+            if not is_folder and site_supports_download(entry.get("source")):
+                context.append((_text(30633, "Download video"), build_download_command(self.plugin_url, entry)))
+        except Exception as exc:
+            xbmc.log(f"[AdultHideout][Vault] download context failed: {exc}", xbmc.LOGWARNING)
         item.addContextMenuItems(context)
         xbmcplugin.addDirectoryItem(self.addon_handle, entry.get("target_url", ""), item, is_folder)
 

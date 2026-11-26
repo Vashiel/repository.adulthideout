@@ -7,7 +7,7 @@ from resources.lib.kvs_tube import KVSTubeWebsite
 
 # Anything smaller than this is a placeholder clip, not a video.
 MIN_VIDEO_BYTES = 1024 * 1024
-IP_LIMIT_MESSAGE = "justporn is blocking downloads from this connection (IP limit). Try another network."
+IP_LIMIT_MESSAGE = "The site is blocking this connection (IP limit). Try another network."
 
 
 class JustPorn(KVSTubeWebsite):
@@ -55,7 +55,7 @@ class JustPorn(KVSTubeWebsite):
             return None
         if "ip-limit" in final_url.lower():
             self.logger.warning("%s stream redirected to a limit placeholder: %s", self.label or self.name, final_url)
-            self.download_error = IP_LIMIT_MESSAGE
+            self.download_error = self.addon.getLocalizedString(30848) or IP_LIMIT_MESSAGE
             return None
         if "video" not in ctype and "octet-stream" not in ctype:
             return None
