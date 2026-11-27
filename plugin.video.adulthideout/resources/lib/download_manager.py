@@ -31,6 +31,7 @@ JOB_STATES = ("queued", "running", "transferring", "submitted", "complete", "fai
 LOCAL_BACKENDS = ("internal", "ffmpeg")
 ACTIVE_LOCAL_STATES = ("running", "transferring")
 STALE_DOWNLOAD_SECONDS = 120
+FRESH_STREAM_SECONDS = 60
 ADDON_ID = "plugin.video.adulthideout"
 STATUS_LABEL_IDS = {
     "queued": (30738, "Queued"),
@@ -212,9 +213,14 @@ def start_next_download():
         if not queued:
             return False
 
-        # Stream links expire while a job waits, so resolve again just before it starts.
+        # Stream links expire while a job waits, so resolve again only if the job has been queued a bit.
         job = None
+        now = time.time()
         for candidate in queued:
+            resolved_at = candidate.get("updated") or candidate.get("created") or 0
+            if candidate.get("stream_url") and (now - resolved_at) < FRESH_STREAM_SECONDS:
+                job = candidate
+                break
             if _refresh_job_stream(candidate):
                 job = candidate
                 break
