@@ -121,32 +121,49 @@ class WhereIsMyPornWebsite(BaseWebsite):
 
         self.end_directory()
 
-    def play_video(self, url):
+    def _find_host_stream(self, url):
+        # Shared by play_video() (playback) and resolve_recording_stream() (downloads).
+        # Returns (stream_url, headers, error); error is a user-facing message when nothing resolved.
         page = self._http_get(url, referer=self.base_url)
         if not page:
-            self.notify_error("Failed to load video page.")
-            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
-            return
+            return None, None, "Failed to load video page."
 
         hosts = self._extract_host_links(page)
         if not hosts:
-            self.notify_error("No playable hoster found.")
-            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
-            return
+            return None, None, "No playable hoster found."
 
         for host_url in hosts:
             try:
                 stream_url, headers = resolver.resolve(host_url, referer=url, headers=self.headers.copy())
                 if stream_url:
-                    li = xbmcgui.ListItem(path=self._append_headers(stream_url, headers))
-                    li.setProperty("IsPlayable", "true")
-                    xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
-                    return
+                    return stream_url, headers, None
             except Exception as exc:
                 self.logger.warning("Hoster resolve failed for %s: %s", host_url, exc)
 
-        self.notify_error("No working stream found.")
-        xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
+        return None, None, "No working stream found."
+
+    def play_video(self, url):
+        stream_url, headers, error = self._find_host_stream(url)
+        if not stream_url:
+            self.notify_error(error)
+            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem(path=url))
+            return
+
+        li = xbmcgui.ListItem(path=self._append_headers(stream_url, headers))
+        li.setProperty("IsPlayable", "true")
+        xbmcplugin.setResolvedUrl(self.addon_handle, True, li)
+
+    def resolve_recording_stream(self, url):
+        stream_url, headers, _ = self._find_host_stream(url)
+        if not stream_url:
+            return None
+        is_hls = ".m3u8" in stream_url.lower()
+        return {
+            "url": stream_url,
+            "headers": headers or {},
+            "extension": "m3u8" if is_hls else "mp4",
+            "hls_proxy": is_hls,
+        }
 
     def search(self, query):
         if not query:

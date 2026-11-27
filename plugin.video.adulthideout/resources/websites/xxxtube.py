@@ -410,6 +410,25 @@ class XxxTube(BaseWebsite):
         if not stream_url:
             return None
 
+        # The get_file link 302s to a cdn20 remote_control.php URL that answers 403 unless the
+        # cookie set by the first hop (kt_remote_ips) is sent with it. Follow the redirect here,
+        # on the session, so that cookie lands in the jar, and hand FFmpeg the final URL.
+        probe_headers = {
+            "User-Agent": self.ua,
+            "Referer": url,
+            "Accept": "*/*",
+            "Range": "bytes=0-1",
+        }
+        try:
+            probe = self.session.get(stream_url, headers=probe_headers, timeout=25, allow_redirects=True, stream=True)
+            try:
+                if probe.status_code in (200, 206) and probe.url and probe.url != stream_url:
+                    stream_url = probe.url
+            finally:
+                probe.close()
+        except Exception as exc:
+            self.logger.warning("[XXXTUBE] Redirect probe failed for %s: %s", stream_url, exc)
+
         headers = {
             "User-Agent": self.ua,
             "Referer": url,

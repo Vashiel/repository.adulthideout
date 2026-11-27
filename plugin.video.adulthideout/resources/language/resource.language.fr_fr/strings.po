@@ -1056,6 +1056,22 @@ msgctxt "#30680"
 msgid "Interrupted download queued for continuation."
 msgstr "Le téléchargement interrompu a été remis en file d'attente."
 
+msgctxt "#30846"
+msgid "This video is members-only on the site. A members login is needed."
+msgstr "Cette vidéo est réservée aux membres sur le site. Une connexion membre est nécessaire."
+
+msgctxt "#30847"
+msgid "The site is asking for a login before it shows this video."
+msgstr "Le site demande une connexion avant d'afficher cette vidéo."
+
+msgctxt "#30848"
+msgid "The site is blocking this connection (IP limit). Try another network."
+msgstr "Le site bloque cette connexion (limite IP). Essayez un autre réseau."
+
+msgctxt "#30849"
+msgid "The video page is gone (HTTP {})."
+msgstr "La page de la vidéo n'est plus disponible (HTTP {})."
+
 msgctxt "#30850"
 msgid "Rate item"
 msgstr "Noter l'élément"

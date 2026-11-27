@@ -292,22 +292,18 @@ class SpeedpornWebsite(BaseWebsite):
         links.sort(key=priority)
         return links
 
-    def play_video(self, url):
+    def _find_hoster_stream(self, url):
+        # Shared by play_video() (playback) and resolve_recording_stream() (downloads).
+        # Returns (stream_url, headers, error); error is a user-facing message when nothing resolved.
         page_html = self._make_request(url)
         if not page_html:
-            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
-            return
+            return None, None, None
 
         host_links = self._extract_host_links(page_html)
         if not host_links:
-            self.notify_error("No SpeedPorn host links found")
-            xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
-            return
+            return None, None, "No SpeedPorn host links found"
 
         self.logger.info("[SpeedPorn] Found %d host links", len(host_links))
-        stream_url = None
-        stream_headers = {}
-
         for link in host_links:
             try:
                 self.logger.info("[SpeedPorn] Trying hoster: %s", link[:100])
@@ -317,14 +313,17 @@ class SpeedpornWebsite(BaseWebsite):
                 else:
                     candidate, headers = result, {}
                 if candidate and candidate.startswith("http"):
-                    stream_url = candidate
-                    stream_headers = headers or {}
-                    break
+                    return candidate, headers or {}, None
             except Exception as exc:
                 self.logger.warning("[SpeedPorn] Resolver failed for %s: %s", link[:80], exc)
 
+        return None, None, "Could not resolve SpeedPorn stream"
+
+    def play_video(self, url):
+        stream_url, stream_headers, error = self._find_hoster_stream(url)
         if not stream_url:
-            self.notify_error("Could not resolve SpeedPorn stream")
+            if error:
+                self.notify_error(error)
             xbmcplugin.setResolvedUrl(self.addon_handle, False, xbmcgui.ListItem())
             return
 
@@ -340,3 +339,16 @@ class SpeedpornWebsite(BaseWebsite):
             list_item.setMimeType("video/mp4")
         list_item.setContentLookup(False)
         xbmcplugin.setResolvedUrl(self.addon_handle, True, list_item)
+
+    def resolve_recording_stream(self, url):
+        # Download entry point: the hoster stream that play_video() would open.
+        stream_url, stream_headers, _ = self._find_hoster_stream(url)
+        if not stream_url:
+            return None
+        is_hls = ".m3u8" in stream_url.lower()
+        return {
+            "url": stream_url,
+            "headers": stream_headers,
+            "extension": "m3u8" if is_hls else "mp4",
+            "hls_proxy": is_hls,
+        }

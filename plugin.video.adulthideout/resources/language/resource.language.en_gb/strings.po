@@ -1057,6 +1057,22 @@ msgctxt "#30680"
 msgid "Interrupted download queued for continuation."
 msgstr "Interrupted download queued for continuation."
 
+msgctxt "#30846"
+msgid "This video is members-only on the site. A members login is needed."
+msgstr "This video is members-only on the site. A members login is needed."
+
+msgctxt "#30847"
+msgid "The site is asking for a login before it shows this video."
+msgstr "The site is asking for a login before it shows this video."
+
+msgctxt "#30848"
+msgid "The site is blocking this connection (IP limit). Try another network."
+msgstr "The site is blocking this connection (IP limit). Try another network."
+
+msgctxt "#30849"
+msgid "The video page is gone (HTTP {})."
+msgstr "The video page is gone (HTTP {})."
+
 msgctxt "#30850"
 msgid "Rate item"
 msgstr "Rate item"

@@ -700,6 +700,10 @@ class XvideosWebsite(BaseWebsite):
             return {'url': high_mp4.group(1), 'headers': headers, 'extension': 'mp4'}
         elif low_mp4:
             return {'url': low_mp4.group(1), 'headers': headers, 'extension': 'mp4'}
+        # Newer pages only carry the stream in their JSON-LD metadata.
+        content_url = re.search(r'"contentUrl"\s*:\s*"(https:[^"]+\.mp4[^"]*)"', content)
+        if content_url:
+            return {'url': content_url.group(1).replace('\\/', '/'), 'headers': headers, 'extension': 'mp4'}
         return None
 
     def process_related_videos(self, url):

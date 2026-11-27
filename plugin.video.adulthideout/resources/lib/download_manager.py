@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
@@ -211,7 +212,14 @@ def start_next_download():
         if not queued:
             return False
 
-        job = queued[0]
+        # Stream links expire while a job waits, so resolve again just before it starts.
+        job = None
+        for candidate in queued:
+            if _refresh_job_stream(candidate):
+                job = candidate
+                break
+        if job is None:
+            return False
         job.update({"status": "running", "error": "", "run_token": uuid.uuid4().hex})
         save_job(job)
         _launch_worker(job)
@@ -220,17 +228,59 @@ def start_next_download():
         _release_queue_lock()
 
 
-def add_download_context(website, context_menu, page_url, title, thumbnail=""):
-    items = list(context_menu or [])
+_DOWNLOAD_SUPPORT = {}
+
+
+def site_supports_download(name):
+    # Same test base_website uses: the site must override resolve_recording_stream.
+    key = (name or "").strip().lower()
+    if not key:
+        return False
+    if key not in _DOWNLOAD_SUPPORT:
+        supported = False
+        try:
+            from resources.lib.base_website import BaseWebsite
+            module = importlib.import_module("resources.websites.{}".format(key))
+            for attribute in dir(module):
+                candidate = getattr(module, attribute)
+                if (
+                    isinstance(candidate, type)
+                    and issubclass(candidate, BaseWebsite)
+                    and candidate is not BaseWebsite
+                    and candidate.__module__ == module.__name__
+                ):
+                    supported = candidate.resolve_recording_stream is not BaseWebsite.resolve_recording_stream
+                    break
+        except Exception as exc:
+            xbmc.log("[AdultHideout][downloads] support check failed for {}: {}".format(key, exc), xbmc.LOGWARNING)
+        _DOWNLOAD_SUPPORT[key] = supported
+    return _DOWNLOAD_SUPPORT[key]
+
+
+def download_command(plugin_url, website, page_url, title="", thumbnail=""):
     params = {
         "mode": "30",
         "action": "enqueue",
-        "website": website.name,
+        "website": website or "",
         "original_url": page_url or "",
         "name": title or "",
         "thumbnail": thumbnail or "",
     }
-    command = "RunPlugin({}?{})".format(sys.argv[0], urllib.parse.urlencode(params))
+    return "RunPlugin({}?{})".format(plugin_url, urllib.parse.urlencode(params))
+
+
+def page_url_from_target(target_url):
+    # Plugin URLs keep the page URL in their "url" parameter; anything else is already a page URL.
+    target_url = target_url or ""
+    parsed = urllib.parse.urlparse(target_url)
+    if parsed.scheme != "plugin":
+        return target_url
+    return urllib.parse.parse_qs(parsed.query).get("url", [""])[0]
+
+
+def add_download_context(website, context_menu, page_url, title, thumbnail=""):
+    items = list(context_menu or [])
+    command = download_command(sys.argv[0], website.name, page_url, title, thumbnail)
     label = website.addon.getLocalizedString(30633) or "Download video"
     items.append((label, command))
     return items
@@ -239,6 +289,46 @@ def add_download_context(website, context_menu, page_url, title, thumbnail=""):
 def _notify(message, error=False):
     icon = xbmcgui.NOTIFICATION_ERROR if error else xbmcgui.NOTIFICATION_INFO
     xbmcgui.Dialog().notification("AdultHideout", str(message), icon, 5000)
+
+
+# Known block pages, checked when a site's resolver finds no stream.
+BLOCK_PAGE_MARKERS = (
+    (30846, "This video is members-only on the site. A members login is needed.",
+     ("only active members", "only members can", "members-only video", "private video")),
+    (30847, "The site is asking for a login before it shows this video.",
+     ("log in to watch", "login required", "please log in or sign up")),
+    (30848, "The site is blocking this connection (IP limit). Try another network.",
+     ("ip-limit", "ip limit", "your ip has been")),
+)
+
+
+def _diagnose_page(page_url):
+    """Explain why a page has no stream, using the page's own wording. Returns "" when unsure."""
+    if not page_url:
+        return ""
+    request = urllib.request.Request(page_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"})
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            text = response.read(400000).decode("utf-8", "replace").lower()
+    except urllib.error.HTTPError as exc:
+        if exc.code in (404, 410):
+            return _lang(30849, "The video page is gone (HTTP {}).", exc.code)
+        return ""
+    except Exception:
+        return ""
+    for message_id, fallback, markers in BLOCK_PAGE_MARKERS:
+        if any(marker in text for marker in markers):
+            return _lang(message_id, fallback)
+    return ""
+
+
+def _resolve_failure_message(website, page_url):
+    # A site's own message wins; otherwise look at the page; otherwise the generic text.
+    return (
+        getattr(website, "download_error", "")
+        or _diagnose_page(page_url)
+        or _lang(30753, "Could not resolve a downloadable stream.")
+    )
 
 
 def _setting(name, fallback=""):
@@ -430,6 +520,7 @@ def _resolve_ffmpeg():
 
 def enqueue_download(website, page_url, title="", thumbnail=""):
     folder = ensure_download_folder(interactive=True)
+    xbmc.log("[AdultHideout][downloads] enqueue folder={!r} site={} url={}".format(folder, website.name, page_url), xbmc.LOGINFO)
     if not folder:
         return False
     resolver = getattr(website, "resolve_recording_stream", None)
@@ -444,8 +535,10 @@ def enqueue_download(website, page_url, title="", thumbnail=""):
         headers = {}
         explicit_extension = ""
         resolved_options = {}
+    # Stream links are signed, so only the host goes to the log.
+    xbmc.log("[AdultHideout][downloads] enqueue resolved host={} headers={}".format(urllib.parse.urlsplit(stream_url or "").netloc, sorted((headers or {}).keys())), xbmc.LOGINFO)
     if not stream_url:
-        _notify(_lang(30753, "Could not resolve a downloadable stream."), error=True)
+        _notify(_resolve_failure_message(website, page_url), error=True)
         return False
 
     is_hls = _looks_hls(stream_url) or explicit_extension.lower() == "m3u8" or bool(resolved_options.get("hls_proxy"))
@@ -484,6 +577,7 @@ def enqueue_download(website, page_url, title="", thumbnail=""):
         "run_token": uuid.uuid4().hex,
     }
     save_job(job)
+    xbmc.log("[AdultHideout][downloads] enqueue saved job {} backend={}".format(job["id"], backend), xbmc.LOGINFO)
 
     if backend == "aria2":
         return _submit_aria2(job)
@@ -596,6 +690,10 @@ def cancel_job(job_id):
 
 
 def _load_website_for_download(name):
+    # The worker process can import this module without the addon root on sys.path.
+    addon_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    if addon_root not in sys.path:
+        sys.path.insert(0, addon_root)
     from resources.lib.base_website import BaseWebsite
 
     module = importlib.import_module("resources.websites.{}".format(name))
@@ -619,7 +717,7 @@ def _refresh_job_stream(job):
             raise RuntimeError(_lang(30753, "Could not resolve a downloadable stream."))
         stream_url, headers, explicit_extension, resolved_options = normalize_resolved(resolver(job.get("page_url", "")))
         if not stream_url:
-            raise RuntimeError(_lang(30753, "Could not resolve a downloadable stream."))
+            raise RuntimeError(_resolve_failure_message(website, job.get("page_url", "")))
 
         is_hls = _looks_hls(stream_url) or explicit_extension.lower() == "m3u8" or bool(resolved_options.get("hls_proxy"))
         backend = _backend_for(stream_url, is_hls=is_hls)

@@ -113,6 +113,12 @@ def build_save_command(plugin_url, target_url, title, website="", thumbnail="", 
     return "RunPlugin({}?{})".format(plugin_url, urllib.parse.urlencode(params))
 
 
+def build_download_command(plugin_url, entry):
+    from resources.lib.download_manager import download_command, page_url_from_target
+    page_url = page_url_from_target(entry.get("target_url", ""))
+    return download_command(plugin_url, entry.get("source", ""), page_url, entry.get("title", ""), entry.get("thumbnail", ""))
+
+
 class PersonalLibrary:
     def __init__(self, addon_handle, plugin_url):
         self.addon_handle = addon_handle
@@ -303,6 +309,12 @@ class PersonalLibrary:
             (_text(30710, "Remove from Collection"), "RunPlugin({})".format(self._url("remove_item", item_id=entry["id"], collection_id=collection_id))),
             (_text(30731, "Delete from Vault"), "RunPlugin({})".format(self._url("remove_item", item_id=entry["id"], collection_id="all"))),
         ]
+        try:
+            from resources.lib.download_manager import site_supports_download
+            if not is_folder and site_supports_download(entry.get("source")):
+                context.append((_text(30633, "Download video"), build_download_command(self.plugin_url, entry)))
+        except Exception as exc:
+            xbmc.log(f"[AdultHideout][Vault] download context failed: {exc}", xbmc.LOGWARNING)
         item.addContextMenuItems(context)
         xbmcplugin.addDirectoryItem(self.addon_handle, entry.get("target_url", ""), item, is_folder)
 
